@@ -1,0 +1,41 @@
+# C# Build
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.pdb
+*.log
+
+# .NET user-local launch profiles
+**/Properties/launchSettings.json
+
+# TypeScript Build
+node_modules/
+build/
+dist/
+
+# IDE
+.vs/
+.idea/
+*.swp
+
+# Temp
+__temp_research/
+
+# Claude Code
+.claude/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Git worktrees
+.worktrees/
+
+# User-local MCP client config (use .mcp.json.example as template)
+.mcp.json
+
+# Research archives (local reference only, not repo artifact)
+docs/research-archive/
