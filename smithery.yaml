@@ -1,0 +1,25 @@
+# Smithery manifest — exposes bimwright to the Smithery.ai MCP directory.
+# Docs: https://smithery.ai/docs/build/project-config/smithery-yaml
+#
+# NOTE on installation model:
+# bimwright ships as a .NET global tool on NuGet (Bimwright.Rvt.Server).
+# Smithery's auto-installer is optimized for npm/Docker packages and does NOT
+# auto-install .NET tools for end users. Users install manually once with:
+#
+#   dotnet tool install -g Bimwright.Rvt.Server
+#
+# After that install, the binary `bimwright-rvt` is on PATH and Smithery can
+# launch it directly via the commandFunction below.
+#
+# See README §Install for the full quickstart (includes the Revit plugin ZIP step).
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties: {}
+  commandFunction: |
+    (config) => ({
+      "command": "bimwright-rvt",
+      "args": []
+    })
