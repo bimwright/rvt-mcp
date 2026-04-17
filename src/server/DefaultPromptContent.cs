@@ -1,4 +1,4 @@
-namespace RevitMcp.Server
+namespace Bimwright.Server
 {
     /// <summary>
     /// Embedded default content for MCP prompt files.

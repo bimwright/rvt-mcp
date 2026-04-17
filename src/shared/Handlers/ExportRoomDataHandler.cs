@@ -3,7 +3,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 
-namespace RevitMcp.Plugin.Handlers
+namespace Bimwright.Plugin.Handlers
 {
     public class ExportRoomDataHandler : IRevitCommand
     {

@@ -5,7 +5,7 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
-namespace RevitMcp.Plugin.Commands
+namespace Bimwright.Plugin.Commands
 {
     [Transaction(TransactionMode.Manual)]
     public class CopyConnectionInfoCommand : IExternalCommand
@@ -19,7 +19,7 @@ namespace RevitMcp.Plugin.Commands
             var kind = (ver == "R25" || ver == "R26" || ver == "R27") ? "pipe" : "port";
             var portFile = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RevitMcp", $"{kind}{ver}.txt");
+                "Bimwright", $"{kind}{ver}.txt");
 
             var info = App.Instance.IsTransportRunning
                 ? transport.ConnectionInfo

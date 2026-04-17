@@ -3,7 +3,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
 
-namespace RevitMcp.Plugin.Handlers
+namespace Bimwright.Plugin.Handlers
 {
     public class CreateLineBasedElementHandler : IRevitCommand
     {

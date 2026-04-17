@@ -1,9 +1,9 @@
 using System;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
-using RevitMcp.Plugin.ToolBaker;
+using Bimwright.Plugin.ToolBaker;
 
-namespace RevitMcp.Plugin.Handlers
+namespace Bimwright.Plugin.Handlers
 {
     public class BakeToolHandler : IRevitCommand
     {

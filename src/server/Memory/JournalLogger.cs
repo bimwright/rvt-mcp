@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using Newtonsoft.Json;
 
-namespace RevitMcp.Server.Memory
+namespace Bimwright.Server.Memory
 {
     public class JournalLogger
     {
@@ -17,7 +17,7 @@ namespace RevitMcp.Server.Memory
         {
             _journalDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RevitMcp", "journal");
+                "Bimwright", "journal");
             Directory.CreateDirectory(_journalDir);
         }
 
@@ -39,7 +39,7 @@ namespace RevitMcp.Server.Memory
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine($"[RevitMCP] Journal write failed: {ex.Message}");
+                    Console.Error.WriteLine($"[Bimwright] Journal write failed: {ex.Message}");
                 }
             }
         }

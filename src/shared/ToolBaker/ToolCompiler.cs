@@ -5,7 +5,7 @@ using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace RevitMcp.Plugin.ToolBaker
+namespace Bimwright.Plugin.ToolBaker
 {
     public static class ToolCompiler
     {
@@ -27,7 +27,7 @@ using System.Collections.Generic;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
-using RevitMcp.Plugin;
+using Bimwright.Plugin;
 
 public class BakedTool_{safeName} : IRevitCommand
 {{

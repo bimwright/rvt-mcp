@@ -7,7 +7,7 @@ using Autodesk.Revit.UI;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace RevitMcp.Plugin
+namespace Bimwright.Plugin
 {
     public class PendingRequest
     {
@@ -142,7 +142,7 @@ namespace RevitMcp.Plugin
             }
         }
 
-        public string GetName() => "RevitMcp.McpEventHandler";
+        public string GetName() => "Bimwright.McpEventHandler";
 
         public void CancelAll()
         {

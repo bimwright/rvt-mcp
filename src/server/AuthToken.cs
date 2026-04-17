@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 
-namespace RevitMcp.Server
+namespace Bimwright.Server
 {
     internal static class AuthToken
     {
@@ -23,7 +23,7 @@ namespace RevitMcp.Server
 
             var dir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RevitMcp");
+                "Bimwright");
 
             // If target specified, only try that version
             var versions = Target != null ? new[] { Target } : TcpVersions;
@@ -54,7 +54,7 @@ namespace RevitMcp.Server
 
             var dir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RevitMcp");
+                "Bimwright");
 
             // If target specified, only try that version
             var versions = Target != null ? new[] { Target } : PipeVersions;

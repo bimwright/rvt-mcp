@@ -3,7 +3,7 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
-namespace RevitMcp.Plugin.Commands
+namespace Bimwright.Plugin.Commands
 {
     [Transaction(TransactionMode.Manual)]
     public class ShowStatusCommand : IExternalCommand
@@ -22,7 +22,7 @@ namespace RevitMcp.Plugin.Commands
             var lastCmd = transport?.LastCommandTime?.ToString("HH:mm:ss") ?? "None";
             var cmdCount = log?.Count ?? 0;
 
-            var td = new TaskDialog("RevitMCP Status")
+            var td = new TaskDialog("Bimwright Status")
             {
                 MainInstruction = $"MCP Server: {status}",
                 MainContent =

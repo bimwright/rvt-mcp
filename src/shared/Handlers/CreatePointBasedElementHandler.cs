@@ -5,7 +5,7 @@ using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
 
-namespace RevitMcp.Plugin.Handlers
+namespace Bimwright.Plugin.Handlers
 {
     public class CreatePointBasedElementHandler : IRevitCommand
     {

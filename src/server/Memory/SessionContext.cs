@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 
-namespace RevitMcp.Server.Memory
+namespace Bimwright.Server.Memory
 {
     public class SessionContext
     {

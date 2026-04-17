@@ -6,7 +6,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 
-namespace RevitMcp.Plugin
+namespace Bimwright.Plugin
 {
     public static class IconGenerator
     {

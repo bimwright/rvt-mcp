@@ -1,6 +1,6 @@
 using System;
 
-namespace RevitMcp.Server.Memory
+namespace Bimwright.Server.Memory
 {
     public class JournalEntry
     {

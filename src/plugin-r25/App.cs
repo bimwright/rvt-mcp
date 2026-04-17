@@ -2,7 +2,7 @@ using System;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 
-namespace RevitMcp.Plugin
+namespace Bimwright.Plugin
 {
     public class App : IExternalApplication
     {
@@ -132,7 +132,7 @@ namespace RevitMcp.Plugin
             {
                 var dir = System.IO.Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "RevitMcp");
+                    "Bimwright");
                 System.IO.Directory.CreateDirectory(dir);
                 var logFile = System.IO.Path.Combine(dir, "debug.log");
                 System.IO.File.AppendAllText(logFile,

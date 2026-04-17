@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 
-namespace RevitMcp.Plugin
+namespace Bimwright.Plugin
 {
     public static class AuthToken
     {
@@ -50,7 +50,7 @@ namespace RevitMcp.Plugin
             {
                 var dir = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "RevitMcp");
+                    "Bimwright");
                 var filePath = Path.Combine(dir, $"{kind}{RevitVersion}.txt");
                 if (File.Exists(filePath)) File.Delete(filePath);
             }
@@ -87,7 +87,7 @@ namespace RevitMcp.Plugin
         {
             var dir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RevitMcp");
+                "Bimwright");
             Directory.CreateDirectory(dir);
             var filePath = Path.Combine(dir, fileName);
 
@@ -112,7 +112,7 @@ namespace RevitMcp.Plugin
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[RevitMCP] ACL restriction failed for {fileName}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[Bimwright] ACL restriction failed for {fileName}: {ex.Message}");
             }
         }
     }

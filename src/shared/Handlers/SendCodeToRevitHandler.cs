@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
 
-namespace RevitMcp.Plugin.Handlers
+namespace Bimwright.Plugin.Handlers
 {
     public class SendCodeToRevitHandler : IRevitCommand
     {

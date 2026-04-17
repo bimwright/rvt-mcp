@@ -1,4 +1,4 @@
-namespace RevitMcp.Plugin
+namespace Bimwright.Plugin
 {
     public interface IRevitCommand
     {

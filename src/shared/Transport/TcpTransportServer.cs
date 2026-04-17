@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace RevitMcp.Plugin
+namespace Bimwright.Plugin
 {
     public class TcpTransportServer : ITransportServer
     {
@@ -35,7 +35,7 @@ namespace RevitMcp.Plugin
             Log($"Listening on port {_port} (auth: enabled)");
 
             _running = true;
-            _listenThread = new Thread(ListenLoop) { IsBackground = true, Name = "RevitMcp.TcpTransportServer" };
+            _listenThread = new Thread(ListenLoop) { IsBackground = true, Name = "Bimwright.TcpTransportServer" };
             _listenThread.Start();
         }
 
@@ -238,7 +238,7 @@ namespace RevitMcp.Plugin
         {
             try
             {
-                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RevitMcp");
+                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bimwright");
                 Directory.CreateDirectory(dir);
                 var logFile = Path.Combine(dir, "revit-mcp.log");
                 File.AppendAllText(logFile, $"[{DateTime.Now:HH:mm:ss}] [TcpTransportServer] {SecretMasker.Mask(message)}\n");

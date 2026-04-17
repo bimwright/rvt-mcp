@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace RevitMcp.Plugin
+namespace Bimwright.Plugin
 {
     public interface ITransportServer : IDisposable
     {

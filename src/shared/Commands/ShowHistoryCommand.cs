@@ -2,7 +2,7 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
-namespace RevitMcp.Plugin.Commands
+namespace Bimwright.Plugin.Commands
 {
     [Transaction(TransactionMode.Manual)]
     public class ShowHistoryCommand : IExternalCommand

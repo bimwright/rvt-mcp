@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using RevitMcp.Plugin.ToolBaker;
+using Bimwright.Plugin.ToolBaker;
 
-namespace RevitMcp.Plugin
+namespace Bimwright.Plugin
 {
     public class CommandDispatcher
     {
@@ -84,11 +84,11 @@ namespace RevitMcp.Plugin
                     if (command != null)
                         Register(command);
                     else
-                        System.Diagnostics.Debug.WriteLine($"[RevitMCP] Failed to load baked tool '{meta.Name}': {error}");
+                        System.Diagnostics.Debug.WriteLine($"[Bimwright] Failed to load baked tool '{meta.Name}': {error}");
                 }
                 catch (System.Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[RevitMCP] Error loading baked tool '{meta.Name}': {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[Bimwright] Error loading baked tool '{meta.Name}': {ex.Message}");
                 }
             }
         }

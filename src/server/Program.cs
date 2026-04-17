@@ -1,6 +1,6 @@
 // Usage:
-//   stdio (default):  RevitMcp.Server.exe              — spawned by Claude/GPT/Cursor
-//   HTTP SSE:          RevitMcp.Server.exe --http 8200  — for Ollama/LM Studio/custom
+//   stdio (default):  Bimwright.Server.exe              — spawned by Claude/GPT/Cursor
+//   HTTP SSE:          Bimwright.Server.exe --http 8200  — for Ollama/LM Studio/custom
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -20,7 +20,7 @@ using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace RevitMcp.Server
+namespace Bimwright.Server
 {
     class Program
     {
@@ -33,7 +33,7 @@ namespace RevitMcp.Server
                 var target = args[targetIndex + 1].ToUpperInvariant();
                 if (Array.IndexOf(AuthToken.AllVersions, target) < 0)
                 {
-                    Console.Error.WriteLine("[RevitMCP] Invalid --target argument. Expected: --target R22|R23|R24|R25|R26|R27");
+                    Console.Error.WriteLine("[Bimwright] Invalid --target argument. Expected: --target R22|R23|R24|R25|R26|R27");
                     Environment.Exit(1);
                     return;
                 }
@@ -51,7 +51,7 @@ namespace RevitMcp.Server
                 if (httpIndex + 1 >= args.Length || !int.TryParse(args[httpIndex + 1], out var port)
                     || port < 1 || port > 65535)
                 {
-                    Console.Error.WriteLine("[RevitMCP] Invalid --http argument. Expected: --http <port> (1-65535)");
+                    Console.Error.WriteLine("[Bimwright] Invalid --http argument. Expected: --http <port> (1-65535)");
                     Environment.Exit(1);
                     return;
                 }
@@ -105,7 +105,7 @@ namespace RevitMcp.Server
 
             app.MapMcp();
 
-            Console.Error.WriteLine($"[RevitMCP] SSE server listening on http://127.0.0.1:{port}");
+            Console.Error.WriteLine($"[Bimwright] SSE server listening on http://127.0.0.1:{port}");
             await app.RunAsync();
         }
     }
@@ -158,11 +158,11 @@ namespace RevitMcp.Server
                         _token = pipeToken;
                         _pipeStream = pipe;
                         stream = pipe;
-                        Console.Error.WriteLine($"[RevitMCP-CSharp] Connected to Revit {pipeVer} via Named Pipe: {pipeName}");
+                        Console.Error.WriteLine($"[Bimwright] Connected to Revit {pipeVer} via Named Pipe: {pipeName}");
                     }
                     catch (Exception ex)
                     {
-                        Console.Error.WriteLine($"[RevitMCP-CSharp] Pipe connect failed ({pipeVer}: {ex.Message}) — falling back to TCP");
+                        Console.Error.WriteLine($"[Bimwright] Pipe connect failed ({pipeVer}: {ex.Message}) — falling back to TCP");
                         try { _pipeStream?.Close(); } catch { }
                         _pipeStream = null;
                     }
@@ -175,14 +175,14 @@ namespace RevitMcp.Server
                     _client = new TcpClient();
                     _client.Connect("127.0.0.1", port);
                     stream = _client.GetStream();
-                    Console.Error.WriteLine($"[RevitMCP-CSharp] Connected to Revit {tcpVer} via TCP on port {port}");
+                    Console.Error.WriteLine($"[Bimwright] Connected to Revit {tcpVer} via TCP on port {port}");
                 }
 
                 if (stream == null)
                 {
                     var which = target != null ? $"(target={target})" : "(auto-detect R22-R27)";
                     throw new InvalidOperationException(
-                        $"Revit MCP plugin not running {which}. Check discovery files in %LOCALAPPDATA%\\RevitMcp\\");
+                        $"Revit MCP plugin not running {which}. Check discovery files in %LOCALAPPDATA%\\Bimwright\\");
                 }
 
                 _reader = new StreamReader(stream, Encoding.UTF8);
@@ -190,7 +190,7 @@ namespace RevitMcp.Server
                 _connected = true;
 
                 // Start reading responses on background thread
-                var readThread = new Thread(ReadLoop) { IsBackground = true, Name = "RevitMcp.ResponseReader" };
+                var readThread = new Thread(ReadLoop) { IsBackground = true, Name = "Bimwright.ResponseReader" };
                 readThread.Start();
             }
         }

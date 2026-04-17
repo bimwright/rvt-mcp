@@ -3,7 +3,7 @@ using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace RevitMcp.Plugin
+namespace Bimwright.Plugin
 {
     public static class McpLogger
     {
@@ -16,7 +16,7 @@ namespace RevitMcp.Plugin
         {
             var dir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RevitMcp");
+                "Bimwright");
             Directory.CreateDirectory(dir);
             _logPath = Path.Combine(dir, "mcp-calls.jsonl");
             _sessionId = DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" +

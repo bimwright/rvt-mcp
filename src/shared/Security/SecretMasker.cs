@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace RevitMcp.Plugin
+namespace Bimwright.Plugin
 {
     public static class SecretMasker
     {

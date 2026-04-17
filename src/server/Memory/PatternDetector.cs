@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace RevitMcp.Server.Memory
+namespace Bimwright.Server.Memory
 {
     public class PatternInfo
     {

@@ -1,8 +1,8 @@
 using System.ComponentModel;
 using ModelContextProtocol.Server;
-using RevitMcp.Server.Memory;
+using Bimwright.Server.Memory;
 
-namespace RevitMcp.Server
+namespace Bimwright.Server
 {
     [McpServerResourceType]
     public class RevitResources

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 
-namespace RevitMcp.Plugin.ToolBaker
+namespace Bimwright.Plugin.ToolBaker
 {
     public class BakedToolMeta
     {
@@ -24,7 +24,7 @@ namespace RevitMcp.Plugin.ToolBaker
         {
             _dir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RevitMcp", "baked");
+                "Bimwright", "baked");
             Directory.CreateDirectory(_dir);
             _registryPath = Path.Combine(_dir, "registry.json");
             Load();

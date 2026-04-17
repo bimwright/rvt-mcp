@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace RevitMcp.Plugin
+namespace Bimwright.Plugin
 {
     public class PipeTransportServer : ITransportServer
     {
@@ -25,13 +25,13 @@ namespace RevitMcp.Plugin
         {
             _onRequest = onRequest ?? throw new ArgumentNullException(nameof(onRequest));
 
-            _pipeName = $"RevitMcp-{Process.GetCurrentProcess().Id}";
+            _pipeName = $"Bimwright-{Process.GetCurrentProcess().Id}";
 
             AuthToken.GenerateAndPersistPipe(_pipeName);
             Log($"Listening on pipe {_pipeName} (auth: enabled)");
 
             _running = true;
-            _listenThread = new Thread(ListenLoop) { IsBackground = true, Name = "RevitMcp.PipeTransportServer" };
+            _listenThread = new Thread(ListenLoop) { IsBackground = true, Name = "Bimwright.PipeTransportServer" };
             _listenThread.Start();
         }
 
@@ -255,7 +255,7 @@ namespace RevitMcp.Plugin
         {
             try
             {
-                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RevitMcp");
+                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bimwright");
                 Directory.CreateDirectory(dir);
                 var logFile = Path.Combine(dir, "revit-mcp.log");
                 File.AppendAllText(logFile, $"[{DateTime.Now:HH:mm:ss}] [PipeTransport] {SecretMasker.Mask(message)}\n");
