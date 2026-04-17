@@ -27,6 +27,12 @@ namespace Bimwright.Server
     {
         static async Task Main(string[] args)
         {
+            if (args.Any(a => a == "--help" || a == "-h"))
+            {
+                PrintHelp();
+                return;
+            }
+
             // A9 3-layer config precedence (JSON < env < CLI). AuthToken.Target + transport
             // mode (--http) stay as separate CLI parses for now; A3 toolsets gating uses
             // BimwrightConfig.
@@ -113,6 +119,50 @@ namespace Bimwright.Server
             await app.RunAsync();
         }
 
+        private static void PrintHelp()
+        {
+            var usage = string.Join("\n", new[]
+            {
+                "bimwright — Revit MCP server (bimwright.dev)",
+                "",
+                "Usage: bimwright [options]",
+                "",
+                "Transport:",
+                "  --http <port>           Run HTTP SSE on 127.0.0.1:<port> (1-65535). Default = stdio.",
+                "",
+                "Routing:",
+                "  --target R22|R23|R24|R25|R26|R27",
+                "                          Pin to a specific Revit version (when multiple Revits run).",
+                "                          Default: auto-detect via discovery files in %LOCALAPPDATA%\\Bimwright\\.",
+                "",
+                "Tool exposure (A3 Progressive Disclosure):",
+                "  --toolsets <csv>        Comma list of toolsets to enable. Default: query,create,view,meta.",
+                "                          Known toolsets: " + string.Join(", ", ToolsetFilter.KnownToolsets),
+                "                          Use 'all' to expose every toolset.",
+                "  --read-only             Shortcut that excludes create, modify, and delete toolsets.",
+                "",
+                "ToolBaker:",
+                "  --enable-toolbaker      Enable ToolBaker toolset (default ON).",
+                "  --disable-toolbaker     Disable ToolBaker toolset.",
+                "",
+                "Transport security (S7):",
+                "  --allow-lan-bind        (plugin-side only — set BIMWRIGHT_ALLOW_LAN_BIND env var in",
+                "                          the Revit process environment; server-side flag is documented",
+                "                          here for future cross-process propagation.)",
+                "",
+                "Env vars (override JSON, overridden by CLI):",
+                "  BIMWRIGHT_TARGET, BIMWRIGHT_TOOLSETS, BIMWRIGHT_READ_ONLY,",
+                "  BIMWRIGHT_ALLOW_LAN_BIND, BIMWRIGHT_ENABLE_TOOLBAKER",
+                "",
+                "Config file (lowest precedence):",
+                "  %LOCALAPPDATA%\\Bimwright\\bimwright.config.json",
+                "",
+                "Other:",
+                "  -h, --help              Show this help and exit.",
+            });
+            Console.WriteLine(usage);
+        }
+
         private static IMcpServerBuilder RegisterToolsets(IMcpServerBuilder mcp, HashSet<string> enabled)
         {
             if (enabled.Contains("query"))      mcp = mcp.WithTools<QueryTools>();
@@ -167,6 +217,16 @@ namespace Bimwright.Server
 
             // Drop unknown tokens silently (misspelling shouldn't crash the server)
             set.IntersectWith(KnownToolsets);
+
+            // --read-only shortcut: strip every write-capable toolset regardless of
+            // whether it was requested explicitly, via "all", or via defaults.
+            if (config != null && config.ReadOnlyOrDefault)
+            {
+                set.Remove("create");
+                set.Remove("modify");
+                set.Remove("delete");
+            }
+
             return set;
         }
     }
