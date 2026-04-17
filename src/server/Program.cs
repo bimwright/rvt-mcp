@@ -70,7 +70,6 @@ namespace Bimwright.Server
                 .AddMcpServer()
                 .WithStdioServerTransport()
                 .WithTools<RevitTools>()
-                .WithPrompts<RevitPrompts>()
                 .WithResources<RevitResources>();
             var app = builder.Build();
             await app.RunAsync();
@@ -83,7 +82,6 @@ namespace Bimwright.Server
                 .AddMcpServer()
                 .WithHttpTransport()
                 .WithTools<RevitTools>()
-                .WithPrompts<RevitPrompts>()
                 .WithResources<RevitResources>();
 
             builder.WebHost.UseUrls($"http://127.0.0.1:{port}");
