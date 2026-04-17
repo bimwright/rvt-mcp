@@ -3,26 +3,26 @@ using Xunit;
 
 namespace Bimwright.Tests
 {
-    // Cases mirror aspect #5 §S5 table verbatim:
+    // Path-mask regression cases:
     //   Input                                                              → Output
-    //   Could not find 'D:\Workspace\Project_KEI\revit-mcp\config.json'    → Could not find 'config.json'
+    //   Could not find 'D:\Workspace\my-project\config.json'               → Could not find 'config.json'
     //   in D:\...\CreateLevelHandler.cs:line 45                            → in CreateLevelHandler.cs:line 45
-    //   Document 'C:\Users\Khoa\Building-X.rvt' is null                    → Document 'Building-X.rvt' is null
-    //   Could not open 'D:\KEI-projects\XYZ\project.db'                    → Could not open 'project.db'
+    //   Document 'C:\Users\alice\Building-X.rvt' is null                   → Document 'Building-X.rvt' is null
+    //   Could not open 'D:\client-projects\XYZ\project.db'                 → Could not open 'project.db'
     public class ErrorSanitizerTests
     {
         [Theory]
         [InlineData(
-            @"Could not find 'D:\Workspace\Project_KEI\revit-mcp\config.json'",
+            @"Could not find 'D:\Workspace\my-project\config.json'",
             "Could not find 'config.json'")]
         [InlineData(
             @"in D:\Projects\bimwright\src\shared\Handlers\CreateLevelHandler.cs:line 45",
             "in CreateLevelHandler.cs:line 45")]
         [InlineData(
-            @"Document 'C:\Users\Khoa\Building-X.rvt' is null",
+            @"Document 'C:\Users\alice\Building-X.rvt' is null",
             "Document 'Building-X.rvt' is null")]
         [InlineData(
-            @"Could not open 'D:\KEI-projects\XYZ\project.db'",
+            @"Could not open 'D:\client-projects\XYZ\project.db'",
             "Could not open 'project.db'")]
         public void Sanitize_StripsWindowsAbsolutePaths_KeepsFilename(string input, string expected)
         {
@@ -48,7 +48,7 @@ namespace Bimwright.Tests
         [Fact]
         public void Sanitize_UnixHomePath_StripsToFilename()
         {
-            var input = "Could not read /home/khoa/src/config.yaml";
+            var input = "Could not read /home/alice/src/config.yaml";
             var actual = ErrorSanitizer.Sanitize(input);
             Assert.Equal("Could not read config.yaml", actual);
         }
