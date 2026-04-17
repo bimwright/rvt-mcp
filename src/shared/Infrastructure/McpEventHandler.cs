@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Autodesk.Revit.UI;
@@ -49,22 +50,23 @@ namespace Bimwright.Plugin
                     if (command == null)
                     {
                         sw.Stop();
+                        var unknownError = SanitizeError($"Unknown command: {request.CommandName}");
                         McpLogger.Log(request.CommandName, request.ParamsJson, false,
-                                      sw.ElapsedMilliseconds, $"Unknown command: {request.CommandName}");
+                                      sw.ElapsedMilliseconds, unknownError);
                         _sessionLog?.Add(new McpCallEntry
                         {
                             ToolName = request.CommandName,
                             ParamsJson = request.ParamsJson,
                             Success = false,
                             DurationMs = sw.ElapsedMilliseconds,
-                            ErrorMessage = $"Unknown command: {request.CommandName}",
+                            ErrorMessage = unknownError,
                             Summary = $"Unknown: {request.CommandName}"
                         });
                         var errorResponse = JsonConvert.SerializeObject(new
                         {
                             id = request.Id,
                             success = false,
-                            error = $"Unknown command: {request.CommandName}"
+                            error = unknownError
                         });
                         request.Tcs.TrySetResult(errorResponse);
                         continue;
@@ -90,8 +92,9 @@ namespace Bimwright.Plugin
                         ? resultJson.Substring(0, 10240)
                         : resultJson;
 
+                    var resultError = SanitizeError(result.Error);
                     McpLogger.Log(request.CommandName, request.ParamsJson, result.Success,
-                                  sw.ElapsedMilliseconds, result.Error, codeSnippet, resultJson);
+                                  sw.ElapsedMilliseconds, resultError, codeSnippet, resultJson);
 
                     _sessionLog?.Add(new McpCallEntry
                     {
@@ -99,12 +102,12 @@ namespace Bimwright.Plugin
                         ParamsJson = request.ParamsJson,
                         Success = result.Success,
                         DurationMs = sw.ElapsedMilliseconds,
-                        ErrorMessage = result.Error,
+                        ErrorMessage = resultError,
                         CodeSnippet = codeSnippet,
                         ResultJson = sessionResult,
                         ToolDescription = command.Description,
                         Summary = SummaryGenerator.Generate(request.CommandName, request.ParamsJson,
-                                                             sessionResult, result.Success, result.Error)
+                                                             sessionResult, result.Success, resultError)
                     });
 
                     var response = JsonConvert.SerializeObject(new
@@ -112,34 +115,61 @@ namespace Bimwright.Plugin
                         id = request.Id,
                         success = result.Success,
                         data = result.Data,
-                        error = result.Error
+                        error = resultError
                     });
                     request.Tcs.TrySetResult(response);
                 }
                 catch (Exception ex)
                 {
                     sw.Stop();
+                    var exError = SanitizeError(ex.Message);
                     McpLogger.Log(request.CommandName, request.ParamsJson, false,
-                                  sw.ElapsedMilliseconds, ex.Message);
+                                  sw.ElapsedMilliseconds, exError);
                     _sessionLog?.Add(new McpCallEntry
                     {
                         ToolName = request.CommandName,
                         ParamsJson = request.ParamsJson,
                         Success = false,
                         DurationMs = sw.ElapsedMilliseconds,
-                        ErrorMessage = ex.Message,
+                        ErrorMessage = exError,
                         Summary = SummaryGenerator.Generate(request.CommandName, request.ParamsJson,
-                                                             null, false, ex.Message)
+                                                             null, false, exError)
                     });
                     var errorResponse = JsonConvert.SerializeObject(new
                     {
                         id = request.Id,
                         success = false,
-                        error = ex.Message
+                        error = exError
                     });
                     request.Tcs.TrySetResult(errorResponse);
                 }
             }
+        }
+
+        /// <summary>
+        /// S5 path-leak mask: strip absolute paths from error messages before they reach
+        /// the MCP response, JSONL log, or session-log UI. Keeps filename + line number.
+        /// </summary>
+        private static string SanitizeError(string error)
+        {
+            if (string.IsNullOrEmpty(error)) return error;
+
+            // 1. Windows absolute paths: D:\..., C:\Users\... → keep last filename only
+            error = Regex.Replace(error,
+                @"[A-Za-z]:\\(?:[^\\""'\s]+\\)*([^\\""'\s]+)",
+                "$1");
+
+            // 2. UNC paths: \\server\share\... → keep last filename only
+            error = Regex.Replace(error,
+                @"\\\\[^\\""'\s]+\\(?:[^\\""'\s]+\\)*([^\\""'\s]+)",
+                "$1");
+
+            // 3. Unix paths (safety): /home/..., /Users/... → keep last filename only
+            error = Regex.Replace(error,
+                @"/(?:home|Users)/[^/\s""']+/(?:[^/\s""']+/)*([^/\s""']+)",
+                "$1");
+
+            return error;
         }
 
         public string GetName() => "Bimwright.McpEventHandler";
