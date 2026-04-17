@@ -24,7 +24,7 @@ namespace Bimwright.Plugin.Handlers
                 viewName = view.Name,
                 viewType = view.ViewType.ToString(),
                 levelName = view.GenLevel?.Name,
-                levelId = RevitCompat.GetId(view.GenLevel?.Id),
+                levelId = RevitCompat.GetIdOrNull(view.GenLevel?.Id),
                 scale = view.Scale,
                 detailLevel = view.DetailLevel.ToString(),
                 displayStyle = view.DisplayStyle.ToString()
