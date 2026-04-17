@@ -1,10 +1,12 @@
-# Bimwright
+<p align="center">
+  <img src="docs/images/bimwright-logo.jpg" alt="Bimwright — forging the digital craft of the built environment" width="420" />
+</p>
 
-![Bimwright logo](docs/images/bimwright-logo.jpg)
-
-[![build](https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg)](https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml)
-[![license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![.NET](https://img.shields.io/badge/.NET-4.8%20%7C%208%20%7C%2010-512BD4)](#supported-revit-versions)
+<p align="center">
+  <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
+  <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/.NET-4.8%20%7C%208%20%7C%2010-512BD4" alt=".NET" /></a>
+</p>
 
 **MCP gateway for Autodesk Revit 2022–2027.** Exposes the Revit API as AI-callable tools over stdio, so any MCP-compatible client (Claude Code, Cursor, Cline, etc.) can drive Revit directly.
 
