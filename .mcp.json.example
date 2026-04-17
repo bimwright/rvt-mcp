@@ -1,7 +1,7 @@
 {
   "mcpServers": {
-    "revit-mcp": {
-      "command": "<ABSOLUTE_PATH_TO_REPO>/src/server/bin/Debug/net8.0/RevitMcp.Server.exe",
+    "bimwright": {
+      "command": "<ABSOLUTE_PATH_TO_REPO>/src/server/bin/Debug/net8.0/Bimwright.Server.exe",
       "args": []
     }
   }
