@@ -1,0 +1,608 @@
+{
+  "generated_by": "ToolsListSnapshotTests",
+  "tool_count": 29,
+  "tools": [
+    {
+      "name": "ai_element_filter",
+      "description_hash": "sha256:327fc9f03e23915c5934da33323b009048c2ab416628e9ef978f24ccd56442ce",
+      "inputSchema": {
+        "properties": {
+          "category": {
+            "description": "",
+            "type": "String"
+          },
+          "limit": {
+            "description": "",
+            "type": "Int32"
+          },
+          "operator": {
+            "description": "",
+            "type": "String"
+          },
+          "parameterName": {
+            "description": "",
+            "type": "String"
+          },
+          "parameterValue": {
+            "description": "",
+            "type": "String"
+          },
+          "select": {
+            "description": "",
+            "type": "Boolean"
+          }
+        },
+        "required": [
+          "category"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "analyze_model_statistics",
+      "description_hash": "sha256:0761848e9777a2683743b7d5f5723dad7d9ba31c0a0a8ca62ff62346c319a0e3",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "analyze_sheet_layout",
+      "description_hash": "sha256:9970b6856177e042554b42c3036c424b0b89a4131b9f526c77c1aade786c5168",
+      "inputSchema": {
+        "properties": {
+          "sheetId": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "sheetNumber": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "analyze_usage_patterns",
+      "description_hash": "sha256:0cb0b9895279945d6617adc7d949514307866acd6e3003ff9855b35cf3832493",
+      "inputSchema": {
+        "properties": {
+          "days": {
+            "description": "",
+            "type": "Int32"
+          }
+        },
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "bake_tool",
+      "description_hash": "sha256:91bf11d19989e9cd503c7308d62b9d932d8b0b48df3c9a53e13d55fa8bee4628",
+      "inputSchema": {
+        "properties": {
+          "code": {
+            "description": "",
+            "type": "String"
+          },
+          "description": {
+            "description": "",
+            "type": "String"
+          },
+          "name": {
+            "description": "",
+            "type": "String"
+          },
+          "parametersSchema": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "code"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "batch_execute",
+      "description_hash": "sha256:4498178e8f21b82f9a2062a35610476debd6a508f8274fcf60764e841439381d",
+      "inputSchema": {
+        "properties": {
+          "commands": {
+            "description": "",
+            "type": "String"
+          },
+          "continueOnError": {
+            "description": "",
+            "type": "Boolean"
+          }
+        },
+        "required": [
+          "commands"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "color_elements",
+      "description_hash": "sha256:e5ee978ad945321caffd1e203d58637529a9a000b9c395307531ec0c596cfa30",
+      "inputSchema": {
+        "properties": {
+          "category": {
+            "description": "",
+            "type": "String"
+          },
+          "parameterName": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "category",
+          "parameterName"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "create_grid",
+      "description_hash": "sha256:a06f0e4e3cb999ec49a59b5972e1da3c8fef9888061fb8f3f0d04b17dc11ee1c",
+      "inputSchema": {
+        "properties": {
+          "endX": {
+            "description": "",
+            "type": "Double"
+          },
+          "endY": {
+            "description": "",
+            "type": "Double"
+          },
+          "name": {
+            "description": "",
+            "type": "String"
+          },
+          "startX": {
+            "description": "",
+            "type": "Double"
+          },
+          "startY": {
+            "description": "",
+            "type": "Double"
+          }
+        },
+        "required": [
+          "startX",
+          "startY",
+          "endX",
+          "endY"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "create_level",
+      "description_hash": "sha256:8770b0c685c8d8eed8a1aa42c83bfe7322f20bf9f87d38ea5096b55c3fc7fb21",
+      "inputSchema": {
+        "properties": {
+          "elevation": {
+            "description": "",
+            "type": "Double"
+          },
+          "name": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "elevation"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "create_line_based_element",
+      "description_hash": "sha256:7f3be7980f358ad8ed25fc6895481f21ccedc445275c36f91d7e9974b5fa9b13",
+      "inputSchema": {
+        "properties": {
+          "elementType": {
+            "description": "",
+            "type": "String"
+          },
+          "endX": {
+            "description": "",
+            "type": "Double"
+          },
+          "endY": {
+            "description": "",
+            "type": "Double"
+          },
+          "height": {
+            "description": "",
+            "type": "Double"
+          },
+          "level": {
+            "description": "",
+            "type": "String"
+          },
+          "startX": {
+            "description": "",
+            "type": "Double"
+          },
+          "startY": {
+            "description": "",
+            "type": "Double"
+          },
+          "typeId": {
+            "description": "",
+            "type": "Nullable`1"
+          }
+        },
+        "required": [
+          "elementType",
+          "startX",
+          "startY",
+          "endX",
+          "endY"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "create_point_based_element",
+      "description_hash": "sha256:00b49c5face4ce126567f543d3265f106ae1cc0bc10ca7f8afbcfb29cd9e522e",
+      "inputSchema": {
+        "properties": {
+          "level": {
+            "description": "",
+            "type": "String"
+          },
+          "typeId": {
+            "description": "",
+            "type": "Int64"
+          },
+          "x": {
+            "description": "",
+            "type": "Double"
+          },
+          "y": {
+            "description": "",
+            "type": "Double"
+          },
+          "z": {
+            "description": "",
+            "type": "Double"
+          }
+        },
+        "required": [
+          "typeId",
+          "x",
+          "y"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "create_room",
+      "description_hash": "sha256:f15f2e5216437884632f19288d8da893a5276ea64966c9f7f26273d980c74d3b",
+      "inputSchema": {
+        "properties": {
+          "level": {
+            "description": "",
+            "type": "String"
+          },
+          "name": {
+            "description": "",
+            "type": "String"
+          },
+          "number": {
+            "description": "",
+            "type": "String"
+          },
+          "x": {
+            "description": "",
+            "type": "Double"
+          },
+          "y": {
+            "description": "",
+            "type": "Double"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "create_surface_based_element",
+      "description_hash": "sha256:a4e1e37e4747d6461372bdf363b412b0208a70b9467dac3e0ae6a76dabfdda3b",
+      "inputSchema": {
+        "properties": {
+          "elementType": {
+            "description": "",
+            "type": "String"
+          },
+          "level": {
+            "description": "",
+            "type": "String"
+          },
+          "points": {
+            "description": "",
+            "type": "String"
+          },
+          "typeId": {
+            "description": "",
+            "type": "Nullable`1"
+          }
+        },
+        "required": [
+          "elementType",
+          "points"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "create_view",
+      "description_hash": "sha256:f20679365fda2e8cdd3ea08e8602fb7be3e3271f262aeffaa13730e38174e1c6",
+      "inputSchema": {
+        "properties": {
+          "level": {
+            "description": "",
+            "type": "String"
+          },
+          "name": {
+            "description": "",
+            "type": "String"
+          },
+          "viewType": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "viewType"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "delete_element",
+      "description_hash": "sha256:ba44e5b559853dadfcb2245741aa825d57ba4eab6c224200cbe3c5b6e2891a69",
+      "inputSchema": {
+        "properties": {
+          "elementIds": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "elementIds"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "detect_system_elements",
+      "description_hash": "sha256:bce962228e9f50d1194adcbd5ea5c8f78fd2ee39db005625ed30c6d5697db6cb",
+      "inputSchema": {
+        "properties": {
+          "elementId": {
+            "description": "",
+            "type": "Int64"
+          }
+        },
+        "required": [
+          "elementId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "export_room_data",
+      "description_hash": "sha256:d0ae07b2db499195e5c529c8c88d8018dd632c17790442621159e8fe0b5b63d5",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_available_family_types",
+      "description_hash": "sha256:4e77a9ad3279a1210e1516ac17949232e55b12b4ba2c2d212f9016ab6dbc3ec5",
+      "inputSchema": {
+        "properties": {
+          "category": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_current_view_info",
+      "description_hash": "sha256:d594de7410717fcef822d0d2be8d005ffe1a1c1f7bcb4f57d44718c09778596c",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_material_quantities",
+      "description_hash": "sha256:4a393b13fc9260c7537aa6ade82cafad19e259f84656959fdf65e6027749a809",
+      "inputSchema": {
+        "properties": {
+          "category": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "category"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_selected_elements",
+      "description_hash": "sha256:d0249278c13432b4c5fc74342757e3cd06f13caa4647c1b4f624cb6dd71ed651",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "list_baked_tools",
+      "description_hash": "sha256:be48574784e6f276af3b4a8259d0f9529bd13404a338dab36d551f9ac6c0d5fa",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "operate_element",
+      "description_hash": "sha256:fb906d02375debbf6c760365e7f91b3ff78dda49d8b625a387a45dd833abdfd4",
+      "inputSchema": {
+        "properties": {
+          "b": {
+            "description": "",
+            "type": "Byte"
+          },
+          "elementIds": {
+            "description": "",
+            "type": "String"
+          },
+          "g": {
+            "description": "",
+            "type": "Byte"
+          },
+          "operation": {
+            "description": "",
+            "type": "String"
+          },
+          "r": {
+            "description": "",
+            "type": "Byte"
+          }
+        },
+        "required": [
+          "operation",
+          "elementIds"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "place_view_on_sheet",
+      "description_hash": "sha256:32d692a6963a94974ebf98b048e0ba22edbd694a41a07bdb2ba0ea7f80ebb6ca",
+      "inputSchema": {
+        "properties": {
+          "sheetId": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "sheetName": {
+            "description": "",
+            "type": "String"
+          },
+          "sheetNumber": {
+            "description": "",
+            "type": "String"
+          },
+          "viewId": {
+            "description": "",
+            "type": "Int64"
+          }
+        },
+        "required": [
+          "viewId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "run_baked_tool",
+      "description_hash": "sha256:a136b44ce7a3c1d5c670a0327c13088ec132b8092f8317f2a9ef72201302889b",
+      "inputSchema": {
+        "properties": {
+          "name": {
+            "description": "",
+            "type": "String"
+          },
+          "params": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "send_code_to_revit",
+      "description_hash": "sha256:26667d04f30688beba6366b5e10281cb765940e0937c081d519add830ffcd3d8",
+      "inputSchema": {
+        "properties": {
+          "code": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "show_message",
+      "description_hash": "sha256:9ff2f7fa0dfb022c50370321f793e3df062c4810c441aea482476189506ce5d4",
+      "inputSchema": {
+        "properties": {
+          "message": {
+            "description": "",
+            "type": "String"
+          },
+          "title": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "tag_all_rooms",
+      "description_hash": "sha256:ea09e99bf9b5a09249e008838169d39f5897206de794361ef3e66e5ca60cbfad",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "tag_all_walls",
+      "description_hash": "sha256:af24a03644375dd8b2f27b3f6e5920d15dafa797975b4c19f3ce4122de287ab5",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      }
+    }
+  ]
+}
