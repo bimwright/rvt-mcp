@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
-    <RootNamespace>RevitMcp.Plugin</RootNamespace>
-    <AssemblyName>RevitMcp.Plugin</AssemblyName>
+    <RootNamespace>Bimwright.Plugin</RootNamespace>
+    <AssemblyName>Bimwright.Plugin</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <LangVersion>latest</LangVersion>
     <DefineConstants>REVIT2022</DefineConstants>
@@ -41,15 +41,15 @@
 
   <Target Name="Deploy" AfterTargets="Build" Condition="'$(Configuration)' != ''">
     <PropertyGroup>
-      <DeployDir>$(APPDATA)\Autodesk\Revit\Addins\2022\RevitMcp\</DeployDir>
+      <DeployDir>$(APPDATA)\Autodesk\Revit\Addins\2022\Bimwright\</DeployDir>
     </PropertyGroup>
     <ItemGroup>
-      <DeployFiles Include="$(OutputPath)RevitMcp.*.dll;$(OutputPath)Newtonsoft.Json.dll;$(OutputPath)Microsoft.CodeAnalysis*.dll;$(OutputPath)System.Collections.Immutable.dll;$(OutputPath)System.Reflection.Metadata.dll" />
+      <DeployFiles Include="$(OutputPath)Bimwright.*.dll;$(OutputPath)Newtonsoft.Json.dll;$(OutputPath)Microsoft.CodeAnalysis*.dll;$(OutputPath)System.Collections.Immutable.dll;$(OutputPath)System.Reflection.Metadata.dll" />
     </ItemGroup>
     <MakeDir Directories="$(DeployDir)" />
     <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(DeployDir)" SkipUnchangedFiles="true" />
     <Exec Command="if exist &quot;$(OutputPath)runtimes&quot; xcopy /Y /Q /S /E /I &quot;$(OutputPath)runtimes&quot; &quot;$(DeployDir)runtimes&quot;" IgnoreExitCode="true" />
-    <Copy SourceFiles="RevitMcp.R22.addin" DestinationFolder="$(APPDATA)\Autodesk\Revit\Addins\2022\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="Bimwright.R22.addin" DestinationFolder="$(APPDATA)\Autodesk\Revit\Addins\2022\" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

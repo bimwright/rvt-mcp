@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0-windows7.0</TargetFramework>
-    <RootNamespace>RevitMcp.Plugin</RootNamespace>
-    <AssemblyName>RevitMcp.Plugin</AssemblyName>
+    <RootNamespace>Bimwright.Plugin</RootNamespace>
+    <AssemblyName>Bimwright.Plugin</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <UseWPF>true</UseWPF>
     <EnableDynamicLoading>true</EnableDynamicLoading>
-    <RevitVersion>2025</RevitVersion>
-    <DefineConstants>REVIT2025;REVIT2024_OR_GREATER</DefineConstants>
+    <RevitVersion>2026</RevitVersion>
+    <DefineConstants>REVIT2026;REVIT2024_OR_GREATER</DefineConstants>
   </PropertyGroup>
 
   <!-- Gate send_code_to_revit: only available in Debug builds -->
@@ -20,10 +20,10 @@
     <Compile Include="..\shared\**\*.cs" LinkBase="Shared" />
   </ItemGroup>
 
-  <!-- Revit 2025 API via Nice3point NuGet packages -->
+  <!-- Revit 2026 API via Nice3point NuGet packages -->
   <ItemGroup>
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2025.0.10" PrivateAssets="all" />
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="2025.0.10" PrivateAssets="all" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2026.0.10" PrivateAssets="all" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="2026.0.10" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,13 +35,13 @@
 
   <Target Name="Deploy" AfterTargets="Build" Condition="'$(Configuration)' != ''">
     <PropertyGroup>
-      <DeployDir>$(APPDATA)\Autodesk\Revit\Addins\2025\RevitMcp\</DeployDir>
+      <DeployDir>$(APPDATA)\Autodesk\Revit\Addins\2026\Bimwright\</DeployDir>
     </PropertyGroup>
     <ItemGroup>
-      <DeployFiles Include="$(OutputPath)RevitMcp.*.dll;$(OutputPath)Newtonsoft.Json.dll;$(OutputPath)Microsoft.CodeAnalysis*.dll" />
+      <DeployFiles Include="$(OutputPath)Bimwright.*.dll;$(OutputPath)Newtonsoft.Json.dll;$(OutputPath)Microsoft.CodeAnalysis*.dll" />
     </ItemGroup>
     <MakeDir Directories="$(DeployDir)" />
     <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(DeployDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="RevitMcp.R25.addin" DestinationFolder="$(APPDATA)\Autodesk\Revit\Addins\2025\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="Bimwright.R26.addin" DestinationFolder="$(APPDATA)\Autodesk\Revit\Addins\2026\" SkipUnchangedFiles="true" />
   </Target>
 </Project>

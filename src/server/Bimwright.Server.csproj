@@ -3,8 +3,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>RevitMcp.Server</RootNamespace>
-    <AssemblyName>RevitMcp.Server</AssemblyName>
+    <RootNamespace>Bimwright.Server</RootNamespace>
+    <AssemblyName>Bimwright.Server</AssemblyName>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
