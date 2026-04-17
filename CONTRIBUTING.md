@@ -93,6 +93,32 @@ Open a GitHub issue with:
 - Reproduction steps — ideally the exact MCP tool call and params.
 - Logs from `%LOCALAPPDATA%\Bimwright\` — but **check for paths you don't want to share** (the sanitizer masks absolute paths in errors sent to the model, but local log files are unredacted).
 
+## Testing & drift detection
+
+### Schema drift
+The canonical tool surface is snapshot to `tests/Bimwright.Rvt.Tests/Golden/tools-list.json`. CI compares each build against this file. A diff fails the build.
+
+When you intentionally add, rename, or reshape a tool:
+1. Run `UPDATE_SNAPSHOTS=1 dotnet test` locally.
+2. Review the diff in `Golden/tools-list.json`.
+3. Commit the updated golden file alongside your source change in the same PR.
+
+### Weak-model benchmark
+Run the Haiku benchmark before merging when your PR:
+- Adds five or more new handler files, OR
+- Edits any tool's description text, OR
+- Precedes tagging a minor or major release.
+
+Procedure: see `benchmarks/README.md`. The benchmark uses Claude Code to spawn a Haiku sub-agent; no Anthropic API key is required.
+
+A ≥15% param-accuracy drop vs the last baseline blocks merge until the regression is understood. Smaller drops are human-review.
+
+### Client compatibility
+Primary verified clients: Claude CLI, Claude Desktop. Other clients (Cursor, Cline, Windsurf, Continue, Zed): no automated tests. If you hit a client-specific bug, open an issue with a minimal repro; we will add a regression test once the behaviour is understood.
+
+### Naming convention
+Tool names and parameter keys use `snake_case`. We do not maintain aliases for tool names from other Revit-MCP forks (e.g. LuDattilo, Autodesk MCP). If you are migrating from another fork and a specific name mismatch is blocking you, open an issue — we will consider aliases when three or more users request the same one.
+
 ## Security
 
 Do **not** open a public issue for anything that looks like a privilege-escalation, auth bypass, or RCE via `send_code_to_revit` / ToolBaker. Contact the maintainer privately first — see `SECURITY.md` if present, otherwise email the address on the commit history.
