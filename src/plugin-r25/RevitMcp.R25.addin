@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>RevitMCP</Name>
+    <Assembly>RevitMcp\RevitMcp.Plugin.dll</Assembly>
+    <FullClassName>RevitMcp.Plugin.App</FullClassName>
+    <AddInId>{a1b2c3d4-e5f6-7890-abcd-ef1234567890}</AddInId>
+    <VendorId>lekhoa221</VendorId>
+    <VendorDescription>Revit MCP Gateway</VendorDescription>
+  </AddIn>
+</RevitAddIns>

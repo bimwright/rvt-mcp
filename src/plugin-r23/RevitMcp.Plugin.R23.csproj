@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>RevitMcp.Plugin</RootNamespace>
+    <AssemblyName>RevitMcp.Plugin</AssemblyName>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <LangVersion>latest</LangVersion>
+    <DefineConstants>REVIT2023</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Gate send_code_to_revit: only available in Debug builds -->
+  <PropertyGroup Condition="$(Configuration.StartsWith('Debug'))">
+    <DefineConstants>$(DefineConstants);ALLOW_SEND_CODE</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Revit 2023 API via Nice3point NuGet packages -->
+  <ItemGroup>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2023.1.70" PrivateAssets="all" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="2023.1.70" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Drawing" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Xaml" />
+  </ItemGroup>
+
+  <!-- Shared source compiled into this project -->
+  <ItemGroup>
+    <Compile Include="..\shared\**\*.cs" LinkBase="Shared" />
+  </ItemGroup>
+
+  <Target Name="Deploy" AfterTargets="Build" Condition="'$(Configuration)' != ''">
+    <PropertyGroup>
+      <DeployDir>$(APPDATA)\Autodesk\Revit\Addins\2023\RevitMcp\</DeployDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <DeployFiles Include="$(OutputPath)RevitMcp.*.dll;$(OutputPath)Newtonsoft.Json.dll;$(OutputPath)Microsoft.CodeAnalysis*.dll;$(OutputPath)System.Collections.Immutable.dll;$(OutputPath)System.Reflection.Metadata.dll" />
+    </ItemGroup>
+    <MakeDir Directories="$(DeployDir)" />
+    <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(DeployDir)" SkipUnchangedFiles="true" />
+    <Exec Command="if exist &quot;$(OutputPath)runtimes&quot; xcopy /Y /Q /S /E /I &quot;$(OutputPath)runtimes&quot; &quot;$(DeployDir)runtimes&quot;" IgnoreExitCode="true" />
+    <Copy SourceFiles="RevitMcp.R23.addin" DestinationFolder="$(APPDATA)\Autodesk\Revit\Addins\2023\" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>
