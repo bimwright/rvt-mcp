@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Bimwright.Plugin.ToolBaker;
+using Bimwright.Rvt.Plugin.ToolBaker;
 
-namespace Bimwright.Plugin
+namespace Bimwright.Rvt.Plugin
 {
     public class CommandDispatcher
     {

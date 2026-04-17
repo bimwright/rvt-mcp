@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Bimwright.Plugin
+namespace Bimwright.Rvt.Plugin
 {
     public class SchemaValidationResult
     {

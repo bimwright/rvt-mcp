@@ -6,10 +6,10 @@
 MCP client (Claude Code / Cursor / …)
         │  stdio (NDJSON)
         ▼
-Bimwright.Server  (.NET 8 console app, global tool)
+Bimwright.Rvt.Server  (.NET 8 console app, global tool)
         │  TCP (R22–R24)  OR  Named Pipe (R25–R27) — NDJSON + token auth
         ▼
-Bimwright.Plugin  (Revit add-in DLL, one per year)
+Bimwright.Rvt.Plugin  (Revit add-in DLL, one per year)
         │  ExternalEvent.Raise()
         ▼
 Revit API  (UIApplication / Document)
@@ -40,7 +40,7 @@ Six plugin shells share one source tree. Each csproj glob-includes `src/shared/*
 
 ```
 src/
-├── server/                # Bimwright.Server (.NET 8)
+├── server/                # Bimwright.Rvt.Server (.NET 8)
 ├── shared/                # Handlers, CommandDispatcher, Transport, Logging, Security, ToolBaker
 │   ├── Handlers/          # 28 tool handlers
 │   ├── Infrastructure/    # CommandDispatcher, McpEventHandler, SchemaValidator, BatchExecutor

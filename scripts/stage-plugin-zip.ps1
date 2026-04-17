@@ -5,7 +5,7 @@
 .DESCRIPTION
   For each Revit year R22..R27, copies the built plugin DLL + .addin + runtime deps
   from src/plugin-rNN/bin/<Config>/<TFM>/ into build/plugin-zip/R<nn>/, then produces
-  build/plugin-zip/Bimwright.Plugin.R<nn>.zip.
+  build/plugin-zip/Bimwright.Rvt.Plugin.R<nn>.zip.
 
   Consumed by install.ps1 (P4-003) and the GitHub Release asset pipeline (P4-004).
 
@@ -50,7 +50,7 @@ foreach ($s in $shells) {
     $tfm = $s.Tfm
     $pluginDir = Join-Path $RepoRoot ("src\plugin-r{0}" -f $year)
     $binDir = Join-Path $pluginDir ("bin\{0}\{1}" -f $Config, $tfm)
-    $pluginDll = Join-Path $binDir 'Bimwright.Plugin.dll'
+    $pluginDll = Join-Path $binDir 'Bimwright.Rvt.Plugin.dll'
     $addinFile = Join-Path $pluginDir ("Bimwright.R{0}.addin" -f $year)
 
     if (-not (Test-Path $pluginDll)) {
@@ -67,7 +67,7 @@ foreach ($s in $shells) {
     $destDir = Join-Path $stageRoot ("R{0}" -f $year)
     New-Item -ItemType Directory -Path $destDir -Force | Out-Null
 
-    # Runtime deps that ship alongside Bimwright.Plugin.dll.
+    # Runtime deps that ship alongside Bimwright.Rvt.Plugin.dll.
     # Glob matches the Deploy target in src/plugin-r*/*.csproj — keep in sync.
     $patterns = @(
         'Bimwright.*.dll',
@@ -90,7 +90,7 @@ foreach ($s in $shells) {
     # Addin manifest at plugin root.
     Copy-Item -Path $addinFile -Destination $destDir -Force
 
-    $zipPath = Join-Path $stageRoot ("Bimwright.Plugin.R{0}.zip" -f $year)
+    $zipPath = Join-Path $stageRoot ("Bimwright.Rvt.Plugin.R{0}.zip" -f $year)
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
     Compress-Archive -Path (Join-Path $destDir '*') -DestinationPath $zipPath -Force
 

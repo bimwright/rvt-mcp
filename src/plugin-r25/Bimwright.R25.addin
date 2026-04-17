@@ -2,10 +2,10 @@
 <RevitAddIns>
   <AddIn Type="Application">
     <Name>Bimwright</Name>
-    <Assembly>Bimwright\Bimwright.Plugin.dll</Assembly>
-    <FullClassName>Bimwright.Plugin.App</FullClassName>
+    <Assembly>Bimwright\Bimwright.Rvt.Plugin.dll</Assembly>
+    <FullClassName>Bimwright.Rvt.Plugin.App</FullClassName>
     <AddInId>{5de5a098-6d35-41cd-9280-91380d4f5d46}</AddInId>
-    <VendorId>lekhoa221</VendorId>
+    <VendorId>bimwright</VendorId>
     <VendorDescription>Revit MCP Gateway</VendorDescription>
   </AddIn>
 </RevitAddIns>

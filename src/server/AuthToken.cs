@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 
-namespace Bimwright.Server
+namespace Bimwright.Rvt.Server
 {
     internal static class AuthToken
     {

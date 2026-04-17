@@ -5,7 +5,7 @@ using System.Text;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
-namespace Bimwright.Plugin.Handlers
+namespace Bimwright.Rvt.Plugin.Handlers
 {
     /// <summary>
     /// Returns a markdown summary of the current Revit project for MCP Prompt injection.

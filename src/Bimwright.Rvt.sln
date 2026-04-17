@@ -3,23 +3,23 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Server", "server\Bimwright.Server.csproj", "{5171C140-D915-4570-A04E-3E27631912E0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Rvt.Server", "server\Bimwright.Rvt.Server.csproj", "{5171C140-D915-4570-A04E-3E27631912E0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Plugin.R22", "plugin-r22\Bimwright.Plugin.R22.csproj", "{B1A2C3D4-E5F6-7890-ABCD-EF1234567890}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Rvt.Plugin.R22", "plugin-r22\Bimwright.Rvt.Plugin.R22.csproj", "{B1A2C3D4-E5F6-7890-ABCD-EF1234567890}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Plugin.R23", "plugin-r23\Bimwright.Plugin.R23.csproj", "{C1A2C3D4-E5F6-7890-ABCD-EF1234567891}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Rvt.Plugin.R23", "plugin-r23\Bimwright.Rvt.Plugin.R23.csproj", "{C1A2C3D4-E5F6-7890-ABCD-EF1234567891}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Plugin.R24", "plugin-r24\Bimwright.Plugin.R24.csproj", "{D1A2C3D4-E5F6-7890-ABCD-EF1234567892}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Rvt.Plugin.R24", "plugin-r24\Bimwright.Rvt.Plugin.R24.csproj", "{D1A2C3D4-E5F6-7890-ABCD-EF1234567892}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Plugin.R25", "plugin-r25\Bimwright.Plugin.R25.csproj", "{E1A2C3D4-E5F6-7890-ABCD-EF1234567893}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Rvt.Plugin.R25", "plugin-r25\Bimwright.Rvt.Plugin.R25.csproj", "{E1A2C3D4-E5F6-7890-ABCD-EF1234567893}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Plugin.R26", "plugin-r26\Bimwright.Plugin.R26.csproj", "{F1A2C3D4-E5F6-7890-ABCD-EF1234567894}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Rvt.Plugin.R26", "plugin-r26\Bimwright.Rvt.Plugin.R26.csproj", "{F1A2C3D4-E5F6-7890-ABCD-EF1234567894}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Plugin.R27", "plugin-r27\Bimwright.Plugin.R27.csproj", "{A2A2C3D4-E5F6-7890-ABCD-EF1234567895}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Rvt.Plugin.R27", "plugin-r27\Bimwright.Rvt.Plugin.R27.csproj", "{A2A2C3D4-E5F6-7890-ABCD-EF1234567895}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Tests", "..\tests\Bimwright.Tests\Bimwright.Tests.csproj", "{BD45F68F-C4F1-425B-8BCB-A518D22A507A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bimwright.Rvt.Tests", "..\tests\Bimwright.Rvt.Tests\Bimwright.Rvt.Tests.csproj", "{BD45F68F-C4F1-425B-8BCB-A518D22A507A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

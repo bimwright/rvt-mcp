@@ -4,7 +4,7 @@ using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Bimwright.Plugin
+namespace Bimwright.Rvt.Plugin
 {
     /// <summary>
     /// A9 3-layer config (aspect #3 §A9). Single POCO read by both processes:

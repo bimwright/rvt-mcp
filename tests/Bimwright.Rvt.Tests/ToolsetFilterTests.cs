@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
-using Bimwright.Plugin;
-using Bimwright.Server;
+using Bimwright.Rvt.Plugin;
+using Bimwright.Rvt.Server;
 using Xunit;
 
-namespace Bimwright.Tests
+namespace Bimwright.Rvt.Tests
 {
     public class ToolsetFilterTests
     {

@@ -4,7 +4,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 
-namespace Bimwright.Plugin.Handlers
+namespace Bimwright.Rvt.Plugin.Handlers
 {
     public class TagAllRoomsHandler : IRevitCommand
     {

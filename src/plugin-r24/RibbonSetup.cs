@@ -1,7 +1,7 @@
 using System.Reflection;
 using Autodesk.Revit.UI;
 
-namespace Bimwright.Plugin
+namespace Bimwright.Rvt.Plugin
 {
     public class RibbonResult
     {
@@ -22,7 +22,7 @@ namespace Bimwright.Plugin
             var toggleData = new PushButtonData(
                 "ToggleMcp", "MCP: ON",
                 assemblyPath,
-                "Bimwright.Plugin.Commands.ToggleMcpCommand")
+                "Bimwright.Rvt.Plugin.Commands.ToggleMcpCommand")
             {
                 LargeImage = IconGenerator.McpOn32,
                 Image = IconGenerator.McpOn16,
@@ -32,7 +32,7 @@ namespace Bimwright.Plugin
             var historyData = new PushButtonData(
                 "ShowHistory", "History (0)",
                 assemblyPath,
-                "Bimwright.Plugin.Commands.ShowHistoryCommand")
+                "Bimwright.Rvt.Plugin.Commands.ShowHistoryCommand")
             {
                 LargeImage = IconGenerator.History32,
                 Image = IconGenerator.History16,

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 
-namespace Bimwright.Plugin.ToolBaker
+namespace Bimwright.Rvt.Plugin.ToolBaker
 {
     public class BakedToolMeta
     {

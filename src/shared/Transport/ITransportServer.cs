@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Bimwright.Plugin
+namespace Bimwright.Rvt.Plugin
 {
     public interface ITransportServer : IDisposable
     {

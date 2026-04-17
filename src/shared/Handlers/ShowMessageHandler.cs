@@ -1,7 +1,7 @@
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
 
-namespace Bimwright.Plugin.Handlers
+namespace Bimwright.Rvt.Plugin.Handlers
 {
     public class ShowMessageHandler : IRevitCommand
     {

@@ -1,6 +1,6 @@
 // Usage:
-//   stdio (default):  Bimwright.Server.exe              — spawned by Claude/GPT/Cursor
-//   HTTP SSE:          Bimwright.Server.exe --http 8200  — for Ollama/LM Studio/custom
+//   stdio (default):  Bimwright.Rvt.Server.exe              — spawned by Claude/GPT/Cursor
+//   HTTP SSE:          Bimwright.Rvt.Server.exe --http 8200  — for Ollama/LM Studio/custom
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -11,7 +11,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Bimwright.Plugin; // BimwrightConfig
+using Bimwright.Rvt.Plugin; // BimwrightConfig
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -21,7 +21,7 @@ using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Bimwright.Server
+namespace Bimwright.Rvt.Server
 {
     class Program
     {

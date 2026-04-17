@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Bimwright.Plugin
+namespace Bimwright.Rvt.Plugin
 {
     public static class SecretMasker
     {

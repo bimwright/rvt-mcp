@@ -3,7 +3,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
 
-namespace Bimwright.Plugin.Handlers
+namespace Bimwright.Rvt.Plugin.Handlers
 {
     /// <summary>
     /// A6 batch execution (aspect #3 §A6). Wraps N MCP commands in a single

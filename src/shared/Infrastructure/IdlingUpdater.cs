@@ -1,7 +1,7 @@
 using System;
 using Autodesk.Revit.UI;
 
-namespace Bimwright.Plugin
+namespace Bimwright.Rvt.Plugin
 {
     public class IdlingUpdater
     {

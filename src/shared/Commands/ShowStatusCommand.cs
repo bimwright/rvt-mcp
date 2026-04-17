@@ -3,7 +3,7 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
-namespace Bimwright.Plugin.Commands
+namespace Bimwright.Rvt.Plugin.Commands
 {
     [Transaction(TransactionMode.Manual)]
     public class ShowStatusCommand : IExternalCommand

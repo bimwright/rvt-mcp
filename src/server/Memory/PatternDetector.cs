@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Bimwright.Server.Memory
+namespace Bimwright.Rvt.Server.Memory
 {
     public class PatternInfo
     {

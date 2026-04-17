@@ -2,7 +2,7 @@
 
 ![Bimwright logo](docs/images/bimwright-logo.jpg)
 
-[![build](https://github.com/bimwright/bimwright/actions/workflows/build.yml/badge.svg)](https://github.com/bimwright/bimwright/actions/workflows/build.yml)
+[![build](https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg)](https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml)
 [![license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-4.8%20%7C%208%20%7C%2010-512BD4)](#supported-revit-versions)
 
@@ -20,7 +20,7 @@ Built-in differentiators:
 ## Architecture
 
 ```
-MCP client (Claude Code, etc.) ⇄ stdio ⇄ Bimwright.Server (.NET 8) ⇄ TCP/Pipe ⇄ Bimwright.Plugin.R<nn> (inside Revit.exe) ⇄ Revit API
+MCP client (Claude Code, etc.) ⇄ stdio ⇄ Bimwright.Rvt.Server (.NET 8) ⇄ TCP/Pipe ⇄ Bimwright.Rvt.Plugin.R<nn> (inside Revit.exe) ⇄ Revit API
 ```
 
 Two processes. The **server** is a .NET global tool; the **plugin** is a per-Revit-year add-in DLL. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full picture.
@@ -32,15 +32,15 @@ Two processes. The **server** is a .NET global tool; the **plugin** is a per-Rev
 ### 1. Server — .NET tool
 
 ```bash
-dotnet tool install -g Bimwright.Server
-bimwright --help
+dotnet tool install -g Bimwright.Rvt.Server
+bimwright-rvt --help
 ```
 
 Requires .NET 8 SDK on the machine that runs the MCP client.
 
 ### 2. Plugin — Revit add-in
 
-Download the latest release from [GitHub Releases](https://github.com/bimwright/bimwright/releases/latest). Extract it and run:
+Download the latest release from [GitHub Releases](https://github.com/bimwright/rvt-mcp/releases/latest). Extract it and run:
 
 ```powershell
 pwsh install.ps1            # detects every installed Revit year
@@ -57,8 +57,8 @@ Add one entry per Revit year to your client's MCP config (e.g. `.mcp.json`):
 ```json
 {
   "mcpServers": {
-    "bimwright-r23": {
-      "command": "bimwright",
+    "bimwright-rvt-r23": {
+      "command": "bimwright-rvt",
       "args": ["--target", "R23"]
     }
   }
@@ -71,7 +71,7 @@ Drop the `--target` flag and Bimwright auto-detects the running Revit instance v
 
 ## Quickstart — 5 minutes to first tool call
 
-1. `dotnet tool install -g Bimwright.Server` + `pwsh install.ps1`.
+1. `dotnet tool install -g Bimwright.Rvt.Server` + `pwsh install.ps1`.
 2. Open Revit, click the **Bimwright → Start MCP** ribbon button.
 3. In your MCP client, run `tools/list` — you should see the default toolsets (`query`, `create`, `view`, `meta`).
 4. Call `get_current_view_info` — you'll get back a DTO like:

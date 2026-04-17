@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 
-namespace Bimwright.Plugin
+namespace Bimwright.Rvt.Plugin
 {
     public static class AuthToken
     {

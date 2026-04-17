@@ -2,7 +2,7 @@ using System;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 
-namespace Bimwright.Plugin
+namespace Bimwright.Rvt.Plugin
 {
     public class App : IExternalApplication
     {

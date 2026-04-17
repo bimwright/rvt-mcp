@@ -1,6 +1,6 @@
 using System;
 
-namespace Bimwright.Server.Memory
+namespace Bimwright.Rvt.Server.Memory
 {
     public class JournalEntry
     {

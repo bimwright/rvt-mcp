@@ -1,6 +1,6 @@
 using Newtonsoft.Json.Linq;
 
-namespace Bimwright.Plugin
+namespace Bimwright.Rvt.Plugin
 {
     public static class SummaryGenerator
     {

@@ -1,7 +1,7 @@
 {
   "mcpServers": {
-    "bimwright": {
-      "command": "<ABSOLUTE_PATH_TO_REPO>/src/server/bin/Debug/net8.0/Bimwright.Server.exe",
+    "bimwright-rvt": {
+      "command": "<ABSOLUTE_PATH_TO_REPO>/src/server/bin/Debug/net8.0/Bimwright.Rvt.Server.exe",
       "args": []
     }
   }

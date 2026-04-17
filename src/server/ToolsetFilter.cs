@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Bimwright.Plugin;
+using Bimwright.Rvt.Plugin;
 
-namespace Bimwright.Server
+namespace Bimwright.Rvt.Server
 {
     /// <summary>
     /// A3 toolset resolver (aspect #3 §A3). Resolves <see cref="BimwrightConfig.Toolsets"/>

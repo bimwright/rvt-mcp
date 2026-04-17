@@ -1,19 +1,19 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.bimwright/bimwright",
+  "name": "io.github.bimwright/rvt-mcp",
   "title": "Bimwright",
   "description": "MCP gateway for Autodesk Revit 2022-2027 — expose the Revit API as AI-callable tools with progressive disclosure (toolset gating), a Transaction-safe batch_execute, and a ToolBaker self-evolution engine. Pair the NuGet tool with the Revit plugin distributed on GitHub Releases.",
   "version": "0.1.0",
   "repository": {
-    "url": "https://github.com/bimwright/bimwright",
+    "url": "https://github.com/bimwright/rvt-mcp",
     "source": "github"
   },
-  "homepage": "https://github.com/bimwright/bimwright",
+  "homepage": "https://github.com/bimwright/rvt-mcp",
   "license": "Apache-2.0",
   "packages": [
     {
       "registryType": "nuget",
-      "identifier": "Bimwright.Server",
+      "identifier": "Bimwright.Rvt.Server",
       "version": "0.1.0",
       "transport": {
         "type": "stdio"

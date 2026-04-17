@@ -3,8 +3,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>Bimwright.Server</RootNamespace>
-    <AssemblyName>Bimwright.Server</AssemblyName>
+    <RootNamespace>Bimwright.Rvt.Server</RootNamespace>
+    <AssemblyName>Bimwright.Rvt.Server</AssemblyName>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
@@ -12,13 +12,13 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackAsTool>true</PackAsTool>
-    <ToolCommandName>bimwright</ToolCommandName>
-    <PackageId>Bimwright.Server</PackageId>
+    <ToolCommandName>bimwright-rvt</ToolCommandName>
+    <PackageId>Bimwright.Rvt.Server</PackageId>
     <Version>0.1.0</Version>
     <Authors>Khoa Le</Authors>
     <Description>MCP gateway for Autodesk Revit 2022-2027 — expose the Revit API as AI-callable tools with progressive disclosure (toolset gating), a Transaction-safe batch_execute, and a ToolBaker self-evolution engine. Pair with the Revit plugin distributed on GitHub Releases.</Description>
-    <PackageProjectUrl>https://github.com/bimwright/bimwright</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/bimwright/bimwright</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/bimwright/rvt-mcp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/bimwright/rvt-mcp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageTags>mcp;revit;bim;ai</PackageTags>

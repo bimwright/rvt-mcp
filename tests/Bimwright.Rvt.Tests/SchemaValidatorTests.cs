@@ -1,7 +1,7 @@
-using Bimwright.Plugin;
+using Bimwright.Rvt.Plugin;
 using Xunit;
 
-namespace Bimwright.Tests
+namespace Bimwright.Rvt.Tests
 {
     public class SchemaValidatorTests
     {

@@ -6,7 +6,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 
-namespace Bimwright.Plugin
+namespace Bimwright.Rvt.Plugin
 {
     public static class IconGenerator
     {

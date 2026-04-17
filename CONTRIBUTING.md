@@ -17,9 +17,9 @@ The Revit API itself is pulled from [Nice3point.Revit.Api.*](https://www.nuget.o
 ### Clone + build
 
 ```bash
-git clone https://github.com/bimwright/bimwright.git
+git clone https://github.com/bimwright/rvt-mcp.git
 cd bimwright
-dotnet build src/Bimwright.sln -c Debug
+dotnet build src/Bimwright.Rvt.sln -c Debug
 ```
 
 **Close every running Revit before building.** Plugin DLLs auto-deploy to `%APPDATA%\Autodesk\Revit\Addins\<year>\Bimwright\` as part of the build, and Revit holds a file lock on loaded add-ins.
@@ -29,7 +29,7 @@ Build output lands in `src/plugin-r<nn>/bin/Debug/<tfm>/` and `src/server/bin/De
 ### Run tests
 
 ```bash
-dotnet test tests/Bimwright.Tests/Bimwright.Tests.csproj
+dotnet test tests/Bimwright.Rvt.Tests/Bimwright.Rvt.Tests.csproj
 ```
 
 Tests are pure .NET 8 xUnit, no Revit dependency — they cover `ErrorSanitizer`, `SchemaValidator`, `BimwrightConfig`, `ToolsetFilter`, and `BatchExecutor`. Anything that needs a live Revit document is tested manually.
@@ -40,7 +40,7 @@ Tests are pure .NET 8 xUnit, no Revit dependency — they cover `ErrorSanitizer`
 pwsh scripts/stage-plugin-zip.ps1 -Config Release
 ```
 
-Produces `build/plugin-zip/Bimwright.Plugin.R{22..27}.zip`. CI does this for you on every push.
+Produces `build/plugin-zip/Bimwright.Rvt.Plugin.R{22..27}.zip`. CI does this for you on every push.
 
 ## Project layout
 
@@ -56,7 +56,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the conceptual model. Quick reference
 | `src/shared/ToolBaker/` | Roslyn-based self-evolution engine |
 | `src/shared/Config/` | `BimwrightConfig` — 3-layer precedence |
 | `src/plugin-r<nn>/` | Revit-year shell: `App.cs`, `RibbonSetup.cs`, csproj, `.addin` |
-| `tests/Bimwright.Tests/` | xUnit tests (pure .NET 8, no Revit API) |
+| `tests/Bimwright.Rvt.Tests/` | xUnit tests (pure .NET 8, no Revit API) |
 | `scripts/` | `stage-plugin-zip.ps1`, `install.ps1` |
 | `.github/workflows/` | CI matrix build |
 
@@ -66,7 +66,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the conceptual model. Quick reference
 2. Register in `src/shared/Infrastructure/CommandDispatcher.cs` constructor: `Register(new Handlers.YourHandler());`.
 3. Add an `[McpServerTool]` method in the appropriate toolset class under `src/server/` (e.g. `QueryTools.cs`, `CreateTools.cs`). Use the 4-part description template: what, when-to-use, params, example.
 4. If the tool mutates model state, put it in `CreateTools` / `ModifyTools` / `DeleteTools` (off by default).
-5. Cover any non-trivial logic with an xUnit test in `tests/Bimwright.Tests/`. Extract pure functions where possible — `BatchExecutor.Run` is a good template.
+5. Cover any non-trivial logic with an xUnit test in `tests/Bimwright.Rvt.Tests/`. Extract pure functions where possible — `BatchExecutor.Run` is a good template.
 6. Manual smoke test in at least one Revit year before PR.
 
 ## Coding style

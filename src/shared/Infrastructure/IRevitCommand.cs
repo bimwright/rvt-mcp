@@ -1,4 +1,4 @@
-namespace Bimwright.Plugin
+namespace Bimwright.Rvt.Plugin
 {
     public interface IRevitCommand
     {

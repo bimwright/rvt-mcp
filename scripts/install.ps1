@@ -4,7 +4,7 @@
 
 .DESCRIPTION
   Detects installed Revit years via HKLM:\SOFTWARE\Autodesk\Revit\<year>\ and, for
-  each year that has a matching build/plugin-zip/Bimwright.Plugin.R<nn>.zip, extracts
+  each year that has a matching build/plugin-zip/Bimwright.Rvt.Plugin.R<nn>.zip, extracts
   the zip to %APPDATA%\Autodesk\Revit\Addins\<year>\Bimwright\ and copies the .addin
   manifest up to %APPDATA%\Autodesk\Revit\Addins\<year>\.
 
@@ -15,7 +15,7 @@
   end-users run it directly without needing the repo checked out.
 
 .PARAMETER SourceDir
-  Directory containing Bimwright.Plugin.R<nn>.zip files. Default: build/plugin-zip/
+  Directory containing Bimwright.Rvt.Plugin.R<nn>.zip files. Default: build/plugin-zip/
   relative to the repo root (parent of scripts/). Release bundles override this.
 
 .PARAMETER Uninstall
@@ -102,7 +102,7 @@ foreach ($year in $Years) {
     }
 
     # Install path
-    $zip = Join-Path $SourceDir ("Bimwright.Plugin.R{0}.zip" -f $yearTwo)
+    $zip = Join-Path $SourceDir ("Bimwright.Rvt.Plugin.R{0}.zip" -f $yearTwo)
     if (-not (Test-Path $zip)) {
         Write-Warning ("[R{0}] skipped — missing zip {1}" -f $yearTwo, $zip)
         $skipped += "R$yearTwo"

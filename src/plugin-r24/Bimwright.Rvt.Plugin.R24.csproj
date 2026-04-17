@@ -2,11 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
-    <RootNamespace>Bimwright.Plugin</RootNamespace>
-    <AssemblyName>Bimwright.Plugin</AssemblyName>
+    <RootNamespace>Bimwright.Rvt.Plugin</RootNamespace>
+    <AssemblyName>Bimwright.Rvt.Plugin</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <LangVersion>latest</LangVersion>
-    <DefineConstants>REVIT2022</DefineConstants>
+    <DefineConstants>REVIT2024;REVIT2024_OR_GREATER</DefineConstants>
   </PropertyGroup>
 
   <!-- Gate send_code_to_revit: only available in Debug builds -->
@@ -14,10 +14,10 @@
     <DefineConstants>$(DefineConstants);ALLOW_SEND_CODE</DefineConstants>
   </PropertyGroup>
 
-  <!-- Revit 2022 API via Nice3point NuGet packages -->
+  <!-- Revit 2024 API via Nice3point NuGet packages -->
   <ItemGroup>
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2022.1.80" PrivateAssets="all" />
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="2022.1.80" PrivateAssets="all" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2024.1.70" PrivateAssets="all" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="2024.1.70" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,7 +41,7 @@
 
   <Target Name="Deploy" AfterTargets="Build" Condition="'$(Configuration)' != ''">
     <PropertyGroup>
-      <DeployDir>$(APPDATA)\Autodesk\Revit\Addins\2022\Bimwright\</DeployDir>
+      <DeployDir>$(APPDATA)\Autodesk\Revit\Addins\2024\Bimwright\</DeployDir>
     </PropertyGroup>
     <ItemGroup>
       <DeployFiles Include="$(OutputPath)Bimwright.*.dll;$(OutputPath)Newtonsoft.Json.dll;$(OutputPath)Microsoft.CodeAnalysis*.dll;$(OutputPath)System.Collections.Immutable.dll;$(OutputPath)System.Reflection.Metadata.dll" />
@@ -49,7 +49,7 @@
     <MakeDir Directories="$(DeployDir)" />
     <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(DeployDir)" SkipUnchangedFiles="true" />
     <Exec Command="if exist &quot;$(OutputPath)runtimes&quot; xcopy /Y /Q /S /E /I &quot;$(OutputPath)runtimes&quot; &quot;$(DeployDir)runtimes&quot;" IgnoreExitCode="true" />
-    <Copy SourceFiles="Bimwright.R22.addin" DestinationFolder="$(APPDATA)\Autodesk\Revit\Addins\2022\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="Bimwright.R24.addin" DestinationFolder="$(APPDATA)\Autodesk\Revit\Addins\2024\" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

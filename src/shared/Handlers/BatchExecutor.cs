@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 
-namespace Bimwright.Plugin.Handlers
+namespace Bimwright.Rvt.Plugin.Handlers
 {
     /// <summary>
     /// A6 batch iteration logic, factored out of <see cref="BatchExecuteHandler"/> so it
