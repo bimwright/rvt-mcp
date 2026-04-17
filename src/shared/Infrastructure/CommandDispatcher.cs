@@ -40,20 +40,8 @@ namespace Bimwright.Plugin
             Register(new Handlers.DetectSystemElementsHandler());
             // Phase 10: New tools (post-analysis)
             Register(new Handlers.AnalyzeSheetLayoutHandler());
-            // DB Tools
-            Register(new Handlers.GetActiveProjectDbHandler());
-            Register(new Handlers.ReadKeiLogsHandler());
-            Register(new Handlers.QueryKeiDatabaseHandler());
-            // BOQ / Flow Analysis
-            Register(new Handlers.FlowSortHandler());
-            Register(new Handlers.SavePortDeclarationHandler());
             // MCP Prompts support
             Register(new Handlers.GetModelOverviewHandler());
-            // KEI Equipment Management (Phase 4)
-            Register(new Handlers.ManageEquipmentCategoriesHandler());
-            Register(new Handlers.ManageEquipmentTypeHandler());
-            Register(new Handlers.ManageTypedSpecsHandler());
-            Register(new Handlers.ManageEquipmentInstanceHandler());
             // ToolBaker (Debug only — gated by #if in handlers)
             Register(new Handlers.BakeToolHandler());
             Register(new Handlers.ListBakedToolsHandler());
