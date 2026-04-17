@@ -71,6 +71,36 @@ namespace Bimwright.Plugin
                         continue;
                     }
 
+                    // S6 strict schema validation — fail fast with error-as-teacher envelope
+                    var validation = SchemaValidator.Validate(command.ParametersSchema, request.ParamsJson);
+                    if (!validation.IsValid)
+                    {
+                        sw.Stop();
+                        var validationError = ErrorSanitizer.Sanitize(validation.Error);
+                        McpLogger.Log(request.CommandName, request.ParamsJson, false,
+                                      sw.ElapsedMilliseconds, validationError);
+                        _sessionLog?.Add(new McpCallEntry
+                        {
+                            ToolName = request.CommandName,
+                            ParamsJson = request.ParamsJson,
+                            Success = false,
+                            DurationMs = sw.ElapsedMilliseconds,
+                            ErrorMessage = validationError,
+                            ToolDescription = command.Description,
+                            Summary = "Validation failed: " + validationError
+                        });
+                        var validationResponse = JsonConvert.SerializeObject(new
+                        {
+                            id = request.Id,
+                            success = false,
+                            error = validationError,
+                            suggestion = validation.Suggestion,
+                            hint = validation.Hint
+                        });
+                        request.Tcs.TrySetResult(validationResponse);
+                        continue;
+                    }
+
                     var result = command.Execute(app, request.ParamsJson);
                     sw.Stop();
 
