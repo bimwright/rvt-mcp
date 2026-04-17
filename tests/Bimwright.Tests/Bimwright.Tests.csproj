@@ -16,6 +16,7 @@
   <ItemGroup>
     <Compile Include="..\..\src\shared\Security\ErrorSanitizer.cs" Link="Shared\ErrorSanitizer.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\SchemaValidator.cs" Link="Shared\SchemaValidator.cs" />
+    <Compile Include="..\..\src\shared\Config\BimwrightConfig.cs" Link="Shared\BimwrightConfig.cs" />
   </ItemGroup>
 
   <ItemGroup>
