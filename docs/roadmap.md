@@ -21,6 +21,7 @@ Shipped on compile + one smoke test per Revit year.
 - **Test project structure** — revisit "option 2" (per-file `Compile Include`). If the test suite is growing, promote `src/shared/` to a real class library so tests reference one project instead of cherry-picking files.
 - **AspNetCore slim-down** — server is currently `Microsoft.NET.Sdk.Web` so the `.nupkg` drags ~40 AspNetCore DLLs even for stdio-only users. Either split `Bimwright.Rvt.Server` (stdio) from `Bimwright.Rvt.Server.Http` (SSE), or conditionally pull in AspNetCore only for the HTTP path.
 - **Plugin ZIP size** — strip non-win-x64 entries from `runtimes/` in `scripts/stage-plugin-zip.ps1`. R25+ zips drop from ~16 MB → ~5 MB.
+- **Testing & drift detection (aspect #7)** — _delivered 2026-04-18_ — golden snapshot of the MCP tool surface diffed on every test run; manual Haiku benchmark procedure (`benchmarks/`) with trigger rules and 15% regression threshold; S4 response-size observability hook (passive stderr warning, no enforcement).
 
 ## v0.3 — ecosystem + async
 
