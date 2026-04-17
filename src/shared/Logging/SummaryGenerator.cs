@@ -18,16 +18,12 @@ namespace RevitMcp.Plugin
 
                 switch (toolName)
                 {
-                    case "query_kei_database":
-                        return FormatQueryKei(parms, result);
                     case "send_code_to_revit":
                         return FormatSendCode(result);
                     case "ai_element_filter":
                         return FormatAiFilter(result);
                     case "get_selected_elements":
                         return FormatSelected(result);
-                    case "flow_sort_system":
-                        return FormatFlowSort(parms, result);
                     default:
                         return FormatGeneric(toolName, result);
                 }
@@ -36,15 +32,6 @@ namespace RevitMcp.Plugin
             {
                 return success ? "OK" : "Failed";
             }
-        }
-
-        private static string FormatQueryKei(JObject parms, JObject result)
-        {
-            var preset = parms?.Value<string>("preset");
-            var rowCount = result?.Value<int?>("rowCount") ?? 0;
-            if (!string.IsNullOrEmpty(preset))
-                return $"{preset} \u2192 {rowCount} rows";
-            return $"SQL \u2192 {rowCount} rows";
         }
 
         private static string FormatSendCode(JObject result)
@@ -68,14 +55,6 @@ namespace RevitMcp.Plugin
         {
             var count = result?.Value<int?>("count");
             return count.HasValue ? $"{count} elements selected" : "OK";
-        }
-
-        private static string FormatFlowSort(JObject parms, JObject result)
-        {
-            var systemName = parms?.Value<string>("systemName") ?? "?";
-            var chains = result?["chains"] as JArray;
-            var chainCount = chains?.Count ?? result?.Value<int?>("chainCount") ?? 0;
-            return $"{Truncate(systemName, 30)} \u2192 {chainCount} chains";
         }
 
         private static string FormatGeneric(string toolName, JObject result)
