@@ -26,19 +26,6 @@ Dành cho AI agent và workflow BIM muốn **chỉnh sửa reversible, reviewabl
 - **Progressive disclosure.** `--toolsets` + `--read-only` kiểm soát những gì model thấy. Model yếu không bị loãng.
 - **ToolBaker tự mở rộng.** Model viết, compile, và register Revit tool mới tại runtime (Debug).
 
-### How Bimwright compares
-
-| | **Bimwright** | Leader¹ | LuDattilo | Weber | Autodesk R27 |
-|---|---|---|---|---|---|
-| Tools | **28 + ToolBaker** | 25 | ~80–100 | claim 705+ | 6 |
-| Revit span | **R22–R27** | R20–R26 | R23–R27 | chưa verify | chỉ R27 |
-| Stack | Pure C# | TS + C# | TS + C# | — | C# |
-| License | **Apache-2.0** | MIT | — | — | proprietary |
-| Phân phối | NuGet + MCP Registry + ZIPs | npm + ZIPs | npm + ZIPs | chỉ GitHub | Site Autodesk |
-
-_Snapshot 2026-04-18. `—` = chưa verify live. Refresh bằng `gh search repos "revit mcp"`._
-_¹ `mcp-servers-for-revit/mcp-servers-for-revit` — leader cộng đồng hiện tại (tính theo stars)._
-
 ---
 
 ## Architecture
@@ -193,11 +180,21 @@ JSON file: `%LOCALAPPDATA%\Bimwright\bimwright.config.json`.
 
 ---
 
-## ToolBaker — viết tool của bạn ngay trong chat
+## ToolBaker — Cook your own tool with your true dataflow
 
-Model có thể tạo Revit tool mới giữa session. Bạn hỏi ("schedule tất cả cửa theo fire rating"), nó viết C# dựa trên Revit API, `bake_tool` compile qua Roslyn vào một `AssemblyLoadContext` cô lập, register vào, và các call sau đó dùng nó như tool built-in.
+Các MCP tool generic ép workflow kiểu one-size-fits-all. Task BIM thực tế không như vậy — khi model phải stitch 10+ primitive tool để làm *đúng* việc anh/chị cần, mỗi session đều tốn thời gian và token như nhau. Đó là cái ngứa. ToolBaker là cái gãi.
 
-Gate qua `--enable-toolbaker` (mặc định off). `send_code_to_revit` — bản execute không sandbox — chỉ có trong Debug build.
+Anh/chị mô tả workflow một lần. Model viết C# dựa trên Revit API, `bake_tool` compile qua Roslyn vào `AssemblyLoadContext` cô lập, register thành first-class MCP tool. Session sau, workflow đó chỉ còn **1 call** — không phải re-plan, không phải re-invent glue code, không tốn token.
+
+**Cách hoạt động:**
+
+1. Mô tả dataflow thực của anh/chị bằng ngôn ngữ tự nhiên (ví dụ *"schedule tất cả cửa theo fire rating, tag các fail, export ra CSV"*).
+2. Model generate handler theo contract `IRevitCommand`.
+3. `bake_tool` compile qua Roslyn, link với Revit API live, load vào sandboxed assembly context.
+4. SQLite persist bake. Auto-register mỗi lần Bimwright start.
+5. Call như tool built-in — cùng schema validation, cùng transaction safety.
+
+Gate qua `--enable-toolbaker` (mặc định off). `send_code_to_revit` — escape hatch không sandbox — chỉ có trong Debug build.
 
 ---
 

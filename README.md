@@ -10,6 +10,10 @@
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/.NET-4.8%20%7C%208%20%7C%2010-512BD4" alt=".NET" /></a>
 </p>
 
+<p align="center">
+  📖 <a href="README.vi.md">Đọc bằng tiếng Việt</a>
+</p>
+
 **Bimwright — the predictable Revit MCP server.**
 
 Pure C#. Apache-2.0. **28 tools across Revit 2022–2027**, transaction-safe and auditable. Extensible via ToolBaker when you need more.
@@ -23,19 +27,6 @@ Key traits:
 - **Transaction-safe batching.** `batch_execute` wraps a command list in one Revit `TransactionGroup` — one undo, atomic rollback on failure.
 - **Progressive disclosure.** `--toolsets` + `--read-only` gate what the model sees. Weak models stay sharp.
 - **ToolBaker self-extension.** The model writes, compiles, and registers new Revit tools at runtime (Debug).
-
-### How Bimwright compares
-
-| | **Bimwright** | Leader¹ | LuDattilo | Weber | Autodesk R27 |
-|---|---|---|---|---|---|
-| Tools | **28 + ToolBaker** | 25 | ~80–100 | claims 705+ | 6 |
-| Revit span | **R22–R27** | R20–R26 | R23–R27 | unverified | R27 only |
-| Stack | Pure C# | TS + C# | TS + C# | — | C# |
-| License | **Apache-2.0** | MIT | — | — | proprietary |
-| Distribution | NuGet + MCP Registry + ZIPs | npm + ZIPs | npm + ZIPs | GitHub only | Autodesk site |
-
-_Snapshot 2026-04-18. `—` = not verified live. Refresh with `gh search repos "revit mcp"`._
-_¹ `mcp-servers-for-revit/mcp-servers-for-revit` — current community leader by stars._
 
 ---
 
@@ -191,11 +182,21 @@ JSON file path: `%LOCALAPPDATA%\Bimwright\bimwright.config.json`.
 
 ---
 
-## ToolBaker — write your own tools from the chat
+## ToolBaker — Cook your own tool with your true dataflow
 
-The model can author a new Revit tool mid-session. You ask ("schedule every door by fire rating"), it writes C# against the Revit API, `bake_tool` compiles it via Roslyn into an isolated `AssemblyLoadContext`, registers it, and future calls hit it like any built-in tool.
+Generic MCP tools force one-size-fits-all workflows. Real BIM tasks aren't — when the model stitches 10+ primitive tools together to do your *actual* job, you pay in time and tokens every single session. That was the itch. ToolBaker is the scratch.
 
-Gated behind `--enable-toolbaker` (off by default). `send_code_to_revit` — the unsandboxed execute — is Debug-build-only.
+You describe the workflow once. The model writes C# against the Revit API, `bake_tool` compiles it through Roslyn into an isolated `AssemblyLoadContext`, and registers it as a first-class MCP tool. Next session, your workflow is a **single call** — no re-planning, no re-invented glue code, no token burn.
+
+**How it works:**
+
+1. Describe your real dataflow in plain language (e.g. *"schedule every door by fire rating, tag failures, export to CSV"*).
+2. The model generates a handler matching the `IRevitCommand` contract.
+3. `bake_tool` compiles via Roslyn, links against the live Revit API, loads into a sandboxed assembly context.
+4. SQLite persists the bake. Auto-registered on every future Bimwright session.
+5. Call it like any built-in — same schema validation, same transaction safety.
+
+Gated behind `--enable-toolbaker` (off by default). `send_code_to_revit` — the unsandboxed escape hatch — is Debug-build only.
 
 ---
 
