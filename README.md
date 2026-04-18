@@ -18,7 +18,7 @@
 
 Pure C#. Apache-2.0. **28 tools across Revit 2022–2027**, transaction-safe and auditable. Extensible via ToolBaker when you need more.
 
-Built for AI agents and BIM workflows that want **reversible, reviewable edits** — not black-box autopilot.
+Built for AI agents and BIM workflows that want **reversible, reviewable edits** — every change shows up in the undo stack.
 
 Key traits:
 

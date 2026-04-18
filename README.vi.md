@@ -16,7 +16,7 @@
 
 Pure C#. Apache-2.0. **28 tool phủ Revit 2022–2027**, transaction-safe và có thể audit được. Mở rộng qua ToolBaker khi cần thêm.
 
-Dành cho AI agent và workflow BIM muốn **chỉnh sửa reversible, reviewable** — không phải autopilot hộp đen.
+Dành cho AI agent và workflow BIM muốn **chỉnh sửa reversible, reviewable** — mỗi thay đổi đều nằm trong undo stack.
 
 Đặc điểm chính:
 
