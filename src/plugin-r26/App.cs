@@ -26,6 +26,7 @@ namespace RvtMcp.Plugin
         private ExternalEvent _externalEvent;
         private CommandDispatcher _dispatcher;
         private IdlingUpdater _idlingUpdater;
+        private HistoryWindow _historyWindow;
         private BakeInboxWindow _bakeInboxWindow;
         private UIControlledApplication _ribbonApplication;
 
@@ -71,6 +72,7 @@ namespace RvtMcp.Plugin
         public Result OnShutdown(UIControlledApplication application)
         {
             application.Idling -= OnIdling;
+            _historyWindow?.Close();
             _bakeInboxWindow?.Close();
 
             StopTransport();
@@ -132,8 +134,19 @@ namespace RvtMcp.Plugin
 
         public void ShowOrFocusHistoryWindow()
         {
-            // History window is not yet implemented for Revit 2026.
-            // ShowHistoryCommand calls this — stub to prevent compile error.
+            if (_historyWindow == null || !_historyWindow.IsLoaded)
+            {
+                _historyWindow = new HistoryWindow(SessionLog, _dispatcher, _handler, _externalEvent);
+                _historyWindow.Show();
+            }
+            else if (!_historyWindow.IsVisible)
+            {
+                _historyWindow.Show();
+            }
+            else
+            {
+                _historyWindow.Activate();
+            }
         }
 
         public void ShowOrFocusBakeInboxWindow()
