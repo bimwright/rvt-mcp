@@ -252,7 +252,7 @@ Kilo's official docs include this caution prominently:
 
 > "MCP servers add to your context, so be careful with which ones you enable. Certain MCP servers with many tools can quickly add up and exceed the context limit."
 
-For RvtMcp (226 tools), this is **the** issue. Two mitigations:
+For RvtMcp (40 tools by default; 229 with `--toolsets all`, or 232 with adaptive bake), this is **the** issue. Two mitigations:
 
 1. Use `enabled_tools` filter via permissions (`"rvt-mcp_*": "deny"` then enable specific ones with `"rvt-mcp_revit_create_grid": "allow"`).
 2. Run RvtMcp with a narrower toolset via env var: `"environment": { "BIMWRIGHT_TOOLSETS": "query,view" }`.

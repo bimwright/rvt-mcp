@@ -279,7 +279,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - materials: list_materials, assign_material_to_element
 - geometry: clash_detection, measure_distance_between_elements
 - rooms: list_rooms, compute_room_finishes
-- links: link_revit_model, acquire_coordinates_from_link
+- links: project coordinates, link/acquire/publish
 - parameters: create_shared_parameter, create_project_parameter
 - organization: apply_view_template, save_selection
 - workflows: workflow_clash_review, workflow_model_audit
@@ -3666,7 +3666,29 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_acquire_coordinates_from_link", Destructive = false), System.ComponentModel.Description("Acquire shared coordinates from a Revit link instance.")]
+        [McpServerTool(Name = "revit_get_project_coordinate_system", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("Read the complete project coordinate setup: immutable Internal Origin, Project Base Point, Survey Point, active and named Project Locations, coordinates under each location, angle to True North, and geographic site data. Lengths are returned in mm; angles and latitude/longitude in degrees.")]
+        public static async Task<string> GetProjectCoordinateSystem()
+        {
+            try
+            {
+                var result = await ToolGateway.SendToRevit("get_project_coordinate_system", new { });
+                return JsonConvert.SerializeObject(result, Formatting.Indented);
+            }
+            catch (Exception ex) { return $"Error: {ex.Message}"; }
+        }
+
+        [McpServerTool(Name = "revit_get_link_coordinate_system", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("Inspect a Revit or CAD link's instance and total transforms and map its origins into host internal/shared coordinates. For a loaded Revit link, also returns its Internal Origin, Project Base Point, Survey Point, and all linked Project Locations with ids. Use the returned Project Location id as linkedProjectLocationId for revit_publish_coordinates_to_link.")]
+        public static async Task<string> GetLinkCoordinateSystem(long linkInstanceId)
+        {
+            try
+            {
+                var result = await ToolGateway.SendToRevit("get_link_coordinate_system", new { link_instance_id = linkInstanceId });
+                return JsonConvert.SerializeObject(result, Formatting.Indented);
+            }
+            catch (Exception ex) { return $"Error: {ex.Message}"; }
+        }
+
+        [McpServerTool(Name = "revit_acquire_coordinates_from_link", Destructive = false), System.ComponentModel.Description("Acquire shared coordinates from a Revit link or linked CAD instance into the host project. Requires confirm=true and modifies the host shared-coordinate system.")]
         public static async Task<string> AcquireCoordinatesFromLink(long linkInstanceId, bool confirm = false)
         {
             try
@@ -3677,7 +3699,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_publish_coordinates_to_link", Destructive = false), System.ComponentModel.Description("Publish shared coordinates to a Revit link instance.")]
+        [McpServerTool(Name = "revit_publish_coordinates_to_link", Destructive = false), System.ComponentModel.Description("Publish host shared coordinates to a loaded Revit link. Call revit_get_link_coordinate_system first to discover linkedProjectLocationId; omit it to target the linked active Project Location. Requires confirm=true. CAD links are not supported.")]
         public static async Task<string> PublishCoordinatesToLink(long linkInstanceId, long? linkedProjectLocationId = null, bool confirm = false)
         {
             try

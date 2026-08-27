@@ -2,7 +2,7 @@
 
 > **Trạng thái:** GIAI ĐOẠN 1 — khảo sát tĩnh, chưa sửa code.
 > **Phạm vi:** `rvt-mcp/src/server/Program.cs` và các handler tương ứng trong `src/shared/Handlers/`.
-> **Inventory:** 230 `[McpServerTool]` (227 surface chuẩn + 3 adaptive-bake), 225 tool gọi plugin handler và 5 tool server-local.
+> **Inventory:** 232 `[McpServerTool]` (229 surface chuẩn + 3 adaptive-bake), 227 tool gọi plugin handler và 5 tool server-local. Hai tool tọa độ read-only thêm sau khảo sát gốc được phân loại bổ sung bên dưới.
 
 ## 1. Quy ước đo và ngưỡng
 
@@ -317,6 +317,8 @@
 | `revit_unload_link` | `UnloadLinkHandler.cs` | **Low <64 KiB** — DTO fixed/single-target hoặc aggregate compact; không trả model-wide detail list. | N/A — output compact | **1** | High | Không đụng; giữ inline. |
 | `revit_reload_link` | `ReloadLinkHandler.cs` | **Low <64 KiB** — DTO fixed/single-target hoặc aggregate compact; không trả model-wide detail list. | N/A — output compact | **1** | High | Không đụng; giữ inline. |
 | `revit_get_link_elements` | `GetLinkElementsHandler.cs` | **Critical >1 MiB khả dĩ** — Caller cap cao, row nested giàu dữ liệu hoặc explicit ID list lớn có thể vượt 1 MiB. | Có — `linkInstanceId`, `limit`, `includeBoundingBox` | **2** | Medium | B1: reject/warning hint trỏ đúng `linkInstanceId`, `limit`, `includeBoundingBox`; kiểm tra hard maximum. |
+| `revit_get_project_coordinate_system` | `GetProjectCoordinateSystemHandler.cs` | **Low <64 KiB** — Chỉ trả các origin và danh sách Project Location, không quét model elements. | N/A — output compact | **1** | High | Không đụng; giữ inline. |
+| `revit_get_link_coordinate_system` | `GetLinkCoordinateSystemHandler.cs` | **Low <64 KiB** — Một link, transform, origin mapping và Project Locations của linked document. | Có — `linkInstanceId` | **1** | High | Không đụng; giữ inline. |
 | `revit_acquire_coordinates_from_link` | `AcquireCoordinatesFromLinkHandler.cs` | **Low <64 KiB** — DTO fixed/single-target hoặc aggregate compact; không trả model-wide detail list. | N/A — output compact | **1** | High | Không đụng; giữ inline. |
 | `revit_publish_coordinates_to_link` | `PublishCoordinatesToLinkHandler.cs` | **Low <64 KiB** — DTO fixed/single-target hoặc aggregate compact; không trả model-wide detail list. | N/A — output compact | **1** | High | Không đụng; giữ inline. |
 | `revit_set_project_base_point` | `SetProjectBasePointHandler.cs` | **Low <64 KiB** — DTO fixed/single-target hoặc aggregate compact; không trả model-wide detail list. | N/A — output compact | **1** | High | Không đụng; giữ inline. |
@@ -377,18 +379,18 @@
 
 | Nhóm | Số tool |
 |---|---:|
-| 1 — An toàn/compact | 101 |
+| 1 — An toàn/compact | 103 |
 | 2 — Rủi ro, đã có scope | 97 |
 | 3 — Rủi ro, thiếu scope | 23 |
 | 4 — Bulk/bất định | 8 |
 | Riêng — `send_code` | 1 |
-| **Tổng** | **230** |
+| **Tổng** | **232** |
 
 ### Theo dải ước lượng
 
 | Dải | Số tool |
 |---|---:|
-| Low `<64 KiB` | 101 |
+| Low `<64 KiB` | 103 |
 | Medium `64–256 KiB` | 16 |
 | High `>256 KiB–1 MiB` | 13 |
 | Critical `>1 MiB`/unbounded/bulk | 100 |

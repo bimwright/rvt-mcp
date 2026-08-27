@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-227%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-229%20tools-6C47FF" alt="MCP tools" /></a>
 </p>
 
 <p align="center">
@@ -179,8 +179,8 @@ Handler 只返回普通 DTO — 线上不传活的 Revit 对象。
 | 模式 | Tools | 说明 |
 |------|------:|------|
 | 默认 | **40** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **227** | 完整目录 |
-| `all` + adaptive bake | **230** | 再加 3 个 suggestion 生命周期工具 |
+| `--toolsets all` | **229** | 完整目录 |
+| `all` + adaptive bake | **232** | 再加 3 个 suggestion 生命周期工具 |
 
 MCP 名：`revit_*`。server↔plugin 线名：无前缀 snake_case。
 
@@ -209,7 +209,7 @@ MCP 名：`revit_*`。server↔plugin 线名：无前缀 snake_case。
 | `sheets` | 图纸、图框、修订、重编号 | off |
 | `materials` | 材质、外观、赋值、提量 | off |
 | `rooms` | 房间/面积/空间、装修、分隔 | off |
-| `links` | Revit/CAD 链接、坐标 | off |
+| `links` | Revit/CAD 链接、坐标审计、获取/发布坐标 | off |
 | `parameters` | 项目/共享参数 | off |
 | `organization` | 保存选择、视图样板 | off |
 | `workflows` | 碰撞/审计/图纸/提量类组合流 | off |
@@ -233,6 +233,7 @@ MCP 名：`revit_*`。server↔plugin 线名：无前缀 snake_case。
 | `meta` | `revit_batch_execute` | 多个命令一个 `TransactionGroup` |
 | `meta` | `revit_list_available_targets` / `revit_switch_target` | 多 Revit |
 | `families` | `revit_load_family_from_path` | 向项目加载 `.rfa` |
+| `links` | `revit_get_project_coordinate_system` / `revit_get_link_coordinate_system` | 主体/链接原点、场地、变换、真北 |
 | `toolbaker` | `revit_send_code_to_revit` | Escape hatch（C#） |
 | `toolbaker` | `revit_list_baked_tools` / `revit_run_baked_tool` | 已 accept 个人工具 |
 | `toolbaker` | `revit_list_bake_suggestions` | 仅 adaptive |

@@ -226,7 +226,7 @@ To verify discovery is working after install:
 You: list every Revit-related MCP tool you have access to
 ```
 
-Claude should list 226 tools all prefixed `mcp__rvt-mcp__revit_*`. If you see fewer than ~50, Tool Search is filtering — check that v0.5+ is installed and the server's `--toolsets` flag isn't narrowing the surface.
+With current defaults, Claude should expose 40 tools prefixed `mcp__rvt-mcp__revit_*`; `--toolsets all` exposes 229 (232 with adaptive bake). If the configured surface is smaller than expected, check Tool Search and the server's `--toolsets` / adaptive-bake settings.
 
 ### 5.4 Server `instructions` and tool `description` are truncated at 2 KB each
 

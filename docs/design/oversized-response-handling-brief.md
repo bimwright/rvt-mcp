@@ -3,6 +3,7 @@
 > **Trạng thái:** COMPLETE — Bước 1 + Bước 2 hoàn tất; Chốt Dừng #3 đã được User duyệt.
 > **Cơ chế kiểm soát:** User (Khoa) + Claude giám sát. Có **3 chốt dừng bắt buộc** (xem §7).
 > **Repo:** `rvt-mcp` (chỉ repo này). Nhánh làm việc hiện tại: `hardening/agent-guardrails` (PR #10).
+> **Lưu ý lịch sử:** các count 227/230 và 468 test bên dưới là snapshot khi brief hoàn tất; count hiện hành được khóa bởi `tests/RvtMcp.Tests/Golden/tools-list*.json`.
 
 ---
 

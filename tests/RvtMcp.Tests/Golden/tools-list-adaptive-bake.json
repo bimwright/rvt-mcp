@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 230,
+  "tool_count": 232,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -33,7 +33,7 @@
     },
     {
       "name": "revit_acquire_coordinates_from_link",
-      "description_hash": "sha256:be275c239b5bb251df5e4cdd938abf8f2121bdf0ff3246b5fc8d97893257993a",
+      "description_hash": "sha256:b014dcf5ad6e154aca513ee8ec038f9e780450fb0924dea31474b4ab6a9a12bc",
       "inputSchema": {
         "properties": {
           "confirm": {
@@ -3424,6 +3424,22 @@
       }
     },
     {
+      "name": "revit_get_link_coordinate_system",
+      "description_hash": "sha256:1773841f1de5a695de6f3a43b4550c497e4f039dcc4bfce5eb2a67fb6dca1fdb",
+      "inputSchema": {
+        "properties": {
+          "linkInstanceId": {
+            "description": "",
+            "type": "Int64"
+          }
+        },
+        "required": [
+          "linkInstanceId"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "revit_get_link_elements",
       "description_hash": "sha256:7c0aa297ac9801dfe61f25c48e9e72aae7213a0e524e58afac6e9e61b7e026ae",
       "inputSchema": {
@@ -3617,6 +3633,15 @@
             "type": "Int32"
           }
         },
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "revit_get_project_coordinate_system",
+      "description_hash": "sha256:f4202c231dbbedd78545b79d6fd4958abecfd6ad8eeb9a4a22b80ef645e4bb60",
+      "inputSchema": {
+        "properties": {},
         "required": [],
         "type": "object"
       }
@@ -4885,7 +4910,7 @@
     },
     {
       "name": "revit_publish_coordinates_to_link",
-      "description_hash": "sha256:215975623405a99ad8eb4c8ae467fb1ef65c87feee877379efa90fcbdd7a0e65",
+      "description_hash": "sha256:0fcffeed77ed40daedd62d0dff713aafbc765afee259f83594f5fe35040788db",
       "inputSchema": {
         "properties": {
           "confirm": {

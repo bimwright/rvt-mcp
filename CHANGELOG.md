@@ -1,5 +1,16 @@
 ﻿# Changelog
 
+## Unreleased
+
+### Added
+
+- **Project/link coordinate inspection** — `revit_get_project_coordinate_system` reports Internal Origin, Project Base Point, Survey Point, named Project Locations, True North, and site coordinates. `revit_get_link_coordinate_system` adds Revit/CAD link transforms, maps linked origins into host coordinates, and exposes linked Project Location ids for publish workflows.
+
+### Changed
+
+- **Coordinate workflow descriptions** now document Revit/CAD acquire support, publish preflight, confirmation requirements, and CAD publish limitations.
+- Tool counts: default **40**, `--toolsets all` **229**, adaptive bake **232**.
+
 ## v0.6.0 - Agent guardrails, oversized-response spill, toast/privacy, and KEI tools
 
 ### Added
