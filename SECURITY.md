@@ -6,8 +6,8 @@ Security updates are provided for the latest minor release series only.
 
 | Version | Supported |
 |---------|-----------|
-| 0.3.x   | ✓         |
-| < 0.3   | ✗         |
+| 0.6.x   | ✓         |
+| < 0.6   | ✗         |
 
 ## Threat Model
 
