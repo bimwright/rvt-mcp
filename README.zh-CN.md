@@ -25,13 +25,24 @@
 
 ## 安装
 
-**目前没有已发布的 setup ZIP。** GitHub Releases 已撤下，因此不再提供 v0.5.0 及更早版本的下载。v0.6.1 客户端 ZIP 尚未发布。
+客户端请使用 [GitHub Releases](https://github.com/bimwright/rvt-mcp/releases/latest) 中的 setup ZIP。其中包含自包含 MCP server 以及 Revit 2022–2027 插件 — 不需要 .NET SDK、NuGet 全局工具或克隆源码。
 
-**不要**下载旧 tag、旧的 `RvtMcp.Setup-*.zip` URL，或执行 `dotnet tool install -g Bimwright.Rvt.Server` / `RvtMcp.Server`。
+**AI agent：** 从 latest release 下载 `RvtMcp.Setup-*-win-x64.zip` 并运行安装脚本。除非用户明确要求开发者安装，否则**不要** clone、build 或 `dotnet tool install`。协议见 [AGENTS.md](AGENTS.md)。
 
-**若你是 AI agent：** 停止。告知用户目前没有公开安装包。除非用户明确要求开发者安装，否则不要 clone、build 或从 NuGet 安装。协议见 [AGENTS.md](AGENTS.md)。
+```powershell
+$tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/releases/latest).tag_name
+$zip = "$env:TEMP\RvtMcp.Setup-$tag-win-x64.zip"
+$dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
+Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile $zip
+Expand-Archive $zip -DestinationPath $dir -Force
 
-在新的 GitHub Release 发布之前，唯一受支持的安装方式是从源码构建（见下方开发者安装）。
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
+```
+
+安装程序会检测 Revit 2022–2027、安装对应年份的插件、将 server 复制到 `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`，并接线已检测到的 MCP 客户端。可用 `-Client codex|opencode|claude|kilo|none` 覆盖。
+
+**不要**安装 v0.5.0 及更早的 ZIP，也**不要** `dotnet tool install -g Bimwright.Rvt.Server` / `RvtMcp.Server`。
 
 AutoCAD 请用独立的 [dwg-mcp](https://github.com/bimwright/dwg-mcp) — 不同产品、不同安装。
 
@@ -84,7 +95,7 @@ v0.4+ 将包名/目录改为 `RvtMcp.*`（仓库与品牌仍为 bimwright）。
 
 1. 关闭所有 Revit。
 2. `pwsh scripts/uninstall-old.ps1` — 删除旧 `%APPDATA%\…\Bimwright\` 插件与旧 server 根；保留用户 bake/journal，首次启动新版本时迁到 `%LOCALAPPDATA%\RvtMcp\`。
-3. 从源码安装（上方开发者安装）。等待 v0.6.1 GitHub Release ZIP，不要安装任何更早的已发布包。
+3. 安装当前 GitHub Release ZIP（上方客户端安装）。不要安装 v0.5.0 及更早的包。
 4. MCP 客户端入口名为 **`rvt-mcp`**（旧的按年 `bimwright-rvt-r22`… 条目由安装程序移除）。
 
 ---

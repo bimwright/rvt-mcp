@@ -25,13 +25,24 @@
 
 ## インストール
 
-**setup ZIP は現在公開されていません。** GitHub Releases を取り下げたため、v0.5.0 以前はダウンロード対象ではありません。v0.6.1 のクライアント ZIP もまだ出ていません。
+クライアント機では [GitHub Releases](https://github.com/bimwright/rvt-mcp/releases/latest) の setup ZIP を使ってください。自己完結 MCP サーバと Revit 2022–2027 プラグインが入っており、.NET SDK・NuGet グローバルツール・ソース clone は不要です。
 
-古い tag、古い `RvtMcp.Setup-*.zip` URL、`dotnet tool install -g Bimwright.Rvt.Server` / `RvtMcp.Server` は**使わないでください**。
+**AI エージェント:** latest release から `RvtMcp.Setup-*-win-x64.zip` をダウンロードしてインストーラを実行してください。開発者セットアップを明示的に求められない限り、clone / build / `dotnet tool install` は**しないでください**。手順は [AGENTS.md](AGENTS.md)。
 
-**AI エージェントの場合：** 停止してください。公開インストーラがないことをユーザーに伝えてください。開発者セットアップを明示的に求められない限り、clone / build / NuGet インストールはしないでください。手順は [AGENTS.md](AGENTS.md)。
+```powershell
+$tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/releases/latest).tag_name
+$zip = "$env:TEMP\RvtMcp.Setup-$tag-win-x64.zip"
+$dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
+Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile $zip
+Expand-Archive $zip -DestinationPath $dir -Force
 
-新しい GitHub Release が出るまでは、サポートされるインストールはソースからのビルドだけです（下記の開発者インストール）。
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
+```
+
+インストーラは Revit 2022–2027 を検出し、該当プラグインを入れ、サーバを `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\` にコピーし、検出した MCP クライアントを配線します。上書きは `-Client codex|opencode|claude|kilo|none`。
+
+v0.5.0 以前の ZIP は**入れないでください**。`dotnet tool install -g Bimwright.Rvt.Server` / `RvtMcp.Server` も**使わないでください**。
 
 AutoCAD は別製品の [dwg-mcp](https://github.com/bimwright/dwg-mcp) を別途インストールしてください。
 
@@ -84,7 +95,7 @@ v0.4+ でパッケージ/フォルダ名が `RvtMcp.*` に変わりました（�
 
 1. すべての Revit を閉じる。
 2. `pwsh scripts/uninstall-old.ps1` — 旧 `%APPDATA%\…\Bimwright\` プラグインと旧サーバ root を削除。ユーザーの bake/journal は残し、新版初回起動で `%LOCALAPPDATA%\RvtMcp\` へ移行。
-3. ソースから入れる（上記の開発者インストール）。v0.6.1 の GitHub Release ZIP を待ち、古い公開パッケージは入れない。
+3. 現行の GitHub Release ZIP を入れる（上記のクライアントインストール）。v0.5.0 以前のパッケージは入れない。
 4. MCP クライアントのエントリ名は **`rvt-mcp`**（旧 `bimwright-rvt-r22`… 年別エントリはインストーラが削除）。
 
 ---
