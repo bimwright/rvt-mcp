@@ -3,7 +3,7 @@
   "name": "io.github.bimwright/rvt-mcp",
   "title": "RvtMcp",
   "description": "MCP gateway for Autodesk Revit 2022-2027 - toolset gating + Transaction-safe batch execution.",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "repository": {
     "url": "https://github.com/bimwright/rvt-mcp",
     "source": "github"
@@ -14,7 +14,7 @@
     {
       "registryType": "nuget",
       "identifier": "RvtMcp.Server",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "transport": {
         "type": "stdio"
       }

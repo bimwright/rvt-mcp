@@ -25,7 +25,7 @@
 
 ## インストール
 
-**setup ZIP は現在公開されていません。** GitHub Releases を取り下げたため、v0.5.0 以前はダウンロード対象ではありません。v0.6.0 のクライアント ZIP もまだ出ていません。
+**setup ZIP は現在公開されていません。** GitHub Releases を取り下げたため、v0.5.0 以前はダウンロード対象ではありません。v0.6.1 のクライアント ZIP もまだ出ていません。
 
 古い tag、古い `RvtMcp.Setup-*.zip` URL、`dotnet tool install -g Bimwright.Rvt.Server` / `RvtMcp.Server` は**使わないでください**。
 
@@ -84,7 +84,7 @@ v0.4+ でパッケージ/フォルダ名が `RvtMcp.*` に変わりました（�
 
 1. すべての Revit を閉じる。
 2. `pwsh scripts/uninstall-old.ps1` — 旧 `%APPDATA%\…\Bimwright\` プラグインと旧サーバ root を削除。ユーザーの bake/journal は残し、新版初回起動で `%LOCALAPPDATA%\RvtMcp\` へ移行。
-3. ソースから入れる（上記の開発者インストール）。v0.6.0 の GitHub Release ZIP を待ち、古い公開パッケージは入れない。
+3. ソースから入れる（上記の開発者インストール）。v0.6.1 の GitHub Release ZIP を待ち、古い公開パッケージは入れない。
 4. MCP クライアントのエントリ名は **`rvt-mcp`**（旧 `bimwright-rvt-r22`… 年別エントリはインストーラが削除）。
 
 ---

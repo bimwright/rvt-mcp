@@ -25,7 +25,7 @@
 
 ## Install
 
-**No setup ZIP is published.** GitHub Releases were unpublished so v0.5.0 and earlier are not offered as a download. The v0.6.0 client ZIP is not out yet.
+**No setup ZIP is published.** GitHub Releases were unpublished so v0.5.0 and earlier are not offered as a download. The v0.6.1 client ZIP is not out yet.
 
 Do **not** fetch old tags, old `RvtMcp.Setup-*.zip` URLs, or `dotnet tool install -g Bimwright.Rvt.Server` / `RvtMcp.Server`.
 
@@ -84,7 +84,7 @@ v0.4+ renamed packages and folders to `RvtMcp.*` (repo name and brand stay bimwr
 
 1. Close every Revit.
 2. `pwsh scripts/uninstall-old.ps1` — drops old `%APPDATA%\…\Bimwright\` plugins and old server root; keeps user bake/journal data and migrates it to `%LOCALAPPDATA%\RvtMcp\` on first new launch.
-3. Install from source (Developer install above). Wait for a v0.6.0 GitHub Release ZIP rather than installing any older published package.
+3. Install from source (Developer install above). Wait for a v0.6.1 GitHub Release ZIP rather than installing any older published package.
 4. Point MCP clients at entry name **`rvt-mcp`** (old per-year `bimwright-rvt-r22`… entries are removed by the installer).
 
 ---

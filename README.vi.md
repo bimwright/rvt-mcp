@@ -25,7 +25,7 @@
 
 ## Cài đặt
 
-**Hiện không có setup ZIP.** GitHub Releases đã gỡ nên v0.5.0 trở về trước không còn để tải. ZIP client v0.6.0 chưa phát hành.
+**Hiện không có setup ZIP.** GitHub Releases đã gỡ nên v0.5.0 trở về trước không còn để tải. ZIP client v0.6.1 chưa phát hành.
 
 **Không** tải tag cũ, URL `RvtMcp.Setup-*.zip` cũ, hay `dotnet tool install -g Bimwright.Rvt.Server` / `RvtMcp.Server`.
 
@@ -84,7 +84,7 @@ v0.4+ đổi package/folder sang `RvtMcp.*` (repo và brand bimwright giữ nguy
 
 1. Đóng hết Revit.
 2. `pwsh scripts/uninstall-old.ps1` — xóa plugin cũ `%APPDATA%\…\Bimwright\` và server root cũ; giữ bake/journal user, migrate sang `%LOCALAPPDATA%\RvtMcp\` lần chạy mới đầu.
-3. Cài từ source (Cài developer ở trên). Chờ ZIP GitHub Release v0.6.0; đừng cài package đã phát hành cũ.
+3. Cài từ source (Cài developer ở trên). Chờ ZIP GitHub Release v0.6.1; đừng cài package đã phát hành cũ.
 4. MCP client dùng entry **`rvt-mcp`** (entry cũ theo năm `bimwright-rvt-r22`… bị installer gỡ).
 
 ---

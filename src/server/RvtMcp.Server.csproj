@@ -14,7 +14,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>rvt-mcp</ToolCommandName>
     <PackageId>RvtMcp.Server</PackageId>
-    <Version>0.6.0</Version>
+    <Version>0.6.1</Version>
     <Authors>Khoa Le</Authors>
     <Description>MCP gateway for Autodesk Revit 2022-2027 — expose the Revit API as AI-callable tools with progressive disclosure (toolset gating), a Transaction-safe batch_execute, and a ToolBaker self-evolution engine. Pair with the Revit plugin distributed on GitHub Releases.</Description>
     <PackageProjectUrl>https://github.com/bimwright/rvt-mcp</PackageProjectUrl>

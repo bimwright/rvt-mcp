@@ -18,7 +18,7 @@ This file is machine-readable install instructions for AI coding agents (Claude 
 
 - Install Revit, manage Revit licensing, or launch Revit for the first time. If Revit 2022–2027 is not installed, stop and tell the user.
 - Install from GitHub Releases, old tags, old `RvtMcp.Setup-*.zip` URLs, or NuGet (`Bimwright.Rvt.Server`, `RvtMcp.Server`).
-- Install .NET 8 SDK, clone the repo, restore NuGet packages, or build source for a **client** install. If the user did not explicitly ask for a developer setup, stop and report that the client installer is unpublished until v0.6.0.
+- Install .NET 8 SDK, clone the repo, restore NuGet packages, or build source for a **client** install. If the user did not explicitly ask for a developer setup, stop and report that the client installer is unpublished until v0.6.1.
 
 ---
 
@@ -61,7 +61,7 @@ If Revit is not running when the user first tries a tool call, that's fine — t
 
 **Stop. There is no published GitHub Release.** Do not run the snippet below, do not fetch older tags, and do not `dotnet tool install` `Bimwright.Rvt.Server` or `RvtMcp.Server`.
 
-Tell the user: rvt-mcp unpublished its GitHub Releases so stale v0.5.0 and earlier installers are not offered. A v0.6.0 setup ZIP is not published yet. For a **client** machine, wait. Only clone/build if they explicitly asked for a developer install.
+Tell the user: rvt-mcp unpublished its GitHub Releases so stale v0.5.0 and earlier installers are not offered. A v0.6.1 setup ZIP is not published yet. For a **client** machine, wait. Only clone/build if they explicitly asked for a developer install.
 
 When a release exists again, the download looks like this:
 

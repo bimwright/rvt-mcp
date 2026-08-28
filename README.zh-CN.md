@@ -25,7 +25,7 @@
 
 ## 安装
 
-**目前没有已发布的 setup ZIP。** GitHub Releases 已撤下，因此不再提供 v0.5.0 及更早版本的下载。v0.6.0 客户端 ZIP 尚未发布。
+**目前没有已发布的 setup ZIP。** GitHub Releases 已撤下，因此不再提供 v0.5.0 及更早版本的下载。v0.6.1 客户端 ZIP 尚未发布。
 
 **不要**下载旧 tag、旧的 `RvtMcp.Setup-*.zip` URL，或执行 `dotnet tool install -g Bimwright.Rvt.Server` / `RvtMcp.Server`。
 
@@ -84,7 +84,7 @@ v0.4+ 将包名/目录改为 `RvtMcp.*`（仓库与品牌仍为 bimwright）。
 
 1. 关闭所有 Revit。
 2. `pwsh scripts/uninstall-old.ps1` — 删除旧 `%APPDATA%\…\Bimwright\` 插件与旧 server 根；保留用户 bake/journal，首次启动新版本时迁到 `%LOCALAPPDATA%\RvtMcp\`。
-3. 从源码安装（上方开发者安装）。等待 v0.6.0 GitHub Release ZIP，不要安装任何更早的已发布包。
+3. 从源码安装（上方开发者安装）。等待 v0.6.1 GitHub Release ZIP，不要安装任何更早的已发布包。
 4. MCP 客户端入口名为 **`rvt-mcp`**（旧的按年 `bimwright-rvt-r22`… 条目由安装程序移除）。
 
 ---
