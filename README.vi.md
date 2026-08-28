@@ -42,7 +42,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 Installer tìm Revit 2022–2027, cài plugin khớp năm, copy server vào `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`, và nối MCP client đã có. Ghi đè bằng `-Client codex|opencode|claude|kilo|none`.
 
-**Không** cài ZIP v0.5.0 trở về trước, và **không** `dotnet tool install -g Bimwright.Rvt.Server` / `RvtMcp.Server`.
+**Không** cài ZIP v0.5.0 trở về trước. **Không** `dotnet tool install -g Bimwright.Rvt.Server` (tool cũ 0.1–0.3). **Không** dùng NuGet thay ZIP trên máy Revit — package tool không có add-in.
 
 AutoCAD: dùng [dwg-mcp](https://github.com/bimwright/dwg-mcp) riêng — product khác, cài riêng.
 
@@ -87,7 +87,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -SourceDir . -Cli
 
 Đóng hết Revit trước — build sẽ deploy DLL plugin vào `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\`. `install.ps1` tìm Revit 2022–2027, copy server vào `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`, và nối MCP client đã có (`-Client codex|opencode|claude|kilo|none`, `-Years 2024` nếu chỉ một năm).
 
-Đừng `dotnet tool install` `RvtMcp.Server` hay `Bimwright.Rvt.Server` — đó không còn là đường cài hiện tại.
+**Tùy chọn — chỉ server NuGet** (không cài plugin Revit). Dùng khi add-in đã có (ZIP hoặc build local) và muốn MCP server trên PATH:
+
+```powershell
+dotnet tool uninstall -g Bimwright.Rvt.Server   # bỏ qua nếu chưa từng cài tool 0.1–0.3
+dotnet tool install -g RvtMcp.Server --version 0.6.1
+```
+
+Lệnh: `rvt-mcp`. Plugin vẫn lấy từ GitHub Release ZIP. `Bimwright.Rvt.Server` đã lỗi thời.
 
 ### Migration từ `Bimwright.Rvt.*` (v0.3 trở về trước)
 
@@ -95,7 +102,7 @@ v0.4+ đổi package/folder sang `RvtMcp.*` (repo và brand bimwright giữ nguy
 
 1. Đóng hết Revit.
 2. `pwsh scripts/uninstall-old.ps1` — xóa plugin cũ `%APPDATA%\…\Bimwright\` và server root cũ; giữ bake/journal user, migrate sang `%LOCALAPPDATA%\RvtMcp\` lần chạy mới đầu.
-3. Cài ZIP GitHub Release hiện tại (mục Cài đặt ở trên). Đừng cài package v0.5.0 trở về trước.
+3. Cài ZIP GitHub Release hiện tại (mục Cài đặt ở trên). Đừng cài package v0.5.0 trở về trước. Gỡ tool NuGet cũ nếu còn: `dotnet tool uninstall -g Bimwright.Rvt.Server`.
 4. MCP client dùng entry **`rvt-mcp`** (entry cũ theo năm `bimwright-rvt-r22`… bị installer gỡ).
 
 ---

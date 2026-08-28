@@ -17,7 +17,8 @@ This file is machine-readable install instructions for AI coding agents (Claude 
 **What you cannot do:**
 
 - Install Revit, manage Revit licensing, or launch Revit for the first time. If Revit 2022–2027 is not installed, stop and tell the user.
-- Install from unpublished/old tags, old `RvtMcp.Setup-*.zip` URLs for v0.5.0 and earlier, or NuGet (`Bimwright.Rvt.Server`, `RvtMcp.Server`).
+- Install from unpublished/old tags or old `RvtMcp.Setup-*.zip` URLs for v0.5.0 and earlier.
+- Use NuGet as the **client** installer. `Bimwright.Rvt.Server` (0.1–0.3) is obsolete. `RvtMcp.Server` is **server-only** (no Revit add-in). Only run `dotnet tool install -g RvtMcp.Server` if the user explicitly asked for a global .NET tool **and** plugins are already installed from the GitHub Release ZIP.
 - Install the .NET 8 SDK, clone the repo, restore NuGet packages, or build source for a **client** install. If the user did not explicitly ask for a developer setup, use the GitHub Release ZIP only.
 
 ---
@@ -27,7 +28,7 @@ This file is machine-readable install instructions for AI coding agents (Claude 
 **Read these before touching anything. They exist so rvt-mcp stays predictable, auditable, and reversible.**
 
 1. **Preview every change.** Use `-WhatIf`, `--dry-run`, or a printed diff before any write. Tell the user the exact file path and the exact change.
-2. **Install from the latest GitHub Release ZIP only.** Do not fall back to `dotnet tool install`, v0.5.0 or earlier tags, source build, or repo clone unless the user explicitly asks for developer installation.
+2. **Install from the latest GitHub Release ZIP only** for a Revit client machine. Do not fall back to `dotnet tool install`, v0.5.0 or earlier tags, source build, or repo clone unless the user explicitly asks for developer installation. If they explicitly asked for the NuGet global tool: `RvtMcp.Server` 0.6.1+, never `Bimwright.Rvt.Server`, and they still need the ZIP for plugins.
 3. **Two explicit approval gates — do not collapse without the user saying so:**
    - Before running `install.ps1` without `-WhatIf`.
    - Before editing any MCP host config file outside the setup installer's own preview/apply flow.

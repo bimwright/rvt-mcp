@@ -42,7 +42,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 The installer detects Revit 2022–2027, installs matching plugins, copies the server under `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`, and wires detected MCP clients. Override with `-Client codex|opencode|claude|kilo|none`.
 
-Do **not** install v0.5.0 or earlier ZIPs, and do **not** `dotnet tool install -g Bimwright.Rvt.Server` / `RvtMcp.Server`.
+Do **not** install v0.5.0 or earlier ZIPs. Do **not** `dotnet tool install -g Bimwright.Rvt.Server` (legacy 0.1–0.3). Do **not** use NuGet instead of this ZIP on a Revit client machine — the tool package has no add-in.
 
 For AutoCAD, use [dwg-mcp](https://github.com/bimwright/dwg-mcp) separately — different product, different install.
 
@@ -87,7 +87,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -SourceDir . -Cli
 
 Close every Revit first — the build deploys plugin DLLs into `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\`. `install.ps1` finds Revit 2022–2027, copies the server under `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`, and wires detected MCP clients (`-Client codex|opencode|claude|kilo|none`, `-Years 2024` for one year).
 
-Do not `dotnet tool install` `RvtMcp.Server` or `Bimwright.Rvt.Server` — those packages are not a current install path.
+**Optional — NuGet server only** (does **not** install Revit plugins). Use this if the add-in is already on the machine (ZIP or a local build) and you want the MCP server on PATH:
+
+```powershell
+dotnet tool uninstall -g Bimwright.Rvt.Server   # skip if you never installed the 0.1–0.3 tool
+dotnet tool install -g RvtMcp.Server --version 0.6.1
+```
+
+Command name: `rvt-mcp`. Keep using the GitHub Release ZIP for plugins. `Bimwright.Rvt.Server` is obsolete.
 
 ### Migrating from `Bimwright.Rvt.*` (v0.3 and earlier)
 
@@ -95,7 +102,7 @@ v0.4+ renamed packages and folders to `RvtMcp.*` (repo name and brand stay bimwr
 
 1. Close every Revit.
 2. `pwsh scripts/uninstall-old.ps1` — drops old `%APPDATA%\…\Bimwright\` plugins and old server root; keeps user bake/journal data and migrates it to `%LOCALAPPDATA%\RvtMcp\` on first new launch.
-3. Install the current GitHub Release ZIP (Client install above). Do not install v0.5.0 or earlier packages.
+3. Install the current GitHub Release ZIP (Client install above). Do not install v0.5.0 or earlier packages. Uninstall the old global tool if present: `dotnet tool uninstall -g Bimwright.Rvt.Server`.
 4. Point MCP clients at entry name **`rvt-mcp`** (old per-year `bimwright-rvt-r22`… entries are removed by the installer).
 
 ---

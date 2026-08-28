@@ -42,7 +42,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 インストーラは Revit 2022–2027 を検出し、該当プラグインを入れ、サーバを `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\` にコピーし、検出した MCP クライアントを配線します。上書きは `-Client codex|opencode|claude|kilo|none`。
 
-v0.5.0 以前の ZIP は**入れないでください**。`dotnet tool install -g Bimwright.Rvt.Server` / `RvtMcp.Server` も**使わないでください**。
+v0.5.0 以前の ZIP は**入れないでください**。`dotnet tool install -g Bimwright.Rvt.Server`（旧 0.1–0.3）は**使わないでください**。Revit クライアント機で ZIP の代わりに NuGet を使わないでください。ツールパッケージにアドインは含まれません。
 
 AutoCAD は別製品の [dwg-mcp](https://github.com/bimwright/dwg-mcp) を別途インストールしてください。
 
@@ -87,7 +87,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -SourceDir . -Cli
 
 先にすべての Revit を閉じてください。ビルドはプラグイン DLL を `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\` に配備します。`install.ps1` は Revit 2022–2027 を検出し、サーバを `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\` にコピーし、検出した MCP クライアントを配線します（`-Client codex|opencode|claude|kilo|none`、1 年だけなら `-Years 2024`）。
 
-`RvtMcp.Server` や `Bimwright.Rvt.Server` を `dotnet tool install` しないでください。それは現在のインストール経路ではありません。
+**任意 — NuGet サーバのみ**（Revit プラグインは入りません）。ZIP またはローカルビルドでアドイン済みで、MCP サーバを PATH に置きたいとき：
+
+```powershell
+dotnet tool uninstall -g Bimwright.Rvt.Server   # 0.1–0.3 を入れていなければスキップ
+dotnet tool install -g RvtMcp.Server --version 0.6.1
+```
+
+コマンド名は `rvt-mcp`。プラグインは GitHub Release ZIP。`Bimwright.Rvt.Server` は廃止です。
 
 ### `Bimwright.Rvt.*`（v0.3 以前）からの移行
 
@@ -95,7 +102,7 @@ v0.4+ でパッケージ/フォルダ名が `RvtMcp.*` に変わりました（�
 
 1. すべての Revit を閉じる。
 2. `pwsh scripts/uninstall-old.ps1` — 旧 `%APPDATA%\…\Bimwright\` プラグインと旧サーバ root を削除。ユーザーの bake/journal は残し、新版初回起動で `%LOCALAPPDATA%\RvtMcp\` へ移行。
-3. 現行の GitHub Release ZIP を入れる（上記のクライアントインストール）。v0.5.0 以前のパッケージは入れない。
+3. 現行の GitHub Release ZIP を入れる（上記のクライアントインストール）。v0.5.0 以前のパッケージは入れない。旧グローバルツールがあれば: `dotnet tool uninstall -g Bimwright.Rvt.Server`。
 4. MCP クライアントのエントリ名は **`rvt-mcp`**（旧 `bimwright-rvt-r22`… 年別エントリはインストーラが削除）。
 
 ---

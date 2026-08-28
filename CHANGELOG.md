@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Optional developer path: NuGet global tool **`RvtMcp.Server` 0.6.1** (MCP server only; Revit plugins still come from the GitHub Release ZIP). Legacy **`Bimwright.Rvt.Server` 0.1–0.3** is obsolete.
+
 ## v0.6.1 - Project and link coordinate inspection
 
 First GitHub Release after v0.5.0 was unpublished. The client setup ZIP is `RvtMcp.Setup-v0.6.1-win-x64.zip` (includes the v0.6.0 guardrail surface plus the tools below).
