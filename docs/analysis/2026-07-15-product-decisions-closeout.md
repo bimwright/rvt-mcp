@@ -6,7 +6,7 @@ Session waves A → C on `rvt-mcp`. Canonical tracker: `docs/analysis/2026-07-15
 
 | Rule | Detail |
 |---|---|
-| **Typed tools cover common project workflows** | Default ~216 tools (toolsets). Prefer typed tools when they exist. |
+| **Typed tools cover common project workflows** | Current surface: 40 tools by default; 229 with `--toolsets all` (232 with adaptive bake). Prefer typed tools when they exist. |
 | **Out of typed scope → `revit_send_code_to_revit`** | C# only (Roslyn in plugin). No Python host. No new toolset for every gap. |
 | **Do not grow the default catalog lightly** | Full tool schemas cost ~25k+ tokens for agents that inject `tools/list`. New surfaces need a strong reason + preferably **opt-in toolsets**. |
 

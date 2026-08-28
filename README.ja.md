@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-227%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-229%20tools-6C47FF" alt="MCP tools" /></a>
 </p>
 
 <p align="center">
@@ -179,8 +179,8 @@ MCP client (stdio)
 | モード | Tools | 注記 |
 |--------|------:|------|
 | 既定 | **40** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **227** | フルカタログ |
-| `all` + adaptive bake | **230** | 提案ライフサイクル 3 ツールを追加 |
+| `--toolsets all` | **229** | フルカタログ |
+| `all` + adaptive bake | **232** | 提案ライフサイクル 3 ツールを追加 |
 
 MCP 名は `revit_*`。server↔plugin ワイヤ名はプレフィックスなし snake_case。
 
@@ -210,7 +210,7 @@ MCP 名は `revit_*`。server↔plugin ワイヤ名はプレフィックスな�
 | `materials` | マテリアル、外観、割当、拾い | off |
 | `geometry` | BBox、測距、干渉、体積/面積… | off |
 | `rooms` | 部屋/面積/スペース、仕上、セパレータ | off |
-| `links` | Revit/CAD リンク、座標 | off |
+| `links` | Revit/CAD リンク、座標監査、座標の取得/公開 | off |
 | `parameters` | プロジェクト/共有パラメータ | off |
 | `organization` | 保存選択、ビューテンプレート | off |
 | `workflows` | 干渉/監査/シート/拾い系の複合 | off |
@@ -233,6 +233,7 @@ MCP 名は `revit_*`。server↔plugin ワイヤ名はプレフィックスな�
 | `meta` | `revit_batch_execute` | 複数コマンドを 1 つの `TransactionGroup` |
 | `meta` | `revit_list_available_targets` / `revit_switch_target` | 複数 Revit |
 | `families` | `revit_load_family_from_path` | プロジェクトへ `.rfa` ロード |
+| `links` | `revit_get_project_coordinate_system` / `revit_get_link_coordinate_system` | ホスト/リンク原点、敷地、変換、真北 |
 | `toolbaker` | `revit_send_code_to_revit` | 逃げ道（C#） |
 | `toolbaker` | `revit_list_baked_tools` / `revit_run_baked_tool` | accept 済み個人ツール |
 | `toolbaker` | `revit_list_bake_suggestions` | adaptive のみ |

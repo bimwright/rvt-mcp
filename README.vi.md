@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-227%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-229%20tools-6C47FF" alt="MCP tools" /></a>
 </p>
 
 <p align="center">
@@ -179,8 +179,8 @@ Số lượng (chưa tính baked tool cá nhân):
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
 | Default | **40** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **227** | Full catalog |
-| `all` + adaptive bake | **230** | Thêm 3 tool vòng đời suggestion |
+| `--toolsets all` | **229** | Full catalog |
+| `all` + adaptive bake | **232** | Thêm 3 tool vòng đời suggestion |
 
 Tên MCP: `revit_*`. Tên wire server↔plugin: snake_case không prefix.
 
@@ -210,7 +210,7 @@ Ví dụ: `--toolsets query,view,meta` hoặc `--toolsets all`.
 | `materials` | Material, appearance, gán, takeoff | off |
 | `geometry` | BBox, measure, clash, volume/area, … | off |
 | `rooms` | Room/area/space, finish, separator | off |
-| `links` | Link Revit/CAD, tọa độ | off |
+| `links` | Link Revit/CAD, audit tọa độ, acquire/publish coordinates | off |
 | `parameters` | Project/shared parameter | off |
 | `organization` | Saved selection, view template | off |
 | `workflows` | Flow ghép clash/audit/sheet/takeoff | off |
@@ -233,6 +233,7 @@ Không dump 200+ schema — neo agent/người hay dùng:
 | `meta` | `revit_batch_execute` | Một `TransactionGroup` nhiều lệnh |
 | `meta` | `revit_list_available_targets` / `revit_switch_target` | Multi-Revit |
 | `families` | `revit_load_family_from_path` | Load `.rfa` vào project |
+| `links` | `revit_get_project_coordinate_system` / `revit_get_link_coordinate_system` | Gốc host/link, site, transform, True North |
 | `toolbaker` | `revit_send_code_to_revit` | Escape hatch (C#) |
 | `toolbaker` | `revit_list_baked_tools` / `revit_run_baked_tool` | Tool cá nhân đã accept |
 | `toolbaker` | `revit_list_bake_suggestions` | Chỉ adaptive |
