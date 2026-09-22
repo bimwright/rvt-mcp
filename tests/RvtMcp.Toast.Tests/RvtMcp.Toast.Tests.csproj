@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <!-- Real WPF windows on an STA dispatcher, independent of Revit. -->
+  <ItemGroup>
+    <Compile Include="../../src/shared/Views/Toast/McpToastWindow.cs" Link="McpToastWindow.cs" />
+    <Compile Include="../../src/shared/Views/Toast/McpToastManager.cs" Link="McpToastManager.cs" />
+    <Compile Include="../../src/shared/Views/Toast/McpToastTheme.cs" Link="McpToastTheme.cs" />
+    <Compile Include="../../src/shared/Views/Toast/McpToastViewModel.cs" Link="McpToastViewModel.cs" />
+    <Compile Include="../../src/shared/Views/Toast/ToolActivityClassifier.cs" Link="ToolActivityClassifier.cs" />
+    <Compile Include="../../src/shared/Views/Toast/ToolNameFormatter.cs" Link="ToolNameFormatter.cs" />
+    <Compile Include="../../src/shared/Views/Toast/ToastContentBuilder.cs" Link="ToastContentBuilder.cs" />
+    <Compile Include="../../src/shared/Views/Toast/ToastThumbnailLoader.cs" Link="ToastThumbnailLoader.cs" />
+    <Compile Include="../../src/shared/Security/PathAllowlist.cs" Link="PathAllowlist.cs" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+</Project>

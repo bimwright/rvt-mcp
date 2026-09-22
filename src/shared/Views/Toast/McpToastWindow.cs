@@ -259,10 +259,26 @@ namespace RvtMcp.Plugin.Views.Toast
 
         public void AnimateToPosition(double top, double left)
         {
+            var fromTop = Top;
+            var fromLeft = Left;
+            SetPosition(top, left);
+            // An unshown WPF Window defaults to NaN. It has no position to animate from.
+            if (double.IsNaN(fromTop) || double.IsNaN(fromLeft))
+                return;
+
             var duration = TimeSpan.FromMilliseconds(200);
             var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-            BeginAnimation(TopProperty, new DoubleAnimation(top, duration) { EasingFunction = ease });
-            BeginAnimation(LeftProperty, new DoubleAnimation(left, duration) { EasingFunction = ease });
+            BeginAnimation(TopProperty, new DoubleAnimation(fromTop, top, duration) { EasingFunction = ease });
+            BeginAnimation(LeftProperty, new DoubleAnimation(fromLeft, left, duration) { EasingFunction = ease });
+        }
+
+        public void SetPosition(double top, double left)
+        {
+            // A previous animation's held value must not override a direct reflow.
+            BeginAnimation(TopProperty, null);
+            BeginAnimation(LeftProperty, null);
+            Top = top;
+            Left = left;
         }
 
         public void StartAutoDismiss()

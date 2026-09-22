@@ -36,6 +36,9 @@ namespace RvtMcp.Plugin.Views.Toast
             var window = new McpToastWindow(vm, OnToastClosed);
             AttachOwner(window);
             _active.Insert(0, window);
+            // Show may pump close callbacks that animate the active stack.
+            // Give the new window finite coordinates before that can happen.
+            ReflowAll(animate: false);
             window.Show();
             window.PlayEnterAnimation();
             window.StartAutoDismiss();
@@ -105,10 +108,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 if (animate)
                     toast.AnimateToPosition(currentTop, startLeft);
                 else
-                {
-                    toast.Top = currentTop;
-                    toast.Left = startLeft;
-                }
+                    toast.SetPosition(currentTop, startLeft);
 
                 currentTop += height + Gap;
             }
