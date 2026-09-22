@@ -28,6 +28,29 @@ The fresh process loaded the deployed `RvtMcp.Plugin.dll`, with the helper in th
 - SHA-256: `FE096A7037643AA795BA163BE0CE04908C93C8B7CD0C120AE105E329115438BC`
 - Module ID: `8f2d1f8e-4cc0-4322-a790-88a61273dc17`
 
+## Additional case: U stair with an intermediate landing
+
+The [U-stair payload](create-u-stair-snowdon-2027.cs) was executed through send-code in the saved `Issue14-stairs-demo-2027` model. It creates one stair between L2 and L3, with two opposite parallel runs and one automatic landing halfway up. The existing straight-stair demo remains intact. The fixture-specific script deliberately checks run count, landing count, riser count, and matching elevations before committing.
+
+![U stair with two runs and one intermediate landing, isometric view](u-stair-iso-2027.png)
+
+| Observation | Result |
+|---|---|
+| Stair / view | 3327830 / Issue14 - U Stair - ISO (3327923) |
+| Runs | 3327831 and 3327835; opposite X directions |
+| Risers | 10 + 10; 163.83 mm each |
+| Tread / run width | 280 / 1,200 mm |
+| Total height | 3,276.6 mm between L2 and L3 |
+| Intermediate landing | 3327839; 1,638.3 mm above stair base |
+| Stair count | 27 before / 28 after; previous demo retained |
+| Save | Same separate demo RVT; IsModified=false after Save |
+
+The first creation committed with a recorded **rail-not-continuous warning** from the sample's default Cable Railing type. A subsequent instance-only change to the sample's pipe guardrail type also emitted that warning. Three alternative railing types were then tested inside rolled-back groups; each committed without warnings. The [executed presentation payload](present-u-stair-2027.cs) applies `Handrail - Pipe` (51388) only to the two new railings, sets the elevated isometric camera and crop, and exports the final image alongside the demo RVT. That transaction reported HadWarnings=false, HadErrors=false, and Messages=[]. No shared railing type was edited.
+
+The [final readback](u-stair-result.json) verifies two runs, one landing, opposite run directions, matching mid-height elevations, actual widths/treads, and retention of the previous stair. It found no related document warnings. The initial warning remains part of the recorded test outcome; an empty later warning list does not erase it or certify design compliance. All geometry creation, railing changes, camera setup, export, and saving were performed through `revit_send_code_to_revit`.
+
+API reference: [Autodesk CreateAutomaticLanding](https://help.autodesk.com/cloudhelp/2026/ENU/Revit-API-MainReference/files/html/48bca49d-ae21-0329-072e-777553f38c07.htm); signatures and coordinate semantics were also checked against the local Revit 2027 API XML.
+
 ## Validation and limits
 
 | Check | Evidence |
@@ -61,3 +84,5 @@ Draft comment for posting **after the push**, not posted as part of this verific
 > We validated the tested paths on Revit 2022 and a fresh Revit 2027 process with the updated plugin. We also retained and saved a real 15-riser stair created entirely through send-code on 2027, with a 280 mm tread and 1,200 mm width, without reported warnings/errors. A 100 mm tread was a Warning in our fixtures; the Error rollback test used an explicitly injected Error. We have therefore not reproduced or confirmed the fix for your Revit 2025 crash. Could you share the failing script and a minimal model, or confirm the behavior once the updated plugin is available?
 >
 > Your request to consider a native `create_stairs` tool is also recorded. This change provides the send-code path; it does not add that dedicated tool.
+
+> An additional retained 2027 test created a U-shaped stair with two 10-riser runs and one intermediate landing. Its initial default railing emitted a continuity warning, which was preserved in the response. Changing only the new railing instances to the sample's Handrail - Pipe type committed without warnings. The verification record includes the exact creation/presentation payloads, readback, and final isometric image.

@@ -1,0 +1,54 @@
+{
+  "executed": true,
+  "result": {
+    "stairsId": 3327830,
+    "stairCount": 28,
+    "originalStairRetained": true,
+    "runCount": 2,
+    "landingCount": 1,
+    "landingId": 3327839,
+    "landingElevationMm": 1638.3,
+    "risers": 20,
+    "riserHeightMm": 163.83,
+    "treadDepthMm": 280,
+    "runs": [
+      {
+        "id": 3327831,
+        "risers": 10,
+        "widthMm": 1200,
+        "baseMm": 0,
+        "topMm": 1638.3,
+        "direction": [
+          {
+            "X": 8.26771653543301,
+            "Y": 0,
+            "Z": 0
+          }
+        ]
+      },
+      {
+        "id": 3327835,
+        "risers": 10,
+        "widthMm": 1200,
+        "baseMm": 1638.3,
+        "topMm": 3276.6,
+        "direction": [
+          {
+            "X": -8.26771653543301,
+            "Y": 0,
+            "Z": 0
+          }
+        ]
+      }
+    ],
+    "railingTypes": [
+      "Handrail - Pipe",
+      "Handrail - Pipe"
+    ],
+    "relatedDocumentWarnings": [],
+    "PathName": "D:\\Projects\\bimwright\\.cursor\\issue14-revit2027-20260922\\Issue14-stairs-demo-2027.rvt",
+    "IsModified": false,
+    "IsModifiable": false,
+    "activeView": "Issue14 - U Stair - ISO"
+  }
+}
