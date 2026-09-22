@@ -17,10 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test isolated upgrade and rollback
-        shell: ${{ matrix.shell }}
+        shell: pwsh
         run: |
           New-Item -ItemType Directory -Path artifacts -Force | Out-Null
-          ./tests/installer/upgrade.Tests.ps1 -ResultPath artifacts/installer-upgrade-${{ matrix.shell }}.json
+          & ${{ matrix.shell }} -NoProfile -ExecutionPolicy Bypass -File ./tests/installer/upgrade.Tests.ps1 -ResultPath artifacts/installer-upgrade-${{ matrix.shell }}.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
