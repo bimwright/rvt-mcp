@@ -1,5 +1,7 @@
 # Issue #14: send-code stair verification
 
+**Next session:** read [HANDOFF.md](HANDOFF.md). The [ready-to-post issue comment](ISSUE-COMMENT.md) includes a complete portable C# payload; [tool arguments](reporter-u-stair.tool-arguments.json) are also provided. Post only after the next authorized push succeeds.
+
 Recorded on 2026-09-22 against source commit `f35a9575362a9eafbac6e381363ee6751c2e1406`. These additions are unreleased; v0.6.1 does not contain the new source builder or `SafeFailuresPreprocessor`.
 
 ## Retained Revit 2027 demo
@@ -71,7 +73,7 @@ The original [report](https://github.com/bimwright/rvt-mcp/issues/14) describes 
 ## Next push and issue follow-up
 
 - [ ] Push the implementation and this verification record when the owner next requests a push.
-- [ ] After that push succeeds, post the draft below on #14, linking the pushed commit and this record. Do not describe the change as a published release until one exists.
+- [ ] After that push succeeds, post [ISSUE-COMMENT.md](ISSUE-COMMENT.md) on #14; it expands the summary below with the entire portable test payload. Do not describe the change as a published release until one exists.
 - [ ] Obtain Revit 2025 reporter confirmation or equivalent reproduction before claiming the reported crash fixed.
 - [ ] Resolve or explicitly track the separate native `create_stairs` feature request before closing the whole issue. No native stair tool was added here.
 
