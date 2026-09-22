@@ -848,7 +848,7 @@
     },
     {
       "name": "revit_connect_mep_elements",
-      "description_hash": "sha256:5d751e7282f295e0632cf76c4d17330f6e48c452d96fe01fed81dfd0f6dab5f0",
+      "description_hash": "sha256:92efb0c7369a644a2f908802ec24731416d08d3b7092cb46643d974e0a288e8d",
       "inputSchema": {
         "properties": {
           "connectorIndex1": {
@@ -1571,7 +1571,7 @@
     },
     {
       "name": "revit_create_pipe",
-      "description_hash": "sha256:97d4d19d5d45b973d5860349ef497883379b41ccae726e28537f785a45bb4f50",
+      "description_hash": "sha256:cfe46fbb009a29ca592ac2e08ee9a205bc0ebfd38a33b8e4bdde83762b8c8899",
       "inputSchema": {
         "properties": {
           "diameter": {
@@ -1595,6 +1595,14 @@
             "type": "Nullable`1"
           },
           "pipeTypeId": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "startConnectorId": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "startElementId": {
             "description": "",
             "type": "Nullable`1"
           },

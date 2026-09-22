@@ -18,6 +18,7 @@ namespace RvtMcp.Plugin.Handlers
             "Connect the nearest open connectors of two MEP elements (e.g. snap a duct to equipment). " +
             "Resolves a ConnectorManager for each element, then picks the closest pair of unused connectors " +
             "with matching domains (or specific connector ids if supplied) and calls ConnectTo. " +
+            "Rejects different assigned piping/HVAC system type IDs before connecting; unassigned equipment ports are allowed. " +
             "Returns the two connector origins in mm. Revit allows connecting non-coincident connectors; " +
             "the gap distance is reported when present.";
 
@@ -34,6 +35,12 @@ namespace RvtMcp.Plugin.Handlers
         private const double FeetToMm = 304.8;
 
         public CommandResult Execute(UIApplication app, string paramsJson)
+        {
+            try { return ExecuteCore(app, paramsJson); }
+            catch (Exception ex) { return CommandResult.Fail("Failed to connect MEP elements: " + ex.Message); }
+        }
+
+        private CommandResult ExecuteCore(UIApplication app, string paramsJson)
         {
             var doc = app.ActiveUIDocument?.Document;
             if (doc == null)
@@ -112,7 +119,8 @@ namespace RvtMcp.Plugin.Handlers
             else
             {
                 // Pick the closest pair of unused connectors with matching domains.
-                if (!FindNearestOpenPair(cm1, cm2, out connector1, out connector2))
+                if (!FindConnectedPair(cm1, cm2, out connector1, out connector2) &&
+                    !FindNearestOpenPair(cm1, cm2, out connector1, out connector2))
                 {
                     return CommandResult.Ok(new
                     {
@@ -135,13 +143,47 @@ namespace RvtMcp.Plugin.Handlers
                 ? (object)Math.Round(origin1.DistanceTo(origin2) * FeetToMm, 1)
                 : null;
 
+            MEPSystemType systemType1, systemType2;
+            bool alreadyConnected;
+            try
+            {
+                if (!IsPhysical(connector1) || !IsPhysical(connector2) || connector1.Domain != connector2.Domain)
+                    return CommandResult.Fail("Selected connectors must be physical and have matching domains.");
+                systemType1 = MepConnectionSystemType.Read(connector1);
+                systemType2 = MepConnectionSystemType.Read(connector2);
+                if (MepConnectionSystemType.Mismatch(systemType1, systemType2))
+                    return CommandResult.Ok(new
+                    {
+                        connected = false,
+                        element_id_1 = elementId1.Value, element_id_2 = elementId2.Value,
+                        system_type_id_1 = RevitCompat.GetId(systemType1.Id), system_type_1 = systemType1.Name,
+                        system_type_id_2 = RevitCompat.GetId(systemType2.Id), system_type_2 = systemType2.Name,
+                        reason = "system_type_mismatch",
+                        error = "System types differ; no connection was made. Recreate or explicitly reassign the incorrect element."
+                    });
+                alreadyConnected = connector1.IsConnectedTo(connector2);
+                if (!alreadyConnected && (connector1.IsConnected || connector2.IsConnected))
+                    return CommandResult.Fail("A selected connector is already in use by another connection.");
+            }
+            catch (Exception ex)
+            {
+                return CommandResult.Fail("Cannot validate selected connectors: " + ex.Message);
+            }
+
+            if (!alreadyConnected)
             using (var tx = new Transaction(doc, "RvtMcp: connect MEP elements"))
             {
                 tx.Start();
                 try
                 {
                     connector1.ConnectTo(connector2);
-                    tx.Commit();
+                    doc.Regenerate();
+                    if (!connector1.IsConnectedTo(connector2))
+                        throw new InvalidOperationException("Revit did not establish the requested connector connection.");
+                    systemType1 = MepConnectionSystemType.Read(connector1);
+                    systemType2 = MepConnectionSystemType.Read(connector2);
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        throw new InvalidOperationException("Revit did not commit the connection.");
                 }
                 catch (Exception ex)
                 {
@@ -162,11 +204,16 @@ namespace RvtMcp.Plugin.Handlers
             return CommandResult.Ok(new
             {
                 connected = true,
+                already_connected = alreadyConnected,
                 element_id_1 = elementId1.Value,
                 element_id_2 = elementId2.Value,
                 connector_1_origin_mm = originMm1,
                 connector_2_origin_mm = originMm2,
                 gap_mm = gapMm,
+                system_type_id_1 = systemType1 == null ? (long?)null : RevitCompat.GetId(systemType1.Id),
+                system_type_1 = systemType1?.Name,
+                system_type_id_2 = systemType2 == null ? (long?)null : RevitCompat.GetId(systemType2.Id),
+                system_type_2 = systemType2?.Name,
                 error = (string)null
             });
         }
@@ -266,7 +313,7 @@ namespace RvtMcp.Plugin.Handlers
         {
             try
             {
-                if (c.ConnectorType != ConnectorType.End && c.ConnectorType != ConnectorType.Curve)
+                if (!IsPhysical(c))
                     return false;
                 return !c.IsConnected;
             }
@@ -274,6 +321,25 @@ namespace RvtMcp.Plugin.Handlers
             {
                 return false;
             }
+        }
+
+        private static bool IsPhysical(Connector connector)
+            => connector.ConnectorType == ConnectorType.End || connector.ConnectorType == ConnectorType.Curve;
+
+        private static bool FindConnectedPair(ConnectorManager first, ConnectorManager second,
+            out Connector connected1, out Connector connected2)
+        {
+            connected1 = null;
+            connected2 = null;
+            foreach (Connector a in first.Connectors)
+                foreach (Connector b in second.Connectors)
+                    if (IsPhysical(a) && IsPhysical(b) && a.Domain == b.Domain && a.IsConnectedTo(b))
+                    {
+                        connected1 = a;
+                        connected2 = b;
+                        return true;
+                    }
+            return false;
         }
 
         /// <summary>
