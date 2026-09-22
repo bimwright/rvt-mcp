@@ -1,0 +1,141 @@
+[
+  {
+    "year": 2022,
+    "verifiedAt": "2026-09-22T15:13:29.8121232+07:00",
+    "nativeSha256": "B7385D722C83FB52142A00477A726723745916D22A555711EE89834C1111FB2E",
+    "nativeRootAndRuntimeMatch": true,
+    "managedFiles": [
+      {
+        "file": "RvtMcp.Plugin.dll",
+        "sha256": "0A4CE49DDF7C870E21599F15F16C183977A108D62BCCF2132081309944C58F8D",
+        "deployedMatches": true
+      },
+      {
+        "file": "Microsoft.Data.Sqlite.dll",
+        "sha256": "742291E9F1953949C05AE9325B8454C962BDF1992197078F8ACEA2C81D14E033",
+        "deployedMatches": true
+      },
+      {
+        "file": "SQLitePCLRaw.batteries_v2.dll",
+        "sha256": "FF8BA48FBA8C4C75AF4D2CEA16EB236E02B811ED20F8E36E7D04C79CB98A45DF",
+        "deployedMatches": true
+      },
+      {
+        "file": "SQLitePCLRaw.core.dll",
+        "sha256": "C33995427EDD44FA641CF702DF8B63CC82CB7054DD984DC8277D15EE7C958874",
+        "deployedMatches": true
+      },
+      {
+        "file": "SQLitePCLRaw.provider.dynamic_cdecl.dll",
+        "sha256": "6C5A7905456018EB99C214644A25F2A93542E52AA0083A18F76FFEFF408D33FC",
+        "deployedMatches": true
+      },
+      {
+        "file": "System.Memory.dll",
+        "sha256": "BF3FB84664F4097F1A8A9BC71A51DCF8CF1A905D4080A4D290DA1730866E856F",
+        "deployedMatches": true
+      },
+      {
+        "file": "System.Buffers.dll",
+        "sha256": "ACCCCFBE45D9F08FFEED9916E37B33E98C65BE012CFFF6E7FA7B67210CE1FEFB",
+        "deployedMatches": true
+      },
+      {
+        "file": "System.Numerics.Vectors.dll",
+        "sha256": "1D3EF8698281E7CF7371D1554AFEF5872B39F96C26DA772210A33DA041BA1183",
+        "deployedMatches": true
+      },
+      {
+        "file": "System.Runtime.CompilerServices.Unsafe.dll",
+        "sha256": "37768488E8EF45729BC7D9A2677633C6450042975BB96516E186DA6CB9CD0DCF",
+        "deployedMatches": true
+      }
+    ]
+  },
+  {
+    "year": 2024,
+    "verifiedAt": "2026-09-22T15:13:31.0014704+07:00",
+    "nativeSha256": "B7385D722C83FB52142A00477A726723745916D22A555711EE89834C1111FB2E",
+    "nativeRootAndRuntimeMatch": true,
+    "managedFiles": [
+      {
+        "file": "RvtMcp.Plugin.dll",
+        "sha256": "D8D408F5691E3995D766DC349DF0BD6425A936E1207A268A8D131E551087EC9D",
+        "deployedMatches": true
+      },
+      {
+        "file": "Microsoft.Data.Sqlite.dll",
+        "sha256": "742291E9F1953949C05AE9325B8454C962BDF1992197078F8ACEA2C81D14E033",
+        "deployedMatches": true
+      },
+      {
+        "file": "SQLitePCLRaw.batteries_v2.dll",
+        "sha256": "FF8BA48FBA8C4C75AF4D2CEA16EB236E02B811ED20F8E36E7D04C79CB98A45DF",
+        "deployedMatches": true
+      },
+      {
+        "file": "SQLitePCLRaw.core.dll",
+        "sha256": "C33995427EDD44FA641CF702DF8B63CC82CB7054DD984DC8277D15EE7C958874",
+        "deployedMatches": true
+      },
+      {
+        "file": "SQLitePCLRaw.provider.dynamic_cdecl.dll",
+        "sha256": "6C5A7905456018EB99C214644A25F2A93542E52AA0083A18F76FFEFF408D33FC",
+        "deployedMatches": true
+      },
+      {
+        "file": "System.Memory.dll",
+        "sha256": "BF3FB84664F4097F1A8A9BC71A51DCF8CF1A905D4080A4D290DA1730866E856F",
+        "deployedMatches": true
+      },
+      {
+        "file": "System.Buffers.dll",
+        "sha256": "ACCCCFBE45D9F08FFEED9916E37B33E98C65BE012CFFF6E7FA7B67210CE1FEFB",
+        "deployedMatches": true
+      },
+      {
+        "file": "System.Numerics.Vectors.dll",
+        "sha256": "1D3EF8698281E7CF7371D1554AFEF5872B39F96C26DA772210A33DA041BA1183",
+        "deployedMatches": true
+      },
+      {
+        "file": "System.Runtime.CompilerServices.Unsafe.dll",
+        "sha256": "37768488E8EF45729BC7D9A2677633C6450042975BB96516E186DA6CB9CD0DCF",
+        "deployedMatches": true
+      }
+    ]
+  },
+  {
+    "year": 2027,
+    "verifiedAt": "2026-09-22T15:13:34.6478771+07:00",
+    "nativeSha256": "B7385D722C83FB52142A00477A726723745916D22A555711EE89834C1111FB2E",
+    "nativeRootAndRuntimeMatch": true,
+    "managedFiles": [
+      {
+        "file": "RvtMcp.Plugin.dll",
+        "sha256": "AD1245D1AFF684441491352955DA863BFD25645AFAA2221515A05BE0741A7BED",
+        "deployedMatches": true
+      },
+      {
+        "file": "Microsoft.Data.Sqlite.dll",
+        "sha256": "019675CFCABE6A765829E81FE5081B7FD9F992734270AF570B31C2F0F9741A7C",
+        "deployedMatches": true
+      },
+      {
+        "file": "SQLitePCLRaw.batteries_v2.dll",
+        "sha256": "E2709FDA3EE4137DCEA3398221F0AFCD6241DB0EA6FA55FD31A33610BE78CF02",
+        "deployedMatches": true
+      },
+      {
+        "file": "SQLitePCLRaw.core.dll",
+        "sha256": "C33995427EDD44FA641CF702DF8B63CC82CB7054DD984DC8277D15EE7C958874",
+        "deployedMatches": true
+      },
+      {
+        "file": "SQLitePCLRaw.provider.e_sqlite3.dll",
+        "sha256": "2E7315A35CB86213200654B717F8CBE3C7643A6BEC4A106F22FC8C744A94906C",
+        "deployedMatches": true
+      }
+    ]
+  }
+]

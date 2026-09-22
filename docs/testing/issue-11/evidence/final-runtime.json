@@ -1,0 +1,15 @@
+{
+  "model": "Snowdon Towers Sample HVAC",
+  "version": "2027",
+  "build": "27.0.10.13",
+  "pid": 33596,
+  "pluginMvid": "3f4cccb0-6ab9-4835-8fa0-1ed417d5a943",
+  "pluginSha256": "AD1245D1AFF684441491352955DA863BFD25645AFAA2221515A05BE0741A7BED",
+  "systemCount": 148,
+  "failures": [],
+  "crosscheckFailures": [],
+  "mixedDomainSystems": 148,
+  "excludedConnectorOccurrences": 148,
+  "wholeModelHvacOpen": 0,
+  "wholeModelElectricalOpen": 37
+}

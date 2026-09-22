@@ -20,10 +20,13 @@ namespace RvtMcp.Plugin.Handlers
 
         public string Description =>
             "Analyze one MEP system's topology and health. Resolve the system by system_id " +
-            "(ElementId) or system_name. Returns the domain, system type, element count, a " +
-            "category breakdown of member elements, the base (source) equipment, the count of " +
-            "open/unconnected connectors, whether the system is well connected, and a list of " +
-            "issues with recommendations. Either system_id or system_name is required.";
+            "(ElementId) or system_name. For piping and HVAC, element_count, the category " +
+            "breakdown, and open_connector_count come from the pipe or duct network; " +
+            "terminal_count excludes base equipment. The empty-system recommendation is " +
+            "returned only when both counts are zero and no base equipment is assigned. " +
+            "Membership read failures return an error. Electrical element_count is the circuit " +
+            "members. Also returns the base (source) equipment, whether the system is well " +
+            "connected, and issues with recommendations. Either system_id or system_name is required.";
 
         public string ParametersSchema => @"{
   ""type"": ""object"",
@@ -119,20 +122,22 @@ namespace RvtMcp.Plugin.Handlers
             // IsWellConnected — not exposed uniformly; try direct, then reflection, default true.
             bool isWellConnected = ReadIsWellConnected(system);
 
-            // Iterate member elements → category breakdown + open connector count.
+            // Flow members drive the count, category breakdown, and open connectors.
+            // Terminals stay on Elements so a fixture-only system is not reported empty.
+            MepSystemMembership snapshot;
+            try { snapshot = MepSystemMembership.Read(system); }
+            catch (Exception ex) { return CommandResult.Fail(ex.Message); }
+            var membership = snapshot.Counts;
             var categoryBreakdown = new Dictionary<string, int>();
-            int elementCount = 0;
             int openConnectorCount = 0;
 
-            ElementSet members = null;
-            try { members = system.Elements; } catch { members = null; }
+            var members = snapshot.FlowElements;
 
             if (members != null)
             {
                 foreach (Element member in members)
                 {
                     if (member == null) continue;
-                    elementCount++;
 
                     string catName = "Uncategorized";
                     try
@@ -147,7 +152,7 @@ namespace RvtMcp.Plugin.Handlers
                     else
                         categoryBreakdown[catName] = 1;
 
-                    openConnectorCount += CountOpenEndConnectors(member);
+                    openConnectorCount += CountOpenEndConnectors(member, domain);
                 }
             }
 
@@ -156,7 +161,7 @@ namespace RvtMcp.Plugin.Handlers
             string baseEquipmentName = null;
             try
             {
-                var be = system.BaseEquipment;
+                var be = snapshot.BaseEquipment;
                 if (be != null)
                 {
                     string beName = null;
@@ -200,7 +205,7 @@ namespace RvtMcp.Plugin.Handlers
                     "Assign source equipment to the system so flow and pressure calculations resolve correctly.");
             }
 
-            if (elementCount == 0)
+            if (membership.IsEmpty)
             {
                 issues.Add("System has no member elements.");
                 recommendations.Add(
@@ -217,7 +222,8 @@ namespace RvtMcp.Plugin.Handlers
                 domain = domain ?? "unknown",
                 system_type = systemType ?? string.Empty,
                 is_well_connected = isWellConnected,
-                element_count = elementCount,
+                element_count = membership.ElementCount,
+                terminal_count = membership.TerminalCount,
                 category_breakdown = categoryBreakdown
                     .OrderByDescending(kv => kv.Value)
                     .ToDictionary(kv => kv.Key, kv => kv.Value),
@@ -282,9 +288,12 @@ namespace RvtMcp.Plugin.Handlers
         /// Counts unconnected End connectors on an element. End connectors are physical
         /// connection points; an unconnected one is an open end in the network.
         /// </summary>
-        private static int CountOpenEndConnectors(Element element)
+        private static int CountOpenEndConnectors(Element element, string domain)
         {
             int open = 0;
+            var expectedDomain = domain == "piping" ? Domain.DomainPiping
+                : domain == "mechanical" ? Domain.DomainHvac
+                : domain == "electrical" ? Domain.DomainElectrical : Domain.DomainUndefined;
             ConnectorManager cm = GetConnectorManager(element);
             if (cm == null) return 0;
 
@@ -297,6 +306,8 @@ namespace RvtMcp.Plugin.Handlers
                 try
                 {
                     if (connector.ConnectorType != ConnectorType.End) continue;
+                    // Equipment can expose connectors from several disciplines.
+                    if (connector.Domain != expectedDomain) continue;
                     if (!connector.IsConnected) open++;
                 }
                 catch

@@ -18,6 +18,7 @@
   -->
   <ItemGroup>
     <Compile Include="..\..\src\shared\Infrastructure\SendCodeSourceBuilder.cs" Link="Shared\SendCodeSourceBuilder.cs" />
+    <Compile Include="..\..\src\shared\Handlers\MepMembershipPolicy.cs" Link="Shared\MepMembershipPolicy.cs" />
     <Compile Include="..\..\src\shared\Security\ErrorSanitizer.cs" Link="Shared\ErrorSanitizer.cs" />
     <Compile Include="..\..\src\shared\Security\McpResponsePrivacy.cs" Link="Shared\McpResponsePrivacy.cs" />
     <Compile Include="..\..\src\shared\Security\PathAllowlist.cs" Link="Shared\PathAllowlist.cs" />

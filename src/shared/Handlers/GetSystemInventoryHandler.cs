@@ -22,7 +22,8 @@ namespace RvtMcp.Plugin.Handlers
 
         public string Description =>
             "Return the full element inventory of one MEP system (mechanical / piping / electrical): " +
-            "all member elements with category and type, a category breakdown count, and the system " +
+            "network members, terminals, and base equipment, deduplicated by element ID, " +
+            "with category and type, a category breakdown count, and the system " +
             "domain/type. Resolve the system by system_id or system_name. Optional include_parameters " +
             "returns each element's key MEP parameters with unit-corrected values.";
 
@@ -69,12 +70,12 @@ namespace RvtMcp.Plugin.Handlers
             }
             catch { }
 
-            // Gather member elements from the system's ElementSet.
+            // Include flow members, terminals, and source equipment without duplicate IDs.
             var memberIds = new List<long>();
             var seen = new HashSet<long>();
             try
             {
-                ElementSet members = system.Elements;
+                var members = MepSystemMembership.Read(system).AllElements;
                 if (members != null)
                 {
                     foreach (Element member in members)

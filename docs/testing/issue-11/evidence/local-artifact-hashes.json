@@ -1,0 +1,38 @@
+[
+  {
+    "localPath": "artifacts/issue-11/live-2027-plumbing/tests.trx",
+    "sha256": "ABB48687993EE6F11655475A372F4574E48397DDD657E20E4AAD37E98CCD2BE4"
+  },
+  {
+    "localPath": "artifacts/issue-11/live-2027-plumbing/build-2022.log",
+    "sha256": "DCAA838966744EA7ABA739DB5217878FB1A57CFA4F9ED41AF5943157A1C147FA"
+  },
+  {
+    "localPath": "artifacts/issue-11/live-2027-plumbing/build-2024.log",
+    "sha256": "6595CB3B8528406D609F938F01B950B6230F44CD9EF21EC6505BF073E1C2220F"
+  },
+  {
+    "localPath": "artifacts/issue-11/live-2027-plumbing/build-2027.log",
+    "sha256": "DE0E34369C16FCC384F23BA3D2FD9ED8EA12D345F7ACBCA07B035151157D1F21"
+  },
+  {
+    "localPath": "artifacts/issue-11/hardening/audit.json",
+    "sha256": "F476B9C3C4899508EEC0B43A13BA56ABA52442F54833DBD4E0A5CA4F1E5987DB"
+  },
+  {
+    "localPath": "artifacts/issue-11/hardening/package-check.log",
+    "sha256": "0AA2887FB580D17A60EF5CC7CAC96307D094BB28DBE79412CC33D53D6682CD46"
+  },
+  {
+    "localPath": "artifacts/issue-11/live-2027-hvac-final/all-systems-response.json",
+    "sha256": "76DC72133388584E2CC05D6EAE92EE0055348D69CCDE3E071321558994ACD576"
+  },
+  {
+    "localPath": "artifacts/issue-11/live-2027-hvac-final/pipe-fixture-response.json",
+    "sha256": "871EEC27D3AC03E7670A18BF542B5E121052229C4300EF5F610AF871ACEE0E88"
+  },
+  {
+    "localPath": "artifacts/issue-11/live-2027-hvac-final/duct-fixture-response.json",
+    "sha256": "2B65E54D9536C5CE2A6273DBB83BCDFAFA54872EA62D268B3152279AE3BD2672"
+  }
+]

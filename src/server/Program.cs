@@ -1722,7 +1722,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_list_mep_systems", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("List all MEP systems (mechanical/HVAC, piping/plumbing, electrical). domainFilter: all|mechanical|piping|electrical. Returns id, name, domain, system type, element count, connectivity status.")]
+        [McpServerTool(Name = "revit_list_mep_systems", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("List all MEP systems (mechanical/HVAC, piping/plumbing, electrical). domainFilter: all|mechanical|piping|electrical. element_count is pipes and fittings, ducts and fittings, or electrical circuit members. terminal_count excludes base equipment. Membership read failures return an error, never zero counts. Returns id, name, domain, system type, both counts, and connectivity status.")]
         public static async Task<string> ListMepSystems(string domainFilter = "all", int limit = 1000)
         {
             try
@@ -1733,7 +1733,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_get_system_inventory", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("Return the full element inventory of one MEP system: all member elements with category/type plus a category breakdown. Identify by systemId or systemName.")]
+        [McpServerTool(Name = "revit_get_system_inventory", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("Return the full element inventory of one MEP system: network members, terminals, and base equipment, deduplicated by element ID, with category/type plus a category breakdown. Membership read failures return an error. Identify by systemId or systemName.")]
         public static async Task<string> GetSystemInventory(long? systemId = null, string systemName = "", bool includeParameters = false, int limit = 2000)
         {
             try
@@ -1811,7 +1811,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_analyze_mep_network", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("Analyze one MEP system's topology: category breakdown, connectivity health, base equipment, open connector count, and issues/recommendations. Identify by systemId or systemName.")]
+        [McpServerTool(Name = "revit_analyze_mep_network", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("Analyze one MEP system. For piping and HVAC, element_count, category_breakdown, and open_connector_count come from the pipe or duct network; terminal_count excludes base equipment. Empty-system advice requires both counts zero and no base equipment. Membership read failures return an error. Electrical element_count is the circuit members. Identify by systemId or systemName.")]
         public static async Task<string> AnalyzeMepNetwork(long? systemId = null, string systemName = "")
         {
             try

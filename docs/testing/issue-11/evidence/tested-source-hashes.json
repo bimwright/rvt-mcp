@@ -1,0 +1,90 @@
+[
+  {
+    "path": "scripts/stage-plugin-zip.ps1",
+    "sha256": "71D19728A33F81A50810690A5118EFA12D34652265442BEF5E6CF30B51D30EAA"
+  },
+  {
+    "path": "src/plugin-r22/RvtMcp.Plugin.R22.csproj",
+    "sha256": "0674E01686D1142043425BEE653C08D5CBBFBD23891ACBD849D3B713B71C2F59"
+  },
+  {
+    "path": "src/plugin-r23/RvtMcp.Plugin.R23.csproj",
+    "sha256": "B2E572C03283F23CADE05DC1C36F11B31FCA5EAFF0055DD3EBD3D288DB6EE4ED"
+  },
+  {
+    "path": "src/plugin-r24/RvtMcp.Plugin.R24.csproj",
+    "sha256": "24092457FBCD695F53646AC9C903501D19FC63CF3A167AB415C5936B605A6E66"
+  },
+  {
+    "path": "src/plugin-r25/RvtMcp.Plugin.R25.csproj",
+    "sha256": "CCC4287AE2FD8AF441A358F1868089C643F2F09E42207A3499F19F087D409503"
+  },
+  {
+    "path": "src/plugin-r26/RvtMcp.Plugin.R26.csproj",
+    "sha256": "52CC055066753CF21B2CF1707EACD668C7D182813B4B6027BC1E56F12B4E0EC1"
+  },
+  {
+    "path": "src/plugin-r27/RvtMcp.Plugin.R27.csproj",
+    "sha256": "AF3033760CA01E0B1F3D66D4128227FAE122CEAB21BEDC318D61EA5EDF86F21C"
+  },
+  {
+    "path": "src/server/Program.cs",
+    "sha256": "A88150FB4DA5203AD25F692C31C134C29E51361F4AFCE0241E1253307F4BA790"
+  },
+  {
+    "path": "src/server/RvtMcp.Server.csproj",
+    "sha256": "070CFECE7F45C9D5A2B8A16B8A235FBBFF34B5BC06644E0747BC2C5C1C2C284D"
+  },
+  {
+    "path": "src/shared/Handlers/AnalyzeMepNetworkHandler.cs",
+    "sha256": "EF57982DB87EF2AAE8366846834B2B8880C5BF30E25A2478C1BD7CF6DFBB024B"
+  },
+  {
+    "path": "src/shared/Handlers/GetSystemInventoryHandler.cs",
+    "sha256": "74F12AE5603F38EC63A13679E3E21E4B9464FACFC863F26D918085D0F4F501E8"
+  },
+  {
+    "path": "src/shared/Handlers/ListMepSystemsHandler.cs",
+    "sha256": "DA5BD5DA3C925128A28D2B9D58E0E9F9FE1652ED9D587859A0DA58A734ED573C"
+  },
+  {
+    "path": "src/shared/Handlers/MepMembershipPolicy.cs",
+    "sha256": "3F0E40000725CE88C3137963D32B6379ACD802DA5829174D4386A0F8772218BC"
+  },
+  {
+    "path": "src/shared/Handlers/MepSystemMembership.cs",
+    "sha256": "4FEBB577AE2A7C68C0BC6A83C31A6CEC0EE14B59855DAF39F2898AF83C3E8456"
+  },
+  {
+    "path": "src/shared/Properties/PlatformSupport.cs",
+    "sha256": "4575CC17B8A830CFC6995BA9C233C76B6945C64ACCD8165EA3BE39F38F6E1565"
+  },
+  {
+    "path": "tests/RvtMcp.Tests/Golden/tools-list-adaptive-bake.json",
+    "sha256": "EE4B38839CE7D9853DCC757018D86B74A215A2F7A370DA46D2367D927B362B79"
+  },
+  {
+    "path": "tests/RvtMcp.Tests/Golden/tools-list.json",
+    "sha256": "E3463FC8013417F70EE52126350EA5412E4DE0A95E09C8E5A3B94F95EBBFA10C"
+  },
+  {
+    "path": "tests/RvtMcp.Tests/MepConnectorDomainTests.cs",
+    "sha256": "BD1BC758D38AFAC5080FA1B9B2B08451B59CA141BD1322B364C9501CA0E4036D"
+  },
+  {
+    "path": "tests/RvtMcp.Tests/MepMembershipPolicyTests.cs",
+    "sha256": "9C21BB0DA94D697F140A5DE745036A7EDCFB8C5C90941405B9183B78ECD9DE3E"
+  },
+  {
+    "path": "tests/RvtMcp.Tests/MepSystemMembershipTests.cs",
+    "sha256": "FBB4D3C117AF111B2B5B3D3359818BF852F2178D84E59CB633E3D0B1502EEDD8"
+  },
+  {
+    "path": "tests/RvtMcp.Tests/RvtMcp.Tests.csproj",
+    "sha256": "9334B8DAB05DC50F500B8489F8635FD61AF402833004DBFD023B26E92741C86E"
+  },
+  {
+    "path": "tests/RvtMcp.Tests/SqliteRuntimeTests.cs",
+    "sha256": "0DF4533CB3D70AAA1F7046E202D17CFFA9DA3DE1BF7FCA091D63E15FE28F73D4"
+  }
+]

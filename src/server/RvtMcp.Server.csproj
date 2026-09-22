@@ -6,6 +6,7 @@
     <RootNamespace>RvtMcp.Server</RootNamespace>
     <AssemblyName>RvtMcp.Server</AssemblyName>
     <LangVersion>latest</LangVersion>
+    <NuGetAuditMode>all</NuGetAuditMode>
   </PropertyGroup>
 
   <!-- NuGet .NET tool packaging (P4-001) -->
@@ -51,6 +52,8 @@
     <PackageReference Include="ModelContextProtocol" Version="1.1.0" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.1.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <!-- Pin patched native SQLite without changing managed assembly bindings. -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>

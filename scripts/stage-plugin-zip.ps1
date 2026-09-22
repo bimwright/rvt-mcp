@@ -80,7 +80,11 @@ foreach ($s in $shells) {
         'SQLitePCLRaw*.dll',
         'Microsoft.CodeAnalysis*.dll',
         'System.Collections.Immutable.dll',   # net48 only, harmless glob-miss on net8/10
-        'System.Reflection.Metadata.dll'      # net48 only
+        'System.Reflection.Metadata.dll',     # net48 only
+        'System.Memory.dll',                  # SQLitePCLRaw net48 dependencies
+        'System.Buffers.dll',
+        'System.Numerics.Vectors.dll',
+        'System.Runtime.CompilerServices.Unsafe.dll'
     )
     foreach ($p in $patterns) {
         Get-ChildItem -Path $binDir -Filter $p -File -ErrorAction SilentlyContinue |
@@ -89,20 +93,18 @@ foreach ($s in $shells) {
 
     # Native SQLite runtime. Revit is Windows x64 only for this package, so do
     # not ship Linux/macOS/wasm native assets from Microsoft.Data.Sqlite.
-    $runtimesSrc = Join-Path $binDir 'runtimes'
-    if (Test-Path $runtimesSrc) {
-        $nativeSqlite = Join-Path $runtimesSrc 'win-x64\native\e_sqlite3.dll'
-        if (Test-Path $nativeSqlite) {
-            $nativeDest = Join-Path $destDir 'runtimes\win-x64\native'
-            New-Item -ItemType Directory -Path $nativeDest -Force | Out-Null
-            Copy-Item -Path $nativeSqlite -Destination $nativeDest -Force
-
-            # Revit add-ins are not launched by dotnet.exe, so native assets under
-            # runtimes/win-x64/native are not always resolved by the host. Keep a
-            # root copy beside RvtMcp.Plugin.dll for Microsoft.Data.Sqlite.
-            Copy-Item -Path $nativeSqlite -Destination $destDir -Force
-        }
+    $nativeSqlite = Join-Path $binDir 'runtimes\win-x64\native\e_sqlite3.dll'
+    if (-not (Test-Path $nativeSqlite)) {
+        throw "Native SQLite missing for Revit 20${year}; rebuild before packaging."
     }
+    $nativeDest = Join-Path $destDir 'runtimes\win-x64\native'
+    New-Item -ItemType Directory -Path $nativeDest -Force | Out-Null
+    Copy-Item -Path $nativeSqlite -Destination $nativeDest -Force
+
+    # Revit add-ins are not launched by dotnet.exe, so native assets under
+    # runtimes/win-x64/native are not always resolved by the host. Keep a
+    # root copy beside RvtMcp.Plugin.dll for Microsoft.Data.Sqlite.
+    Copy-Item -Path $nativeSqlite -Destination $destDir -Force
 
     # Addin manifest at plugin root.
     Copy-Item -Path $addinFile -Destination $destDir -Force

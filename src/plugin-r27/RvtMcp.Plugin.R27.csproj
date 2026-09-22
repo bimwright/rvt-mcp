@@ -4,6 +4,7 @@
     <RootNamespace>RvtMcp.Plugin</RootNamespace>
     <AssemblyName>RvtMcp.Plugin</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NuGetAuditMode>all</NuGetAuditMode>
     <UseWPF>true</UseWPF>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RevitVersion>2027</RevitVersion>
@@ -24,6 +25,8 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <!-- Pin patched native SQLite without changing managed assembly bindings. -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
   </ItemGroup>
 
@@ -36,6 +39,7 @@
       <DeployNativeSqlite Include="$(OutputPath)runtimes\win-x64\native\e_sqlite3.dll" Condition="Exists('$(OutputPath)runtimes\win-x64\native\e_sqlite3.dll')" />
     </ItemGroup>
     <MakeDir Directories="$(DeployDir)" />
+    <Error Condition="'@(DeployNativeSqlite)' == ''" Text="Native SQLite is missing; rebuild before deploying." />
     <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(DeployDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(DeployNativeSqlite)" DestinationFolder="$(DeployDir)" SkipUnchangedFiles="true" />
     <Exec Command="if exist &quot;$(OutputPath)runtimes&quot; xcopy /Y /Q /S /E /I &quot;$(OutputPath)runtimes&quot; &quot;$(DeployDir)runtimes&quot;" IgnoreExitCode="true" />

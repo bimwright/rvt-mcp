@@ -5,6 +5,7 @@
     <RootNamespace>RvtMcp.Plugin</RootNamespace>
     <AssemblyName>RvtMcp.Plugin</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NuGetAuditMode>all</NuGetAuditMode>
     <LangVersion>latest</LangVersion>
     <DefineConstants>REVIT2022</DefineConstants>
   </PropertyGroup>
@@ -18,6 +19,8 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <!-- Pin patched native SQLite without changing managed assembly bindings. -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
   </ItemGroup>
 
@@ -40,10 +43,11 @@
       <DeployDir>$(APPDATA)\Autodesk\Revit\Addins\2022\RvtMcp\</DeployDir>
     </PropertyGroup>
     <ItemGroup>
-      <DeployFiles Include="$(OutputPath)RvtMcp.*.dll;$(OutputPath)Newtonsoft.Json.dll;$(OutputPath)Microsoft.Data.Sqlite.dll;$(OutputPath)SQLitePCLRaw*.dll;$(OutputPath)Microsoft.CodeAnalysis*.dll;$(OutputPath)System.Collections.Immutable.dll;$(OutputPath)System.Reflection.Metadata.dll" />
+      <DeployFiles Include="$(OutputPath)RvtMcp.*.dll;$(OutputPath)Newtonsoft.Json.dll;$(OutputPath)Microsoft.Data.Sqlite.dll;$(OutputPath)SQLitePCLRaw*.dll;$(OutputPath)Microsoft.CodeAnalysis*.dll;$(OutputPath)System.Collections.Immutable.dll;$(OutputPath)System.Reflection.Metadata.dll;$(OutputPath)System.Memory.dll;$(OutputPath)System.Buffers.dll;$(OutputPath)System.Numerics.Vectors.dll;$(OutputPath)System.Runtime.CompilerServices.Unsafe.dll" />
       <DeployNativeSqlite Include="$(OutputPath)runtimes\win-x64\native\e_sqlite3.dll" Condition="Exists('$(OutputPath)runtimes\win-x64\native\e_sqlite3.dll')" />
     </ItemGroup>
     <MakeDir Directories="$(DeployDir)" />
+    <Error Condition="'@(DeployNativeSqlite)' == ''" Text="Native SQLite is missing; rebuild before deploying." />
     <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(DeployDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(DeployNativeSqlite)" DestinationFolder="$(DeployDir)" SkipUnchangedFiles="true" />
     <Exec Command="if exist &quot;$(OutputPath)runtimes&quot; xcopy /Y /Q /S /E /I &quot;$(OutputPath)runtimes&quot; &quot;$(DeployDir)runtimes&quot;" IgnoreExitCode="true" />

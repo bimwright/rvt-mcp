@@ -13,10 +13,16 @@ namespace RvtMcp.Plugin.Handlers
     public class ListMepSystemsHandler : IRevitCommand
     {
         public string Name => "list_mep_systems";
-        public string Description => "List all MEP systems (mechanical/HVAC, piping/plumbing, electrical) in the document. Optional domain_filter: all (default), mechanical, piping, electrical. limit caps the number of returned systems (default 1000).";
+        public string Description => "List all MEP systems (mechanical/HVAC, piping/plumbing, electrical) in the document. Optional domain_filter: all (default), mechanical, piping, electrical. limit caps the number of returned systems (default 1000). element_count is pipes and fittings, ducts and fittings, or electrical circuit members. terminal_count excludes base equipment. Membership read failures return an error, never zero counts.";
         public string ParametersSchema => @"{""type"":""object"",""properties"":{""domain_filter"":{""type"":""string"",""enum"":[""all"",""mechanical"",""piping"",""electrical""],""default"":""all""},""limit"":{""type"":""integer"",""default"":1000,""minimum"":1,""maximum"":10000}}}";
 
         public CommandResult Execute(UIApplication app, string paramsJson)
+        {
+            try { return ExecuteCore(app, paramsJson); }
+            catch (Exception ex) { return CommandResult.Fail("Failed to list MEP systems: " + ex.Message); }
+        }
+
+        private CommandResult ExecuteCore(UIApplication app, string paramsJson)
         {
             var doc = app.ActiveUIDocument?.Document;
             if (doc == null)
@@ -106,13 +112,7 @@ namespace RvtMcp.Plugin.Handlers
             string name = null;
             try { name = system.Name; } catch { }
 
-            int elementCount = 0;
-            try
-            {
-                var elems = system.Elements;
-                if (elems != null) elementCount = elems.Size;
-            }
-            catch { }
+            var membership = MepSystemMembership.Read(system).Counts;
 
             string systemType = null;
             try
@@ -134,7 +134,8 @@ namespace RvtMcp.Plugin.Handlers
                 name = name ?? string.Empty,
                 domain = domain,
                 system_type = systemType ?? string.Empty,
-                element_count = elementCount,
+                element_count = membership.ElementCount,
+                terminal_count = membership.TerminalCount,
                 is_well_connected = isWellConnected
             };
         }
