@@ -382,6 +382,18 @@ pwsh scripts/stage-plugin-zip.ps1 -Config Release
 
 ---
 
+## 社区贡献
+
+问题报告、复现示例和建议帮助 rvt-mcp 持续改进。感谢：
+
+| 贡献者 | 贡献 |
+|--------|------|
+| [@thiagobarretosn-hue](https://github.com/thiagobarretosn-hue) | 提供 MEP 网络成员和管道系统处理问题的复现报告（[#11](https://github.com/bimwright/rvt-mcp/issues/11)、[#12](https://github.com/bimwright/rvt-mcp/issues/12)）。 |
+| [@razmikb](https://github.com/razmikb) | 报告宿主族放置和楼梯/send-code 错误，推动了放置验证、辅助类支持和更全面的错误处理测试（[#13](https://github.com/bimwright/rvt-mcp/issues/13)、[#14](https://github.com/bimwright/rvt-mcp/issues/14)）。 |
+| [@Thestreetarckitect](https://github.com/Thestreetarckitect) | 提出 Family Authoring Tool Suite 建议，帮助明确路线图和产品范围（[#7](https://github.com/bimwright/rvt-mcp/issues/7)）。 |
+
+---
+
 ## bimwright
 
 连接 AI 助手与 BIM、CAD 应用的开源工具。

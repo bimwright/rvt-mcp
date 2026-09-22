@@ -382,6 +382,18 @@ Dùng được, không thần thánh. CI build 6 shell + test server. Runtime s�
 
 ---
 
+## Đóng góp từ cộng đồng
+
+Báo lỗi, ví dụ tái hiện và đề xuất giúp cải thiện rvt-mcp. Cảm ơn:
+
+| Người đóng góp | Đóng góp |
+|----------------|----------|
+| [@thiagobarretosn-hue](https://github.com/thiagobarretosn-hue) | Báo lỗi kèm ví dụ tái hiện về thành phần mạng MEP và xử lý hệ thống ống ([#11](https://github.com/bimwright/rvt-mcp/issues/11), [#12](https://github.com/bimwright/rvt-mcp/issues/12)). |
+| [@razmikb](https://github.com/razmikb) | Báo lỗi đặt family có host và xử lý lỗi cầu thang/send-code, giúp bổ sung kiểm tra vị trí, hỗ trợ lớp helper và mở rộng kiểm thử xử lý lỗi ([#13](https://github.com/bimwright/rvt-mcp/issues/13), [#14](https://github.com/bimwright/rvt-mcp/issues/14)). |
+| [@Thestreetarckitect](https://github.com/Thestreetarckitect) | Đề xuất Family Authoring Tool Suite giúp làm rõ lộ trình và phạm vi sản phẩm ([#7](https://github.com/bimwright/rvt-mcp/issues/7)). |
+
+---
+
 ## bimwright
 
 Các công cụ mã nguồn mở kết nối trợ lý AI với ứng dụng BIM và CAD.
