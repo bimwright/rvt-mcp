@@ -5282,7 +5282,7 @@
     },
     {
       "name": "revit_send_code_to_revit",
-      "description_hash": "sha256:b432ea3aaaa106144bfca11b143de25a54613dbe0be73a7b7a77d1eee532977e",
+      "description_hash": "sha256:3f9b2bd31856a17b93015923c9a4445541eeb0f232db0a3739ff4e5b1c4f98f3",
       "inputSchema": {
         "properties": {
           "code": {

@@ -154,6 +154,8 @@ revit_send_code_to_revit   # C# body, compiled and run inside the plugin
 
 That tool is on by default (toolset `meta`). Strip it with `--read-only` or `--disable-toolbaker` if you do not want agents compiling code in the model.
 
+The source checkout also supports a C# body with helper type declarations and an opt-in failure preprocessor; these additions are not in the published v0.6.1 plugin. See [send-code source forms and failure handling](docs/send-code.md). Upgrade the server and plugin together so tool descriptions match the loaded runtime.
+
 ### ToolBaker (optional)
 
 Default surface includes `revit_send_code_to_revit`. `revit_list_baked_tools` / `revit_run_baked_tool` need `--toolsets toolbaker` (or `--toolsets all`).

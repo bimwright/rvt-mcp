@@ -23,30 +23,9 @@ namespace RvtMcp.Plugin.Handlers
             if (string.IsNullOrWhiteSpace(code))
                 return Fail("code parameter is required.");
 
-            // Wrap user code in a class if it doesn't contain one
-            var fullCode = code;
-            if (!code.Contains("class "))
-            {
-                fullCode = @"
-using System;
-using System.Linq;
-using System.Collections.Generic;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
-
-public class McpDynamicScript
-{
-    public static object Run(UIApplication app)
-    {
-        var doc = app.ActiveUIDocument.Document;
-        var uidoc = app.ActiveUIDocument;
-        " + code + @"
-    }
-}";
-            }
-
             try
             {
+                var fullCode = SendCodeSourceBuilder.Build(code);
                 var syntaxTree = CSharpSyntaxTree.ParseText(fullCode);
 
                 // Gather references from loaded assemblies (safe for any .NET runtime)
