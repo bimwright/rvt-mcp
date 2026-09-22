@@ -1008,12 +1008,12 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_create_point_based_element", Destructive = false), System.ComponentModel.Description("Create a point-based element (door, window, furniture). Params: typeId (from get_available_family_types), x/y/z (mm), level (name).")]
-        public static async Task<string> CreatePointBasedElement(long typeId, double x, double y, double z = 0, string level = "")
+        [McpServerTool(Name = "revit_create_point_based_element", Destructive = false), System.ComponentModel.Description("Create a OneLevelBased or OneLevelBasedHosted family (door, window, furniture). typeId from get_available_family_types; x/y/z are model coordinates in mm; level is a name. Hosted families require host_id of the intended local host; no host is inferred. Non-hosted families ignore host_id with a warning. Work-plane/face and other placement types are unsupported. Validates actual host and position within 1 mm before commit; returns placement_type, actual host_id and location_mm.")]
+        public static async Task<string> CreatePointBasedElement(long typeId, double x, double y, double z = 0, string level = "", long? host_id = null)
         {
             try
             {
-                var result = await ToolGateway.SendToRevit("create_point_based_element", new { typeId, x, y, z, level });
+                var result = await ToolGateway.SendToRevit("create_point_based_element", new { typeId, x, y, z, level, host_id });
                 return JsonConvert.SerializeObject(result, Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }

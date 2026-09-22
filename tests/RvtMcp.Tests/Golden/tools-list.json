@@ -1628,9 +1628,13 @@
     },
     {
       "name": "revit_create_point_based_element",
-      "description_hash": "sha256:0bcdd7ec2ca2ef5f9367c146cc98c772d709df2a69d274556b0b2a2d7f0290a4",
+      "description_hash": "sha256:a8f332b24132839ceb99e038ce05bb8a353155ae8b5cda3924fa143f04bacbc7",
       "inputSchema": {
         "properties": {
+          "host_id": {
+            "description": "",
+            "type": "Nullable`1"
+          },
           "level": {
             "description": "",
             "type": "String"

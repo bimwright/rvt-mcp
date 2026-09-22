@@ -1,0 +1,26 @@
+[
+  {
+    "path": "src/shared/Handlers/CreatePointBasedElementHandler.cs",
+    "sha256": "1AD0F4071DF6B5D576598A2C0CF3B1B7FA225825B840BF7DB3B829353DF5FDC9"
+  },
+  {
+    "path": "src/shared/Views/Toast/McpToastWindow.cs",
+    "sha256": "3AD78C132D149D5381210C79E48DF01BD2B3464C5C59FA582BEDC24A73E7A06F"
+  },
+  {
+    "path": "src/shared/Views/Toast/McpToastManager.cs",
+    "sha256": "127DF742E1D6E60961F64F1441A5608396365C97A88362CAE091F722F41A458F"
+  },
+  {
+    "path": "src/server/Program.cs",
+    "sha256": "E65C0F69C254379F6B09781CA957D91EE419B11494C0FD69C0CEAA605DFB15C9"
+  },
+  {
+    "path": "tests/RvtMcp.Tests/PointBasedPlacementTests.cs",
+    "sha256": "C309074C65DE20A0C86B00D0B68B881959BF42123BBE260C6B54D2C30BDF8A56"
+  },
+  {
+    "path": "docs/testing/issue-13/typed-server-smoke.py",
+    "sha256": "40A5830143A3C5960BDF10847054B834A528BB5C7A049F41B481114A3927C87D"
+  }
+]

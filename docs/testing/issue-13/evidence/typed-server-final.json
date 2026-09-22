@@ -1,0 +1,330 @@
+{
+  "tested_at_utc": "2026-09-22T10:23:59.138642+00:00",
+  "server": "D:\\Projects\\bimwright\\rvt-mcp\\publish\\server-issues-11-13\\RvtMcp.Server.exe",
+  "server_dll_sha256": "1C9A5E4D61B1346A3AF1780101B861B50814D78CE43608E39FA61666268F4F7D",
+  "tool_count": 229,
+  "schema": {
+    "name": "revit_create_point_based_element",
+    "description": "Create a OneLevelBased or OneLevelBasedHosted family (door, window, furniture). typeId from get_available_family_types; x/y/z are model coordinates in mm; level is a name. Hosted families require host_id of the intended local host; no host is inferred. Non-hosted families ignore host_id with a warning. Work-plane/face and other placement types are unsupported. Validates actual host and position within 1 mm before commit; returns placement_type, actual host_id and location_mm.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "typeId": {
+          "type": "integer"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number",
+          "default": 0
+        },
+        "level": {
+          "type": "string",
+          "default": ""
+        },
+        "host_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "typeId",
+        "x",
+        "y"
+      ]
+    },
+    "annotations": {
+      "destructiveHint": false
+    },
+    "execution": {
+      "taskSupport": "optional"
+    }
+  },
+  "schema_pass": true,
+  "runtime": {
+    "model": "Snowdon Towers Sample HVAC",
+    "modified": false,
+    "revit": "2027",
+    "build": "27.0.10.13",
+    "pluginSha256": "3889F5AB7BCFE734BAD067FCB071BED30E8B293F43D17A9281B48A60341B0B1D",
+    "pluginMvid": "94493180-72b2-434e-a2fb-472b20053112",
+    "toastEnabled": true,
+    "pid": 72368
+  },
+  "installed_handler_suite": {
+    "mode": "installed plugin",
+    "model": "Snowdon Towers Sample HVAC",
+    "revit": "2027",
+    "total": 16,
+    "failed": 0,
+    "restored": true,
+    "modified": false,
+    "results": [
+      {
+        "name": "door_without_host_rejected",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "Error": "FamilyPlacementType=OneLevelBasedHosted requires host_id. Select the intended host element; no host was inferred and nothing was created."
+        }
+      },
+      {
+        "name": "door_correct_host_and_point",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "elementId": 1558890,
+          "familyName": "Door-Passage-Single-Flush",
+          "typeName": "30\" x 80\"",
+          "category": "Doors",
+          "placement_type": "OneLevelBasedHosted",
+          "host_id": 1558887,
+          "location_mm": {
+            "x": 2500.0,
+            "y": 2000.0000000000002,
+            "z": 0.0
+          },
+          "warning": null
+        }
+      },
+      {
+        "name": "window_correct_host_and_elevation",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "elementId": 1558892,
+          "familyName": "Window-Double-Hung",
+          "typeName": "24\" x 42\"",
+          "category": "Windows",
+          "placement_type": "OneLevelBasedHosted",
+          "host_id": 1558887,
+          "location_mm": {
+            "x": 2500.0,
+            "y": 2000.0000000000002,
+            "z": 1200.0
+          },
+          "warning": null
+        }
+      },
+      {
+        "name": "furniture_without_host",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "elementId": 1558902,
+          "familyName": "Chair-Breuer",
+          "typeName": "Chair-Breuer",
+          "category": "Furniture",
+          "placement_type": "OneLevelBased",
+          "host_id": null,
+          "location_mm": {
+            "x": 2500.0,
+            "y": 2000.0000000000002,
+            "z": 9.880417302724096e-14
+          },
+          "warning": null
+        }
+      },
+      {
+        "name": "furniture_ignores_host_with_warning",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "elementId": 1558903,
+          "familyName": "Chair-Breuer",
+          "typeName": "Chair-Breuer",
+          "category": "Furniture",
+          "placement_type": "OneLevelBased",
+          "host_id": null,
+          "location_mm": {
+            "x": 2500.0,
+            "y": 2000.0000000000002,
+            "z": 9.880417302724096e-14
+          },
+          "warning": "host_id ignored: this OneLevelBased family does not require a host."
+        }
+      },
+      {
+        "name": "missing_host_element_rejected",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "Error": "Host element 999999999 was not found in the active document."
+        }
+      },
+      {
+        "name": "wrong_host_kind_rejected",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "Error": "This hosted door/window requires host_id of a wall in the active document."
+        }
+      },
+      {
+        "name": "work_plane_without_host_rejected",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "Error": "FamilyPlacementType=WorkPlaneBased requires an explicit face/work plane and placement orientation. This tool does not support that placement; host_id alone is insufficient. Nothing was created."
+        }
+      },
+      {
+        "name": "work_plane_with_wall_rejected",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "Error": "FamilyPlacementType=WorkPlaneBased requires an explicit face/work plane and placement orientation. This tool does not support that placement; host_id alone is insufficient. Nothing was created."
+        }
+      },
+      {
+        "name": "view_based_rejected",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "Error": "FamilyPlacementType=ViewBased is not supported by this point-placement tool. Nothing was created."
+        }
+      },
+      {
+        "name": "unknown_level_rejected",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "Error": "Level 'Issue13-missing-level' was not found."
+        }
+      },
+      {
+        "name": "missing_coordinate_rejected",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "Error": "Failed to create instance: x must be a finite number in mm."
+        }
+      },
+      {
+        "name": "door_upper_level_world_coordinates",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "elementId": 1558904,
+          "familyName": "Door-Passage-Single-Flush",
+          "typeName": "30\" x 80\"",
+          "category": "Doors",
+          "placement_type": "OneLevelBasedHosted",
+          "host_id": 1558889,
+          "location_mm": {
+            "x": 2500.0,
+            "y": 8000.000000000001,
+            "z": 3048.0
+          },
+          "warning": null
+        }
+      },
+      {
+        "name": "furniture_upper_level_world_coordinates",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "elementId": 1558906,
+          "familyName": "Chair-Breuer",
+          "typeName": "Chair-Breuer",
+          "category": "Furniture",
+          "placement_type": "OneLevelBased",
+          "host_id": null,
+          "location_mm": {
+            "x": 2500.0,
+            "y": 2000.0000000000002,
+            "z": 3048.0
+          },
+          "warning": null
+        }
+      },
+      {
+        "name": "constrained_furniture_offset_rejected",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "Error": "Failed to create instance: Revit did not place the instance within 1 mm of the requested model coordinates. Check the host, level and family placement constraints. Placement was rolled back."
+        }
+      },
+      {
+        "name": "off_wall_point_rolls_back",
+        "pass": true,
+        "restored": true,
+        "error": null,
+        "data": {
+          "Error": "Failed to create instance: Revit did not place the instance within 1 mm of the requested model coordinates. Check the host, level and family placement constraints. Placement was rolled back."
+        }
+      }
+    ]
+  },
+  "fixture": {
+    "originalPath": "C:\\Program Files\\Autodesk\\Revit 2027\\Samples\\Snowdon Towers Sample HVAC.rvt",
+    "originalModified": false,
+    "typeId": 5634,
+    "hostId": 5640,
+    "levelName": "Level 2",
+    "scratch": "D:\\Projects\\bimwright\\rvt-mcp\\artifacts\\issue-13\\typed-fixture-1790072646589854200.rvt"
+  },
+  "missing_host": {
+    "error_text": "Error: FamilyPlacementType=OneLevelBasedHosted requires host_id. Select the intended host element; no host was inferred and nothing was created.",
+    "isError": false
+  },
+  "created": {
+    "elementId": 5641,
+    "familyName": "Door-Passage-Single-Flush",
+    "typeName": "30\" x 80\"",
+    "category": "Doors",
+    "placement_type": "OneLevelBasedHosted",
+    "host_id": 5640,
+    "location_mm": {
+      "x": 2500.0,
+      "y": 2000.0000000000002,
+      "z": 0.0
+    },
+    "warning": null
+  },
+  "actual": {
+    "host": 5640,
+    "x": 2500.0,
+    "y": 2000.0000000000002,
+    "z": 0.0
+  },
+  "live_pass": true,
+  "runtime_after_toasts": {
+    "model": "typed-fixture-1790072646589854200",
+    "modified": true,
+    "revit": "2027",
+    "build": "27.0.10.13",
+    "pluginSha256": "3889F5AB7BCFE734BAD067FCB071BED30E8B293F43D17A9281B48A60341B0B1D",
+    "pluginMvid": "94493180-72b2-434e-a2fb-472b20053112",
+    "toastEnabled": true,
+    "pid": 72368
+  },
+  "cleanup": {
+    "model": "Snowdon Towers Sample HVAC",
+    "modified": false,
+    "scratchClosed": true
+  }
+}
