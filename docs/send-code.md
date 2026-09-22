@@ -81,6 +81,8 @@ This is a control-flow template, not a complete stair generator. `scope.Commit(n
 
 ## Verification limits
 
+Revit 2027 build 27.0.10.13 also passed these source-form, warning-reporting, injected-Error rollback, and exception-cleanup probes in a fresh process loading the deployed plugin. A separate retained stair was then created entirely through `revit_send_code_to_revit`, with 15 risers, 280 mm tread depth, and 1,200 mm run width; the helper reported no warnings or errors. See the [tested payload, image, and verification record](testing/issue-14/README.md). This does not reproduce the original Revit 2025 crash. A native `create_stairs` tool remains a separate feature request.
+
 Live probes on Revit 2022 build 22.0.2.392 created a valid straight stair through both full-source and body/helper forms, then rolled back the outer diagnostic group. An injected Error caused transaction rollback without a remaining stair. A 100 mm tread depth produced a Warning on the tested model, so this does not reproduce the reported Revit 2025 crash or establish the same severity across models/versions.
 
 Follow-up probes verified `committed_with_warnings` with the tread warning preserved in `Messages`. Both a deliberately thrown geometry-path exception and `Commit(null)` left the scope active before cleanup; the `finally` block cancelled it, and a subsequent stairs scope could start. This validates those cleanup paths, not recovery from an arbitrary native crash.

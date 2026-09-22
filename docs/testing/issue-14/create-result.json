@@ -1,0 +1,18 @@
+{
+  "executed": true,
+  "result": {
+    "outcome": "committed",
+    "stairsId": 3327759,
+    "runId": 3327760,
+    "viewId": 3327821,
+    "view": "Issue14 - Send-code Stair Demo",
+    "risers": 15,
+    "riserHeightMm": 164.25333333332864,
+    "treadDepthMm": 280,
+    "widthMm": 1200,
+    "totalHeightMm": 2463.7999999999292,
+    "HadWarnings": false,
+    "HadErrors": false,
+    "Messages": []
+  }
+}
