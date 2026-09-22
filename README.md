@@ -156,6 +156,8 @@ That tool is on by default (toolset `meta`). Strip it with `--read-only` or `--d
 
 The source checkout also supports a C# body with helper type declarations and an opt-in failure preprocessor; these additions are not in the published v0.6.1 plugin. See [send-code source forms and failure handling](docs/send-code.md). Upgrade the server and plugin together so tool descriptions match the loaded runtime.
 
+For stairs, use the [conversation and send-code workflow](docs/stairs-workflow.md): tested scripts plus sample questions to resolve layout, dimensions, and railing intent before adapting the code. A dedicated `create_stairs` tool is deferred.
+
 ### ToolBaker (optional)
 
 Default surface includes `revit_send_code_to_revit`. `revit_list_baked_tools` / `revit_run_baked_tool` need `--toolsets toolbaker` (or `--toolsets all`).

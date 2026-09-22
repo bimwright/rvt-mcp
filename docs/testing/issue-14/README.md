@@ -2,6 +2,8 @@
 
 **Next session:** read [HANDOFF.md](HANDOFF.md). The [ready-to-post issue comment](ISSUE-COMMENT.md) includes a complete portable C# payload; [tool arguments](reporter-u-stair.tool-arguments.json) are also provided. Post only after the next authorized push succeeds.
 
+**For new stair requests:** use the [conversation and send-code workflow](../../stairs-workflow.md) to resolve design choices before adapting these examples. The owner has deferred a dedicated `create_stairs` tool in favor of this approach.
+
 Recorded on 2026-09-22 against source commit `f35a9575362a9eafbac6e381363ee6751c2e1406`. These additions are unreleased; v0.6.1 does not contain the new source builder or `SafeFailuresPreprocessor`.
 
 ## Retained Revit 2027 demo
@@ -75,7 +77,7 @@ The original [report](https://github.com/bimwright/rvt-mcp/issues/14) describes 
 - [ ] Push the implementation and this verification record when the owner next requests a push.
 - [ ] After that push succeeds, post [ISSUE-COMMENT.md](ISSUE-COMMENT.md) on #14; it expands the summary below with the entire portable test payload. Do not describe the change as a published release until one exists.
 - [ ] Obtain Revit 2025 reporter confirmation or equivalent reproduction before claiming the reported crash fixed.
-- [ ] Resolve or explicitly track the separate native `create_stairs` feature request before closing the whole issue. No native stair tool was added here.
+- [x] Record the native `create_stairs` proposal's disposition: deferred in favor of the conversation and send-code workflow. Include this decision in the next issue notification; crash confirmation remains a separate pending item.
 
 Draft comment for posting **after the push**, not posted as part of this verification:
 
@@ -85,6 +87,6 @@ Draft comment for posting **after the push**, not posted as part of this verific
 >
 > We validated the tested paths on Revit 2022 and a fresh Revit 2027 process with the updated plugin. We also retained and saved a real 15-riser stair created entirely through send-code on 2027, with a 280 mm tread and 1,200 mm width, without reported warnings/errors. A 100 mm tread was a Warning in our fixtures; the Error rollback test used an explicitly injected Error. We have therefore not reproduced or confirmed the fix for your Revit 2025 crash. Could you share the failing script and a minimal model, or confirm the behavior once the updated plugin is available?
 >
-> Your request to consider a native `create_stairs` tool is also recorded. This change provides the send-code path; it does not add that dedicated tool.
+> We considered a native `create_stairs` tool and are deferring it in favor of a documented conversation and send-code workflow: tested examples plus targeted questions about layout, dimensions, and railing intent. Agents should adapt code to the agreed design instead of selecting arbitrary defaults or substituting railing types to suppress warnings.
 
 > An additional retained 2027 test created a U-shaped stair with two 10-riser runs and one intermediate landing. Its initial default railing emitted a continuity warning, which was preserved in the response. Changing only the new railing instances to the sample's Handrail - Pipe type committed without warnings. The verification record includes the exact creation/presentation payloads, readback, and final isometric image.

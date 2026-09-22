@@ -8,14 +8,19 @@ Session implementation and local verification are complete. **Do not equate this
 2. On the owner's next push request, push the issue #14 commits along with the agreed scope.
 3. After successful push, post [ISSUE-COMMENT.md](ISSUE-COMMENT.md) with `gh issue comment 14 --repo bimwright/rvt-mcp --body-file docs/testing/issue-14/ISSUE-COMMENT.md`. It includes the **entire self-contained C# payload**, not just links. Check for an equivalent existing comment first to avoid duplication. This future notification was requested by the owner; do not post before the push.
 4. Record the resulting commit/comment URLs here. Do not promise a published plugin until release packaging actually happens.
-5. Request reporter verification on Revit 2025 or their failing script/minimal model. Track the optional native `create_stairs` request separately or agree its disposition before closing all of #14.
+5. Request reporter verification on Revit 2025 or their failing script/minimal model. Explain the owner's decision to defer a native `create_stairs` tool in favor of the documented conversation and send-code workflow. Do not close #14 solely because that design decision is recorded.
+
+## Updated design decision
+
+The owner approved [stairs-workflow.md](../../stairs-workflow.md): preserve tested payloads and guide agents to resolve design intent through targeted questions before adapting send-code. No dedicated `create_stairs` tool or runtime questionnaire is being implemented. Reuse known answers and delegated choices; do not require redundant confirmation. In particular, do not make the demo's railing-type substitution an automatic repair rule. This is agent/user guidance, not a server-enforced validation layer.
 
 ## Commits and evidence
 
 - `f35a957`: syntax-aware send-code source builder; opt-in SafeFailuresPreprocessor; warning visibility; finally/Cancel documentation. 484 tests passed; plugins for 2022–2027 built with deployment disabled.
 - `4769935`: fresh deployed-plugin Revit 2027 verification, retained straight-stair script/result/image, next-push draft.
 - `811ea99`: retained U stair with two runs and intermediate landing, instance-only railing adjustment, readback and iso image.
-- This handoff adds a portable reporter payload and a ready-to-post full-code comment. No product implementation changes.
+- `8133a30`: portable reporter payload, JSON arguments, handoff, and a ready-to-post full-code comment.
+- The subsequent documentation change adds the conversation workflow and updates the issue draft with the owner's decision. Original tested payloads are preserved; no product implementation changes.
 
 The [verification record](README.md) contains build/version details, plugin SHA-256, live matrix, images, and original exact payloads. The original fixture scripts remain in Git; they were not overwritten by the portable version.
 

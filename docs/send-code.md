@@ -31,6 +31,8 @@ The language remains C#. TypeScript or Python payloads are not supported by this
 
 ## Stairs and failure handling
 
+For a stair creation request, start with the [stairs conversation workflow](stairs-workflow.md). It links the tested scripts, explains their dependencies, and provides questions for unresolved design choices. Use it to agree the layout and railing intent before adapting the technical pattern below; a dedicated `create_stairs` tool is deferred.
+
 `StairsEditScope` is in `Autodesk.Revit.DB`; `Stairs` and `StairsRun` are in `Autodesk.Revit.DB.Architecture`. Begin the scope with no open transaction, then create runs/landings inside an inner transaction. Check the transaction result before committing the scope.
 
 The updated plugin provides `RvtMcp.Plugin.SafeFailuresPreprocessor`. It records each failure in `Messages`, flags `HadWarnings`, deletes warnings from Revit's failure processing, and requests a silent rollback for errors by setting `ClearAfterRollback`. Warning details must still be returned to the caller. This is opt-in; it does not make invalid geometry valid, and deleting warnings is not a design-quality check. In particular, a below-minimum tread-depth warning still requires review even when Revit permits the commit.
@@ -81,7 +83,7 @@ This is a control-flow template, not a complete stair generator. `scope.Commit(n
 
 ## Verification limits
 
-Revit 2027 build 27.0.10.13 also passed these source-form, warning-reporting, injected-Error rollback, and exception-cleanup probes in a fresh process loading the deployed plugin. A separate retained stair was then created entirely through `revit_send_code_to_revit`, with 15 risers, 280 mm tread depth, and 1,200 mm run width; the helper reported no warnings or errors. See the [tested payload, image, and verification record](testing/issue-14/README.md). This does not reproduce the original Revit 2025 crash. A native `create_stairs` tool remains a separate feature request.
+Revit 2027 build 27.0.10.13 also passed these source-form, warning-reporting, injected-Error rollback, and exception-cleanup probes in a fresh process loading the deployed plugin. A separate retained stair was then created entirely through `revit_send_code_to_revit`, with 15 risers, 280 mm tread depth, and 1,200 mm run width; the helper reported no warnings or errors. See the [tested payload, image, and verification record](testing/issue-14/README.md). This does not reproduce the original Revit 2025 crash. The native `create_stairs` proposal is deferred in favor of the documented conversation and send-code workflow.
 
 Live probes on Revit 2022 build 22.0.2.392 created a valid straight stair through both full-source and body/helper forms, then rolled back the outer diagnostic group. An injected Error caused transaction rollback without a remaining stair. A 100 mm tread depth produced a Warning on the tested model, so this does not reproduce the reported Revit 2025 crash or establish the same severity across models/versions.
 

@@ -10,7 +10,9 @@ You can try the complete code below without the new built-in helper: it uses the
 4. If your stair/railing defaults raise warnings, `committed_with_warnings` and `Messages` must be reviewed. Warnings are recorded before removal from Revit failure processing; this is not a compliance check. Our sample's Cable Railing warned about rail continuity.
 5. Please share your Revit build and full tool result. If your original crash persists, please include its failing script and a minimal model.
 
-A ready-made [JSON tool argument](https://github.com/bimwright/rvt-mcp/blob/master/docs/testing/issue-14/reporter-u-stair.tool-arguments.json) is also available. Your proposal for a native `create_stairs` tool remains recorded separately; this change does not implement it.
+A ready-made [JSON tool argument](https://github.com/bimwright/rvt-mcp/blob/master/docs/testing/issue-14/reporter-u-stair.tool-arguments.json) is also available.
+
+We considered your proposal for a native `create_stairs` tool and are deferring it in favor of a [conversation and send-code workflow](https://github.com/bimwright/rvt-mcp/blob/master/docs/stairs-workflow.md). It combines tested examples with targeted questions about levels, layout, dimensions, and railing intent. For a project-specific stair, the agent should resolve those choices with you and adapt the code; it should not silently substitute railing types or change geometry to eliminate warnings. The standalone script below remains a test demo with its explicitly stated defaults, not a project design template. This documentation decision does not establish a fix for the reported crash.
 
 <details>
 <summary>Complete send-code payload — copy the whole block</summary>
