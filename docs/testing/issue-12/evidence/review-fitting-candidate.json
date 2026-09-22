@@ -1,0 +1,243 @@
+{
+  "executed": true,
+  "result": {
+    "mode": "candidate source",
+    "model": "Review-MEP-2027",
+    "revit": "2027",
+    "build": "27.0.10.13",
+    "handlerMvid": "37379665-f97f-4b85-b232-cbbd0835bda2",
+    "total": 4,
+    "failed": 0,
+    "results": [
+      {
+        "kind": "pipe",
+        "explicitPorts": false,
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Success": true,
+          "Error": null,
+          "response": {
+            "connected": true,
+            "already_connected": true,
+            "element_id_1": 1559114,
+            "element_id_2": 1559117,
+            "connector_1_origin_mm": {
+              "x": 307644.8,
+              "y": 304800,
+              "z": 3048
+            },
+            "connector_2_origin_mm": {
+              "x": 307848,
+              "y": 305003.2,
+              "z": 3048
+            },
+            "gap_mm": 287.4,
+            "system_type_id_1": 712045,
+            "system_type_1": "Hydronic Supply",
+            "system_type_id_2": 712045,
+            "system_type_2": "Hydronic Supply",
+            "error": null
+          },
+          "fittingId": 1559120,
+          "direct": false,
+          "firstRefs": [
+            {
+              "owner": 1559114,
+              "port": 0
+            },
+            {
+              "owner": 1559120,
+              "port": 1
+            }
+          ],
+          "secondRefs": [
+            {
+              "owner": 1559117,
+              "port": 1
+            },
+            {
+              "owner": 1559120,
+              "port": 2
+            }
+          ],
+          "geometryUnchanged": true,
+          "inventoryUnchanged": true
+        }
+      },
+      {
+        "kind": "pipe",
+        "explicitPorts": true,
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Success": true,
+          "Error": null,
+          "response": {
+            "connected": true,
+            "already_connected": true,
+            "element_id_1": 1559123,
+            "element_id_2": 1559126,
+            "connector_1_origin_mm": {
+              "x": 307644.8,
+              "y": 304800,
+              "z": 3048
+            },
+            "connector_2_origin_mm": {
+              "x": 307848,
+              "y": 305003.2,
+              "z": 3048
+            },
+            "gap_mm": 287.4,
+            "system_type_id_1": 712045,
+            "system_type_1": "Hydronic Supply",
+            "system_type_id_2": 712045,
+            "system_type_2": "Hydronic Supply",
+            "error": null
+          },
+          "fittingId": 1559129,
+          "direct": false,
+          "firstRefs": [
+            {
+              "owner": 1559129,
+              "port": 1
+            },
+            {
+              "owner": 1559123,
+              "port": 0
+            }
+          ],
+          "secondRefs": [
+            {
+              "owner": 1559126,
+              "port": 1
+            },
+            {
+              "owner": 1559129,
+              "port": 2
+            }
+          ],
+          "geometryUnchanged": true,
+          "inventoryUnchanged": true
+        }
+      },
+      {
+        "kind": "duct",
+        "explicitPorts": false,
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Success": true,
+          "Error": null,
+          "response": {
+            "connected": true,
+            "already_connected": true,
+            "element_id_1": 1559132,
+            "element_id_2": 1559135,
+            "connector_1_origin_mm": {
+              "x": 307390.8,
+              "y": 304800,
+              "z": 3048
+            },
+            "connector_2_origin_mm": {
+              "x": 307848,
+              "y": 305257.2,
+              "z": 3048
+            },
+            "gap_mm": 646.6,
+            "system_type_id_1": 712041,
+            "system_type_1": "Supply Air",
+            "system_type_id_2": 712041,
+            "system_type_2": "Supply Air",
+            "error": null
+          },
+          "fittingId": 1559138,
+          "direct": false,
+          "firstRefs": [
+            {
+              "owner": 1559138,
+              "port": 1
+            },
+            {
+              "owner": 1559132,
+              "port": 0
+            }
+          ],
+          "secondRefs": [
+            {
+              "owner": 1559135,
+              "port": 1
+            },
+            {
+              "owner": 1559138,
+              "port": 2
+            }
+          ],
+          "geometryUnchanged": true,
+          "inventoryUnchanged": true
+        }
+      },
+      {
+        "kind": "duct",
+        "explicitPorts": true,
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Success": true,
+          "Error": null,
+          "response": {
+            "connected": true,
+            "already_connected": true,
+            "element_id_1": 1559141,
+            "element_id_2": 1559144,
+            "connector_1_origin_mm": {
+              "x": 307390.8,
+              "y": 304800,
+              "z": 3048
+            },
+            "connector_2_origin_mm": {
+              "x": 307848,
+              "y": 305257.2,
+              "z": 3048
+            },
+            "gap_mm": 646.6,
+            "system_type_id_1": 712041,
+            "system_type_1": "Supply Air",
+            "system_type_id_2": 712041,
+            "system_type_2": "Supply Air",
+            "error": null
+          },
+          "fittingId": 1559147,
+          "direct": false,
+          "firstRefs": [
+            {
+              "owner": 1559141,
+              "port": 0
+            },
+            {
+              "owner": 1559147,
+              "port": 1
+            }
+          ],
+          "secondRefs": [
+            {
+              "owner": 1559147,
+              "port": 2
+            },
+            {
+              "owner": 1559144,
+              "port": 1
+            }
+          ],
+          "geometryUnchanged": true,
+          "inventoryUnchanged": true
+        }
+      }
+    ],
+    "restored": true
+  }
+}

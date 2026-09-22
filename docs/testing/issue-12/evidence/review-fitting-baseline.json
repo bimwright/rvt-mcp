@@ -1,0 +1,201 @@
+{
+  "executed": true,
+  "result": {
+    "mode": "installed plugin",
+    "model": "Review-MEP-2027",
+    "revit": "2027",
+    "build": "27.0.10.13",
+    "handlerMvid": "94493180-72b2-434e-a2fb-472b20053112",
+    "total": 4,
+    "failed": 4,
+    "results": [
+      {
+        "kind": "pipe",
+        "explicitPorts": false,
+        "pass": false,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Success": true,
+          "Error": null,
+          "response": {
+            "connected": true,
+            "already_connected": false,
+            "element_id_1": 1559078,
+            "element_id_2": 1559081,
+            "connector_1_origin_mm": {
+              "x": 304800,
+              "y": 304800,
+              "z": 3048
+            },
+            "connector_2_origin_mm": {
+              "x": 307848,
+              "y": 307848,
+              "z": 3048
+            },
+            "gap_mm": 4310.5,
+            "system_type_id_1": 712045,
+            "system_type_1": "Hydronic Supply",
+            "system_type_id_2": 712045,
+            "system_type_2": "Hydronic Supply",
+            "error": null
+          },
+          "fittingId": 1559084,
+          "direct": false,
+          "firstRefs": [
+            {
+              "owner": 1559078,
+              "port": 0
+            },
+            {
+              "owner": 1559084,
+              "port": 1
+            }
+          ],
+          "secondRefs": [
+            {
+              "owner": 1559081,
+              "port": 1
+            },
+            {
+              "owner": 1559084,
+              "port": 2
+            }
+          ],
+          "geometryUnchanged": false,
+          "inventoryUnchanged": false
+        }
+      },
+      {
+        "kind": "pipe",
+        "explicitPorts": true,
+        "pass": false,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Success": false,
+          "Error": "A selected connector is already in use by another connection.",
+          "response": {},
+          "fittingId": 1559093,
+          "direct": false,
+          "firstRefs": [
+            {
+              "owner": 1559093,
+              "port": 1
+            },
+            {
+              "owner": 1559087,
+              "port": 0
+            }
+          ],
+          "secondRefs": [
+            {
+              "owner": 1559093,
+              "port": 2
+            },
+            {
+              "owner": 1559090,
+              "port": 1
+            }
+          ],
+          "geometryUnchanged": true,
+          "inventoryUnchanged": true
+        }
+      },
+      {
+        "kind": "duct",
+        "explicitPorts": false,
+        "pass": false,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Success": true,
+          "Error": null,
+          "response": {
+            "connected": true,
+            "already_connected": false,
+            "element_id_1": 1559096,
+            "element_id_2": 1559099,
+            "connector_1_origin_mm": {
+              "x": 304800,
+              "y": 304800,
+              "z": 3048
+            },
+            "connector_2_origin_mm": {
+              "x": 307848,
+              "y": 307848,
+              "z": 3048
+            },
+            "gap_mm": 4310.5,
+            "system_type_id_1": 712041,
+            "system_type_1": "Supply Air",
+            "system_type_id_2": 712041,
+            "system_type_2": "Supply Air",
+            "error": null
+          },
+          "fittingId": 1559102,
+          "direct": false,
+          "firstRefs": [
+            {
+              "owner": 1559096,
+              "port": 0
+            },
+            {
+              "owner": 1559102,
+              "port": 1
+            }
+          ],
+          "secondRefs": [
+            {
+              "owner": 1559099,
+              "port": 1
+            },
+            {
+              "owner": 1559102,
+              "port": 2
+            }
+          ],
+          "geometryUnchanged": false,
+          "inventoryUnchanged": false
+        }
+      },
+      {
+        "kind": "duct",
+        "explicitPorts": true,
+        "pass": false,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Success": false,
+          "Error": "A selected connector is already in use by another connection.",
+          "response": {},
+          "fittingId": 1559111,
+          "direct": false,
+          "firstRefs": [
+            {
+              "owner": 1559111,
+              "port": 1
+            },
+            {
+              "owner": 1559105,
+              "port": 0
+            }
+          ],
+          "secondRefs": [
+            {
+              "owner": 1559108,
+              "port": 1
+            },
+            {
+              "owner": 1559111,
+              "port": 2
+            }
+          ],
+          "geometryUnchanged": true,
+          "inventoryUnchanged": true
+        }
+      }
+    ],
+    "restored": true
+  }
+}

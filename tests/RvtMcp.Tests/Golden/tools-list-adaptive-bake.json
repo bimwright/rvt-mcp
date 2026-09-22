@@ -848,7 +848,7 @@
     },
     {
       "name": "revit_connect_mep_elements",
-      "description_hash": "sha256:92efb0c7369a644a2f908802ec24731416d08d3b7092cb46643d974e0a288e8d",
+      "description_hash": "sha256:c83054916be1d0f11ee3216abdb92b5329702ba4d200827a88481befd8a5222d",
       "inputSchema": {
         "properties": {
           "connectorIndex1": {

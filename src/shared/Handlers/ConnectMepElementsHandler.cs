@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json;
@@ -19,7 +19,7 @@ namespace RvtMcp.Plugin.Handlers
             "Resolves a ConnectorManager for each element, then picks the closest pair of unused connectors " +
             "with matching domains (or specific connector ids if supplied) and calls ConnectTo. " +
             "Rejects different assigned piping/HVAC system type IDs before connecting; unassigned equipment ports are allowed. " +
-            "Returns the two connector origins in mm. Revit allows connecting non-coincident connectors; " +
+            "Accepts a direct connection or one shared pipe/duct fitting; repeated calls are a no-op. Returns the two connector origins in mm. Revit allows connecting non-coincident connectors; " +
             "the gap distance is reported when present.";
 
         public string ParametersSchema => @"{
@@ -161,7 +161,7 @@ namespace RvtMcp.Plugin.Handlers
                         reason = "system_type_mismatch",
                         error = "System types differ; no connection was made. Recreate or explicitly reassign the incorrect element."
                     });
-                alreadyConnected = connector1.IsConnectedTo(connector2);
+                alreadyConnected = HasPhysicalConnection(connector1, connector2);
                 if (!alreadyConnected && (connector1.IsConnected || connector2.IsConnected))
                     return CommandResult.Fail("A selected connector is already in use by another connection.");
             }
@@ -178,7 +178,7 @@ namespace RvtMcp.Plugin.Handlers
                 {
                     connector1.ConnectTo(connector2);
                     doc.Regenerate();
-                    if (!connector1.IsConnectedTo(connector2))
+                    if (!HasPhysicalConnection(connector1, connector2))
                         throw new InvalidOperationException("Revit did not establish the requested connector connection.");
                     systemType1 = MepConnectionSystemType.Read(connector1);
                     systemType2 = MepConnectionSystemType.Read(connector2);
@@ -326,6 +326,30 @@ namespace RvtMcp.Plugin.Handlers
         private static bool IsPhysical(Connector connector)
             => connector.ConnectorType == ConnectorType.End || connector.ConnectorType == ConnectorType.Curve;
 
+        private static bool HasPhysicalConnection(Connector first, Connector second)
+        {
+            if (first.IsConnectedTo(second)) return true;
+            // ConnectTo may insert a fitting. Accept only two distinct physical ports
+            // on the same pipe/duct fitting, not arbitrary paths through equipment.
+            foreach (Connector firstPort in first.AllRefs)
+            {
+                if (!IsPhysical(firstPort) || firstPort.Domain != first.Domain ||
+                    !(firstPort.Owner is FamilyInstance) || !first.IsConnectedTo(firstPort)) continue;
+                var category = firstPort.Owner.Category;
+                if (category == null) continue;
+                var categoryId = RevitCompat.GetId(category.Id);
+                if (categoryId != (long)BuiltInCategory.OST_PipeFitting &&
+                    categoryId != (long)BuiltInCategory.OST_DuctFitting) continue;
+                foreach (Connector secondPort in second.AllRefs)
+                {
+                    if (IsPhysical(secondPort) && secondPort.Domain == second.Domain &&
+                        firstPort.Owner.Id == secondPort.Owner.Id && firstPort.Id != secondPort.Id &&
+                        second.IsConnectedTo(secondPort)) return true;
+                }
+            }
+            return false;
+        }
+
         private static bool FindConnectedPair(ConnectorManager first, ConnectorManager second,
             out Connector connected1, out Connector connected2)
         {
@@ -333,7 +357,7 @@ namespace RvtMcp.Plugin.Handlers
             connected2 = null;
             foreach (Connector a in first.Connectors)
                 foreach (Connector b in second.Connectors)
-                    if (IsPhysical(a) && IsPhysical(b) && a.Domain == b.Domain && a.IsConnectedTo(b))
+                    if (IsPhysical(a) && IsPhysical(b) && a.Domain == b.Domain && HasPhysicalConnection(a, b))
                     {
                         connected1 = a;
                         connected2 = b;

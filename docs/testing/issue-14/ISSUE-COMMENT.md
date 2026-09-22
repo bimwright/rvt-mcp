@@ -2,6 +2,18 @@ Thanks for the detailed report. We fixed the source-wrapper detection and added 
 
 The [verification record](https://github.com/bimwright/rvt-mcp/blob/master/docs/testing/issue-14/README.md) includes real straight and U-shaped stairs created through send-code, exported images, and Revit 2022/2027 results. We have not reproduced your Revit 2025 crash: our 100 mm tread test produced a Warning, while our Error rollback test used an injected Error. A separate earlier local Revit 2027 crash also remains unattributed.
 
+These images show the retained Revit 2027 demonstrations described in that record, not a run on the reporter's Revit 2025 environment.
+
+**Straight stair created through send-code:**
+
+![Straight stair created through send-code in Revit 2027](https://raw.githubusercontent.com/bimwright/rvt-mcp/0426fb633e2390e2e7ea9d8a58a81a9ef7ac0cbc/docs/testing/issue-14/stair-demo-2027.png)
+
+**U stair with two runs and an intermediate landing:**
+
+![U stair with two runs and an intermediate landing in Revit 2027](https://raw.githubusercontent.com/bimwright/rvt-mcp/0426fb633e2390e2e7ea9d8a58a81a9ef7ac0cbc/docs/testing/issue-14/u-stair-iso-2027.png)
+
+The U-stair image reflects the subsequent instance-only railing adjustment documented in the verification record; the original railing warning remains recorded.
+
 You can try the complete code below without the new built-in helper: it uses the existing full-source `McpDynamicScript.Run(UIApplication)` entrypoint and includes its own `IFailuresPreprocessor`. It needs no Reflection.Emit, sample model IDs, or recompilation of the plugin. This is the documented full-source workaround for v0.6.1; the exact portable payload has been checked on our updated Revit 2027 plugin in rollback mode, not on Revit 2025/v0.6.1.
 
 1. Open an **architectural test project** with a component stair type, outside any edit mode.

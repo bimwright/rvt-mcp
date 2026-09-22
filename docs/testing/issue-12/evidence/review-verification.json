@@ -1,0 +1,172 @@
+{
+  "recorded_at_utc": "2026-09-22T10:50:02.985479+00:00",
+  "base_head": "0426fb6",
+  "tests": {
+    "connection-before": {
+      "total": "15",
+      "executed": "15",
+      "passed": "11",
+      "failed": "4",
+      "error": "0",
+      "timeout": "0",
+      "aborted": "0",
+      "inconclusive": "0",
+      "passedButRunAborted": "0",
+      "notRunnable": "0",
+      "notExecuted": "0",
+      "disconnected": "0",
+      "warning": "0",
+      "completed": "0",
+      "inProgress": "0",
+      "pending": "0"
+    },
+    "connection-after": {
+      "total": "15",
+      "executed": "15",
+      "passed": "15",
+      "failed": "0",
+      "error": "0",
+      "timeout": "0",
+      "aborted": "0",
+      "inconclusive": "0",
+      "passedButRunAborted": "0",
+      "notRunnable": "0",
+      "notExecuted": "0",
+      "disconnected": "0",
+      "warning": "0",
+      "completed": "0",
+      "inProgress": "0",
+      "pending": "0"
+    },
+    "review-final": {
+      "total": "564",
+      "executed": "564",
+      "passed": "564",
+      "failed": "0",
+      "error": "0",
+      "timeout": "0",
+      "aborted": "0",
+      "inconclusive": "0",
+      "passedButRunAborted": "0",
+      "notRunnable": "0",
+      "notExecuted": "0",
+      "disconnected": "0",
+      "warning": "0",
+      "completed": "0",
+      "inProgress": "0",
+      "pending": "0"
+    }
+  },
+  "source_hashes": [
+    {
+      "path": "src/shared/Handlers/ConnectMepElementsHandler.cs",
+      "sha256": "19647D117ECA2E0398879270DCC0B7F8E15CD1C287AE5464266A32697E537B2D"
+    },
+    {
+      "path": "src/shared/Handlers/MepConnectionSystemType.cs",
+      "sha256": "70F1334E676D86DAEE3A7DC15F0FC3C8B9E6E2DCD8EF36B7B819C6B6F5F6177B"
+    },
+    {
+      "path": "src/server/Program.cs",
+      "sha256": "3CE9C9EDB5E3167AD9BB55AB3830C44CC771711D97E65A2B977DDC181D218F3E"
+    },
+    {
+      "path": "tests/RvtMcp.Tests/MepConnectionHandlerTests.cs",
+      "sha256": "A050FDAB6FF18D133D9F4906FCEE0D4030749DB2CB2C580F7C75C5387FFAD177"
+    },
+    {
+      "path": "tests/RvtMcp.Tests/Golden/tools-list.json",
+      "sha256": "C77BE1687DD021126DF3A9A7D64C8D782B7C191B86C31DFC3C56901A4856A6AE"
+    },
+    {
+      "path": "tests/RvtMcp.Tests/Golden/tools-list-adaptive-bake.json",
+      "sha256": "9419983C5A76B3BC7E2A54ACA66894575065F16A2792749B5A7424DEA1C21AD8"
+    },
+    {
+      "path": "docs/placement-and-mep-contracts.md",
+      "sha256": "A82B81332BD37878727EDE36366759671E5AC0072B216B42BEC43059872DAC1F"
+    },
+    {
+      "path": "docs/testing/issue-12/fitting-regression.cs",
+      "sha256": "6223973F58707146B6FE85E21EC69B5A2C7CCBDB2E6DB417F0B78A342F224FFD"
+    },
+    {
+      "path": "docs/testing/issue-12/fitting-probe.cs",
+      "sha256": "D25FF1DC2BE3AD7E22156485342486E5DFA120A9B2301E92D217E24A4AC6E7DB"
+    },
+    {
+      "path": "docs/testing/issue-12/review-typed-smoke.py",
+      "sha256": "A431ED4446FE0F4914D52785911A23DC526FC37BC78DD47D2809FBC742BF290C"
+    }
+  ],
+  "plugin_builds": [
+    {
+      "year": 2022,
+      "path": "src/plugin-r22/bin/Release/net48/RvtMcp.Plugin.dll",
+      "sha256": "8205F69AEA35EE268EADAAF8AE07EA8B24809A7A6F2F6D8F95194FC0DEEB1DAE"
+    },
+    {
+      "year": 2023,
+      "path": "src/plugin-r23/bin/Release/net48/RvtMcp.Plugin.dll",
+      "sha256": "10140C4C77B3AFA7AFA12D40B1D5FB166A531FA2FFD41816E602967760451533"
+    },
+    {
+      "year": 2024,
+      "path": "src/plugin-r24/bin/Release/net48/RvtMcp.Plugin.dll",
+      "sha256": "A4543A2EC0C5E74B65F70985B44C2ECC413A874ECF874EC00336FEB1E908D607"
+    },
+    {
+      "year": 2025,
+      "path": "src/plugin-r25/bin/Release/net8.0-windows7.0/RvtMcp.Plugin.dll",
+      "sha256": "C10625C3E75262DA691E17EA1F12FC1AEAE6E8FB105C99F375FC3D0055ADE612"
+    },
+    {
+      "year": 2026,
+      "path": "src/plugin-r26/bin/Release/net8.0-windows7.0/RvtMcp.Plugin.dll",
+      "sha256": "70D566D48D675F8086D526F1ABD06146DCFD506D1FF6728CDA2818DC921C7A59"
+    },
+    {
+      "year": 2027,
+      "path": "src/plugin-r27/bin/Release/net10.0-windows7.0/RvtMcp.Plugin.dll",
+      "sha256": "9838B26B4230AA00F55C69D462BDF8E46E24AF6FCE5538C6ADC2C9069753F336"
+    }
+  ],
+  "logs": [
+    {
+      "path": "artifacts/issue-12-review/build-all.log",
+      "sha256": "CBE30BD77045D14A87690884DEB051336592191400D2C4B62FB9CB35F58CE354"
+    },
+    {
+      "path": "artifacts/issue-12-review/tests-final.log",
+      "sha256": "FE6F20B01EA464F1C2CB4260D20BCE6EB232D77E732176EE59A5C83DB8D797A8"
+    },
+    {
+      "path": "artifacts/issue-12-review/server-publish.log",
+      "sha256": "947F6C9A91E7BC7544116755F028AFD69BB305F359664D00B22EC261A4951890"
+    },
+    {
+      "path": "artifacts/issue-12-review/deploy-2027.log",
+      "sha256": "4F1331A84C837B1C48A22D0AED1506F73968171B1A75F6B6058338C3BEDAC476"
+    },
+    {
+      "path": "artifacts/issue-12-review/connection-before.trx",
+      "sha256": "C4264C61DB6C09A4A7A6AD825E61947AB6992821702DD4D7C4E387A82E2A9868"
+    },
+    {
+      "path": "artifacts/issue-12-review/connection-after.trx",
+      "sha256": "823D09FDFD7EDC5A57D7700F75126599D2B81EC0A9FC7AFBC2E80A7D7F42A8B3"
+    },
+    {
+      "path": "artifacts/issue-12-review/review-final.trx",
+      "sha256": "DCDE2731F11B73A9B24F9A0CE79CCA6B29977EE1FC64BA2790E382E812666D48"
+    }
+  ],
+  "checks": {
+    "typed_report_validated": true,
+    "raw_probes": 18,
+    "raw_auto_inserted_fittings": 0,
+    "live_fitting_cases": 4,
+    "live_issue12_cases": 17,
+    "source_hash_note": "Working-tree bytes before Git newline normalization."
+  }
+}

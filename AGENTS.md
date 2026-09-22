@@ -33,7 +33,7 @@ This file is machine-readable install instructions for AI coding agents (Claude 
    - Before running `install.ps1` without `-WhatIf`.
    - Before editing any MCP host config file outside the setup installer's own preview/apply flow.
 4. **Never bypass the Revit undo stack at runtime.** rvt-mcp's design guarantee is that every edit is reviewable and reversible. Don't advise users to work around transaction wrapping or disable `batch_execute` safety.
-5. **On any failure, offer rollback.** Config edits are auto-backed up to `<file>.bimwright.bak`. The full stack comes off with the bundled `uninstall.ps1 -Yes`.
+5. **On any failure, verify rollback.** Config edits are auto-backed up to `<file>.rvtmcp.bak`. The unreleased source installer restores earlier changes on caught installation errors and reports retained backups if recovery fails. Do not use full uninstall as an upgrade rollback: it also removes personal ToolBaker data and logs.
 6. **Verify before claiming done.** After wiring, run `tools/list` in the host and confirm the single `rvt-mcp` entry responds, then call `get_current_view_info` with no args.
 
 If the user explicitly says "skip the prompts, just install" — still do gate 1 (preview) and gate 5 (verify), but collapse gates 2 and 3 into a single upfront approval. **Never silently skip preview or verify.**
@@ -80,6 +80,8 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
 The installer detects Revit years, installs all matching plugin ZIPs, copies the bundled server to `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`, and wires detected Codex/OpenCode/Claude configs with one auto-detect entry named `rvt-mcp`.
+
+For upgrades, close Revit and stop MCP sessions first, then use the new ZIP's installer without uninstalling the old version. Preserve existing arguments/environment and restart both applications afterward. The unreleased source installer preserves these options automatically and rejects custom launcher wrappers or unsupported TOML layouts with manual-wiring guidance; published v0.6.1 does not contain these protections. See [upgrade instructions](README.md#upgrade-an-existing-installation).
 
 Use `-Client codex`, `-Client opencode`, `-Client claude`, or `-Client none` when the user wants a specific config behavior.
 
@@ -145,7 +147,7 @@ Notes:
 
 **Schema:** canonical `mcpServers`.
 
-**Preview required.** Read the file, show user the diff, then write. Back up to `claude_desktop_config.json.bimwright.bak` first.
+**Preview required.** Read the file, show user the diff, then write. Back up to `claude_desktop_config.json.rvtmcp.bak` first.
 
 **Restart required.** Claude Desktop reloads MCP config on app restart. Tell the user to quit and relaunch.
 
@@ -206,7 +208,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client opencode -Wh
 powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client opencode           # apply
 ```
 
-Writes to `%USERPROFILE%\.config\opencode\opencode.json`. Preserves existing entries and backs up to `opencode.json.bimwright.bak`.
+Writes to `%USERPROFILE%\.config\opencode\opencode.json`. Preserves existing entries and backs up to `opencode.json.rvtmcp.bak`.
 
 Prefer the scripted path over hand-editing. If the config file doesn't exist (host not installed), the script skips gracefully.
 
@@ -219,7 +221,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client codex -WhatI
 powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client codex
 ```
 
-Writes to `%USERPROFILE%\.codex\config.toml`. Preserves existing entries and backs up to `config.toml.bimwright.bak`.
+Writes to `%USERPROFILE%\.codex\config.toml`. Preserves existing entries and backs up to `config.toml.rvtmcp.bak`.
 
 Codex uses TOML, not JSON — do not hand-edit unless you know TOML-array-of-tables. The scripted path handles the syntax.
 
@@ -263,7 +265,7 @@ gemini mcp add rvt-mcp "%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\rvt-mcp.exe"
     }
     ```
 
-3. **Report.** Tell the user: the detected Revit year(s), the single host entry name, the host config file edited, and the `.bimwright.bak` backup location(s).
+3. **Report.** Tell the user: the detected Revit year(s), the single host entry name, the host config file edited, and the `.rvtmcp.bak` backup location(s).
 
 If any of these fail, **do not claim the install succeeded.** Go to rollback.
 
@@ -281,7 +283,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\uninstall.ps1" -KeepLogs  # prese
 
 Removes: the self-contained server, legacy .NET global tool if present, plugin DLLs for every Revit year, discovery files at `%LOCALAPPDATA%\RvtMcp\`, ToolBaker cache, and rvt-mcp entries in scanned host configs.
 
-**Scope caveat.** `uninstall.ps1` scans known host configs (OpenCode, Codex, Claude Desktop, Claude Code user-level) but does not scan project-level `.mcp.json` files. If you edited a project `.mcp.json`, restore it from `.bimwright.bak` manually or remove the entries by hand.
+**Scope caveat.** `uninstall.ps1` scans known host configs (OpenCode, Codex, Claude Desktop, Claude Code user-level) but does not scan project-level `.mcp.json` files. If you edited a project `.mcp.json`, restore it from `.rvtmcp.bak` manually or remove the entries by hand.
 
 ### Partial rollback
 
@@ -292,7 +294,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Uninstall   # plugi
 ### Restore a single host config from backup
 
 ```powershell
-Copy-Item 'path\to\config.ext.bimwright.bak' 'path\to\config.ext' -Force
+Copy-Item 'path\to\config.ext.rvtmcp.bak' 'path\to\config.ext' -Force
 ```
 
 ---
@@ -301,10 +303,10 @@ Copy-Item 'path\to\config.ext.bimwright.bak' 'path\to\config.ext' -Force
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `rvt-mcp.exe` path not found | Setup ZIP was moved or install did not complete. | Re-run `install.ps1 -WhatIf`, then `install.ps1`; restore config from `.bimwright.bak` if needed. |
+| `rvt-mcp.exe` path not found | Setup ZIP was moved or install did not complete. | Re-run `install.ps1 -WhatIf`, then `install.ps1`; restore config from `.rvtmcp.bak` if needed. |
 | `tools/list` returns 0 entries from rvt-mcp | Host not reloaded, or Revit not running. | Restart host. Launch Revit. Retry. |
 | `install.ps1` fails with "Revit running" | Revit has plugin DLLs locked. | Close every Revit window, retry. |
-| Host config parse error after edit | Agent wrote invalid JSON/TOML. | Restore from `.bimwright.bak`, retry with a diff preview. |
+| Host config parse error after edit | Agent wrote invalid JSON/TOML. | Restore from `.rvtmcp.bak`, retry with a diff preview. |
 | Server starts but no tools show up | Toolset filter hiding them. | Check `--toolsets` / `--read-only` flags on the host config entry. |
 
 For anything not in this table, open an issue at <https://github.com/bimwright/rvt-mcp/issues> with the host name, Revit year, and the exact error.

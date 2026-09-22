@@ -1,11 +1,17 @@
 ﻿# Changelog
 
-## Unreleased
+## v0.6.2 - Release candidate (not yet published)
+
+### Added
+
+- **Send-code source forms and failure handling (#14)** — accept C# bodies with helper type declarations and provide the opt-in `SafeFailuresPreprocessor` for inspectable warnings and error rollback. Warning suppression does not establish design compliance. See [source forms and failure handling](docs/send-code.md).
 
 ### Fixed
 
+- **Installer upgrades** — preserve existing MCP options and unrelated Codex TOML sections, keep `-WhatIf` free of file writes, reject running Revit and invalid packages before replacement, and restore plugin/server/config changes after caught installation errors. Add Windows PowerShell 5.1 and PowerShell 7 upgrade/rollback regression coverage.
 - **MEP membership (#11)** — use piping/HVAC network collections, deduplicate inventory with terminals/base equipment, and count open physical connectors only in the system's domain. Failed reads no longer imply an empty system.
 - **Pipe system inheritance (#12)** — omitted system type inherits from a unique open piping connector at the start and connects during creation. Ambiguity and diameter conflicts are rejected; fallback reports the actual type. MEP connections reject different assigned piping/HVAC system types before mutation.
+- **Connections through fittings (#12 follow-up)** — recognize connections through one shared pipe/duct fitting before choosing unused ports and after `ConnectTo`. Repeated calls no longer connect the opposite free ends of already joined curves. Correct public pipe selector names in the behavior guide.
 - **Hosted family placement (#13)** — optional `host_id`, placement-type validation, explicit hosts for hosted families, and actual host/position checks before commit. Unsupported face/work-plane placement and mismatches fail without leaving an instance behind.
 - **Toast crash** — initialize window coordinates before showing/reflowing; avoid WPF animations from `NaN` and clear stale position animation clocks. Includes a real WPF regression executable.
 - **Build/deployment dependencies** — pin patched native SQLite, include net48 runtime dependencies, and fail deployment/package staging if native SQLite is missing. Restore modern plugin Windows platform annotations without suppressing analyzer rules.

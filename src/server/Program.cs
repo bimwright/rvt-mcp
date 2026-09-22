@@ -247,7 +247,7 @@ namespace RvtMcp.Server
             {
                 Name = "rvt-mcp",
                 Title = "Revit MCP",
-                Version = "0.6.1",
+                Version = "0.6.2",
                 Description = "Model Context Protocol gateway for Autodesk Revit 2022-2027",
                 WebsiteUrl = "https://github.com/bimwright/rvt-mcp"
             };
@@ -1755,7 +1755,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_connect_mep_elements", Destructive = false), System.ComponentModel.Description("Connect physical connectors of two MEP elements with matching domains. Different assigned piping/HVAC system type IDs are rejected with connected=false and both types; unassigned equipment ports are allowed. A connection does not promise system merging. Optionally pin connectorIndex1/connectorIndex2 using Connector.Id, not ordinals. An existing direct connection is returned as already_connected=true without mutation.")]
+        [McpServerTool(Name = "revit_connect_mep_elements", Destructive = false), System.ComponentModel.Description("Connect physical connectors of two MEP elements with matching domains. Different assigned piping/HVAC system type IDs are rejected with connected=false and both types; unassigned equipment ports are allowed. A connection does not promise system merging. Optionally pin connectorIndex1/connectorIndex2 using Connector.Id, not ordinals. An existing direct connection or connection through one shared pipe/duct fitting is returned as already_connected=true without mutation.")]
         public static async Task<string> ConnectMepElements(long elementId1, long elementId2, long? connectorIndex1 = null, long? connectorIndex2 = null)
         {
             try

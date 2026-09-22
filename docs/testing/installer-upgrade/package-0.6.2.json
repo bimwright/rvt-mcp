@@ -1,0 +1,57 @@
+{
+  "testedAtUtc": "2026-09-22T11:32:25.611738+00:00",
+  "package": "RvtMcp.Setup-v0.6.2-win-x64.zip",
+  "bytes": 89662949,
+  "sha256": "441274D30140A6BE48E797C06A20C1442E4CB9CC816769E5D4536C1DA160F501",
+  "version": "0.6.2",
+  "manifestCommit": "0426fb633e2390e2e7ea9d8a58a81a9ef7ac0cbc",
+  "checkedFileCount": 15,
+  "pluginSha256": {
+    "2022": "8205F69AEA35EE268EADAAF8AE07EA8B24809A7A6F2F6D8F95194FC0DEEB1DAE",
+    "2023": "10140C4C77B3AFA7AFA12D40B1D5FB166A531FA2FFD41816E602967760451533",
+    "2024": "A4543A2EC0C5E74B65F70985B44C2ECC413A874ECF874EC00336FEB1E908D607",
+    "2025": "C10625C3E75262DA691E17EA1F12FC1AEAE6E8FB105C99F375FC3D0055ADE612",
+    "2026": "70D566D48D675F8086D526F1ABD06146DCFD506D1FF6728CDA2818DC921C7A59",
+    "2027": "9838B26B4230AA00F55C69D462BDF8E46E24AF6FCE5538C6ADC2C9069753F336"
+  },
+  "installerSha256": "FB0BCB43C444318457EC5885AF5C9BDCBFBC225CB7C2BD6ED7C78046F212A889",
+  "packageIntegrityPassed": true,
+  "serverExeSha256": "83E816D48AB45B6591F5C6DA189A2691DB246D991697B9774A7EA2727D37FF35",
+  "smoke": [
+    {
+      "mode": "default",
+      "serverInfo": {
+        "name": "rvt-mcp",
+        "title": "Revit MCP",
+        "version": "0.6.2",
+        "description": "Model Context Protocol gateway for Autodesk Revit 2022-2027",
+        "websiteUrl": "https://github.com/bimwright/rvt-mcp"
+      },
+      "toolCount": 40,
+      "passed": true
+    },
+    {
+      "mode": "all",
+      "serverInfo": {
+        "name": "rvt-mcp",
+        "title": "Revit MCP",
+        "version": "0.6.2",
+        "description": "Model Context Protocol gateway for Autodesk Revit 2022-2027",
+        "websiteUrl": "https://github.com/bimwright/rvt-mcp"
+      },
+      "toolCount": 229,
+      "passed": true
+    }
+  ],
+  "live2027View": {
+    "viewId": 1420963,
+    "viewName": "Cover Sheet",
+    "viewType": "DrawingSheet",
+    "levelName": null,
+    "levelId": null,
+    "scale": 1,
+    "detailLevel": "Undefined",
+    "displayStyle": "Wireframe"
+  },
+  "live2027PluginMatchesPackage": true
+}

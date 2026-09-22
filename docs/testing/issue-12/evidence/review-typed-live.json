@@ -1,0 +1,1050 @@
+{
+  "tested_at_utc": "2026-09-22T10:45:50.136983+00:00",
+  "server_sha256": "2458A28A6EA994DA35AF8405E6750CC3C6315C60F23CB6EB21FBFCEAB9FC4313",
+  "target": {
+    "ok": true,
+    "previousTarget": "2027",
+    "newTarget": "2027",
+    "verified": true,
+    "activeView": "Cover Sheet"
+  },
+  "runtime_before": {
+    "model": "Review-MEP-2027",
+    "path": "D:\\Projects\\bimwright\\rvt-mcp\\artifacts\\issue-12-review\\Review-MEP-2027.rvt",
+    "modified": false,
+    "revit": "2027",
+    "build": "27.0.10.13",
+    "pluginSha256": "9838B26B4230AA00F55C69D462BDF8E46E24AF6FCE5538C6ADC2C9069753F336",
+    "pluginMvid": "c6d2bd26-72eb-4145-856a-8f85a08845be",
+    "pid": 46856,
+    "toastEnabled": true,
+    "elementCount": 10213,
+    "elementIdsSha256": "02AA5E8A73B551C8D76D9EE70A9E0ACFCF5450DFB9DFFFD6B04A90E1E0C68E33"
+  },
+  "tool_count": 229,
+  "pipe_schema": {
+    "name": "revit_create_pipe",
+    "description": "Create a pipe (mm). With systemTypeId omitted, a unique open piping End connector within 1 mm of start supplies system type and diameter and is connected immediately. Multiple matches or conflicting diameter fail without creating. Use startElementId/startConnectorId (Connector.Id) to disambiguate; omit systemTypeId with these selectors. No match falls back to first system type. Explicit systemTypeId creates an independent pipe. Result reports actual type/diameter and system_type_source=connector|explicit|default. pipeTypeId defaults to first available; levelId to nearest level.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "startX": {
+          "type": "number"
+        },
+        "startY": {
+          "type": "number"
+        },
+        "startZ": {
+          "type": "number"
+        },
+        "endX": {
+          "type": "number"
+        },
+        "endY": {
+          "type": "number"
+        },
+        "endZ": {
+          "type": "number"
+        },
+        "pipeTypeId": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "systemTypeId": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "levelId": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "diameter": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "default": null
+        },
+        "startElementId": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "startConnectorId": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "startX",
+        "startY",
+        "startZ",
+        "endX",
+        "endY",
+        "endZ"
+      ]
+    },
+    "annotations": {
+      "destructiveHint": false
+    },
+    "execution": {
+      "taskSupport": "optional"
+    }
+  },
+  "fitting_regression": {
+    "mode": "installed plugin",
+    "model": "Review-MEP-2027",
+    "revit": "2027",
+    "build": "27.0.10.13",
+    "handlerMvid": "c6d2bd26-72eb-4145-856a-8f85a08845be",
+    "total": 4,
+    "failed": 0,
+    "results": [
+      {
+        "kind": "pipe",
+        "explicitPorts": false,
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Success": true,
+          "Error": null,
+          "response": {
+            "connected": true,
+            "already_connected": true,
+            "element_id_1": 1558910,
+            "element_id_2": 1558913,
+            "connector_1_origin_mm": {
+              "x": 307644.8,
+              "y": 304800.0,
+              "z": 3048.0
+            },
+            "connector_2_origin_mm": {
+              "x": 307848.0,
+              "y": 305003.2,
+              "z": 3048.0
+            },
+            "gap_mm": 287.4,
+            "system_type_id_1": 712045,
+            "system_type_1": "Hydronic Supply",
+            "system_type_id_2": 712045,
+            "system_type_2": "Hydronic Supply",
+            "error": null
+          },
+          "fittingId": 1558916,
+          "direct": false,
+          "firstRefs": [
+            {
+              "owner": 1558916,
+              "port": 1
+            },
+            {
+              "owner": 1558910,
+              "port": 0
+            }
+          ],
+          "secondRefs": [
+            {
+              "owner": 1558916,
+              "port": 2
+            },
+            {
+              "owner": 1558913,
+              "port": 1
+            }
+          ],
+          "geometryUnchanged": true,
+          "inventoryUnchanged": true
+        }
+      },
+      {
+        "kind": "pipe",
+        "explicitPorts": true,
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Success": true,
+          "Error": null,
+          "response": {
+            "connected": true,
+            "already_connected": true,
+            "element_id_1": 1558919,
+            "element_id_2": 1558922,
+            "connector_1_origin_mm": {
+              "x": 307644.8,
+              "y": 304800.0,
+              "z": 3048.0
+            },
+            "connector_2_origin_mm": {
+              "x": 307848.0,
+              "y": 305003.2,
+              "z": 3048.0
+            },
+            "gap_mm": 287.4,
+            "system_type_id_1": 712045,
+            "system_type_1": "Hydronic Supply",
+            "system_type_id_2": 712045,
+            "system_type_2": "Hydronic Supply",
+            "error": null
+          },
+          "fittingId": 1558925,
+          "direct": false,
+          "firstRefs": [
+            {
+              "owner": 1558919,
+              "port": 0
+            },
+            {
+              "owner": 1558925,
+              "port": 1
+            }
+          ],
+          "secondRefs": [
+            {
+              "owner": 1558922,
+              "port": 1
+            },
+            {
+              "owner": 1558925,
+              "port": 2
+            }
+          ],
+          "geometryUnchanged": true,
+          "inventoryUnchanged": true
+        }
+      },
+      {
+        "kind": "duct",
+        "explicitPorts": false,
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Success": true,
+          "Error": null,
+          "response": {
+            "connected": true,
+            "already_connected": true,
+            "element_id_1": 1558928,
+            "element_id_2": 1558931,
+            "connector_1_origin_mm": {
+              "x": 307390.8,
+              "y": 304800.0,
+              "z": 3048.0
+            },
+            "connector_2_origin_mm": {
+              "x": 307848.0,
+              "y": 305257.2,
+              "z": 3048.0
+            },
+            "gap_mm": 646.6,
+            "system_type_id_1": 712041,
+            "system_type_1": "Supply Air",
+            "system_type_id_2": 712041,
+            "system_type_2": "Supply Air",
+            "error": null
+          },
+          "fittingId": 1558934,
+          "direct": false,
+          "firstRefs": [
+            {
+              "owner": 1558928,
+              "port": 0
+            },
+            {
+              "owner": 1558934,
+              "port": 1
+            }
+          ],
+          "secondRefs": [
+            {
+              "owner": 1558931,
+              "port": 1
+            },
+            {
+              "owner": 1558934,
+              "port": 2
+            }
+          ],
+          "geometryUnchanged": true,
+          "inventoryUnchanged": true
+        }
+      },
+      {
+        "kind": "duct",
+        "explicitPorts": true,
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Success": true,
+          "Error": null,
+          "response": {
+            "connected": true,
+            "already_connected": true,
+            "element_id_1": 1558937,
+            "element_id_2": 1558940,
+            "connector_1_origin_mm": {
+              "x": 307390.8,
+              "y": 304800.0,
+              "z": 3048.0
+            },
+            "connector_2_origin_mm": {
+              "x": 307848.0,
+              "y": 305257.2,
+              "z": 3048.0
+            },
+            "gap_mm": 646.6,
+            "system_type_id_1": 712041,
+            "system_type_1": "Supply Air",
+            "system_type_id_2": 712041,
+            "system_type_2": "Supply Air",
+            "error": null
+          },
+          "fittingId": 1558943,
+          "direct": false,
+          "firstRefs": [
+            {
+              "owner": 1558937,
+              "port": 0
+            },
+            {
+              "owner": 1558943,
+              "port": 1
+            }
+          ],
+          "secondRefs": [
+            {
+              "owner": 1558940,
+              "port": 1
+            },
+            {
+              "owner": 1558943,
+              "port": 2
+            }
+          ],
+          "geometryUnchanged": true,
+          "inventoryUnchanged": true
+        }
+      }
+    ],
+    "restored": true
+  },
+  "issue12_regression": {
+    "mode": "installed plugin",
+    "model": "Review-MEP-2027",
+    "revit": "2027",
+    "pluginMvid": "c6d2bd26-72eb-4145-856a-8f85a08845be",
+    "total": 17,
+    "failed": 0,
+    "modified": false,
+    "results": [
+      {
+        "name": "inherit_and_connect_sanitary",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "created": true,
+          "pipe_id": 1558950,
+          "pipe_type": "PVC - DWV",
+          "system_type": "Sanitary",
+          "system_type_id": 712047,
+          "system_type_source": "connector",
+          "connected_to_start": true,
+          "start_element_id": 1558946,
+          "start_connector_id": 1,
+          "level": "L1 - Block 43",
+          "length_mm": 3048.0,
+          "diameter_mm": 101.6,
+          "error": null
+        }
+      },
+      {
+        "name": "inherit_from_open_fitting_port",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "created": true,
+          "pipe_id": 1558964,
+          "pipe_type": "PVC - DWV",
+          "system_type": "Sanitary",
+          "system_type_id": 712047,
+          "system_type_source": "connector",
+          "connected_to_start": true,
+          "start_element_id": 1558961,
+          "start_connector_id": 2,
+          "level": "L1 - Block 43",
+          "length_mm": 3048.0,
+          "diameter_mm": 101.6,
+          "error": null
+        }
+      },
+      {
+        "name": "explicit_mismatch_refused",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "connected": false,
+          "element_id_1": 1558967,
+          "element_id_2": 1558971,
+          "system_type_id_1": 712047,
+          "system_type_1": "Sanitary",
+          "system_type_id_2": 712045,
+          "system_type_2": "Hydronic Supply",
+          "reason": "system_type_mismatch",
+          "error": "System types differ; no connection was made. Recreate or explicitly reassign the incorrect element."
+        }
+      },
+      {
+        "name": "explicit_connector_ids_cannot_bypass_mismatch",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "connected": false,
+          "element_id_1": 1558974,
+          "element_id_2": 1558978,
+          "system_type_id_1": 712047,
+          "system_type_1": "Sanitary",
+          "system_type_id_2": 712045,
+          "system_type_2": "Hydronic Supply",
+          "reason": "system_type_mismatch",
+          "error": "System types differ; no connection was made. Recreate or explicitly reassign the incorrect element."
+        }
+      },
+      {
+        "name": "same_type_different_systems_allowed",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "connected": true,
+          "already_connected": false,
+          "element_id_1": 1558981,
+          "element_id_2": 1558985,
+          "connector_1_origin_mm": {
+            "x": 307848.0,
+            "y": 304800.0,
+            "z": 3048.0
+          },
+          "connector_2_origin_mm": {
+            "x": 307848.0,
+            "y": 304800.0,
+            "z": 3048.0
+          },
+          "gap_mm": 0.0,
+          "system_type_id_1": 712047,
+          "system_type_1": "Sanitary",
+          "system_type_id_2": 712047,
+          "system_type_2": "Sanitary",
+          "error": null
+        }
+      },
+      {
+        "name": "already_connected_is_noop",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "connected": true,
+          "already_connected": true,
+          "element_id_1": 1558989,
+          "element_id_2": 1558993,
+          "connector_1_origin_mm": {
+            "x": 307848.0,
+            "y": 304800.0,
+            "z": 3048.0
+          },
+          "connector_2_origin_mm": {
+            "x": 307848.0,
+            "y": 304800.0,
+            "z": 3048.0
+          },
+          "gap_mm": 0.0,
+          "system_type_id_1": 712047,
+          "system_type_1": "Sanitary",
+          "system_type_id_2": 712047,
+          "system_type_2": "Sanitary",
+          "error": null
+        }
+      },
+      {
+        "name": "no_match_reports_default",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "created": true,
+          "pipe_id": 1558996,
+          "pipe_type": "PVC - DWV",
+          "system_type": "Hydronic Supply",
+          "system_type_id": 712045,
+          "system_type_source": "default",
+          "connected_to_start": false,
+          "start_element_id": null,
+          "start_connector_id": null,
+          "level": "L1 - Block 43",
+          "length_mm": 3048.0,
+          "diameter_mm": 152.4,
+          "error": null
+        }
+      },
+      {
+        "name": "diameter_conflict_leaves_no_pipe",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Error": "Requested diameter differs from the start connector diameter (101.6 mm). Omit diameter to inherit it or create an explicit transition."
+        }
+      },
+      {
+        "name": "ambiguous_start_returns_candidates",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "created": false,
+          "reason": "ambiguous_start_connector",
+          "error": "Multiple open piping connectors match the start. Specify start_element_id and start_connector_id.",
+          "candidates": [
+            {
+              "element_id": 1559003,
+              "connector_id": 1
+            },
+            {
+              "element_id": 1559007,
+              "connector_id": 1
+            }
+          ]
+        }
+      },
+      {
+        "name": "explicit_start_resolves_ambiguity",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "created": true,
+          "pipe_id": 1559019,
+          "pipe_type": "PVC - DWV",
+          "system_type": "Sanitary",
+          "system_type_id": 712047,
+          "system_type_source": "connector",
+          "connected_to_start": true,
+          "start_element_id": 1559011,
+          "start_connector_id": 1,
+          "level": "L1 - Block 43",
+          "length_mm": 3048.0,
+          "diameter_mm": 101.6,
+          "error": null
+        }
+      },
+      {
+        "name": "inside_1mm_tolerance_inherits",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "created": true,
+          "pipe_id": 1559026,
+          "pipe_type": "PVC - DWV",
+          "system_type": "Sanitary",
+          "system_type_id": 712047,
+          "system_type_source": "connector",
+          "connected_to_start": true,
+          "start_element_id": 1559022,
+          "start_connector_id": 1,
+          "level": "L1 - Block 43",
+          "length_mm": 3048.0,
+          "diameter_mm": 101.6,
+          "error": null
+        }
+      },
+      {
+        "name": "outside_1mm_tolerance_defaults",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "created": true,
+          "pipe_id": 1559033,
+          "pipe_type": "PVC - DWV",
+          "system_type": "Hydronic Supply",
+          "system_type_id": 712045,
+          "system_type_source": "default",
+          "connected_to_start": false,
+          "start_element_id": null,
+          "start_connector_id": null,
+          "level": "L1 - Block 43",
+          "length_mm": 3046.9,
+          "diameter_mm": 152.4,
+          "error": null
+        }
+      },
+      {
+        "name": "invalid_explicit_start_no_fallback",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Error": "Selected start connector must be an open piping End connector within 1 mm of the start point."
+        }
+      },
+      {
+        "name": "api_creation_failure_rolls_back",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Error": "Failed to create pipe: The points of startConnector and endPoint are too close: for MEPCurve, the minimum length is 1/10 inch.\r\nParameter name: startConnector"
+        }
+      },
+      {
+        "name": "hvac_supply_return_mismatch_refused",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "connected": false,
+          "element_id_1": 1559044,
+          "element_id_2": 1559047,
+          "system_type_id_1": 712041,
+          "system_type_1": "Supply Air",
+          "system_type_id_2": 712042,
+          "system_type_2": "Return Air",
+          "reason": "system_type_mismatch",
+          "error": "System types differ; no connection was made. Recreate or explicitly reassign the incorrect element."
+        }
+      },
+      {
+        "name": "explicit_domain_mismatch_refused",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "Error": "Selected connectors must be physical and have matching domains."
+        }
+      },
+      {
+        "name": "unassigned_equipment_port_allowed",
+        "pass": true,
+        "error": null,
+        "restored": true,
+        "data": {
+          "connected": true,
+          "already_connected": false,
+          "element_id_1": 1559058,
+          "element_id_2": 1559059,
+          "connector_1_origin_mm": {
+            "x": 293923.1,
+            "y": 303722.7,
+            "z": 5234.1
+          },
+          "connector_2_origin_mm": {
+            "x": 293923.1,
+            "y": 303722.7,
+            "z": 5234.1
+          },
+          "gap_mm": 0.0,
+          "system_type_id_1": null,
+          "system_type_1": null,
+          "system_type_id_2": 712043,
+          "system_type_2": "Exhaust Air",
+          "error": null
+        }
+      }
+    ]
+  },
+  "raw_connectto_probe": {
+    "model": "Review-MEP-2027",
+    "revit": "2027",
+    "results": [
+      {
+        "kind": "pipe",
+        "gapMm": 0.0,
+        "elbow": false,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "pipe",
+        "gapMm": 0.0,
+        "elbow": true,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "pipe",
+        "gapMm": 1.0,
+        "elbow": false,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "pipe",
+        "gapMm": 1.0,
+        "elbow": true,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "pipe",
+        "gapMm": 100.0,
+        "elbow": false,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "pipe",
+        "gapMm": 100.0,
+        "elbow": true,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "round_duct",
+        "gapMm": 0.0,
+        "elbow": false,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "round_duct",
+        "gapMm": 0.0,
+        "elbow": true,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "round_duct",
+        "gapMm": 1.0,
+        "elbow": false,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "round_duct",
+        "gapMm": 1.0,
+        "elbow": true,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "round_duct",
+        "gapMm": 100.0,
+        "elbow": false,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "round_duct",
+        "gapMm": 100.0,
+        "elbow": true,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "rectangular_duct",
+        "gapMm": 0.0,
+        "elbow": false,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "rectangular_duct",
+        "gapMm": 0.0,
+        "elbow": true,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "rectangular_duct",
+        "gapMm": 1.0,
+        "elbow": false,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "rectangular_duct",
+        "gapMm": 1.0,
+        "elbow": true,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "rectangular_duct",
+        "gapMm": 100.0,
+        "elbow": false,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      },
+      {
+        "kind": "rectangular_duct",
+        "gapMm": 100.0,
+        "elbow": true,
+        "error": null,
+        "data": {
+          "direct": true,
+          "firstConnected": true,
+          "secondConnected": true,
+          "added": [],
+          "status": "Committed",
+          "Messages": []
+        },
+        "restored": true
+      }
+    ],
+    "restored": true
+  },
+  "fixture": {
+    "firstId": 1559158,
+    "secondId": 1559161,
+    "connectorId": 1,
+    "pipeTypeId": 150702,
+    "levelId": 30,
+    "sanitaryId": 712047,
+    "otherId": 712045,
+    "startX": 307848.0,
+    "startY": 304800.0,
+    "startZ": 3048.0,
+    "endX": 310896.0,
+    "endY": 304800.0,
+    "endZ": 3048.0
+  },
+  "ambiguous": {
+    "created": false,
+    "reason": "ambiguous_start_connector",
+    "error": "Multiple open piping connectors match the start. Specify start_element_id and start_connector_id.",
+    "candidates": [
+      {
+        "element_id": 1559158,
+        "connector_id": 1
+      },
+      {
+        "element_id": 1559161,
+        "connector_id": 1
+      }
+    ]
+  },
+  "selected": {
+    "created": true,
+    "pipe_id": 1559166,
+    "pipe_type": "PVC - DWV",
+    "system_type": "Sanitary",
+    "system_type_id": 712047,
+    "system_type_source": "connector",
+    "connected_to_start": true,
+    "start_element_id": 1559158,
+    "start_connector_id": 1,
+    "level": "L1 - Block 43",
+    "length_mm": 3048.0,
+    "diameter_mm": 101.6,
+    "error": null
+  },
+  "selection_oracle": {
+    "direct": true,
+    "otherStillOpen": true,
+    "system": 712047,
+    "diameter": 101.6
+  },
+  "explicit_type": {
+    "created": true,
+    "pipe_id": 1559169,
+    "pipe_type": "PVC - DWV",
+    "system_type": "Hydronic Supply",
+    "system_type_id": 712045,
+    "system_type_source": "explicit",
+    "connected_to_start": false,
+    "start_element_id": null,
+    "start_connector_id": null,
+    "level": "L1 - Block 43",
+    "length_mm": 3048.0,
+    "diameter_mm": 152.4,
+    "error": null
+  },
+  "mismatch": {
+    "connected": false,
+    "element_id_1": 1559161,
+    "element_id_2": 1559169,
+    "system_type_id_1": 712047,
+    "system_type_1": "Sanitary",
+    "system_type_id_2": 712045,
+    "system_type_2": "Hydronic Supply",
+    "reason": "system_type_mismatch",
+    "error": "System types differ; no connection was made. Recreate or explicitly reassign the incorrect element."
+  },
+  "typed_pass": true,
+  "cleanup": {
+    "model": "Review-MEP-2027",
+    "modified": false,
+    "fixturesDiscarded": true
+  },
+  "runtime_after": {
+    "model": "Review-MEP-2027",
+    "path": "D:\\Projects\\bimwright\\rvt-mcp\\artifacts\\issue-12-review\\Review-MEP-2027.rvt",
+    "modified": false,
+    "revit": "2027",
+    "build": "27.0.10.13",
+    "pluginSha256": "9838B26B4230AA00F55C69D462BDF8E46E24AF6FCE5538C6ADC2C9069753F336",
+    "pluginMvid": "c6d2bd26-72eb-4145-856a-8f85a08845be",
+    "pid": 46856,
+    "toastEnabled": true,
+    "elementCount": 10213,
+    "elementIdsSha256": "02AA5E8A73B551C8D76D9EE70A9E0ACFCF5450DFB9DFFFD6B04A90E1E0C68E33"
+  }
+}

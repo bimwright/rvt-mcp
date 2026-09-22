@@ -18,6 +18,8 @@ The cross-platform xUnit tests live in this project. The server reference builds
 
 `PointBasedPlacementTests` compiles the production handler against API doubles to exercise placement-type selection, host/coordinate validation, overload choice and rollback. These tests do not replace live Revit acceptance; see [issue #13 evidence](../../docs/testing/issue-13/HANDOFF.md).
 
+`MepConnectionHandlerTests` executes the complete production connection handler with API doubles, covering direct and fitting-mediated connections, repeat calls, false connectivity and rollback after partial API mutation. The [Revit 2027 review follow-up](../../docs/testing/issue-12/REVIEW-FOLLOWUP.md) separately verifies real fitting connectors and public typed-tool arguments.
+
 Real WPF positioning/animation tests run separately on Windows via [RvtMcp.Toast.Tests](../RvtMcp.Toast.Tests/README.md).
 
 ## Golden snapshot — `Golden/tools-list.json`

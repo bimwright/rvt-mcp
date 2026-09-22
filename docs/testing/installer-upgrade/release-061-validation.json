@@ -1,0 +1,17 @@
+{
+  "package": "RvtMcp.Setup-v0.6.1-win-x64.zip",
+  "sha256": "7A5059C2DFFBDF6EA9CB0DB01D4737ED794FE0E618CDB3BE1B5F7A8F1F7E4AFD",
+  "manifestChecksumsPassed": true,
+  "pluginArchivesPassed": [
+    2022,
+    2023,
+    2024,
+    2025,
+    2026,
+    2027
+  ],
+  "liveGuard": "Revit running. Close every Revit window before installing or uninstalling plugins; no files have been replaced.",
+  "actualEntrypointWhatIfPassed": true,
+  "previewLogSha256": "A9A8C7B8A3E2C1D06D4442FC5A95332D3703B457FE23B47F613B3BFDDF88F222",
+  "installerSha256": "FB0BCB43C444318457EC5885AF5C9BDCBFBC225CB7C2BD6ED7C78046F212A889"
+}

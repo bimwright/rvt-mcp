@@ -25,15 +25,19 @@ Before committing, the handler regenerates and checks the actual host and `Locat
 
 ## Extend a pipe from an open connector
 
-With `system_type_id` omitted, `revit_create_pipe` searches for open physical piping End connectors within 1 mm of its start point:
+With `systemTypeId` omitted, `revit_create_pipe` searches for open physical piping End connectors within 1 mm of its start point:
 
 - **One match:** use Revit's connector-based overload. The new pipe inherits system type and diameter and is connected during creation. A separate connect call is unnecessary.
-- **Several matches:** return `created: false`, `reason: ambiguous_start_connector`, and candidate element/connector IDs. Resubmit with `start_element_id` and, if needed, `start_connector_id` (`Connector.Id`, not an ordinal).
+- **Several matches:** return `created: false`, `reason: ambiguous_start_connector`, and candidate element/connector IDs. Resubmit with `startElementId` and, if needed, `startConnectorId` (`Connector.Id`, not an ordinal).
 - **No match:** retain the first available `PipingSystemType` fallback and report the selected type. An explicit connector selection that does not match fails instead of falling back.
 
-A requested diameter differing from the connector by more than 0.01 mm fails before mutation. Omit it to inherit or model an explicit transition. Providing `system_type_id` creates an independent pipe and cannot be combined with start-connector selection. Successful responses identify the actual type ID/name, diameter, `system_type_source` (`connector`, `explicit`, or `default`), and connection information.
+A requested diameter differing from the connector by more than 0.01 mm fails before mutation. Omit it to inherit or model an explicit transition. Providing `systemTypeId` creates an independent pipe and cannot be combined with start-connector selection. Successful responses identify the actual type ID/name, diameter, `system_type_source` (`connector`, `explicit`, or `default`), and connection information.
+
+These are public MCP argument names. The internal plugin command uses `system_type_id`, `start_element_id`, and `start_connector_id`; do not send those names to `revit_create_pipe`. Response fields remain snake_case.
 
 `revit_connect_mep_elements` still uses `ConnectTo`. It rejects different assigned piping/HVAC system type IDs with `connected: false`, `reason: system_type_mismatch`, and both types. This applies to the selected ports, including explicit selections. Separate systems with the same type and unassigned equipment ports are allowed; unreadable system metadata fails explicitly. Physical connector domains must match. A successful connection does not promise that Revit merges system instances or fills a geometric gap with new pipe/duct geometry.
+
+Connection verification accepts a direct connection or two distinct physical ports on one shared pipe/duct fitting. Repeating either connection is a no-op (`already_connected: true`), including with explicit connector selection. It does not infer connectivity through arbitrary equipment or a longer network path.
 
 ## Interpret MEP membership and connector counts
 

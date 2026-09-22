@@ -35,7 +35,7 @@
 param(
     [string]$SourceDir,
     [switch]$Uninstall,
-    [int[]]$Years,
+    [ValidateRange(2022, 2027)][int[]]$Years,
     [ValidateSet('Auto', 'codex', 'opencode', 'kilo', 'claude', 'none')]
     [string]$Client = 'Auto',
     [ValidateSet('opencode', 'codex', 'kilo')]
@@ -76,14 +76,18 @@ $serverSourceDir = if (Test-Path (Join-Path $SourceDir 'server')) {
 }
 
 $manifestPath = Join-Path $SourceDir 'manifest.json'
+$manifest = $null
 $setupVersion = 'dev'
 if (Test-Path $manifestPath) {
     try {
         $manifest = Get-Content -Raw -Path $manifestPath | ConvertFrom-Json
         if ($manifest.version) { $setupVersion = [string]$manifest.version }
     } catch {
-        Write-Warning ("[setup] could not parse manifest.json: {0}" -f $_.Exception.Message)
+        throw ("[setup] could not parse manifest.json: {0}" -f $_.Exception.Message)
     }
+}
+if ($setupVersion -notmatch '^v?\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$' -and $setupVersion -ne 'dev') {
+    throw '[setup] Invalid version in manifest.json.'
 }
 
 if (-not $ServerInstallRoot) {
@@ -140,11 +144,16 @@ function Write-ConfigAtomic {
         [Parameter(Mandatory = $true)][string]$Content
     )
     $bak = "$Path.rvtmcp.bak"
-    Copy-Item -Path $Path -Destination $bak -Force
+    if (Test-Path -LiteralPath $Path) { Copy-Item -LiteralPath $Path -Destination $bak -Force }
+    Save-InstallConfig -Path $Path
     $temp = "$Path.rvtmcp.tmp"
     try {
         Set-Content -Path $temp -Value $Content -Encoding UTF8 -NoNewline
-        [System.IO.File]::Replace($temp, $Path, [NullString]::Value)
+        if (Test-Path -LiteralPath $Path) {
+            [System.IO.File]::Replace($temp, $Path, [NullString]::Value)
+        } else {
+            [System.IO.File]::Move($temp, $Path)
+        }
     } catch {
         if (Test-Path $temp) { Remove-Item $temp -Force -ErrorAction SilentlyContinue }
         throw
@@ -209,17 +218,108 @@ function ConvertTo-TomlStringArray {
     return '[' + ($items -join ', ') + ']'
 }
 
-function Remove-LegacyBimwrightEntries {
-    param([Parameter(Mandatory = $true)][hashtable]$Map)
-
-    $keys = @($Map.Keys | Where-Object { $_ -match '^bimwright-rvt-r\d{2}$' })
-    foreach ($k in $keys) {
-        $Map.Remove($k) | Out-Null
+function Assert-ManagedServerCommand([string]$Command) {
+    if (($Command -split '[\\/]')[-1] -notin @('rvt-mcp', 'rvt-mcp.exe', 'RvtMcp.Server.exe')) {
+        throw "Custom rvt-mcp launcher '$Command' cannot be upgraded automatically. Use -Client none and update its server path manually."
     }
-    return $keys.Count
+}
+
+# Every backup is beside its target. Never delete a caller-supplied directory
+# unless it is a recorded target of this transaction or our unique staging area.
+function Remove-InstallPath([string]$Path) {
+    $full = [IO.Path]::GetFullPath($Path)
+    $allowed = @($script:installStage)
+    foreach ($change in $script:installChanges) { $allowed += $change.Path; $allowed += $change.Backup }
+    if ($full -notin $allowed -or $full.TrimEnd('\') -eq [IO.Path]::GetPathRoot($full).TrimEnd('\')) {
+        throw "Refusing cleanup outside this install transaction: $full"
+    }
+    if (Test-Path -LiteralPath $full) { Remove-Item -LiteralPath $full -Recurse -Force }
+}
+
+function Save-InstallConfig([string]$Path) {
+    if ($null -eq $script:installChanges) { return }
+    $full = [IO.Path]::GetFullPath($Path)
+    if (@($script:installChanges | Where-Object { $_.Path -eq $full }).Count) { return }
+    $backup = $null
+    if (Test-Path -LiteralPath $full) {
+        $backup = $full + '.rvtmcp-rollback-' + [guid]::NewGuid().ToString('N')
+        Copy-Item -LiteralPath $full -Destination $backup
+    }
+    $script:installChanges.Add([pscustomobject]@{Path=$full;Backup=$backup;Config=$true})
+}
+
+function Set-InstallPath([string]$Source, [string]$Destination) {
+    $full = [IO.Path]::GetFullPath($Destination)
+    if ($full.TrimEnd('\') -eq [IO.Path]::GetPathRoot($full).TrimEnd('\')) { throw 'Cannot install into a drive root.' }
+    $parent = Split-Path -Parent $full
+    New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    $backup = $null
+    if (Test-Path -LiteralPath $full) {
+        $backup = $full + '.rvtmcp-rollback-' + [guid]::NewGuid().ToString('N')
+        Move-Item -LiteralPath $full -Destination $backup
+    }
+    $script:installChanges.Add([pscustomobject]@{Path=$full;Backup=$backup;Config=$false})
+    Move-Item -LiteralPath $Source -Destination $full
+}
+
+function Undo-InstallChanges {
+    $failures = @()
+    for ($i = $script:installChanges.Count - 1; $i -ge 0; $i--) {
+        $change = $script:installChanges[$i]
+        try {
+            if ($change.Config -and $change.Backup -and (Test-Path -LiteralPath $change.Path)) {
+                [IO.File]::Replace($change.Backup, $change.Path, [NullString]::Value)
+            } else {
+                Remove-InstallPath $change.Path
+                if ($change.Backup) { Move-Item -LiteralPath $change.Backup -Destination $change.Path }
+            }
+        } catch { $failures += "$($change.Path): $_ (backup: $($change.Backup))" }
+    }
+    if ($failures.Count) { throw ("Rollback incomplete; retain backup files and restore manually:`n" + ($failures -join "`n")) }
+}
+
+function Assert-RevitClosed {
+    if (@(Get-Process -Name Revit -ErrorAction SilentlyContinue).Count) {
+        throw 'Revit running. Close every Revit window before installing or uninstalling plugins; no files have been replaced.'
+    }
+}
+
+function Assert-PluginArchive([string]$Zip, [string]$AddinFile) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [IO.Compression.ZipFile]::OpenRead($Zip)
+    try {
+        foreach ($entry in $archive.Entries) {
+            if ($entry.FullName -match '(^[\\/]|:|(^|[\\/])\.\.([\\/]|$))') { throw "Unsafe ZIP entry: $($entry.FullName)" }
+        }
+        if (@($archive.Entries | Where-Object { $_.FullName -eq $AddinFile }).Count -ne 1 -or
+            @($archive.Entries | Where-Object { $_.FullName -eq 'RvtMcp.Plugin.dll' }).Count -ne 1) {
+            throw "Invalid plugin ZIP $Zip : expected root $AddinFile and RvtMcp.Plugin.dll."
+        }
+    } finally { $archive.Dispose() }
+}
+
+function Assert-SetupManifest([string]$Root, $Manifest) {
+    if (-not $Manifest) { return } # Legacy plugin-only ZIP layout has no manifest.
+    if (-not $Manifest.files) { throw 'Setup manifest has no file checksums.' }
+    $prefix = [IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
+    foreach ($file in $Manifest.files) {
+        $path = [IO.Path]::GetFullPath((Join-Path $Root $file.path))
+        if (-not $path.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { throw "Invalid manifest path: $($file.path)" }
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Setup file missing: $($file.path)" }
+        # Get-FileHash's provider reads honor inherited WhatIf in Windows
+        # PowerShell 5.1. Hash directly so previews still validate actual bytes.
+        $stream = [IO.File]::OpenRead($path)
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try { $hash = [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '') }
+        finally { $sha.Dispose(); $stream.Dispose() }
+        if ($hash -ne $file.sha256) {
+            throw "Setup checksum failed: $($file.path). Download and extract the setup ZIP again."
+        }
+    }
 }
 
 function Install-RvtMcpServer {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]$ServerDir,
         [string]$InstallRoot
@@ -229,11 +329,7 @@ function Install-RvtMcpServer {
 
     $plannedExe = Join-Path $InstallRoot (Split-Path -Leaf $sourceExe)
     if ($PSCmdlet.ShouldProcess($InstallRoot, 'Install self-contained RvtMcp RVT server')) {
-        if (Test-Path $InstallRoot) {
-            Remove-Item -Path $InstallRoot -Recurse -Force
-        }
-        New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null
-        Copy-Item -Path (Join-Path $ServerDir '*') -Destination $InstallRoot -Recurse -Force
+        Set-InstallPath -Source $ServerDir -Destination $InstallRoot
         Write-Host ("[server] installed -> {0}" -f $plannedExe)
     } else {
         Write-Host ("[server] preview install -> {0}" -f $plannedExe)
@@ -258,8 +354,7 @@ function Add-OpencodeEntry {
     try {
         $cfg = Read-JsonHashtable -Path $ConfigPath
     } catch {
-        Write-Warning ("[opencode] parse failed at {0}: {1} - skipping" -f $ConfigPath, $_.Exception.Message)
-        return $false
+        throw ("[opencode] parse failed at {0}: {1}" -f $ConfigPath, $_.Exception.Message)
     }
 
     if (-not $cfg.ContainsKey('mcp')) { $cfg['mcp'] = @{} }
@@ -275,14 +370,19 @@ function Add-OpencodeEntry {
         if ($t.PSObject.Properties.Name -contains 'Env' -and $t.Env -and $t.Env.Count -gt 0) {
             $entry['environment'] = $t.Env
         }
+        if ($cfg['mcp'].ContainsKey($name)) {
+            $entry = $cfg['mcp'][$name].Clone()
+            if ($entry.type -ne 'local' -or $entry.command -is [string] -or @($entry.command).Count -eq 0) { throw "Unsupported OpenCode entry: $name. Use -Client none and wire manually." }
+            Assert-ManagedServerCommand $entry.command[0]
+            $entry.command = @($t.ServerCmd) + @($entry.command | Select-Object -Skip 1)
+        }
         $desired[$name] = $entry
     }
 
-    $legacyRemoved = Remove-LegacyBimwrightEntries -Map $cfg['mcp']
-    $changed = $legacyRemoved -gt 0
+    $changed = $false
     foreach ($k in $desired.Keys) {
-        $existingJson = if ($cfg['mcp'].ContainsKey($k)) { ($cfg['mcp'][$k] | ConvertTo-Json -Depth 20 -Compress) } else { $null }
-        $newJson = $desired[$k] | ConvertTo-Json -Depth 20 -Compress
+        $existingJson = if ($cfg['mcp'].ContainsKey($k)) { ConvertTo-Json -InputObject $cfg['mcp'][$k].command -Compress } else { $null }
+        $newJson = ConvertTo-Json -InputObject $desired[$k].command -Compress
         if ($existingJson -ne $newJson) {
             $cfg['mcp'][$k] = $desired[$k]
             $changed = $true
@@ -314,9 +414,7 @@ function Add-KiloEntry {
         # Kilo will create the config dir on first run; create the file if user opted in
         # explicitly (-Client kilo). Auto mode still requires the file to exist.
         if ($RequireExisting) {
-            $parent = Split-Path -Parent $ConfigPath
-            if (-not (Test-Path $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
-            Set-Content -Path $ConfigPath -Value '{}' -Encoding UTF8 -NoNewline
+            # Defer creation until ShouldProcess approves the complete write.
         } else {
             Write-Host "[kilo] config not found at $ConfigPath - skipping"
             return $false
@@ -324,10 +422,9 @@ function Add-KiloEntry {
     }
 
     try {
-        $cfg = Read-JsonHashtable -Path $ConfigPath
+        $cfg = if (Test-Path -LiteralPath $ConfigPath) { Read-JsonHashtable -Path $ConfigPath } else { @{} }
     } catch {
-        Write-Warning ("[kilo] parse failed at {0}: {1} - skipping" -f $ConfigPath, $_.Exception.Message)
-        return $false
+        throw ("[kilo] parse failed at {0}: {1}" -f $ConfigPath, $_.Exception.Message)
     }
 
     if (-not $cfg.ContainsKey('mcp')) { $cfg['mcp'] = @{} }
@@ -344,14 +441,19 @@ function Add-KiloEntry {
         if ($t.PSObject.Properties.Name -contains 'Env' -and $t.Env -and $t.Env.Count -gt 0) {
             $entry['environment'] = $t.Env
         }
+        if ($cfg['mcp'].ContainsKey($name)) {
+            $entry = $cfg['mcp'][$name].Clone()
+            if ($entry.type -ne 'local' -or $entry.command -is [string] -or @($entry.command).Count -eq 0) { throw "Unsupported Kilo entry: $name. Use -Client none and wire manually." }
+            Assert-ManagedServerCommand $entry.command[0]
+            $entry.command = @($t.ServerCmd) + @($entry.command | Select-Object -Skip 1)
+        }
         $desired[$name] = $entry
     }
 
-    $legacyRemoved = Remove-LegacyBimwrightEntries -Map $cfg['mcp']
-    $changed = $legacyRemoved -gt 0
+    $changed = $false
     foreach ($k in $desired.Keys) {
-        $existingJson = if ($cfg['mcp'].ContainsKey($k)) { ($cfg['mcp'][$k] | ConvertTo-Json -Depth 20 -Compress) } else { $null }
-        $newJson = $desired[$k] | ConvertTo-Json -Depth 20 -Compress
+        $existingJson = if ($cfg['mcp'].ContainsKey($k)) { ConvertTo-Json -InputObject $cfg['mcp'][$k].command -Compress } else { $null }
+        $newJson = ConvertTo-Json -InputObject $desired[$k].command -Compress
         if ($existingJson -ne $newJson) {
             $cfg['mcp'][$k] = $desired[$k]
             $changed = $true
@@ -364,6 +466,7 @@ function Add-KiloEntry {
     }
 
     if ($PSCmdlet.ShouldProcess($ConfigPath, 'Upsert rvt-mcp entry')) {
+        New-Item -ItemType Directory -Path (Split-Path -Parent $ConfigPath) -Force | Out-Null
         $content = $cfg | ConvertTo-Json -Depth 50
         $bak = Write-ConfigAtomic -Path $ConfigPath -Content $content
         Write-Host ("[kilo] wired {0} entry -> {1} (backup: {2})" -f $desired.Count, $ConfigPath, $bak)
@@ -389,11 +492,10 @@ function Add-CodexEntry {
     if ($null -eq $raw) { $raw = '' }
 
     $changed = $false
-    $legacyPattern = '(?ms)^\[mcp_servers\.bimwright-rvt-r\d{2}\].*?(?=^\[|\z)'
-    if ([regex]::IsMatch($raw, $legacyPattern)) {
-        $raw = [regex]::Replace($raw, $legacyPattern, '')
-        $raw = [regex]::Replace($raw, "(\r?\n){3,}", "`n`n")
-        $changed = $true
+    # A line-based edit deliberately refuses multiline strings rather than
+    # mistaking their contents for TOML headers/keys. Custom layouts stay intact.
+    if ($raw.Contains('"""') -or $raw.Contains("'''")) {
+        throw "Multiline TOML in $ConfigPath requires manual wiring. Use -Client none."
     }
 
     foreach ($t in $Targets) {
@@ -415,16 +517,25 @@ args = $argsValue
 enabled = true$envLines
 "@
 
-        $pattern = '(?ms)^\[mcp_servers\.' + [regex]::Escape($name) + '\](?:\.env)?.*?(?=^\[mcp_servers\.(?!' + [regex]::Escape($name) + '(?:\.env)?\b)|\z)'
+        $key = '(?:' + [regex]::Escape($name) + '|"' + [regex]::Escape($name) + '"|''' + [regex]::Escape($name) + ''')'
+        $pattern = '(?ms)^[ \t]*\[[ \t]*(?:mcp_servers|"mcp_servers"|''mcp_servers'')[ \t]*\.[ \t]*' + $key + '[ \t]*\][^\r\n]*\r?\n.*?(?=^[ \t]*\[|\z)'
         $existingMatch = [regex]::Match($raw, $pattern)
         if ($existingMatch.Success) {
-            $existingTrim = ($existingMatch.Value -replace '\s+$', '')
-            $desiredTrim = ($desiredBlock -replace '\s+$', '')
-            if ($existingTrim -ne $desiredTrim) {
-                $raw = [regex]::Replace($raw, $pattern, ($desiredBlock + "`n`n"), 1)
+            if ([regex]::Matches($raw, $pattern).Count -ne 1) { throw 'Duplicate rvt-mcp TOML tables; wire manually with -Client none.' }
+            $commandPattern = '(?m)^([ \t]*command[ \t]*=[ \t]*)("(?:[^"\\\r\n]|\\.)*"|''[^''\r\n]*'')([ \t]*(?:#[^\r\n]*)?)(?=\r?$)'
+            $commandMatch = [regex]::Match($existingMatch.Value, $commandPattern)
+            if ([regex]::Matches($existingMatch.Value, $commandPattern).Count -ne 1) { throw 'Custom or duplicate rvt-mcp TOML command; wire manually with -Client none.' }
+            $oldValue = $commandMatch.Groups[2].Value
+            $oldCommand = if ($oldValue.StartsWith("'")) { $oldValue.Substring(1, $oldValue.Length - 2) } else { $oldValue | ConvertFrom-Json }
+            Assert-ManagedServerCommand $oldCommand
+            $replacement = $commandMatch.Groups[1].Value + $commandValue + $commandMatch.Groups[3].Value
+            $block = $existingMatch.Value.Remove($commandMatch.Index, $commandMatch.Length).Insert($commandMatch.Index, $replacement)
+            if ($block -ne $existingMatch.Value) {
+                $raw = $raw.Remove($existingMatch.Index, $existingMatch.Length).Insert($existingMatch.Index, $block)
                 $changed = $true
             }
         } else {
+            if ($raw -match '(?m)^[^#\r\n]*rvt-mcp') { throw 'Custom rvt-mcp TOML layout; wire manually with -Client none.' }
             $sep = if ($raw.EndsWith("`n")) { "`n" } else { "`n`n" }
             $raw = $raw + $sep + $desiredBlock + "`n"
             $changed = $true
@@ -460,8 +571,7 @@ function Add-ClaudeEntry {
     try {
         $cfg = Read-JsonHashtable -Path $ConfigPath
     } catch {
-        Write-Warning ("[claude] parse failed at {0}: {1} - skipping" -f $ConfigPath, $_.Exception.Message)
-        return $false
+        throw ("[claude] parse failed at {0}: {1}" -f $ConfigPath, $_.Exception.Message)
     }
 
     if (-not $cfg.ContainsKey('mcpServers')) { $cfg['mcpServers'] = @{} }
@@ -476,14 +586,18 @@ function Add-ClaudeEntry {
         if ($t.PSObject.Properties.Name -contains 'Env' -and $t.Env -and $t.Env.Count -gt 0) {
             $entry['env'] = $t.Env
         }
+        if ($cfg['mcpServers'].ContainsKey($name)) {
+            $entry = $cfg['mcpServers'][$name].Clone()
+            Assert-ManagedServerCommand $entry.command
+            $entry.command = $t.ServerCmd
+        }
         $desired[$name] = $entry
     }
 
-    $legacyRemoved = Remove-LegacyBimwrightEntries -Map $cfg['mcpServers']
-    $changed = $legacyRemoved -gt 0
+    $changed = $false
     foreach ($k in $desired.Keys) {
-        $existingJson = if ($cfg['mcpServers'].ContainsKey($k)) { ($cfg['mcpServers'][$k] | ConvertTo-Json -Depth 20 -Compress) } else { $null }
-        $newJson = $desired[$k] | ConvertTo-Json -Depth 20 -Compress
+        $existingJson = if ($cfg['mcpServers'].ContainsKey($k)) { $cfg['mcpServers'][$k].command } else { $null }
+        $newJson = $desired[$k].command
         if ($existingJson -ne $newJson) {
             $cfg['mcpServers'][$k] = $desired[$k]
             $changed = $true
@@ -534,6 +648,37 @@ if (-not $Years -or $Years.Count -eq 0) {
 $handled = @()
 $skipped = @()
 $previewed = @()
+$Years = @($Years | Sort-Object -Unique)
+$script:installChanges = New-Object System.Collections.Generic.List[object]
+$script:installStage = $null
+
+try {
+    # Validate every selected payload before replacing any installed file.
+    if (-not $WhatIfPreference) { Assert-RevitClosed }
+    if (-not $Uninstall) {
+        Assert-SetupManifest -Root $SourceDir -Manifest $manifest
+        foreach ($year in $Years) {
+            $yearTwo = $year - 2000
+            $zip = Join-Path $pluginSourceDir "RvtMcp.Plugin.R$yearTwo.zip"
+            if (-not (Test-Path -LiteralPath $zip)) { throw "Missing plugin ZIP for Revit ${year}: $zip" }
+            Assert-PluginArchive -Zip $zip -AddinFile "RvtMcp.R$yearTwo.addin"
+        }
+        if ($serverSourceDir -and -not (Find-ServerSourceExe $serverSourceDir)) { throw 'Setup server executable is missing.' }
+        if (-not $WhatIfPreference) {
+            $script:installStage = [IO.Path]::GetFullPath((Join-Path ([IO.Path]::GetTempPath()) ('rvtmcp-install-' + [guid]::NewGuid().ToString('N'))))
+            New-Item -ItemType Directory -Path $script:installStage | Out-Null
+            foreach ($year in $Years) {
+                $zip = Join-Path $pluginSourceDir ("RvtMcp.Plugin.R{0}.zip" -f ($year - 2000))
+                Expand-Archive -LiteralPath $zip -DestinationPath (Join-Path $script:installStage "$year")
+            }
+            if ($serverSourceDir) {
+                Copy-Item -LiteralPath $serverSourceDir -Destination (Join-Path $script:installStage 'server') -Recurse
+                $serverSourceDir = Join-Path $script:installStage 'server'
+            }
+            # Recheck after staging; a user may have launched Revit meanwhile.
+            Assert-RevitClosed
+        }
+    }
 
 foreach ($year in $Years) {
     $yearTwo = "{0:D2}" -f ($year - 2000)
@@ -571,49 +716,10 @@ foreach ($year in $Years) {
         continue
     }
 
-    $zip = Join-Path $pluginSourceDir ("RvtMcp.Plugin.R{0}.zip" -f $yearTwo)
-    if (-not (Test-Path $zip)) {
-        Write-Warning ("[R{0}] skipped - missing zip {1}" -f $yearTwo, $zip)
-        $skipped += "R$yearTwo"
-        continue
-    }
-
-    if (-not (Test-Path $addinsRoot)) {
-        if ($PSCmdlet.ShouldProcess($addinsRoot, 'Create Revit addins directory')) {
-            New-Item -ItemType Directory -Path $addinsRoot -Force | Out-Null
-        }
-    }
-
-    if (Test-Path $pluginDir) {
-        if ($PSCmdlet.ShouldProcess($pluginDir, 'Clean previous install')) {
-            Remove-Item $pluginDir -Recurse -Force
-        }
-    }
-    if ($PSCmdlet.ShouldProcess($pluginDir, 'Create plugin folder')) {
-        New-Item -ItemType Directory -Path $pluginDir -Force | Out-Null
-    }
-
-    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
-    $zipHasAddin = $false
-    $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
-    try {
-        $zipHasAddin = @($archive.Entries | Where-Object { $_.Name -eq $addinFile }).Count -gt 0
-    } finally {
-        $archive.Dispose()
-    }
-    if (-not $zipHasAddin) {
-        Write-Warning ("[R{0}] zip {1} does not contain {2} - skipping" -f $yearTwo, $zip, $addinFile)
-        $skipped += "R$yearTwo"
-        continue
-    }
-
-    if ($PSCmdlet.ShouldProcess($zip, "Extract to $pluginDir")) {
-        Expand-Archive -Path $zip -DestinationPath $pluginDir -Force
-    }
-
-    $extractedAddin = Join-Path $pluginDir $addinFile
-    if ($PSCmdlet.ShouldProcess($addinPath, 'Move addin manifest to addins root')) {
-        Move-Item -Path $extractedAddin -Destination $addinPath -Force
+    if ($PSCmdlet.ShouldProcess($pluginDir, 'Install staged plugin and addin manifest with rollback')) {
+        $stagedPlugin = Join-Path $script:installStage "$year"
+        Set-InstallPath -Source (Join-Path $stagedPlugin $addinFile) -Destination $addinPath
+        Set-InstallPath -Source $stagedPlugin -Destination $pluginDir
     }
 
     if ($WhatIfPreference) {
@@ -689,3 +795,19 @@ if ($Client -ne 'none') {
     Write-Host ("Client : {0}" -f $Client)
     Write-Host ("Wired  : {0}" -f ($(if ($wireStatus.Count -gt 0) { $wireStatus -join ', ' } else { 'none' })))
 }
+} catch {
+    $installFailure = $_
+    Undo-InstallChanges
+    throw $installFailure
+} finally {
+    if ($script:installStage) {
+        try { Remove-InstallPath $script:installStage } catch { Write-Warning "Staging cleanup failed: $_" }
+    }
+}
+# Keep backups until every plugin, server and config write has succeeded.
+foreach ($change in $script:installChanges) {
+    if ($change.Backup) {
+        try { Remove-InstallPath $change.Backup } catch { Write-Warning "Backup retained at $($change.Backup): $_" }
+    }
+}
+$script:installChanges = $null

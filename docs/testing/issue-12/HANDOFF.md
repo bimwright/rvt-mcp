@@ -2,6 +2,8 @@
 
 Issue: https://github.com/bimwright/rvt-mcp/issues/12
 
+**Latest review follow-up:** see [REVIEW-FOLLOWUP.md](REVIEW-FOLLOWUP.md). The connection handler now recognizes one shared fitting, the public pipe-selector guide is corrected, and a restarted 2027 DLL passes 17 existing cases, 4 real-fitting cases and actual typed MCP calls. Latest automated suite: 564 passed. Earlier counts/hashes below describe the original #12 checkpoint.
+
 Local work based on issue #11 commit `5944fcfa6a206a5fc147582f02886be2cee27c41`. The owner authorized committing the #12 fix, handoff and evidence on 2026-09-22. Identify the containing commit with `git log -1 --format=%H -- docs/testing/issue-12/HANDOFF.md`. Publication remains on hold: no push, GitHub response, release, or issue closure until the owner explicitly resumes it after the remaining issues.
 
 ## Implemented behavior
@@ -47,7 +49,7 @@ The existing MCP server process has not been restarted or replaced. Updated type
 ## Resume
 
 1. Inspect Git status and preserve unrelated generated `tests/RvtMcp.Tests/TestResults/` output.
-2. Local acceptance is complete. If later changes affect these handlers, rerun the relevant checks. Enumerate targets and verify the loaded plugin before any rerun; do not assume the recorded process is still running.
+2. Read the latest [review follow-up](REVIEW-FOLLOWUP.md) for the current binary, dedicated test model and acceptance. If later changes affect these handlers, rerun the relevant checks. Enumerate targets and verify the loaded plugin before any rerun; do not assume the recorded process is still running.
 3. [live-regression.cs](live-regression.cs) is the 17-case harness. Its `candidate` flag is `false`, so it invokes installed production handlers. [connection-probes.cs](connection-probes.cs) contains the four supplemental observations. Both expect the Autodesk HVAC sample's piping/HVAC types and mechanical equipment.
 4. [RESPONSE-DRAFT.md](RESPONSE-DRAFT.md) is an unpublished response draft. Preserve the publication hold and update availability/version information only after an actual release or push.
 

@@ -1,0 +1,26 @@
+﻿{
+    "powershell":  "5.1.26100.9444",
+    "installerSha256":  "C107F24A22627EC1743DF4F786C3251008C35CBC2127A432739FBE0E06859950",
+    "results":  [
+                    {
+                        "name":  "Codex preserves options, nested env and unrelated sections",
+                        "passed":  false,
+                        "error":  "Lost setting: --read-only"
+                    },
+                    {
+                        "name":  "Claude preserves options and other servers",
+                        "passed":  false,
+                        "error":  "Lost read-only flag"
+                    },
+                    {
+                        "name":  "Opencode preserves options and other servers",
+                        "passed":  false,
+                        "error":  "Lost read-only flag"
+                    },
+                    {
+                        "name":  "Kilo preserves options and other servers",
+                        "passed":  false,
+                        "error":  "Lost read-only flag"
+                    }
+                ]
+}

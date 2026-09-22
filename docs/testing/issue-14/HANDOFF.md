@@ -7,6 +7,7 @@ Session implementation and local verification are complete. **Do not equate this
 1. Inspect current branch/status; this checkpoint is on `master`. Preserve the pre-existing untracked `tests/RvtMcp.Tests/TestResults/`.
 2. On the owner's next push request, push the issue #14 commits along with the agreed scope.
 3. After successful push, post [ISSUE-COMMENT.md](ISSUE-COMMENT.md) with `gh issue comment 14 --repo bimwright/rvt-mcp --body-file docs/testing/issue-14/ISSUE-COMMENT.md`. It includes the **entire self-contained C# payload**, not just links. Check for an equivalent existing comment first to avoid duplication. This future notification was requested by the owner; do not post before the push.
+   The owner also requested inline images: the draft now embeds both retained 2027 PNGs through raw GitHub URLs pinned to `0426fb633e2390e2e7ea9d8a58a81a9ef7ac0cbc`. That commit already contains both files locally; verify both image URLs after pushing and before posting. The installed GitHub CLI 2.95.0 has no `--attach` flag, so the prepared Markdown uses repository-hosted images and works with `--body-file`.
 4. Record the resulting commit/comment URLs here. Do not promise a published plugin until release packaging actually happens.
 5. Request reporter verification on Revit 2025 or their failing script/minimal model. Explain the owner's decision to defer a native `create_stairs` tool in favor of the documented conversation and send-code workflow. Do not close #14 solely because that design decision is recorded.
 

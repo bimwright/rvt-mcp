@@ -1,0 +1,44 @@
+﻿{
+    "testedAtUtc":  "2026-09-22T11:34:38.1558971Z",
+    "fromVersion":  "0.6.1",
+    "toVersion":  "0.6.2",
+    "installerSha256":  "FB0BCB43C444318457EC5885AF5C9BDCBFBC225CB7C2BD6ED7C78046F212A889",
+    "isolation":  "Real payloads and installer control flow; sandbox paths and simulated closed host; no real deployment.",
+    "pluginResults":  [
+                          {
+                              "filesVerified":  17,
+                              "year":  2022,
+                              "passed":  true
+                          },
+                          {
+                              "filesVerified":  17,
+                              "year":  2023,
+                              "passed":  true
+                          },
+                          {
+                              "filesVerified":  17,
+                              "year":  2024,
+                              "passed":  true
+                          },
+                          {
+                              "filesVerified":  11,
+                              "year":  2025,
+                              "passed":  true
+                          },
+                          {
+                              "filesVerified":  11,
+                              "year":  2026,
+                              "passed":  true
+                          },
+                          {
+                              "filesVerified":  11,
+                              "year":  2027,
+                              "passed":  true
+                          }
+                      ],
+    "serverVerified":  true,
+    "oldServerPreserved":  true,
+    "configPreserved":  true,
+    "configBackupVerified":  true,
+    "passed":  true
+}

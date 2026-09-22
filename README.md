@@ -60,6 +60,14 @@ You should get something like:
 
 If that fails, install is not done yet — fix client config / plugin load before anything else.
 
+### Upgrade an existing installation
+
+Updates are manual. Close all Revit windows and stop the MCP connection in your AI client, extract the new release ZIP into a separate folder, then run its `install.ps1 -WhatIf` followed by `install.ps1`. Upgrade the server and plugins together; restart Revit and the MCP client, then repeat the checks above. Do not uninstall first: the full uninstaller also removes personal ToolBaker data and logs.
+
+The **unreleased installer in this source tree** preserves existing `rvt-mcp` arguments, environment, enabled/disabled state and other options while updating the executable path. It leaves other entries (including legacy aliases) intact. Custom launcher wrappers and unsupported TOML layouts require `-Client none` plus a manual path update; project-level configs are not scanned. These protections are not in the published v0.6.1 installer.
+
+Before replacing files, the new installer checks package checksums when a manifest is present, validates every selected plugin ZIP, stages the payload and refuses installation while Revit is running. Caught installation errors restore earlier plugin/server/config changes. Config backups use `<config>.rvtmcp.bak`. If rollback is blocked by file locks or permissions, the error identifies retained `.rvtmcp-rollback-*` backups; hard termination or power loss requires manual recovery. See [installer verification](docs/testing/installer-upgrade/README.md).
+
 ### Uninstall
 
 From the setup ZIP root (or this repo’s `scripts/`):

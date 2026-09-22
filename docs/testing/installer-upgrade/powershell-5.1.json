@@ -1,0 +1,82 @@
+﻿{
+    "powershell":  "5.1.26100.9444",
+    "installerSha256":  "FB0BCB43C444318457EC5885AF5C9BDCBFBC225CB7C2BD6ED7C78046F212A889",
+    "results":  [
+                    {
+                        "name":  "Codex preserves options, nested env and unrelated sections",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Claude preserves options and other servers",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Opencode preserves options and other servers",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Kilo preserves options and other servers",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Codex quoted table preserves literal dollar signs and adjacent table",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Custom launchers fail without config changes",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Multiline TOML fails without interpreting embedded command text",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Fresh config wiring and WhatIf leave no Kilo files",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Two-year upgrade replaces plugin and server and preserves config flags",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Revit running blocks the upgrade before any replacement",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "WhatIf preserves installation and does not stage files",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "missing ZIP blocks all replacements",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "corrupt ZIP blocks all replacements",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "missing-manifest ZIP blocks all replacements",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Later config failure restores both years, server and earlier config bytes",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Locked later addin restores the already-upgraded earlier year",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Manifest checksum failure is detected before installation",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Rollback removes newly created server and config",
+                        "passed":  true
+                    },
+                    {
+                        "name":  "Incomplete rollback reports retained backup and continues restoring other paths",
+                        "passed":  true
+                    }
+                ]
+}
