@@ -2,8 +2,18 @@
 
 ## Unreleased
 
+### Fixed
+
+- **MEP membership (#11)** — use piping/HVAC network collections, deduplicate inventory with terminals/base equipment, and count open physical connectors only in the system's domain. Failed reads no longer imply an empty system.
+- **Pipe system inheritance (#12)** — omitted system type inherits from a unique open piping connector at the start and connects during creation. Ambiguity and diameter conflicts are rejected; fallback reports the actual type. MEP connections reject different assigned piping/HVAC system types before mutation.
+- **Hosted family placement (#13)** — optional `host_id`, placement-type validation, explicit hosts for hosted families, and actual host/position checks before commit. Unsupported face/work-plane placement and mismatches fail without leaving an instance behind.
+- **Toast crash** — initialize window coordinates before showing/reflowing; avoid WPF animations from `NaN` and clear stale position animation clocks. Includes a real WPF regression executable.
+- **Build/deployment dependencies** — pin patched native SQLite, include net48 runtime dependencies, and fail deployment/package staging if native SQLite is missing. Restore modern plugin Windows platform annotations without suppressing analyzer rules.
+
 ### Changed
 
+- Placement and MEP contracts are documented in [the behavior guide](docs/placement-and-mep-contracts.md). These schema changes require updated server and plugin builds plus restarted MCP connections; no new release is announced.
+- **Stairs (#14)** — documented conversation/send-code workflow, tested examples and execution safeguards; a dedicated stair tool remains deferred. See [coverage and limits](docs/stairs-workflow.md).
 - **Completion toast now defaults ON** — fresh installs show result-only toasts out of the box. Disable via ribbon **Toast** (persisted), `enableToast: false`, or `BIMWRIGHT_ENABLE_TOAST=0`. Existing explicit `enableToast` config values are untouched.
 - Optional developer path: NuGet global tool **`RvtMcp.Server` 0.6.1** (MCP server only; Revit plugins still come from the GitHub Release ZIP). Legacy **`Bimwright.Rvt.Server` 0.1–0.3** is obsolete.
 

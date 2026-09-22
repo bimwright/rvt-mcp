@@ -261,6 +261,12 @@ MCP 名は `revit_*`。server↔plugin ワイヤ名はプレフィックスな�
 
 ---
 
+### 未リリースの配置・MEP 修正
+
+現在のソースには、ドア・窓の明示的なホスト指定と実際の位置の検証（#13）、配管延長時のシステム継承と異なるシステムタイプ間の接続拒否（#12）、MEP ネットワーク要素の集計修正（#11）が含まれます。[動作と使用例](docs/placement-and-mep-contracts.md)、[検証記録](docs/testing/2026-09-22-issue-handoff.md)を参照してください。公開済みの v0.6.1 ZIP には含まれません。利用にはサーバーとプラグインの更新、および接続の再起動が必要です。
+
+階段には[設計確認と C# 実行の手順](docs/stairs-workflow.md)を使用します。専用の `create_stairs` ツールはまだありません。
+
 ## Supported Revit versions
 
 | Revit | プラグイン TFM | トランスポート |

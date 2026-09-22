@@ -11,12 +11,14 @@ xUnit test project. Covers unit-test scope + schema/tool-surface drift snapshot.
 ## Running
 
 ```bash
-dotnet test tests/RvtMcp.Tests/RvtMcp.Tests.csproj
+dotnet test tests/RvtMcp.Tests/RvtMcp.Tests.csproj -c Release
 ```
 
-All tests live in one project; there is no matrix.
+The cross-platform xUnit tests live in this project. The server reference builds without an app host into `tests/server-staging/`, avoiding the executable held by running MCP sessions.
 
-If the build fails copying `RvtMcp.Server.exe` because a running MCP session holds it open, add `-c Release` to use a separate output directory, or `/mcp` disconnect in Claude Code first.
+`PointBasedPlacementTests` compiles the production handler against API doubles to exercise placement-type selection, host/coordinate validation, overload choice and rollback. These tests do not replace live Revit acceptance; see [issue #13 evidence](../../docs/testing/issue-13/HANDOFF.md).
+
+Real WPF positioning/animation tests run separately on Windows via [RvtMcp.Toast.Tests](../RvtMcp.Toast.Tests/README.md).
 
 ## Golden snapshot — `Golden/tools-list.json`
 

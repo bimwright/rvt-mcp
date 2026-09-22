@@ -265,6 +265,10 @@ Golden snapshots in tests pin the exact surface; if counts and code disagree, tr
 
 ---
 
+### Unreleased placement and MEP fixes
+
+The source tree includes explicit hosts and verified positions for doors/windows (#13), pipe system inheritance and incompatible-system rejection (#12), and corrected MEP network membership/counts (#11). See [behavior and examples](docs/placement-and-mep-contracts.md) and the [acceptance record](docs/testing/2026-09-22-issue-handoff.md). These changes are not in the published v0.6.1 ZIP; adopting them requires updated server/plugin builds and restarted connections.
+
 ## Supported Revit versions
 
 | Revit | Plugin TFM | Transport |
