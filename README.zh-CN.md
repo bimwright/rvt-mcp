@@ -25,11 +25,17 @@
 
 ---
 
+## 这是什么
+
+`rvt-mcp` 是 MCP 客户端与正在运行的 Revit 会话之间的**本地**桥。.NET 8 server 通过 stdio 提供 MCP；每个 Revit 年份（2022–2027）一个瘦 add-in 在 Revit 内运行，经 localhost TCP（≤2024）或 named pipe（≥2025）连接。数据不出本机，全部为 C#，工具边界的长度单位为 mm。细节：[ARCHITECTURE.md](ARCHITECTURE.md)。
+
+Agent 可以使用覆盖常见 Revit 工作的 **typed 工具面**、应对其余情况的 C# escape hatch，以及把重复模式变成个人工具的**可选**路径（ToolBaker）：从共享运行时出发，在其上长出*你的*工具。Family Editor 创作暂不在范围内（[路线图](docs/roadmap.md)）。
+
+---
+
 ## 安装
 
-客户端请使用 [GitHub Releases](https://github.com/bimwright/rvt-mcp/releases/latest) 中的 setup ZIP。其中包含自包含 MCP server 以及 Revit 2022–2027 插件 — 不需要 .NET SDK、NuGet 全局工具或克隆源码。
-
-**AI agent：** 从 latest release 下载 `RvtMcp.Setup-*-win-x64.zip` 并运行安装脚本。除非用户明确要求开发者安装，否则**不要** clone、build 或 `dotnet tool install`。协议见 [AGENTS.md](AGENTS.md)。
+使用 [GitHub Releases](https://github.com/bimwright/rvt-mcp/releases/latest) 中的 setup ZIP：内含自包含 server 与 Revit 2022–2027 插件，不需要 .NET SDK 或克隆源码。**AI agent：** 按 [AGENTS.md](AGENTS.md) 操作；除非用户要求开发者安装，否则不要 clone 或 build。
 
 ```powershell
 $tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/releases/latest).tag_name
@@ -42,16 +48,16 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf
 powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-安装程序会检测 Revit 2022–2027（仅限存在 `Revit.exe` 的年份），把对应插件和 server 安装到固定路径 `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`，试启动 server 并与安装包逐字节核对插件。安装程序**不会**配置 MCP 客户端：请在客户端中注册名为 `rvt-mcp`、命令为上述路径的 stdio server，或交给 AI 助手完成（[AGENTS.md](AGENTS.md) Step 3）。升级后 server 路径不变，客户端只需重启。带有相同 AddInId 的 Bimwright 时代旧插件会被自动移除。
+请先关闭 Revit。安装程序会检测存在 `Revit.exe` 的 Revit 2022–2027，把对应插件和 server 安装到 `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`，校验两者，出错时回滚。安装程序不会改动 MCP 客户端配置。细节与其他安装方式（开发者、仅 NuGet server）：[docs/install.md](docs/install.md)。
 
-**不要**安装 v0.5.0 及更早的 ZIP。**不要** `dotnet tool install -g Bimwright.Rvt.Server`（旧 0.1–0.3）。**不要**用 NuGet 代替本 ZIP 装客户端 — 该工具包不含 Revit 插件。
+### 连接 MCP 客户端
 
-AutoCAD 请用独立的 [dwg-mcp](https://github.com/bimwright/dwg-mcp) — 不同产品、不同安装。
+注册一个名为 `rvt-mcp` 的 stdio server，命令为上述 server 路径（写成绝对路径），可用客户端自己的 `mcp add` 命令、设置界面或配置文件。任何 stdio MCP 客户端都可以使用（Claude Code、Claude Desktop、Codex、Cursor、VS Code、Gemini CLI、OpenCode、Kilo 等）。已验证的各客户端步骤：[docs/mcp-client-wiring.md](docs/mcp-client-wiring.md)。
 
 ### 验证是否可用
 
 1. 打开带模型的 Revit。
-2. 在 ribbon（BIMwright / RvtMcp）上启动 MCP 连接。
+2. 在 ribbon（**附加模块**（Add-Ins）选项卡 → **RvtMcp** 面板）上启动 MCP 连接。
 3. 在 MCP 客户端中 list tools，再调用 `revit_get_current_view_info`。
 
 大致应得到：
@@ -60,140 +66,26 @@ AutoCAD 请用独立的 [dwg-mcp](https://github.com/bimwright/dwg-mcp) — 不�
 { "viewName": "Level 1", "viewType": "FloorPlan", "levelName": "Level 1", "scale": 100 }
 ```
 
-失败则安装未完成 — 先修客户端配置 / 插件加载。
+失败则安装未完成 — 先修客户端配置或插件加载。
+
+### 升级
+
+关闭 Revit 和 MCP 客户端，把新版本 ZIP 解压到新文件夹，运行其中的 `install.ps1 -WhatIf`，再运行 `install.ps1` — 不要先卸载。server 路径保持不变，客户端只需重启。从 v0.6.2 或更早版本升级？请把客户端改指向上面的 `current` 路径，再用 `install.ps1 -PruneOldServers` 删除旧 server 文件夹。更多：[docs/install.md](docs/install.md#upgrade)。
 
 ### 卸载
 
-从 setup ZIP（或仓库 scripts）：
+在 setup ZIP 文件夹中：
 
 ```powershell
-# Setup ZIP:
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -WhatIf
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -Yes
-
-# Clone 仓库:
-powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -WhatIf
-powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -Yes
 ```
 
-移除 Revit 2022–2027 所有年份的插件（含 Bimwright 时代旧插件）、自包含 server、discovery 文件与 spill 缓存。不会改动 MCP 客户端配置 — 请自行在各客户端删除 `rvt-mcp` 条目。仍被客户端运行的 server 副本会保留；关闭客户端后重新运行即可。`%LOCALAPPDATA%\RvtMcp` 下的其余数据（设置、翻译、ToolBaker、企业配置、共享参数、日志、captures）均保留。`-Purge` 全部删除；`-Purge -KeepLogs` 保留日志。
-
-### 开发者安装
-
-```powershell
-git clone https://github.com/bimwright/rvt-mcp.git
-cd rvt-mcp
-dotnet build src/RvtMcp.sln -c Debug
-```
-
-请先关闭所有 Revit — 构建会把插件 DLL 部署到 `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\`。MCP 客户端请指向 `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`。要试用真实安装程序，先运行 `pwsh scripts/package-client-setup.ps1 -AllowDirty`，再运行 `build/client-setup/stage/install.ps1`（只要一年可用 `-Years 2024`）。
-
-**可选 — 仅 NuGet server**（不安装 Revit 插件）。插件已通过 ZIP 或本地构建安装、只需把 MCP server 放到 PATH 时：
-
-```powershell
-dotnet tool uninstall -g Bimwright.Rvt.Server   # 从未装过 0.1–0.3 可跳过
-dotnet tool install -g RvtMcp.Server --version 0.6.1
-```
-
-命令名：`rvt-mcp`。插件仍用 GitHub Release ZIP。`Bimwright.Rvt.Server` 已过时。
-
-### 从 `Bimwright.Rvt.*`（v0.3 及更早）迁移
-
-v0.4+ 将包名/目录改为 `RvtMcp.*`（仓库与品牌仍为 bimwright）。
-
-1. 关闭所有 Revit。
-2. `pwsh scripts/uninstall-old.ps1` — 删除旧 `%APPDATA%\…\Bimwright\` 插件与旧 server 根；保留用户 bake/journal，首次启动新版本时迁到 `%LOCALAPPDATA%\RvtMcp\`。
-3. 安装当前 GitHub Release ZIP（上方客户端安装）。不要安装 v0.5.0 及更早的包。若装过旧全局工具：`dotnet tool uninstall -g Bimwright.Rvt.Server`。
-4. MCP 客户端入口名为 **`rvt-mcp`**。安装程序会自动移除 Bimwright 时代的插件；旧的按年 `bimwright-rvt-r22`… 客户端条目请自行删除。
-
----
-
-## 这是什么
-
-`rvt-mcp` 是 MCP 客户端（Claude、Cursor、Codex、OpenCode 等）与正在运行的 Revit 会话之间的**本地**桥。
-
-两个进程：
-
-| 组件 | 作用 |
-|------|------|
-| **RvtMcp.Server** | .NET 8 MCP server（stdio）。不引用 Revit — 任意机器可编。 |
-| **RvtMcp.Plugin** | 每个 Revit 年一份瘦 add-in（2022–2027）。在 Revit 内、UI 线程执行。 |
-
-Agent → MCP → server → localhost TCP（≤2024）或 Named Pipe（≥2025）→ plugin → Revit API。
-
-全部在本机。网关本身不需要云中继。
-
-没有 Node/TypeScript sidecar。Server、插件、handler、ToolBaker 全是 C#。共享命令在 `src/shared/`；每年一个小 shell，API 漂移用 `#if`。细节：[ARCHITECTURE.md](ARCHITECTURE.md)。
-
----
-
-## 为什么存在
-
-Revit 用户通常清楚要自动化什么。难点是把想法变成可交付软件：学够 C#/Dynamo、对抗 API、打包 add-in、扛住版本升级 — 或者外包、或买只能半匹配办公室流程的固定工具。
-
-Agent 改善了前半段（描述任务、当场试）。它们不会消掉 transaction、单位、选择、worksharing，或「模型刚被搞坏了吗？」。本网关负责：常见工作的 **typed 工具面**、需要时在 Revit 内跑 ad-hoc C# 的 escape hatch，以及把本地重复模式变成个人工具的**可选**路径（ToolBaker）。
-
-不是给每家公司的万能 add-in。办公室各不相同。赌注是：共享运行时，在其上长出*你的*工具。
-
-**范围（坦白）：** 不为每个边角情况都新铸 MCP tool。有 typed 工具就用；否则 `revit_send_code_to_revit`（仅 C#）。项目内 family **管理**有覆盖；完整 Family Editor 创作套件与 Revit Viewer 宿主暂不在范围内 — 见 [docs/roadmap.md](docs/roadmap.md)。
-
----
-
-## 一次正常会话
-
-1. 打开带模型的 Revit；插件已连接（ribbon）。
-2. MCP 客户端启动 `rvt-mcp` / 已安装的 server。
-3. Agent 调工具：查询视图/选择、建轴网/房间、图纸、MEP、导出… 工具边界长度单位为 **mm**。
-4. 多次写入一次撤销：`revit_batch_execute`。
-5. 多开 Revit：`revit_list_available_targets` 再 `revit_switch_target`，年份四位数字（`2024`，不是 `R24`）。
-
-没有合适 typed 工具时：
-
-```text
-revit_send_code_to_revit   # C# 正文，在插件内编译执行
-```
-
-该工具默认开启（toolset `meta`）。若不希望 agent 在模型里编译代码，用 `--read-only` 或 `--disable-toolbaker` 关掉。
-
-### ToolBaker（可选）
-
-默认表面含 `revit_send_code_to_revit`。`revit_list_baked_tools` / `revit_run_baked_tool` 需要 `--toolsets toolbaker`（或 `--toolsets all`）。
-
-**Adaptive bake**（从 usage 建议新工具）默认**关闭**。开启后，重复模式可出现在 `revit_list_bake_suggestions`；需你显式 accept/dismiss。未 accept 不会自己上 ribbon。
-
-常用开关（亦见 JSON/env — [配置](#配置)）：
-
-| 目标 | 打开什么 |
-|------|----------|
-| 从重复 **typed** 调用学习 | `--enable-adaptive-bake` |
-| 也对 **`send_code`** 正文聚类建议 | 再加 `--cache-send-code-bodies`（已脱敏，仍本地） |
-| 短期磁盘 journal | `persistSendCodeBodies` + TTL（默认隐私：关） |
-
-Bake 在 **Revit 进程内**用 Roslyn 编译 — 终端用户不需要 Visual Studio。细节与隐私：[docs/bake.md](docs/bake.md)。
-
-### Toast（可选）
-
-完成 toast 默认**开启**。用 ribbon **Toast**、配置里 `enableToast: false`，或 `BIMWRIGHT_ENABLE_TOAST=0` 关闭。只显示**已完成**调用（无进行中 toast）。Capture 成功可在路径 allowlist 内显示缩略图。Ribbon **Status** 也会列出 toast 与 bake/隐私标志，避免靠猜。
-
----
-
-## 架构（短）
-
-```text
-MCP client (stdio)
-    → RvtMcp.Server (.NET 8)
-        → TCP (Revit 2022–2024) 或 Named Pipe (2025–2027)
-            → Plugin shell（按年）
-                → ExternalEvent → Revit API / 事务 / 撤销
-```
-
-Handler 只返回普通 DTO — 线上不传活的 Revit 对象。
+移除插件和 server，但保留设置、翻译、ToolBaker 数据和日志，除非加上 `-Purge`。请自行在 MCP 客户端中删除 `rvt-mcp` 条目。更多：[docs/install.md](docs/install.md#uninstall)。
 
 ---
 
 ## Tools
-
-数量（不含个人 baked 工具）：
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
@@ -201,97 +93,41 @@ Handler 只返回普通 DTO — 线上不传活的 Revit 对象。
 | `--toolsets all` | **229** | 完整目录 |
 | `all` + adaptive bake | **232** | 再加 3 个 suggestion 生命周期工具 |
 
-MCP 名：`revit_*`。server↔plugin 线名：无前缀 snake_case。
+数量不含个人 baked 工具。其余 toolset 默认关闭，需显式开启，例如 `--toolsets query,view,meta,mep` 或 `--toolsets all`；`--read-only` 会去掉所有可写 toolset（含 `create`）。
 
-**默认开启 toolset：** `query`, `create`, `view`, `meta`
+| Toolset | 覆盖 |
+|---------|------|
+| `query` | 视图、选择、过滤、统计、参数、关系、workset、组/程序集 |
+| `create` | 轴网、标高、房间、线/点/面构件、组 |
+| `view` | 建视图、图纸布局辅助、截图、裁剪/比例 |
+| `meta` | 批处理（最多 20）、多 Revit 目标、项目信息、purge（MVP）、消息、send_code |
+| `lint` | 视图命名、firm-profile、警告摘要 |
+| `schedule` | 明细表 list/创建、字段、公式、数据 |
+| `families` | 加载/卸载、类型、实例、审计、导出 `.rfa`（项目侧） |
+| `modify` | 操作/着色、写参数、换类型、workset |
+| `delete` | 按 id 删除 |
+| `annotation` | 标记、文字、尺寸、填充、keynote、检查 |
+| `export` | PDF/DWG/IFC/NWC、房间数据及相关导出 |
+| `mep` | 系统、连接件、网络、风口灯具等 |
+| `graphics` | 视图过滤器、覆盖、可见性/阶段 |
+| `toolbaker` | list/run baked；adaptive 开才有 suggestion 工具 |
+| `sheets` | 图纸、图框、修订、重编号 |
+| `materials` | 材质、外观、赋值、提量 |
+| `geometry` | 包围盒、测量、碰撞、体积/面积… |
+| `rooms` | 房间/面积/空间、装修、分隔 |
+| `links` | Revit/CAD 链接、坐标审计、获取/发布坐标 |
+| `parameters` | 项目/共享参数 |
+| `organization` | 保存选择、视图样板 |
+| `workflows` | 碰撞/审计/图纸/提量类组合流 |
+| `structural` | 柱梁基础、钢筋、荷载… |
+| `kei` | KEI 项目 SQLite 路径、查询/写入（WAL 安全）、设备导入 |
 
-**除非显式开启否则关闭：** 其余全部（`export`、`geometry`、`mep`、`structural`、`toolbaker`、`modify`、`delete` 等）。  
-例：`--toolsets query,view,meta` 或 `--toolsets all`。  
-`--read-only` 去掉所有可写 toolset（含 `create`）。
+### send_code、ToolBaker、ribbon 与界面语言
 
-| Toolset | 覆盖 | 默认 |
-|---------|------|------|
-| `query` | 视图、选择、过滤、统计、参数、关系、workset、组/程序集 | on |
-| `create` | 轴网、标高、房间、线/点/面构件、组 | on |
-| `view` | 建视图、图纸布局辅助、截图、裁剪/比例 | on |
-| `meta` | 批处理（最多 20）、多 Revit 目标、项目信息、purge（MVP）、消息、send_code | on |
-| `lint` | 视图命名、firm-profile、警告摘要 | off |
-| `schedule` | 明细表 list/创建、字段、公式、数据 | off |
-| `families` | 加载/卸载、类型、实例、审计、导出 `.rfa`（项目侧） | off |
-| `modify` | 操作/着色、写参数、换类型、workset | off |
-| `delete` | 按 id 删除 | off |
-| `annotation` | 标记、文字、尺寸、填充、keynote、检查 | off |
-| `export` | PDF/DWG/IFC/NWC、房间数据及相关导出 | off |
-| `mep` | 系统、连接件、网络、风口灯具等 | off |
-| `graphics` | 视图过滤器、覆盖、可见性/阶段 | off |
-| `toolbaker` | list/run baked；adaptive 开才有 suggestion 工具 | off |
-| `sheets` | 图纸、图框、修订、重编号 | off |
-| `materials` | 材质、外观、赋值、提量 | off |
-| `rooms` | 房间/面积/空间、装修、分隔 | off |
-| `links` | Revit/CAD 链接、坐标审计、获取/发布坐标 | off |
-| `parameters` | 项目/共享参数 | off |
-| `organization` | 保存选择、视图样板 | off |
-| `workflows` | 碰撞/审计/图纸/提量类组合流 | off |
-| `structural` | 柱梁基础、钢筋、荷载… | off |
-| `kei` | KEI 项目 SQLite 路径、查询/写入（WAL 安全）、设备导入 | off |
-| `geometry` | 包围盒、测量、碰撞、体积/面积… | off |
-
-### 代表性工具
-
-不是 200+ schema 全表 — 常用锚点：
-
-| Toolset | Tool | 作用 |
-|---------|------|------|
-| `query` | `revit_get_current_view_info` | 活动视图类型、标高、比例 |
-| `query` | `revit_get_selected_elements` | 当前选择 |
-| `query` | `revit_ai_element_filter` | 类别 + 参数过滤（mm） |
-| `query` | `revit_get_element_details` | 位置、bbox、workset、阶段… |
-| `create` | `revit_create_grid` / `revit_create_level` / `revit_create_room` | 基础布局 |
-| `create` | `revit_create_point_based_element` | 门家具等（type id） |
-| `view` | `revit_capture_view_image` | 栅格截图（路径 allowlist） |
-| `meta` | `revit_batch_execute` | 多个命令一个 `TransactionGroup` |
-| `meta` | `revit_list_available_targets` / `revit_switch_target` | 多 Revit |
-| `families` | `revit_load_family_from_path` | 向项目加载 `.rfa` |
-| `links` | `revit_get_project_coordinate_system` / `revit_get_link_coordinate_system` | 主体/链接原点、场地、变换、真北 |
-| `toolbaker` | `revit_send_code_to_revit` | Escape hatch（C#） |
-| `toolbaker` | `revit_list_baked_tools` / `revit_run_baked_tool` | 已 accept 个人工具 |
-| `toolbaker` | `revit_list_bake_suggestions` | 仅 adaptive |
-| `lint` | `revit_analyze_view_naming_patterns` | 命名离群 |
-
-测试中的 golden snapshot 锁定准确 surface；计数与代码冲突时以测试/代码为准。
-
----
-
-### 放置与 MEP 修复（v0.6.2）
-
-v0.6.2 增加了门窗的显式宿主和实际位置校验（#13）、延长管道时继承系统并拒绝连接不同系统类型（#12），以及正确的 MEP 网络成员统计（#11）。参见[行为与示例](docs/placement-and-mep-contracts.md)和[验收记录](docs/testing/2026-09-22-issue-handoff.md)。请同时更新服务器与插件，并重启 Revit 和 MCP 连接。
-
-楼梯请使用[设计沟通与 C# 执行流程](docs/stairs-workflow.md)；暂未提供独立的 `create_stairs` 工具。
-
-## Supported Revit versions
-
-| Revit | 插件 TFM | 传输 |
-|-------|----------|------|
-| 2022–2024 | .NET Framework 4.8 | TCP |
-| 2025–2026 | .NET 8 (`net8.0-windows7.0`) | Named Pipe |
-| 2027 | .NET 10 (`net10.0-windows7.0`) | Named Pipe |
-
-六个 shell 均可编译。运行时深度仍因年份而异 — bake 与自定义 C# 请在目标年复测。
-
-**宿主：** 仅完整 Revit 桌面版。不支持 Revit Viewer。
-
----
-
-## 安全与隐私
-
-- 默认本地传输（loopback TCP / 本机 named pipe）。
-- `%LOCALAPPDATA%\RvtMcp\` 下 discovery 含每会话 auth token。
-- 工具参数在 handler 前做 schema 校验。
-- 返回模型的错误经脱敏（减少绝对路径泄露）。
-- `send_code` 可在 Revit 进程跑任意 C# — 强且危险；不可接受时关闭 toolbaker。
-- Adaptive bake、body cache、TTL journal 均为 **opt-in**，落在用户配置目录。默认不把原始 send_code 正文写入长期日志。
-
-更多：[SECURITY.md](SECURITY.md)、[docs/bake.md](docs/bake.md)。
+- **`revit_send_code_to_revit`**（默认开启）在没有合适 typed 工具时，于 Revit 内编译并运行 C# 正文；`--read-only` 或 `--disable-toolbaker` 会移除它。见 [docs/send-code.md](docs/send-code.md)；楼梯见 [docs/stairs-workflow.md](docs/stairs-workflow.md)。
+- **ToolBaker：** `revit_list_baked_tools` / `revit_run_baked_tool` 需要 `--toolsets toolbaker`。Adaptive bake（`--enable-adaptive-bake`，默认关闭）会根据重复调用建议工具；在你 accept 之前不会添加任何东西。Bake 在 Revit 内编译，不需要 Visual Studio。见 [docs/bake.md](docs/bake.md)。
+- **Ribbon：** 启动或停止连接，打开 **History** 搜索并重跑历史调用，切换完成 **Toast**（默认开启）。
+- **界面语言：** 插件 UI 支持 15 种语言，默认跟随 Revit 的界面语言；可在 ribbon 滑出面板的 **Language** 下拉框中更改。工具名与 payload 保持英文。见 [docs/localization.md](docs/localization.md)。
 
 ---
 
@@ -311,66 +147,49 @@ v0.6.2 增加了门窗的显式宿主和实际位置校验（#13）、延长管�
 | 持久化 send_code journal | `--persist-send-code-bodies` / `--no-…` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES=1` | `persistSendCodeBodies` |
 | Journal TTL | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | 完成 toast（默认开启） | ribbon **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
+| 界面语言（插件） | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
 
 改 server 标志后请重启 MCP 连接，以便客户端拿到新工具列表。
 
 ---
 
-## MCP 客户端
+## Supported Revit versions
 
-任何 stdio MCP 客户端都可以使用（Claude Code、Claude Desktop、Codex、Cursor、VS Code、Gemini CLI、OpenCode、Kilo 等）。用客户端自己的 `mcp add` 命令、设置界面或配置文件注册一个名为 `rvt-mcp`、命令为 `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`（绝对路径）的 server。安装程序不会编辑客户端配置；约定见 [AGENTS.md](AGENTS.md) Step 3，已验证的各客户端配置流程见 [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md)，各厂商深入参考在 `docs/mcp-config-*.md`。
+| Revit | 插件 TFM | 传输 |
+|-------|----------|------|
+| 2022–2024 | .NET Framework 4.8 | TCP |
+| 2025–2026 | .NET 8 (`net8.0-windows7.0`) | Named Pipe |
+| 2027 | .NET 10 (`net10.0-windows7.0`) | Named Pipe |
 
----
-
-## 仓库布局
-
-```text
-rvt-mcp/
-├── src/
-│   ├── RvtMcp.sln
-│   ├── server/            # MCP server
-│   ├── shared/            # Handlers, transport, ToolBaker, toast, …
-│   ├── plugin-r22/ … r27/ # 每年一个 shell
-├── tests/                 # xUnit + golden tool lists
-├── scripts/               # install / uninstall / package
-├── docs/                  # roadmap, bake, testing
-├── AGENTS.md
-└── ARCHITECTURE.md
-```
+仅支持完整 Revit 桌面版，不支持 Revit Viewer。CI 会构建全部六个插件，但运行时深度因年份而异 — baked 工具与自定义 C# 请在你使用的年份上复测。
 
 ---
 
-## 开发
+## 安全与隐私
 
-```bash
-dotnet test tests/RvtMcp.Tests/RvtMcp.Tests.csproj
-dotnet build src/server/RvtMcp.Server.csproj -c Release
-dotnet build src/plugin-r26/RvtMcp.Plugin.R26.csproj -c Release
-```
+- 默认本地：loopback TCP 或本机 named pipe，`%LOCALAPPDATA%\RvtMcp\` 下的 discovery 文件含每会话 auth token。
+- 工具参数在 handler 运行前做 schema 校验；返回模型的错误经过脱敏。
+- `send_code` 可在 Revit 进程中运行任意 C# — 强大且有风险。无法接受时请使用 `--read-only` 或 `--disable-toolbaker`。
+- Adaptive bake、body cache 与 send_code journal 均为 opt-in，留在用户配置目录下；默认不把原始 send_code 正文写入长期日志。
 
-构建插件前关闭 Revit（DLL 锁定）。普通 Debug/Release 会部署到 `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\`。
-
-```powershell
-pwsh scripts/stage-plugin-zip.ps1 -Config Release
-```
-
-贡献约定与 snapshot：[CONTRIBUTING.md](CONTRIBUTING.md)。
-
-### 成熟度
-
-可用，但不神化。CI 编六个插件 shell 与 server 测试。运行时覆盖在中间年份更强；生产模型请谨慎，并在*你的* Revit 版本上验证。新机器清单：[docs/testing/fresh-install-checklist.md](docs/testing/fresh-install-checklist.md)。
+更多：[SECURITY.md](SECURITY.md)、[docs/bake.md](docs/bake.md)。
 
 ---
 
-## 更多文档
+## 文档
 
 | 文档 | 主题 |
 |------|------|
 | [AGENTS.md](AGENTS.md) | Agent 安装协议 |
+| [docs/install.md](docs/install.md) | 安装程序细节、升级、卸载、开发者与 NuGet 安装 |
+| [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md) | 各客户端 MCP 接入步骤 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 进程、传输、DTO 规则 |
+| [docs/send-code.md](docs/send-code.md) | send_code 源码形式与失败处理 |
 | [docs/bake.md](docs/bake.md) | Adaptive bake 与正文隐私 |
+| [docs/localization.md](docs/localization.md) | 界面语言、覆盖、热重载 |
 | [docs/roadmap.md](docs/roadmap.md) | 近期加固与 non-goals |
 | [docs/kei-equipment-import.md](docs/kei-equipment-import.md) | KEI SQLite 工具（`--toolsets kei`） |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 构建、测试、新增工具 |
 | [CHANGELOG.md](CHANGELOG.md) | 发布说明 |
 
 ---
