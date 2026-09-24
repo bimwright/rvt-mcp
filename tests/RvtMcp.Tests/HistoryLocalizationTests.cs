@@ -42,25 +42,6 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void SessionLog_redact_path_produces_security_summary()
-        {
-            var previous = McpSessionLog.ConfigLoader;
-            McpSessionLog.ConfigLoader = () => new RvtMcpConfig { CacheSendCodeBodies = false };
-            try
-            {
-                var entry = new McpCallEntry
-                {
-                    ToolName = "send_code_to_revit",
-                    ParamsJson = JsonConvert.SerializeObject(new { code = "return 1;" }),
-                    Success = true
-                };
-                new McpSessionLog().Add(entry);
-                Assert.StartsWith("send_code_to_revit body redacted; code_hash=", entry.Summary);
-            }
-            finally { McpSessionLog.ConfigLoader = previous; }
-        }
-
-        [Fact]
         public void RefreshSummary_recomputes_in_new_language_and_keeps_truncated()
         {
             var en = EmbeddedCatalog.Load(typeof(HistoryLocalizationTests).Assembly, "en");

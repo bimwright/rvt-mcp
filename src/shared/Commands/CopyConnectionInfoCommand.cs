@@ -20,14 +20,14 @@ namespace RvtMcp.Plugin.Commands
 
             var info = App.Instance.IsTransportRunning
                 ? transport.ConnectionInfo
-                : "MCP Server is not running";
+                : Localization.L.T("dialog.connectionInfo.notRunning");
 
             Clipboard.SetText(info);
 
-            var td = new TaskDialog("Connection Info")
+            var td = new TaskDialog(Localization.L.T("dialog.connectionInfo.title"))
             {
-                MainInstruction = "Copied to clipboard",
-                MainContent = $"{info}\nDiscovery file: {discoveryFile}"
+                MainInstruction = Localization.L.T("dialog.connectionInfo.copied"),
+                MainContent = $"{info}\n" + Localization.L.T("dialog.connectionInfo.discoveryFile", ("path", discoveryFile))
             };
             td.Show();
 

@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Text;
 using Autodesk.Revit.UI;
+using RvtMcp.Plugin.Localization;
 using RvtMcp.Plugin.ToolBaker;
 
 namespace RvtMcp.Plugin.Views
@@ -21,9 +22,9 @@ namespace RvtMcp.Plugin.Views
         public void ShowOrFocus()
         {
             IsLoaded = true;
-            var dialog = new TaskDialog("Bake Inbox")
+            var dialog = new TaskDialog(L.T("bakeInbox.title"))
             {
-                MainInstruction = "Accepted baked tools",
+                MainInstruction = L.T("bakeInbox.instruction"),
                 MainContent = BuildContent(),
                 CommonButtons = TaskDialogCommonButtons.Ok
             };
@@ -40,13 +41,13 @@ namespace RvtMcp.Plugin.Views
         {
             var tools = _registry?.GetAll()?.OrderBy(t => t.Name).ToArray() ?? new BakedToolMeta[0];
             if (tools.Length == 0)
-                return "No accepted baked tools are available.";
+                return L.T("bakeInbox.empty");
 
             var sb = new StringBuilder();
             foreach (var tool in tools.Take(24))
             {
                 var runtime = _runtimeCache?.GetByName(tool.Name);
-                var slot = runtime?.RibbonSlot > 0 ? " [Ribbon slot " + runtime.RibbonSlot + "]" : string.Empty;
+                var slot = runtime?.RibbonSlot > 0 ? L.T("bakeInbox.ribbonSlot", ("slot", runtime.RibbonSlot)) : string.Empty;
                 sb.AppendLine((tool.DisplayName ?? tool.Name) + slot);
                 if (!string.IsNullOrWhiteSpace(tool.Description))
                     sb.AppendLine("  " + tool.Description);

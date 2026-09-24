@@ -115,7 +115,7 @@ namespace RvtMcp.Plugin
                             DurationMs = sw.ElapsedMilliseconds,
                             ErrorMessage = validationError,
                             ToolDescription = command.Description,
-                            Summary = "Validation failed: " + validationError
+                            Summary = Localization.L.T("history.summary.validationFailed", ("error", validationError))
                         });
                         var validationResponse = JsonConvert.SerializeObject(new
                         {

@@ -134,6 +134,7 @@
   "history.summary.selected": "Elements selected: {count:n}",
   "history.summary.rows": "Rows: {count:n}",
   "history.summary.items": "Items: {count:n}",
+  "history.summary.validationFailed": "Validation failed: {error}",
 
   "security.send_code.redacted_summary": "send_code_to_revit body redacted; code_hash={hash}; code_length={length:n}",
   "security.send_code.journal_redacted_rerun": "⚠ send_code body recovered from journal is bake-redacted (paths/secrets → placeholders) — verify before re-run",
@@ -142,5 +143,18 @@
   "security.send_code.execute_warning": "⚠ Compile + execute C# inside Revit (dangerous)",
   "security.send_code.rerunConfirmTitle": "Re-run Confirmation",
   "security.send_code.rerunConfirmRedacted": "Body recovered from the send-code journal is redacted (paths/secrets → placeholders) — it may behave differently than the original. Execute anyway?",
-  "security.send_code.rerunConfirm": "This will execute C# code in Revit. Continue?"
+  "security.send_code.rerunConfirm": "This will execute C# code in Revit. Continue?",
+
+  "dialog.connectionInfo.title": "Connection Info",
+  "dialog.connectionInfo.copied": "Copied to clipboard",
+  "dialog.connectionInfo.notRunning": "MCP Server is not running",
+  "dialog.connectionInfo.discoveryFile": "Discovery file: {path}",
+
+  "baked.slot.empty": "No baked tool is assigned to this ribbon slot.",
+  "showMessage.defaultBody": "Hello from MCP! Connection successful.",
+
+  "bakeInbox.title": "Bake Inbox",
+  "bakeInbox.instruction": "Accepted baked tools",
+  "bakeInbox.empty": "No accepted baked tools are available.",
+  "bakeInbox.ribbonSlot": " [Ribbon slot {slot:n}]"
 }

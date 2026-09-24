@@ -13,7 +13,7 @@ namespace RvtMcp.Plugin.Commands
             var entry = appInstance?.BakedToolRuntimeCache?.GetBySlot(slot);
             if (appInstance == null || entry == null)
             {
-                message = "No baked tool is assigned to this ribbon slot.";
+                message = Localization.L.T("baked.slot.empty");
                 return Result.Failed;
             }
 

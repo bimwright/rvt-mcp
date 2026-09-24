@@ -13,7 +13,7 @@ namespace RvtMcp.Plugin.Handlers
         public CommandResult Execute(UIApplication app, string paramsJson)
         {
             var title = "RvtMcp";
-            var message = "Hello from MCP! Connection successful.";
+            var message = Localization.L.T("showMessage.defaultBody");
             var echoMessage = false;
             var maxEchoChars = 1024;
 
