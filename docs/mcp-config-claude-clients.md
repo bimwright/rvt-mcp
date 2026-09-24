@@ -1,7 +1,8 @@
 # MCP Configuration for Claude Clients (Claude Code CLI, VS Code Extension, Claude Desktop)
 
-> **Audience:** anyone wiring `RvtMcp.Server.exe` (or any other stdio MCP server) into a Claude client.
-> **Last verified:** 2026-05-22 against official docs at `code.claude.com/docs/en/mcp` and `support.claude.com`.
+> **Audience:** anyone wiring `rvt-mcp.exe` (or any other stdio MCP server) into a Claude client.
+> **Last verified:** 2026-09-25 against official docs at `code.claude.com/docs/en/mcp` and `support.claude.com`.
+> **Canonical procedure:** [mcp-client-wiring.md](mcp-client-wiring.md) — this file is the deeper per-vendor reference.
 
 This document consolidates the research needed to register and operate the RvtMcp server with the three first-party Claude clients, plus the protocol-level constraints (name length, tool prefix format, Tool Search behavior) that determine whether agents can actually discover your tools.
 
@@ -9,13 +10,13 @@ This document consolidates the research needed to register and operate the RvtMc
 
 ## 1. Three clients, three config files
 
-All three clients speak the same Model Context Protocol over stdio, but store their server registry in different files. **A single `RvtMcp.Server.exe` binary works for all three** — only the registration entry differs.
+All three clients speak the same Model Context Protocol over stdio, but store their server registry in different files. **A single `rvt-mcp.exe` binary works for all three** — only the registration entry differs.
 
 | Client | Config file (Windows) | Native UI to edit |
 |---|---|---|
 | **Claude Code CLI** | `%USERPROFILE%\.claude.json` (user scope) **or** `.mcp.json` in repo root (project scope) **or** `~/.claude.json` per-project block (local scope) | `claude mcp add` / `claude mcp list` / `/mcp` panel |
 | **Claude Code VS Code extension** (v2.1.69+) | Same as Claude Code CLI — extension is a wrapper around the CLI | `/mcp` dialog in chat panel (no JSON editing needed) |
-| **Claude Desktop** | `%APPDATA%\Claude\claude_desktop_config.json` | Settings → Developer → "Edit Config" |
+| **Claude Desktop** | MSIX: `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json` (check first); classic: `%APPDATA%\Claude\claude_desktop_config.json` | Settings → Developer → "Edit Config" |
 
 On macOS Claude Desktop lives at `~/Library/Application Support/Claude/claude_desktop_config.json`. Other clients are CLI-driven and identical across platforms.
 
@@ -49,17 +50,17 @@ claude mcp add [options] <name> -- <command> [args...]
 **Examples for RvtMcp:**
 
 ```bash
-# Local scope (default): only this project
-claude mcp add rvt-mcp -- "D:/Projects/bimwright/rvt-mcp/src/server/bin/Debug/net8.0/RvtMcp.Server.exe"
+# Local scope (default): only this project — usually NOT what you want
+claude mcp add rvt-mcp -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
 
-# User scope: every project on this machine
-claude mcp add rvt-mcp --scope user -- "D:/Projects/bimwright/rvt-mcp/src/server/bin/Debug/net8.0/RvtMcp.Server.exe"
+# User scope: every project on this machine (recommended)
+claude mcp add rvt-mcp --scope user -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
 
 # Project scope: write into .mcp.json (commit to repo, team uses it)
-claude mcp add rvt-mcp --scope project -- "%LOCALAPPDATA%\\RvtMcp\\server\\0.4.0\\RvtMcp.Server.exe"
+claude mcp add rvt-mcp --scope project -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
 
 # Pin a specific Revit year (server otherwise auto-detects)
-claude mcp add rvt-mcp-2024 --scope user -- "...\\RvtMcp.Server.exe" --target 2024
+claude mcp add rvt-mcp-2024 --scope user -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe" --target 2024
 ```
 
 **Useful operations:**
@@ -76,7 +77,7 @@ Source: `code.claude.com/docs/en/mcp` §"Importing from Claude Desktop".
 
 ```bash
 # Add a server by raw JSON snippet (handy when you have a config from someone else)
-claude mcp add-json rvt-mcp '{"type":"stdio","command":"D:/.../RvtMcp.Server.exe","args":[]}'
+claude mcp add-json rvt-mcp '{"type":"stdio","command":"C:/.../rvt-mcp.exe","args":[]}'
 
 # Import all servers from Claude Desktop's claude_desktop_config.json
 claude mcp add-from-claude-desktop --scope user
@@ -110,7 +111,7 @@ The extension is **a thin UI over the CLI**, not a separate MCP runtime:
 **Workflow for RvtMcp users on VS Code:**
 
 1. Open a terminal in VS Code (`Ctrl+\``).
-2. Run `claude mcp add rvt-mcp --scope user -- "<path-to>\\RvtMcp.Server.exe"`.
+2. Run `claude mcp add rvt-mcp --scope user -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"`.
 3. Open Claude Code chat panel, type `/mcp` — `rvt-mcp` appears with status.
 4. Click to enable/disable or reconnect.
 
@@ -126,7 +127,8 @@ Source: `support.claude.com/en/articles/10949351` and `modelcontextprotocol.io/d
 
 | OS | Path |
 |---|---|
-| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Windows (MSIX — check first) | `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json` |
+| Windows (classic) | `%APPDATA%\Claude\claude_desktop_config.json` |
 | macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 
 ### 4.2 Editing
@@ -141,7 +143,7 @@ Source: `support.claude.com/en/articles/10949351` and `modelcontextprotocol.io/d
   "mcpServers": {
     "rvt-mcp": {
       "type": "stdio",
-      "command": "D:\\Projects\\bimwright\\rvt-mcp\\src\\server\\bin\\Debug\\net8.0\\RvtMcp.Server.exe",
+      "command": "C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe",
       "args": [],
       "env": {
         "BIMWRIGHT_READ_ONLY": "0"
@@ -155,7 +157,7 @@ Notes:
 - `"type"` defaults to `"stdio"` when `"command"` is set, so it can be omitted — including it is more explicit.
 - On Windows, **use double backslashes** in the path (JSON-escape) or forward slashes.
 - `env` is optional. RvtMcp reads `BIMWRIGHT_*` vars (see project README).
-- To run multiple Revit years simultaneously, add multiple entries each with `args: ["--target", "R24"]` etc.
+- To run multiple Revit years simultaneously, add multiple entries each with `args: ["--target", "2024"]` etc. (4-digit calendar years — `R24`-style codes are rejected).
 
 ---
 
@@ -271,7 +273,7 @@ Stdio servers like RvtMcp are **not auto-reconnected** if they crash mid-session
 
 **Install once (Claude Code CLI):**
 ```bash
-claude mcp add rvt-mcp --scope user -- "%LOCALAPPDATA%\\RvtMcp\\server\\0.4.0\\RvtMcp.Server.exe"
+claude mcp add rvt-mcp --scope user -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
 claude mcp list                    # verify ✓ Connected
 ```
 

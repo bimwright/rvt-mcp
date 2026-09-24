@@ -42,7 +42,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf
 powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-インストーラは Revit 2022–2027 を検出し、該当プラグインを入れ、サーバを `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\` にコピーし、検出した MCP クライアントを配線します。上書きは `-Client codex|opencode|claude|kilo|none`。
+インストーラは Revit 2022–2027 を検出し（`Revit.exe` がある年のみ）、該当アドインとサーバを固定パス `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` に入れ、サーバの起動確認とパッケージとの照合を行います。MCP クライアントの設定は**行いません**。クライアント側で名前 `rvt-mcp`・上記コマンドの stdio サーバを登録するか、AI エージェントに任せてください（[AGENTS.md](AGENTS.md) Step 3）。更新してもサーバのパスは変わらないため、クライアントは再起動だけで済みます。同じ AddInId を持つ Bimwright 時代のアドインは自動で削除されます。
 
 v0.5.0 以前の ZIP は**入れないでください**。`dotnet tool install -g Bimwright.Rvt.Server`（旧 0.1–0.3）は**使わないでください**。Revit クライアント機で ZIP の代わりに NuGet を使わないでください。ツールパッケージにアドインは含まれません。
 
@@ -76,7 +76,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -WhatIf
 powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -Yes
 ```
 
-プラグイン、自己完結サーバ、クライアント項目、discovery、ログ、ToolBaker キャッシュを削除します。
+Revit 2022–2027 全年のアドイン（Bimwright 時代のものを含む）、自己完結サーバ、discovery ファイル、spill キャッシュを削除します。MCP クライアント設定には触れません — `rvt-mcp` エントリは各クライアントで削除してください。クライアントが実行中のサーバコピーは残るので、クライアントを閉じて再実行してください。`%LOCALAPPDATA%\RvtMcp` のその他のデータ（設定、翻訳、ToolBaker、firm profile、shared parameters、ログ、captures）は残ります。`-Purge` で全削除、`-Purge -KeepLogs` でログのみ保持します。
 
 ### 開発者インストール
 
@@ -84,10 +84,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -Yes
 git clone https://github.com/bimwright/rvt-mcp.git
 cd rvt-mcp
 dotnet build src/RvtMcp.sln -c Debug
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -SourceDir . -Client none
 ```
 
-先にすべての Revit を閉じてください。ビルドはプラグイン DLL を `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\` に配備します。`install.ps1` は Revit 2022–2027 を検出し、サーバを `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\` にコピーし、検出した MCP クライアントを配線します（`-Client codex|opencode|claude|kilo|none`、1 年だけなら `-Years 2024`）。
+先にすべての Revit を閉じてください。ビルドはプラグイン DLL を `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\` に配備します。MCP クライアントは `src/server/bin/Debug/net8.0/RvtMcp.Server.exe` を指定します。実際のインストーラを試すには `pwsh scripts/package-client-setup.ps1 -AllowDirty` の後に `build/client-setup/stage/install.ps1` を実行します（1 年だけなら `-Years 2024`）。
 
 **任意 — NuGet サーバのみ**（Revit プラグインは入りません）。ZIP またはローカルビルドでアドイン済みで、MCP サーバを PATH に置きたいとき：
 
@@ -105,7 +104,7 @@ v0.4+ でパッケージ/フォルダ名が `RvtMcp.*` に変わりました（�
 1. すべての Revit を閉じる。
 2. `pwsh scripts/uninstall-old.ps1` — 旧 `%APPDATA%\…\Bimwright\` プラグインと旧サーバ root を削除。ユーザーの bake/journal は残し、新版初回起動で `%LOCALAPPDATA%\RvtMcp\` へ移行。
 3. 現行の GitHub Release ZIP を入れる（上記のクライアントインストール）。v0.5.0 以前のパッケージは入れない。旧グローバルツールがあれば: `dotnet tool uninstall -g Bimwright.Rvt.Server`。
-4. MCP クライアントのエントリ名は **`rvt-mcp`**（旧 `bimwright-rvt-r22`… 年別エントリはインストーラが削除）。
+4. MCP クライアントのエントリ名は **`rvt-mcp`**。Bimwright 時代のアドインはインストーラが自動削除します。旧 `bimwright-rvt-r22`… 年別のクライアントエントリは手動で削除してください。
 
 ---
 
@@ -319,15 +318,7 @@ v0.6.2 には、ドア・窓の明示的なホスト指定と実際の位置の�
 
 ## MCP クライアント
 
-| クライアント | 配線 |
-|--------------|------|
-| Claude Code | プロジェクト `.mcp.json` または `~/.claude.json` |
-| Claude Desktop | `%APPDATA%\Claude\claude_desktop_config.json` |
-| OpenCode / Codex / Kilo | `install.ps1 -Client …`（スクリプト） |
-| Cursor / Cline / VS Code Copilot | ドキュメントの JSON レイアウト |
-| Gemini CLI / Antigravity | `gemini mcp add` または settings JSON |
-
-インストーラ自動検出で足りることが多い。手編集は [AGENTS.md](AGENTS.md) と `docs/mcp-config-*.md`。
+stdio 対応の MCP クライアントならどれでも使えます（Claude Code、Claude Desktop、Codex、Cursor、VS Code、Gemini CLI、OpenCode、Kilo など）。名前 `rvt-mcp`、コマンド `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`（絶対パス）のサーバを、クライアント自身の `mcp add` コマンド・設定画面・設定ファイルで 1 つ登録してください。インストーラはクライアント設定を編集しません。契約は [AGENTS.md](AGENTS.md) Step 3、検証済みのクライアント別手順は [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md)、各ベンダーの詳細リファレンスは `docs/mcp-config-*.md` にあります。
 
 ---
 

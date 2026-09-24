@@ -84,8 +84,8 @@ the key was accepted, and tell the user it applied live.
 
 ## Caveats
 
-- `uninstall.ps1` removes `%LOCALAPPDATA%\RvtMcp\` wholesale — including
-  `locales\` and your overrides. Back them up before a full uninstall.
+- `uninstall.ps1` keeps `%LOCALAPPDATA%\RvtMcp\locales\` and your overrides
+  unless run with `-Purge`, which deletes the whole folder.
 - MessageBox buttons (OK/Cancel/Yes/No) come from Windows and follow the OS
   language, not this setting.
 - The History window re-renders in the new language on switch — including

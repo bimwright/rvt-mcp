@@ -42,7 +42,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf
 powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-安装程序会检测 Revit 2022–2027、安装对应年份的插件、将 server 复制到 `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`，并接线已检测到的 MCP 客户端。可用 `-Client codex|opencode|claude|kilo|none` 覆盖。
+安装程序会检测 Revit 2022–2027（仅限存在 `Revit.exe` 的年份），把对应插件和 server 安装到固定路径 `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`，试启动 server 并与安装包逐字节核对插件。安装程序**不会**配置 MCP 客户端：请在客户端中注册名为 `rvt-mcp`、命令为上述路径的 stdio server，或交给 AI 助手完成（[AGENTS.md](AGENTS.md) Step 3）。升级后 server 路径不变，客户端只需重启。带有相同 AddInId 的 Bimwright 时代旧插件会被自动移除。
 
 **不要**安装 v0.5.0 及更早的 ZIP。**不要** `dotnet tool install -g Bimwright.Rvt.Server`（旧 0.1–0.3）。**不要**用 NuGet 代替本 ZIP 装客户端 — 该工具包不含 Revit 插件。
 
@@ -76,7 +76,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -WhatIf
 powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -Yes
 ```
 
-移除插件、自包含 server、客户端条目、discovery、日志与 ToolBaker 缓存。
+移除 Revit 2022–2027 所有年份的插件（含 Bimwright 时代旧插件）、自包含 server、discovery 文件与 spill 缓存。不会改动 MCP 客户端配置 — 请自行在各客户端删除 `rvt-mcp` 条目。仍被客户端运行的 server 副本会保留；关闭客户端后重新运行即可。`%LOCALAPPDATA%\RvtMcp` 下的其余数据（设置、翻译、ToolBaker、企业配置、共享参数、日志、captures）均保留。`-Purge` 全部删除；`-Purge -KeepLogs` 保留日志。
 
 ### 开发者安装
 
@@ -84,10 +84,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -Yes
 git clone https://github.com/bimwright/rvt-mcp.git
 cd rvt-mcp
 dotnet build src/RvtMcp.sln -c Debug
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -SourceDir . -Client none
 ```
 
-请先关闭所有 Revit — 构建会把插件 DLL 部署到 `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\`。`install.ps1` 会检测 Revit 2022–2027，将 server 复制到 `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`，并写入已检测到的 MCP 客户端（`-Client codex|opencode|claude|kilo|none`，只要一年可用 `-Years 2024`）。
+请先关闭所有 Revit — 构建会把插件 DLL 部署到 `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\`。MCP 客户端请指向 `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`。要试用真实安装程序，先运行 `pwsh scripts/package-client-setup.ps1 -AllowDirty`，再运行 `build/client-setup/stage/install.ps1`（只要一年可用 `-Years 2024`）。
 
 **可选 — 仅 NuGet server**（不安装 Revit 插件）。插件已通过 ZIP 或本地构建安装、只需把 MCP server 放到 PATH 时：
 
@@ -105,7 +104,7 @@ v0.4+ 将包名/目录改为 `RvtMcp.*`（仓库与品牌仍为 bimwright）。
 1. 关闭所有 Revit。
 2. `pwsh scripts/uninstall-old.ps1` — 删除旧 `%APPDATA%\…\Bimwright\` 插件与旧 server 根；保留用户 bake/journal，首次启动新版本时迁到 `%LOCALAPPDATA%\RvtMcp\`。
 3. 安装当前 GitHub Release ZIP（上方客户端安装）。不要安装 v0.5.0 及更早的包。若装过旧全局工具：`dotnet tool uninstall -g Bimwright.Rvt.Server`。
-4. MCP 客户端入口名为 **`rvt-mcp`**（旧的按年 `bimwright-rvt-r22`… 条目由安装程序移除）。
+4. MCP 客户端入口名为 **`rvt-mcp`**。安装程序会自动移除 Bimwright 时代的插件；旧的按年 `bimwright-rvt-r22`… 客户端条目请自行删除。
 
 ---
 
@@ -319,15 +318,7 @@ v0.6.2 增加了门窗的显式宿主和实际位置校验（#13）、延长管�
 
 ## MCP 客户端
 
-| 客户端 | 接线 |
-|--------|------|
-| Claude Code | 项目 `.mcp.json` 或 `~/.claude.json` |
-| Claude Desktop | `%APPDATA%\Claude\claude_desktop_config.json` |
-| OpenCode / Codex / Kilo | `install.ps1 -Client …`（脚本） |
-| Cursor / Cline / VS Code Copilot | 文档中的 JSON 布局 |
-| Gemini CLI / Antigravity | `gemini mcp add` 或 settings JSON |
-
-安装程序自动检测通常足够；手改见 [AGENTS.md](AGENTS.md) 与 `docs/mcp-config-*.md`。
+任何 stdio MCP 客户端都可以使用（Claude Code、Claude Desktop、Codex、Cursor、VS Code、Gemini CLI、OpenCode、Kilo 等）。用客户端自己的 `mcp add` 命令、设置界面或配置文件注册一个名为 `rvt-mcp`、命令为 `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`（绝对路径）的 server。安装程序不会编辑客户端配置；约定见 [AGENTS.md](AGENTS.md) Step 3，已验证的各客户端配置流程见 [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md)，各厂商深入参考在 `docs/mcp-config-*.md`。
 
 ---
 

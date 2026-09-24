@@ -1,7 +1,8 @@
 # MCP Configuration for OpenCode CLI and Kilo Code CLI
 
-> **Audience:** anyone wiring `RvtMcp.Server.exe` (or any other stdio MCP server) into OpenCode CLI or Kilo Code CLI.
-> **Last verified:** 2026-05-22 against `opencode.ai/docs` and `kilo.ai/docs`.
+> **Audience:** anyone wiring `rvt-mcp.exe` (or any other stdio MCP server) into OpenCode CLI or Kilo Code CLI.
+> **Last verified:** 2026-09-25 against `opencode.ai/docs` and `kilo.ai/docs`.
+> **Canonical procedure:** [mcp-client-wiring.md](mcp-client-wiring.md) — this file is the deeper per-vendor reference.
 
 These two CLI agents share a **non-standard MCP config format** that differs from both Anthropic (Claude Code / Desktop) and OpenAI (Codex) conventions. Copy-pasting an `mcpServers` block from a Claude config will silently fail in either tool — they look for `mcp` (no `Servers` suffix) and require array-form `command` plus an `environment` key (not `env`).
 
@@ -22,7 +23,7 @@ For OpenAI Codex see [`mcp-config-codex.md`](./mcp-config-codex.md).
 | Enable toggle | implicit | `enabled` | `enabled` | `enabled` |
 | Per-server timeout | n/a | `tool_timeout_sec` (s) | `timeout` (ms) | `timeout` (ms) |
 | CLI registration | `claude mcp add` | `codex mcp add` | (config file only) | `kilo mcp add` |
-| Project-scope file | `.mcp.json` | `.codex/config.toml` (+trust) | `opencode.json` at repo root | `kilo.json` or `.kilo/kilo.json` |
+| Project-scope file | `.mcp.json` | `.codex/config.toml` (+trust) | `opencode.json` at repo root | `kilo.json`/`kilo.jsonc` or `.kilo/` |
 
 **Three gotchas when porting a config across tools:**
 
@@ -62,7 +63,7 @@ For RvtMcp, **prefer user-level XDG path on Windows**: `%USERPROFILE%\.config\op
     "rvt-mcp": {
       "type": "local",
       "command": [
-        "D:\\Projects\\bimwright\\rvt-mcp\\src\\server\\bin\\Debug\\net8.0\\RvtMcp.Server.exe"
+        "C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
       ],
       "environment": {
         "BIMWRIGHT_READ_ONLY": "0",
@@ -150,7 +151,7 @@ Kilo Code is a fork of OpenCode with extended CLI ergonomics and a CLI-side `mcp
 | Scope | Path |
 |---|---|
 | Global (Linux/macOS) | `~/.config/kilo/kilo.json` (also reads `kilo.jsonc`, `config.json` in the same dir) |
-| Global (Windows) | `%USERPROFILE%\.config\kilo\kilo.json` |
+| Global (Windows) | `%USERPROFILE%\.config\kilo\kilo.jsonc` (Kilo probes `config.json`, `kilo.json`, `kilo.jsonc`, `opencode.json`, `opencode.jsonc` in that order) |
 | Project | `<project>/kilo.json` or `<project>/.kilo/kilo.json` (cleaner) |
 
 Precedence: **project > global** (project wins on conflicting keys, no merge beyond top-level).
@@ -163,7 +164,7 @@ Precedence: **project > global** (project wins on conflicting keys, no merge bey
     "rvt-mcp": {
       "type": "local",
       "command": [
-        "D:\\Projects\\bimwright\\rvt-mcp\\src\\server\\bin\\Debug\\net8.0\\RvtMcp.Server.exe"
+        "C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
       ],
       "environment": {
         "BIMWRIGHT_READ_ONLY": "0"
@@ -275,33 +276,27 @@ A fourth subtle one for **Kilo specifically**: tool permissions use `<server>_<t
 
 ---
 
-## 5. How RvtMcp's `install.ps1` handles these (v0.5+)
+## 5. Wiring these clients for RvtMcp
 
-`scripts/install.ps1` wires both OpenCode and Kilo automatically via `Add-OpencodeEntry` and `Add-KiloEntry` (added in v0.5). Both functions emit the same JSONC shape:
+The installer **no longer edits client configs** — wire both clients by editing their config files directly (see [mcp-client-wiring.md](mcp-client-wiring.md)). Both take the same JSONC shape:
 
-```powershell
-$entry = [ordered]@{
-    type    = 'local'
-    command = @($t.ServerCmd) + @($t.Args)   # array form ✅
-    enabled = $true
+```jsonc
+"rvt-mcp": {
+  "type": "local",
+  "command": ["C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"],
+  "enabled": true
 }
-if ($t.PSObject.Properties.Name -contains 'Env' -and $t.Env -and $t.Env.Count -gt 0) {
-    $entry['environment'] = $t.Env           # optional environment block ✅
-}
-$cfg['mcp'][$k] = $entry
 ```
 
 Differences:
 
-| Aspect | `Add-OpencodeEntry` | `Add-KiloEntry` |
+| Aspect | OpenCode | Kilo |
 |---|---|---|
-| Target file | `%USERPROFILE%\.config\opencode\opencode.json` | `%USERPROFILE%\.config\kilo\kilo.json` |
-| Extra fields | none | `timeout = 30000` (Kilo's default 5000 ms is too short for Revit cold-start) |
-| Auto-create file if missing | no (skip if absent) | yes when `-Client kilo` explicit; no when `-Client Auto` |
+| Target file | `%USERPROFILE%\.config\opencode\opencode.json` | `%USERPROFILE%\.config\kilo\kilo.jsonc` |
+| Extra fields | none | `timeout = 30000` recommended (Kilo's default 5000 ms is too short for Revit cold-start) |
+| CLI alternative | `opencode` reads this file; no documented local-server `mcp add` flag | `kilo mcp add` accepts no local-command flag — file edit is the path |
 
-Both honor an optional `Env` hashtable on each target so RvtMcp env knobs (`BIMWRIGHT_TOOLSETS`, `BIMWRIGHT_READ_ONLY`) can be wired per-server. Currently `Get-RvtMcpClientTargets` does not emit `Env`; pass `-Client kilo` and edit the resulting JSON manually if you need env knobs (or extend the script to populate `Env` from CLI flags).
-
-Run `pwsh .\install.ps1 -Client kilo -WhatIf` to preview, `-Client kilo` to apply.
+Optional per-server env knobs (`BIMWRIGHT_TOOLSETS`, `BIMWRIGHT_READ_ONLY`) go in an `"environment"` block on the entry.
 
 ---
 

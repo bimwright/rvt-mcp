@@ -1,7 +1,8 @@
 # MCP Configuration for OpenAI Codex (CLI, Desktop, IDE Extension)
 
-> **Audience:** anyone wiring `RvtMcp.Server.exe` (or any other stdio MCP server) into one of OpenAI's Codex clients.
-> **Last verified:** 2026-05-22 against `developers.openai.com/codex/mcp`, `developers.openai.com/codex/config-reference`, and the open `openai/codex` issue tracker.
+> **Audience:** anyone wiring `rvt-mcp.exe` (or any other stdio MCP server) into one of OpenAI's Codex clients.
+> **Last verified:** 2026-09-25 against `developers.openai.com/codex/mcp`, `developers.openai.com/codex/config-reference`, and the open `openai/codex` issue tracker.
+> **Canonical procedure:** [mcp-client-wiring.md](mcp-client-wiring.md) — this file is the deeper per-vendor reference.
 
 Codex is OpenAI's coding agent. It ships as three surfaces that talk to the same model but have **different config-loading rules** — this matters because a setup that works in Codex CLI may silently fail in Codex Desktop.
 
@@ -41,7 +42,7 @@ Codex uses **TOML**, not JSON. The MCP server registry lives under tables named 
 
 ```toml
 [mcp_servers.rvt-mcp]
-command = "D:\\Projects\\bimwright\\rvt-mcp\\src\\server\\bin\\Debug\\net8.0\\RvtMcp.Server.exe"
+command = "C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
 args = []
 ```
 
@@ -49,8 +50,8 @@ args = []
 
 ```toml
 [mcp_servers.rvt-mcp]
-command = "%LOCALAPPDATA%\\RvtMcp\\server\\0.4.0\\RvtMcp.Server.exe"
-args = ["--target", "R24"]          # optional: pin a Revit version
+command = "C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
+args = ["--target", "2024"]         # optional: pin a Revit calendar year (4 digits, never R-codes)
 cwd = "%LOCALAPPDATA%\\RvtMcp"      # optional: working dir for the process
 
 # Lifecycle
@@ -124,16 +125,16 @@ You can edit `config.toml` by hand OR use the CLI:
 
 ```bash
 # Basic stdio
-codex mcp add rvt-mcp -- "D:\\Projects\\bimwright\\rvt-mcp\\src\\server\\bin\\Debug\\net8.0\\RvtMcp.Server.exe"
+codex mcp add rvt-mcp -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
 
 # With env vars
 codex mcp add rvt-mcp \
   --env BIMWRIGHT_READ_ONLY=0 \
   --env BIMWRIGHT_TOOLSETS=query,create,view \
-  -- "%LOCALAPPDATA%\\RvtMcp\\server\\0.4.0\\RvtMcp.Server.exe"
+  -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
 
 # Pin a specific Revit year
-codex mcp add rvt-mcp-2024 -- "%LOCALAPPDATA%\\RvtMcp\\server\\0.5.0\\RvtMcp.Server.exe" --target 2024
+codex mcp add rvt-mcp-2024 -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe" --target 2024
 ```
 
 The `--` separates Codex's own flags from the command + args passed to the MCP server, identical convention to `claude mcp add`.
@@ -188,23 +189,20 @@ Status as of 2026-05-22: **issue still open**, no patch released. If your instal
 
 ---
 
-## 6. How RvtMcp's `install.ps1` handles Codex
+## 6. Wiring Codex for RvtMcp
 
-The repository's `scripts/install.ps1` already wires Codex correctly for Desktop users:
+The installer **no longer edits client configs** — connect Codex with the procedure in [mcp-client-wiring.md](mcp-client-wiring.md):
 
 ```powershell
-$ok = Add-CodexEntry -ConfigPath (Join-Path $env:USERPROFILE '.codex\config.toml') -Targets $targets
+codex mcp add rvt-mcp -- "$env:LOCALAPPDATA\RvtMcp\rvt\server\current\rvt-mcp.exe"
+codex mcp get rvt-mcp --json
 ```
 
 It writes to **user-scope** `~/.codex/config.toml`, which is the only file Codex Desktop reads. CLI and IDE extension also read this file, so a single registration covers all three Codex surfaces. ✅
 
-The script also detects and removes legacy entries from the previous `bimwright-rvt-r22..r27` naming via a regex:
+Watch for legacy entries from the previous `bimwright-rvt-r22..r27` naming — report them and remove only with the user's consent. Orphan `[mcp_servers.<name>.env]` tables left behind by hand edits break the whole config with `invalid transport`.
 
-```powershell
-$legacyPattern = '(?ms)^\[mcp_servers\.bimwright-rvt(?:-r\d{2})?\].*?(?=^\[|\z)'
-```
-
-After install:
+After wiring:
 
 ```bash
 # Verify from any Codex client

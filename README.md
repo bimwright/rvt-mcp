@@ -42,7 +42,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf
 powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-The installer detects Revit 2022–2027, installs matching plugins, copies the server under `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`, and wires detected MCP clients. Override with `-Client codex|opencode|claude|kilo|none`.
+The installer detects Revit 2022–2027 (a year counts when its `Revit.exe` exists), installs the matching add-ins and the server at the fixed path `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`, checks that the server starts and verifies the add-ins against the package. It does **not** configure MCP clients: register a stdio server named `rvt-mcp` with that command in your client — or let your AI agent do it ([AGENTS.md](AGENTS.md), Step 3).
 
 Do **not** install v0.5.0 or earlier ZIPs. Do **not** `dotnet tool install -g Bimwright.Rvt.Server` (legacy 0.1–0.3). Do **not** use NuGet instead of this ZIP on a Revit client machine — the tool package has no add-in.
 
@@ -64,11 +64,13 @@ If that fails, install is not done yet — fix client config / plugin load befor
 
 ### Upgrade an existing installation
 
-Updates are manual. Close all Revit windows and stop the MCP connection in your AI client, extract the new release ZIP into a separate folder, then run its `install.ps1 -WhatIf` followed by `install.ps1`. Upgrade the server and plugins together; restart Revit and the MCP client, then repeat the checks above. Do not uninstall first: the full uninstaller also removes personal ToolBaker data and logs.
+Updates are manual. Close all Revit windows and stop the MCP connection in your AI client, extract the new release ZIP into a separate folder, then run its `install.ps1 -WhatIf` followed by `install.ps1`. Upgrade the server and plugins together; restart Revit and the MCP client, then repeat the checks above. Do not uninstall first: upgrades replace plugins and the server in place.
 
-Since **v0.6.2**, the installer preserves existing `rvt-mcp` arguments, environment, enabled/disabled state and other options while updating the executable path. It leaves other entries (including legacy aliases) intact. Custom launcher wrappers and unsupported TOML layouts require `-Client none` plus a manual path update; project-level configs are not scanned. Installers from v0.6.1 and earlier do not have these protections.
+The server path never changes between versions, so MCP clients keep working and only need a restart; clients still running the previous copy keep it until they restart (the summary lists it under `In use`, and the next install removes it). Older add-in copies that carry RvtMcp's AddInId — Bimwright-era leftovers — are removed automatically, because Revit would otherwise load only one of them. A machine-wide copy under `%ProgramData%` stops the install (removing it needs admin rights).
 
-Before replacing files, the new installer checks package checksums when a manifest is present, validates every selected plugin ZIP, stages the payload and refuses installation while Revit is running. Caught installation errors restore earlier plugin/server/config changes. Config backups use `<config>.rvtmcp.bak`. If rollback is blocked by file locks or permissions, the error identifies retained `.rvtmcp-rollback-*` backups; hard termination or power loss requires manual recovery. See [installer verification](docs/testing/installer-upgrade/README.md).
+Before replacing files, the installer checks package checksums when a manifest is present, validates every selected plugin ZIP (including its add-in manifest), stages the payload and refuses installation while Revit is running. It then starts the new server once (`--help`) and verifies the installed add-ins byte for byte against the package. Any caught error restores the previous add-ins and server. If rollback is blocked by file locks or permissions, the error identifies retained `.rvtmcp-rollback-*` backups; hard termination or power loss requires manual recovery. See [installer verification](docs/testing/installer-upgrade/README.md).
+
+Upgrading from v0.6.2 or earlier: those installers put the server in a versioned folder (`...\rvt\server\0.6.2\`). The summary lists such folders under `Legacy`; point your clients at the new `current` path, then remove the old copies with `install.ps1 -PruneOldServers`.
 
 ### Uninstall
 
@@ -84,7 +86,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -WhatIf
 powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -Yes
 ```
 
-Removes plugins, self-contained server, client entries, discovery files, logs, and ToolBaker cache.
+Removes the add-ins for every Revit year 2022–2027 (including Bimwright-era copies), the self-contained server, discovery files and the spill cache. MCP client configs are not touched — remove the `rvt-mcp` entry from your clients yourself. A server copy that a running MCP client still uses is kept; close the client and run again. Everything else under `%LOCALAPPDATA%\RvtMcp` (settings, translations, ToolBaker data, firm profiles, shared parameters, logs, captures) is kept. `-Purge` deletes the whole folder; `-Purge -KeepLogs` keeps logs.
 
 ### Developer install
 
@@ -92,10 +94,9 @@ Removes plugins, self-contained server, client entries, discovery files, logs, a
 git clone https://github.com/bimwright/rvt-mcp.git
 cd rvt-mcp
 dotnet build src/RvtMcp.sln -c Debug
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -SourceDir . -Client none
 ```
 
-Close every Revit first — the build deploys plugin DLLs into `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\`. `install.ps1` finds Revit 2022–2027, copies the server under `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`, and wires detected MCP clients (`-Client codex|opencode|claude|kilo|none`, `-Years 2024` for one year).
+Close every Revit first — the build deploys plugin DLLs into `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\`. Point your MCP client at `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`. To exercise the real installer, build a throwaway setup package with `pwsh scripts/package-client-setup.ps1 -AllowDirty` and run `build/client-setup/stage/install.ps1` (`-Years 2024` for one year).
 
 **Optional — NuGet server only** (does **not** install Revit plugins). Use this if the add-in is already on the machine (ZIP or a local build) and you want the MCP server on PATH:
 
@@ -113,7 +114,7 @@ v0.4+ renamed packages and folders to `RvtMcp.*` (repo name and brand stay bimwr
 1. Close every Revit.
 2. `pwsh scripts/uninstall-old.ps1` — drops old `%APPDATA%\…\Bimwright\` plugins and old server root; keeps user bake/journal data and migrates it to `%LOCALAPPDATA%\RvtMcp\` on first new launch.
 3. Install the current GitHub Release ZIP (Client install above). Do not install v0.5.0 or earlier packages. Uninstall the old global tool if present: `dotnet tool uninstall -g Bimwright.Rvt.Server`.
-4. Point MCP clients at entry name **`rvt-mcp`** (old per-year `bimwright-rvt-r22`… entries are removed by the installer).
+4. Point MCP clients at entry name **`rvt-mcp`**. The installer removes Bimwright-era add-ins automatically; remove old per-year `bimwright-rvt-r22`… client entries yourself.
 
 ---
 
@@ -329,15 +330,7 @@ After changing server flags, restart the MCP connection so the client picks up t
 
 ## MCP clients
 
-| Client | Wiring |
-|--------|--------|
-| Claude Code | project `.mcp.json` or `~/.claude.json` |
-| Claude Desktop | `%APPDATA%\Claude\claude_desktop_config.json` |
-| OpenCode / Codex / Kilo | `install.ps1 -Client …` (scripted) |
-| Cursor / Cline / VS Code Copilot | documented JSON layouts |
-| Gemini CLI / Antigravity | `gemini mcp add` or settings JSON |
-
-Installer auto-detect is usually enough; see [AGENTS.md](AGENTS.md) and `docs/mcp-config-*.md` when hand-editing.
+Any stdio MCP client works (Claude Code, Claude Desktop, Codex, Cursor, VS Code, Gemini CLI, OpenCode, Kilo, …). Register one server named `rvt-mcp` whose command is `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` (absolute path), using the client's own `mcp add` command, settings UI or config file. The installer does not edit client configs; [AGENTS.md](AGENTS.md) Step 3 has the contract, [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md) has the verified per-client procedures, and `docs/mcp-config-*.md` are deeper per-vendor references.
 
 ---
 

@@ -42,7 +42,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf
 powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-Installer tìm Revit 2022–2027, cài plugin khớp năm, copy server vào `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`, và nối MCP client đã có. Ghi đè bằng `-Client codex|opencode|claude|kilo|none`.
+Installer tìm Revit 2022–2027 (năm nào có `Revit.exe` mới tính), cài add-in khớp năm và server vào đường dẫn cố định `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`, chạy thử server rồi đối chiếu add-in đã cài với gói. Installer **không** cấu hình MCP client: đăng ký một stdio server tên `rvt-mcp` với command trên trong client của bạn, hoặc để AI agent làm ([AGENTS.md](AGENTS.md), Step 3). Khi cập nhật, đường dẫn server không đổi nên client chỉ cần khởi động lại. Add-in thời Bimwright còn sót (cùng AddInId) được tự gỡ.
 
 **Không** cài ZIP v0.5.0 trở về trước. **Không** `dotnet tool install -g Bimwright.Rvt.Server` (tool cũ 0.1–0.3). **Không** dùng NuGet thay ZIP trên máy Revit — package tool không có add-in.
 
@@ -76,7 +76,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -WhatIf
 powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -Yes
 ```
 
-Gỡ plugin, server self-contained, entry client, discovery, log, cache ToolBaker.
+Gỡ add-in cho mọi năm Revit 2022–2027 (kể cả bản thời Bimwright), server self-contained, file discovery và cache spill. Không đụng config MCP client — tự xóa entry `rvt-mcp` trong client. Bản server mà client đang chạy được giữ lại; đóng client rồi chạy lại. Dữ liệu còn lại trong `%LOCALAPPDATA%\RvtMcp` (cài đặt, bản dịch, ToolBaker, firm profile, shared parameters, log, captures) được giữ lại. `-Purge` xóa toàn bộ thư mục; `-Purge -KeepLogs` giữ log.
 
 ### Cài developer
 
@@ -84,10 +84,9 @@ Gỡ plugin, server self-contained, entry client, discovery, log, cache ToolBake
 git clone https://github.com/bimwright/rvt-mcp.git
 cd rvt-mcp
 dotnet build src/RvtMcp.sln -c Debug
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -SourceDir . -Client none
 ```
 
-Đóng hết Revit trước — build sẽ deploy DLL plugin vào `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\`. `install.ps1` tìm Revit 2022–2027, copy server vào `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`, và nối MCP client đã có (`-Client codex|opencode|claude|kilo|none`, `-Years 2024` nếu chỉ một năm).
+Đóng hết Revit trước — build sẽ deploy DLL plugin vào `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\`. Trỏ MCP client vào `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`. Muốn chạy thử installer thật: `pwsh scripts/package-client-setup.ps1 -AllowDirty` rồi chạy `build/client-setup/stage/install.ps1` (`-Years 2024` nếu chỉ một năm).
 
 **Tùy chọn — chỉ server NuGet** (không cài plugin Revit). Dùng khi add-in đã có (ZIP hoặc build local) và muốn MCP server trên PATH:
 
@@ -105,7 +104,7 @@ v0.4+ đổi package/folder sang `RvtMcp.*` (repo và brand bimwright giữ nguy
 1. Đóng hết Revit.
 2. `pwsh scripts/uninstall-old.ps1` — xóa plugin cũ `%APPDATA%\…\Bimwright\` và server root cũ; giữ bake/journal user, migrate sang `%LOCALAPPDATA%\RvtMcp\` lần chạy mới đầu.
 3. Cài ZIP GitHub Release hiện tại (mục Cài đặt ở trên). Đừng cài package v0.5.0 trở về trước. Gỡ tool NuGet cũ nếu còn: `dotnet tool uninstall -g Bimwright.Rvt.Server`.
-4. MCP client dùng entry **`rvt-mcp`** (entry cũ theo năm `bimwright-rvt-r22`… bị installer gỡ).
+4. MCP client dùng entry **`rvt-mcp`**. Installer tự gỡ add-in thời Bimwright; entry client cũ theo năm `bimwright-rvt-r22`… thì tự xóa.
 
 ---
 
@@ -319,15 +318,7 @@ Thêm: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).
 
 ## MCP clients
 
-| Client | Wiring |
-|--------|--------|
-| Claude Code | project `.mcp.json` hoặc `~/.claude.json` |
-| Claude Desktop | `%APPDATA%\Claude\claude_desktop_config.json` |
-| OpenCode / Codex / Kilo | `install.ps1 -Client …` (script) |
-| Cursor / Cline / VS Code Copilot | JSON layout đã document |
-| Gemini CLI / Antigravity | `gemini mcp add` hoặc settings JSON |
-
-Installer auto-detect thường đủ; xem [AGENTS.md](AGENTS.md) và `docs/mcp-config-*.md` khi sửa tay.
+Mọi MCP client stdio đều dùng được (Claude Code, Claude Desktop, Codex, Cursor, VS Code, Gemini CLI, OpenCode, Kilo, …). Đăng ký một server tên `rvt-mcp` với command `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` (đường dẫn tuyệt đối) bằng lệnh `mcp add`, giao diện cài đặt hoặc file config của chính client. Installer không sửa config client; xem hợp đồng ở [AGENTS.md](AGENTS.md) Step 3, quy trình đã kiểm chứng theo từng client ở [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md), tài liệu sâu theo vendor ở `docs/mcp-config-*.md`.
 
 ---
 
