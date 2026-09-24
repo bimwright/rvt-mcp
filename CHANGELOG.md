@@ -22,10 +22,11 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
-Changes on `master` since v0.6.2. Not in any published release yet.
+Changes on `master` since v0.6.2. Not in any published release yet; planned as **v0.6.3**.
 
 ### Added
 
+- **Plugin UI in 15 languages** — ribbon, tooltips, toasts, History window, dialogs and Bake Inbox follow Revit's UI language, or the **Language** combo in the ribbon slide-out (saved as `uiLanguage`; the `BIMWRIGHT_UI_LANGUAGE` environment variable takes precedence). Translations are machine-generated; fix one without a rebuild in `%LOCALAPPDATA%\RvtMcp\locales\strings.<locale>.json` — overrides are validated (known keys, matching placeholders, locked `security.*` warnings) and hot-reloaded. Tool names, schemas and wire payloads stay English. See [docs/localization.md](docs/localization.md).
 - **History window search and past sessions** — search matches summary, params and error text, with a Read/Write kind filter. **Load past sessions** reads archived `mcp-calls-*.jsonl` logs as read-only rows; **Open logs** opens `%LOCALAPPDATA%\RvtMcp`.
 - **`send_code` re-run from the journal** — redacted `send_code` entries can re-run by matching `code_hash` in `send-code-journal.jsonl`, including rotated archives, after an extra confirmation that the body is bake-redacted. Entries with no recoverable body show why Re-run is disabled.
 - **"Agent connected" toast** when an MCP client attaches to the plugin transport.
@@ -36,6 +37,13 @@ Changes on `master` since v0.6.2. Not in any published release yet.
 - **Ribbon and History window** — the ribbon keeps Toggle + History only (Status button removed); the toast toggle shows a dot (yellow on, gray off). The History window gets BIMwright styling, centered columns, a collapsible detail pane, a glyph status column, and **New Session** (was Clear Session) behind a confirmation.
 - **Session log bounds** — in-memory live-session history caps at 1,000 entries (evicted rows reload from the log as history); params over 64 KB are truncated and cannot re-run; file-log field caps raised to params 8 KB, result 10 KB, error 4 KB.
 - **Brand strings** centralized in `src/shared/Views/BrandAssets.cs` for forks that rebrand.
+- **Installer no longer edits MCP client configs** — it installs the Revit add-ins and the server only; connect clients with their own tools (the agent procedure is in `AGENTS.md`). `-Client`/`-WireClient` are deprecated and only warn. The uninstaller no longer edits client configs either.
+- **Fixed server path** — the server installs to `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` for every version, so clients keep working across updates and only need a restart. A previous copy that a running client still uses is kept and removed at the next install; older versioned folders are listed and removed with `-PruneOldServers`.
+- **Installer verifies the Revit side** — Revit years count only when `Revit.exe` exists (leftover registry keys are ignored); plugin ZIP manifests must carry RvtMcp's AddInId; per-user add-ins with the same AddInId (Bimwright-era copies) are removed inside the rollback-able transaction; a machine-wide copy under `%ProgramData%` blocks the install; installed add-ins are compared byte for byte with the package; the server is unblocked (Mark-of-the-Web) and started once with `--help`. Any failure restores the previous add-ins and server.
+- **Add-in uninstall covers every year** — `install.ps1 -Uninstall` removes RvtMcp add-ins (and same-AddInId legacy copies) for 2022–2027 regardless of which Revit is still installed.
+- **Setup packages must match a commit** — `package-client-setup.ps1` refuses an uncommitted working tree unless `-AllowDirty` (recorded as `dirty` in the manifest), and ships `AGENTS.md`.
+- **Full uninstall keeps personal data by default** — step 4 removes only server copies, discovery files and the spill cache; settings, locales, ToolBaker data, firm profiles, shared parameters, logs and captures stay. `-Purge` deletes the whole folder, `-Purge -KeepLogs` keeps logs.
+- **Plugin DLLs are version-stamped** — all six shells now carry `FileVersion`/`ProductVersion` from `<Version>` (previously `0.0.0.0` because `GenerateAssemblyInfo` was off with no manual AssemblyInfo). The manual `SupportedOSPlatform` attribute stays via `GenerateTargetPlatformAttribute=false`.
 
 ### Fixed
 
@@ -45,10 +53,13 @@ Changes on `master` since v0.6.2. Not in any published release yet.
 - **Concurrent log writes** — coordinate call-log and send-code-journal append, rotation, maintenance and file reads with per-path cross-process mutexes. Lock timeouts never fall back to unlocked writes; logging remains best-effort on timeout or I/O failure.
 - `send_code` compilation no longer fails when a stale add-in DLL is still loaded in the AppDomain but its file is gone.
 - The startup "Agent connected" toast shows immediately instead of waiting for a project to open.
+- **Uninstall no longer half-deletes a running server** — a server copy still used by an MCP client is kept whole and reported; close the client and run again.
+- **Reported `serverInfo.version` no longer drifts** — it was hardcoded (`"0.6.2"`) and now derives from `AssemblyInformationalVersion` (semver without the git-hash suffix).
 
 ### Docs
 
 - README credits community bug reports and proposals; the License section adds a note on forks and optional credit.
+- **[docs/mcp-client-wiring.md](docs/mcp-client-wiring.md)** — verified per-client procedures for wiring `rvt-mcp` (CLI commands, config paths, entry shapes, scope-shadow gotchas) across the MCP clients an agent may meet; `AGENTS.md` Step 3 and the READMEs link to it, and the three `docs/mcp-config-*.md` files were refreshed to the `current` path and point back to it.
 
 ## v0.6.2 - Safer upgrades and placement/MEP fixes
 
