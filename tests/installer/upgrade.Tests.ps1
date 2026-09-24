@@ -29,10 +29,11 @@ $mainBody = [scriptblock]::Create((Get-Content -LiteralPath $installer -Raw).Sub
 function New-SetupFixture {
     $root = Join-Path $testRoot ([guid]::NewGuid().ToString('N'))
     $source = Join-Path $root 'source'
-    New-Item -ItemType Directory -Path "$source/plugins", "$source/server", "$root/server/0.6.1", "$root/server/0.6.2" -Force | Out-Null
+    New-Item -ItemType Directory -Path "$source/plugins", "$source/server", "$root/server/0.6.1", "$root/server/0.6.2", "$root/server/dev" -Force | Out-Null
     Set-Content "$source/server/rvt-mcp.exe" 'new-server'
     Set-Content "$root/server/0.6.1/rvt-mcp.exe" 'old-server-061'
     Set-Content "$root/server/0.6.2/rvt-mcp.exe" 'old-server-062'
+    Set-Content "$root/server/dev/rvt-mcp.exe" 'dev-build'
     foreach ($year in @(2026,2027)) {
         $payload = Join-Path $root "payload-$year"
         $addins = Join-Path $root "addins/$year"
@@ -184,7 +185,8 @@ command = "rvt-mcp"
             Assert (-not (Test-Path "$($fixture.Root)/addins/$year/RvtMcp/old-only.dll")) 'Stale dependency survived upgrade'
         }
         Assert ((Get-Content "$($fixture.Root)/server/0.6.2/rvt-mcp.exe" -Raw).Trim() -eq 'new-server') 'Server not upgraded'
-        Assert ((Get-Content "$($fixture.Root)/server/0.6.1/rvt-mcp.exe" -Raw).Trim() -eq 'old-server-061') 'Previous version removed'
+        Assert (-not (Test-Path "$($fixture.Root)/server/0.6.1")) 'Previous version not removed'
+        Assert ((Get-Content "$($fixture.Root)/server/dev/rvt-mcp.exe" -Raw).Trim() -eq 'dev-build') 'Non-version server dir was cleaned'
         Assert ((Read-JsonHashtable $fixture.Config).mcpServers.'rvt-mcp'.args -contains '--read-only') 'Flag lost during whole install'
         Assert (@(Get-ChildItem $fixture.Root -Recurse -Filter '*.rvtmcp-rollback-*').Count -eq 0) 'Transaction backups leaked after success'
     }

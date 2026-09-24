@@ -337,6 +337,34 @@ function Install-RvtMcpServer {
     return $plannedExe
 }
 
+# Retire previously installed version directories so an upgrade keeps exactly
+# one server copy under the install root's parent. Only version-shaped
+# directories are touched (dev/ and arbitrary names are preserved). Each move is
+# recorded in the transaction: rollback restores them, and the post-install
+# sweep deletes the backups. A locked directory is skipped, not fatal.
+function Remove-StaleServerVersions {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param([string]$InstallRoot)
+    $parent = Split-Path -Parent $InstallRoot
+    if (-not $parent -or -not (Test-Path -LiteralPath $parent)) { return }
+    $current = Split-Path -Leaf $InstallRoot
+    foreach ($dir in Get-ChildItem -LiteralPath $parent -Directory) {
+        if ($dir.Name -eq $current -or $dir.Name -notmatch '^v?\d+\.\d+\.\d+([-+][A-Za-z0-9.-]+)?$') { continue }
+        if ($PSCmdlet.ShouldProcess($dir.FullName, 'Remove stale server version')) {
+            $backup = "$($dir.FullName).rvtmcp-rollback-$([guid]::NewGuid().ToString('N'))"
+            try {
+                Move-Item -LiteralPath $dir.FullName -Destination $backup
+                $script:installChanges.Add([pscustomobject]@{Path=$dir.FullName;Backup=$backup;Config=$false})
+                Write-Host ("[server] removed stale version -> {0}" -f $dir.FullName)
+            } catch {
+                Write-Warning ("[server] could not remove stale version {0}: {1}" -f $dir.FullName, $_.Exception.Message)
+            }
+        } else {
+            Write-Host ("[server] preview remove stale version -> {0}" -f $dir.FullName)
+        }
+    }
+}
+
 function Add-OpencodeEntry {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -734,6 +762,10 @@ foreach ($year in $Years) {
 $serverCommand = $null
 if (-not $Uninstall) {
     $serverCommand = Install-RvtMcpServer -ServerDir $serverSourceDir -InstallRoot $ServerInstallRoot
+    # A real install returns the exe path; the PATH fallback is the bare 'rvt-mcp' name.
+    if ($serverCommand -and $serverCommand -ne 'rvt-mcp' -and -not $PSBoundParameters.ContainsKey('ServerInstallRoot')) {
+        Remove-StaleServerVersions -InstallRoot $ServerInstallRoot
+    }
     if (-not $serverCommand) {
         if (Get-Command rvt-mcp -ErrorAction SilentlyContinue) {
             $serverCommand = 'rvt-mcp'
