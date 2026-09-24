@@ -282,7 +282,8 @@ namespace RvtMcp.Plugin.Views
                     McpLogger.LocalAppDataOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "RvtMcp");
 
-            var entries = SessionLogHistoryLoader.LoadPastSessions(logDir, McpLogger.CurrentSessionId);
+            var liveCount = _sessionLog.Entries.Count(e => !e.IsHistorical);
+            var entries = SessionLogHistoryLoader.LoadPastSessions(logDir, McpLogger.CurrentSessionId, liveCount);
             for (var i = 0; i < entries.Count; i++)
             {
                 var entry = entries[i];

@@ -45,7 +45,7 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void LoadPastSessions_SkipsCurrentSessionRows()
+        public void LoadPastSessions_SkipsCurrentSessionRowsStillInMemory()
         {
             File.WriteAllLines(Path.Combine(_tempDir, "mcp-calls.jsonl"), new[]
             {
@@ -53,12 +53,50 @@ namespace RvtMcp.Tests
                 Line("20260922-100000-wxyz", "create_grid")
             });
 
-            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "20260922-100000-wxyz");
+            // One live entry still in memory -> the last current-session row stays hidden.
+            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "20260922-100000-wxyz", liveSessionCount: 1);
 
             Assert.Single(entries);
             Assert.Equal("create_level", entries[0].ToolName);
             Assert.True(entries[0].IsHistorical);
             Assert.Equal(-1, entries[0].Index);
+        }
+
+        [Fact]
+        public void LoadPastSessions_ReloadsEvictedLiveRows()
+        {
+            // File holds all 5 calls of the current session; memory kept only the
+            // newest 3 -> the evicted head (oldest 2) loads back as history.
+            File.WriteAllLines(Path.Combine(_tempDir, "mcp-calls.jsonl"), new[]
+            {
+                Line("20260922-100000-wxyz", "call_1"),
+                Line("20260922-100000-wxyz", "call_2"),
+                Line("20260922-100000-wxyz", "call_3"),
+                Line("20260922-100000-wxyz", "call_4"),
+                Line("20260922-100000-wxyz", "call_5")
+            });
+
+            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "20260922-100000-wxyz", liveSessionCount: 3);
+
+            Assert.Equal(2, entries.Count);
+            Assert.Equal("call_1", entries[0].ToolName);
+            Assert.Equal("call_2", entries[1].ToolName);
+        }
+
+        [Fact]
+        public void LoadPastSessions_AfterClear_LoadsWholeCurrentSession()
+        {
+            // Memory was cleared (liveSessionCount = 0): every current-session row
+            // in the file comes back as view-only history.
+            File.WriteAllLines(Path.Combine(_tempDir, "mcp-calls.jsonl"), new[]
+            {
+                Line("20260922-100000-wxyz", "call_1"),
+                Line("20260922-100000-wxyz", "call_2")
+            });
+
+            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "20260922-100000-wxyz", liveSessionCount: 0);
+
+            Assert.Equal(2, entries.Count);
         }
 
         [Fact]
@@ -73,7 +111,7 @@ namespace RvtMcp.Tests
                 Line("20260922-100000-bbbb", "list_rooms")
             });
 
-            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "no-match-session");
+            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "no-match-session", liveSessionCount: 0);
 
             Assert.Equal(2, entries.Count);
             Assert.Equal("get_current_view_info", entries[0].ToolName);
@@ -93,7 +131,7 @@ namespace RvtMcp.Tests
                 Line("20260921-090100-abcd", "create_grid")
             });
 
-            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "other");
+            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "other", liveSessionCount: 0);
 
             // "not json" is skipped; a line with tool but no session_id is kept
             // (permissive parse) with an unknown session tag.
@@ -113,7 +151,7 @@ namespace RvtMcp.Tests
                 Line("20260921-090000-abcd", "create_level", timestamp: ts)
             });
 
-            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "other");
+            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "other", liveSessionCount: 0);
 
             var expected = DateTimeOffset.Parse(ts).LocalDateTime;
             Assert.Single(entries);
@@ -131,7 +169,7 @@ namespace RvtMcp.Tests
                 Line("20260921-090200-abcd", "tool_newest")
             });
 
-            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "other", maxEntries: 2);
+            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "other", liveSessionCount: 0, maxEntries: 2);
 
             Assert.Equal(2, entries.Count);
             Assert.Equal("tool_middle", entries[0].ToolName);
@@ -149,7 +187,7 @@ namespace RvtMcp.Tests
                     error: "boom", success: false)
             });
 
-            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "other");
+            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "other", liveSessionCount: 0);
 
             var e = entries[0];
             Assert.False(e.Success);
@@ -165,7 +203,7 @@ namespace RvtMcp.Tests
         public void LoadPastSessions_MissingDir_ReturnsEmpty()
         {
             var entries = SessionLogHistoryLoader.LoadPastSessions(
-                Path.Combine(_tempDir, "does-not-exist"), "x");
+                Path.Combine(_tempDir, "does-not-exist"), "x", liveSessionCount: 0);
             Assert.Empty(entries);
         }
     }
