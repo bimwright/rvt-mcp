@@ -34,7 +34,7 @@ namespace RvtMcp.Plugin.Views
         private readonly RowDefinition _detailRow;
         private readonly Border _detailBorder;
         private readonly GridSplitter _detailSplitter;
-        private GridLength _lastDetailHeight = new GridLength(300);
+        private GridLength _lastDetailHeight = new GridLength(240);
         private readonly CommandDispatcher _dispatcher;
         private readonly McpEventHandler _eventHandler;
         private readonly Autodesk.Revit.UI.ExternalEvent _externalEvent;
@@ -107,12 +107,21 @@ namespace RvtMcp.Plugin.Views
                 ElementStyle = CreateTrimStyle()
             });
             _grid.Columns.Add(new DataGridTextColumn { Header = "ms", Binding = new Binding("DurationMs"), Width = 55, ElementStyle = centerCell });
+            // Status: ✓ green / ✗ red — glyph + colour, readable at a glance.
+            var statusCell = new Style(typeof(TextBlock));
+            statusCell.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
+            statusCell.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.SemiBold));
+            statusCell.Setters.Add(new Setter(TextBlock.ForegroundProperty, FrozenBrush(0x38, 0xA1, 0x69)));
+            var statusFail = new DataTrigger { Binding = new Binding("Success"), Value = false };
+            statusFail.Setters.Add(new Setter(TextBlock.ForegroundProperty, FrozenBrush(0xE5, 0x3E, 0x3E)));
+            statusCell.Triggers.Add(statusFail);
+
             _grid.Columns.Add(new DataGridTextColumn
             {
                 Header = "Status",
                 Binding = new Binding("Success") { Converter = new BoolToStatusConverter() },
                 Width = 50,
-                ElementStyle = centerCell
+                ElementStyle = statusCell
             });
             _grid.SelectionChanged += OnSelectionChanged;
 
@@ -849,6 +858,13 @@ namespace RvtMcp.Plugin.Views
             return style;
         }
 
+        private static SolidColorBrush FrozenBrush(byte r, byte g, byte b)
+        {
+            var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+            brush.Freeze();
+            return brush;
+        }
+
         protected override void OnClosing(CancelEventArgs e)
         {
             e.Cancel = true;
@@ -859,7 +875,7 @@ namespace RvtMcp.Plugin.Views
     internal class BoolToStatusConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-            => value is bool b && b ? "OK" : "FAIL";
+            => value is bool b && b ? "✓" : "✗";
 
         public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
             => throw new NotImplementedException();
