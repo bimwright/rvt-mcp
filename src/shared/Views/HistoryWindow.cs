@@ -34,7 +34,9 @@ namespace RvtMcp.Plugin.Views
         private readonly McpEventHandler _eventHandler;
         private readonly Autodesk.Revit.UI.ExternalEvent _externalEvent;
         private readonly Button _rerunButton;
+        private Button _loadHistoryButton;
         private McpCallEntry _selectedEntry;
+        private Dictionary<string, string> _journalBodyCache;
 
         public HistoryWindow(McpSessionLog sessionLog, CommandDispatcher dispatcher,
                              McpEventHandler eventHandler, Autodesk.Revit.UI.ExternalEvent externalEvent)
@@ -74,7 +76,7 @@ namespace RvtMcp.Plugin.Views
                 Margin = new Thickness(4)
             };
             _grid.Columns.Add(new DataGridTextColumn { Header = "#", Binding = new Binding("Index"), Width = 40 });
-            _grid.Columns.Add(new DataGridTextColumn { Header = "Time", Binding = new Binding("Timestamp") { StringFormat = "HH:mm:ss" }, Width = 70 });
+            _grid.Columns.Add(new DataGridTextColumn { Header = "Time", Binding = new Binding("TimeLabel"), Width = 80 });
             _grid.Columns.Add(new DataGridTextColumn { Header = "Tool", Binding = new Binding("ToolName"), Width = 160 });
             _grid.Columns.Add(new DataGridTextColumn
             {
@@ -216,6 +218,10 @@ namespace RvtMcp.Plugin.Views
             logsBtn.Click += (s, e) => OpenLogFolder();
             panel.Children.Add(logsBtn);
 
+            _loadHistoryButton = new Button { Content = "Load past sessions", Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 8, 0) };
+            _loadHistoryButton.Click += (s, e) => LoadPastSessions();
+            panel.Children.Add(_loadHistoryButton);
+
             var clearBtn = new Button { Content = "Clear Session", Padding = new Thickness(8, 2, 8, 2) };
             clearBtn.Click += (s, e) =>
             {
@@ -268,6 +274,26 @@ namespace RvtMcp.Plugin.Views
             return haystack != null && haystack.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        private void LoadPastSessions()
+        {
+            var logDir = !string.IsNullOrEmpty(McpLogger.CurrentLogPath)
+                ? Path.GetDirectoryName(McpLogger.CurrentLogPath)
+                : Path.Combine(
+                    McpLogger.LocalAppDataOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "RvtMcp");
+
+            var entries = SessionLogHistoryLoader.LoadPastSessions(logDir, McpLogger.CurrentSessionId);
+            for (var i = 0; i < entries.Count; i++)
+            {
+                var entry = entries[i];
+                entry.ToolDescription = _dispatcher.GetCommand(entry.ToolName)?.Description;
+                _sessionLog.Entries.Insert(i, entry);
+            }
+
+            _loadHistoryButton.IsEnabled = false;
+            _loadHistoryButton.Content = entries.Count == 0 ? "No past entries" : $"Loaded {entries.Count} past";
+        }
+
         private static void OpenLogFolder()
         {
             var dir = Path.Combine(
@@ -304,9 +330,18 @@ namespace RvtMcp.Plugin.Views
             // WHAT
             _whatName.Text = entry.ToolName;
             _whatDesc.Text = entry.ToolDescription ?? "";
-            if (entry.ToolName == "send_code_to_revit" && string.IsNullOrEmpty(entry.CodeSnippet))
+            _warningLabel.Foreground = Brushes.OrangeRed;
+            if (entry.IsHistorical)
             {
-                _warningLabel.Text = "⚠ send_code body redacted from history (code_hash only) — re-run unavailable";
+                _warningLabel.Text = "From a previous session — view only";
+                _warningLabel.Foreground = Brushes.Gray;
+                _warningLabel.Visibility = Visibility.Visible;
+            }
+            else if (entry.ToolName == "send_code_to_revit" && string.IsNullOrEmpty(entry.CodeSnippet))
+            {
+                _warningLabel.Text = IsRerunPossible(entry)
+                    ? "⚠ send_code body recovered from journal is bake-redacted (paths/secrets → placeholders) — verify before re-run"
+                    : "⚠ send_code body redacted from history (code_hash only) — re-run unavailable";
                 _warningLabel.Visibility = Visibility.Visible;
             }
             else if (entry.ParamsTruncated)
@@ -333,7 +368,8 @@ namespace RvtMcp.Plugin.Views
 
             // Footer
             var rerunNote = entry.RerunOfIndex.HasValue ? $" \u00B7 re-run of #{entry.RerunOfIndex}" : "";
-            _footerText.Text = $"{entry.DurationMs}ms \u00B7 {(entry.Success ? "OK" : "FAIL")} \u00B7 {entry.Timestamp:HH:mm:ss}{rerunNote}";
+            var sessionNote = entry.IsHistorical ? $" \u00B7 session {entry.SessionTag}" : "";
+            _footerText.Text = $"{entry.DurationMs}ms \u00B7 {(entry.Success ? "OK" : "FAIL")} \u00B7 {entry.TimeLabel}{rerunNote}{sessionNote}";
         }
 
         private UIElement BuildInputControl(McpCallEntry entry)
@@ -543,25 +579,56 @@ namespace RvtMcp.Plugin.Views
             }
         }
 
-        private static bool IsRerunPossible(McpCallEntry entry)
+        private bool IsRerunPossible(McpCallEntry entry)
         {
+            if (entry == null || entry.IsHistorical || entry.ParamsTruncated)
+                return false;
             // send_code bodies are redacted to {code_hash, code_length} unless
-            // CacheSendCodeBodies is on — without the code there is nothing to re-run.
-            // Same for params that exceeded the in-memory cap and were truncated.
-            return entry != null
-                && !entry.ParamsTruncated
-                && !(entry.ToolName == "send_code_to_revit" && string.IsNullOrEmpty(entry.CodeSnippet));
+            // CacheSendCodeBodies is on — fall back to the send-code journal.
+            if (entry.ToolName == "send_code_to_revit" && string.IsNullOrEmpty(entry.CodeSnippet))
+                return ResolveRedactedSendCodeBody(entry) != null;
+            return true;
+        }
+
+        /// <summary>Journal body for a redacted send_code entry, or null (cached per hash).</summary>
+        private string ResolveRedactedSendCodeBody(McpCallEntry entry)
+        {
+            try
+            {
+                var hash = JObject.Parse(entry.ParamsJson)?.Value<string>("code_hash");
+                if (string.IsNullOrEmpty(hash)) return null;
+                if (_journalBodyCache == null)
+                    _journalBodyCache = new Dictionary<string, string>(StringComparer.Ordinal);
+                if (_journalBodyCache.TryGetValue(hash, out var cached))
+                    return cached;
+                var body = SendCodeJournal.TryFindCodeByHash(hash);
+                _journalBodyCache[hash] = body;
+                return body;
+            }
+            catch { return null; }
         }
 
         private async void OnRerunClick(object sender, RoutedEventArgs e)
         {
             if (!IsRerunPossible(_selectedEntry)) return;
 
+            string paramsOverride = null;
             if (_selectedEntry.ToolName == "send_code_to_revit")
             {
+                var redacted = string.IsNullOrEmpty(_selectedEntry.CodeSnippet);
+                if (redacted)
+                {
+                    var body = ResolveRedactedSendCodeBody(_selectedEntry);
+                    if (body == null) return; // IsRerunPossible already gated; defensive
+                    paramsOverride = new JObject { ["code"] = body }
+                        .ToString(Newtonsoft.Json.Formatting.None);
+                }
+                var prompt = redacted
+                    ? "Body recovered from the send-code journal is redacted (paths/secrets → placeholders) — it may behave differently than the original. Execute anyway?"
+                    : "This will execute C# code in Revit. Continue?";
                 var confirm = MessageBox.Show(
                     this,
-                    "This will execute C# code in Revit. Continue?",
+                    prompt,
                     "Re-run Confirmation",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
@@ -574,7 +641,7 @@ namespace RvtMcp.Plugin.Views
             try
             {
                 var toolName = _selectedEntry.ToolName;
-                var paramsJson = _selectedEntry.ParamsJson;
+                var paramsJson = paramsOverride ?? _selectedEntry.ParamsJson;
                 var originalIndex = _selectedEntry.Index;
                 var originalResultJson = _selectedEntry.ResultJson;
 

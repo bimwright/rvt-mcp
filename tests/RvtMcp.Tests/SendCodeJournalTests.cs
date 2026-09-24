@@ -128,6 +128,30 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void TryFindCodeByHash_ReturnsRedactedBody_WhenJournalHasMatch()
+        {
+            var code = "var p = \"C:\\\\Users\\\\Me\\\\file.rvt\";";
+            SendCodeJournal.TryAppend(_activeConfig, "session1", code, true, 50, null, null);
+
+            var body = SendCodeJournal.TryFindCodeByHash(BakeRedactor.HashBody(code));
+
+            Assert.NotNull(body);
+            // Journal bodies are bake-redacted — placeholders, not the raw path.
+            Assert.Contains("<project_file>", body);
+            Assert.DoesNotContain("C:\\Users\\Me", body);
+        }
+
+        [Fact]
+        public void TryFindCodeByHash_ReturnsNull_WhenMissingOrNoMatch()
+        {
+            Assert.Null(SendCodeJournal.TryFindCodeByHash("deadbeef")); // no journal file
+            Assert.Null(SendCodeJournal.TryFindCodeByHash(null));
+
+            SendCodeJournal.TryAppend(_activeConfig, "session1", "var x = 1;", true, 50, null, null);
+            Assert.Null(SendCodeJournal.TryFindCodeByHash("deadbeef")); // file exists, hash doesn't
+        }
+
+        [Fact]
         public void RunMaintenance_CleansUpOrCreatesMarker_WithoutAppending()
         {
             // 1. Create a journal while active

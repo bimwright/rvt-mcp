@@ -88,6 +88,38 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void Add_TruncatesCodeSnippetDisplayCopy_WhenBodyCacheEnabled()
+        {
+            var log = new McpSessionLog();
+            McpSessionLog.ConfigLoader = () => new RvtMcpConfig { CacheSendCodeBodies = true };
+            try
+            {
+                var code = new string('x', 140 * 1024);
+                var paramsJson = "{\"code\":\"" + code + "\"}";
+                log.Add(new McpCallEntry
+                {
+                    ToolName = "send_code_to_revit",
+                    ParamsJson = paramsJson,
+                    CodeSnippet = code,
+                    Success = true,
+                    DurationMs = 5
+                });
+
+                var entry = log.Entries[0];
+
+                // Display copy bounded; ParamsJson keeps the full body for re-run.
+                Assert.EndsWith("... (truncated)", entry.CodeSnippet);
+                Assert.True(entry.CodeSnippet.Length <= 128 * 1024 + 32);
+                Assert.Equal(paramsJson, entry.ParamsJson);
+                Assert.False(entry.ParamsTruncated);
+            }
+            finally
+            {
+                McpSessionLog.ConfigLoader = () => RvtMcpConfig.Load();
+            }
+        }
+
+        [Fact]
         public void Add_KeepsLargeSendCodeParamsWhenBodyCacheEnabled()
         {
             var log = new McpSessionLog();

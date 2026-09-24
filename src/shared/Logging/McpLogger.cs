@@ -10,8 +10,15 @@ namespace RvtMcp.Plugin
         private static string _logPath;
         private static string _sessionId;
         public static string CurrentSessionId => _sessionId;
+        /// <summary>Path of the active mcp-calls.jsonl, or null when logging is disabled.</summary>
+        internal static string CurrentLogPath => _logPath;
         private const int LogVersion = 5;
         private const long MaxFileSize = 5 * 1024 * 1024; // 5MB
+        // Field caps feed both the wire log and the History window's past-session view —
+        // sized so most calls stay fully inspectable after the fact.
+        private const int MaxLoggedParamsLength = 8 * 1024;
+        private const int MaxLoggedResultLength = 10 * 1024;
+        private const int MaxLoggedErrorLength = 4 * 1024;
         internal static string LocalAppDataOverride { get; set; }
 
         public static void Initialize()
@@ -96,7 +103,7 @@ namespace RvtMcp.Plugin
                     tool = toolName,
                     success,
                     duration_ms = durationMs,
-                    error = RedactAndTruncate(errorMsg, 2048),
+                    error = RedactAndTruncate(errorMsg, MaxLoggedErrorLength),
                     code = safePayload.Code,
                     @params = safePayload.Params,
                     result = BuildLogSafeResult(toolName, resultJson)
@@ -114,7 +121,7 @@ namespace RvtMcp.Plugin
                 return new McpLogSafePayload
                 {
                     Code = null,
-                    Params = ParseParams(RedactAndTruncate(paramsJson, 2048))
+                    Params = ParseParams(RedactAndTruncate(paramsJson, MaxLoggedParamsLength))
                 };
             }
 
@@ -136,7 +143,7 @@ namespace RvtMcp.Plugin
                 return null;
 
             var redactResultFields = string.Equals(toolName, "send_code_to_revit", StringComparison.OrdinalIgnoreCase);
-            return RedactAndTruncate(resultJson, 2048, redactResultFields);
+            return RedactAndTruncate(resultJson, MaxLoggedResultLength, redactResultFields);
         }
 
         internal static string RedactAndTruncate(string value, int maxLength, bool redactResultFields = false)

@@ -22,11 +22,20 @@ namespace RvtMcp.Plugin
         public int? RerunOfIndex { get; set; }
         /// <summary>ParamsJson exceeded the in-memory cap and was truncated — entry cannot be re-run.</summary>
         public bool ParamsTruncated { get; set; }
+        /// <summary>Loaded from mcp-calls.jsonl (a previous session) — read-only, never re-runnable.</summary>
+        public bool IsHistorical { get; set; }
+        /// <summary>Short session tag for historical entries (e.g. "0923-1442").</summary>
+        public string SessionTag { get; set; }
+        /// <summary>Grid label: historical rows get a date prefix to separate them from live rows.</summary>
+        public string TimeLabel => IsHistorical
+            ? Timestamp.ToString("MM-dd HH:mm")
+            : Timestamp.ToString("HH:mm:ss");
     }
 
     public class McpSessionLog
     {
         private const int MaxParamsJsonLength = 64 * 1024;
+        private const int MaxCodeSnippetLength = 128 * 1024;
         private const int MaxEntries = 1000;
         private int _nextIndex = 1;
         internal static Func<RvtMcpConfig> ConfigLoader = () => RvtMcpConfig.Load();
@@ -50,7 +59,11 @@ namespace RvtMcp.Plugin
 
         public void Clear()
         {
-            Entries.Clear();
+            // "Clear Session" drops live rows only — historical rows loaded from
+            // the file log are not part of this session and stay visible.
+            for (var i = Entries.Count - 1; i >= 0; i--)
+                if (!Entries[i].IsHistorical)
+                    Entries.RemoveAt(i);
             _nextIndex = 1;
         }
 
@@ -82,7 +95,13 @@ namespace RvtMcp.Plugin
             catch { }
 
             if (cacheBodies)
+            {
+                // ParamsJson keeps the full body so re-run still works; bound only
+                // the display copy (CodeSnippet feeds the INPUT code view).
+                if (entry.CodeSnippet != null && entry.CodeSnippet.Length > MaxCodeSnippetLength)
+                    entry.CodeSnippet = entry.CodeSnippet.Substring(0, MaxCodeSnippetLength) + "... (truncated)";
                 return;
+            }
 
             var code = ExtractCodeBody(entry.ParamsJson, entry.CodeSnippet);
             var codeHash = BakeRedactor.HashBody(code);

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace RvtMcp.Plugin
 {
@@ -80,6 +81,35 @@ namespace RvtMcp.Plugin
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Latest journal body matching a code_hash, or null. Journal bodies are
+        /// bake-redacted (paths/secrets become placeholders) — callers re-running a
+        /// recovered body must surface that caveat.
+        /// </summary>
+        public static string TryFindCodeByHash(string codeHash)
+        {
+            if (string.IsNullOrEmpty(codeHash)) return null;
+            try
+            {
+                var path = JournalPath;
+                if (!File.Exists(path)) return null;
+                string found = null;
+                foreach (var line in File.ReadLines(path))
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    try
+                    {
+                        var obj = JObject.Parse(line);
+                        if (string.Equals(obj.Value<string>("code_hash"), codeHash, StringComparison.Ordinal))
+                            found = obj.Value<string>("code");
+                    }
+                    catch { }
+                }
+                return found;
+            }
+            catch { return null; }
         }
 
         private static void MaybePurge(string rootDir, bool isActive, DateTimeOffset now)
