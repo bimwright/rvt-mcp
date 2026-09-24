@@ -56,6 +56,8 @@
     <Compile Include="..\..\src\shared\Lint\FirmProfile.cs" Link="Shared\FirmProfile.cs" />
     <Compile Include="..\..\src\shared\Lint\FirmProfileLibrary.cs" Link="Shared\FirmProfileLibrary.cs" />
     <Compile Include="..\..\src\shared\Localization\LocaleResolver.cs" Link="Shared\Localization\LocaleResolver.cs" />
+    <Compile Include="..\..\src\shared\Localization\StringTable.cs" Link="Shared\Localization\StringTable.cs" />
+    <Compile Include="..\..\src\shared\Localization\L.cs" Link="Shared\Localization\L.cs" />
   </ItemGroup>
 
   <ItemGroup>
