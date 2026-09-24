@@ -388,6 +388,7 @@ Usable, not sacred. CI builds the six plugin shells and server tests. Runtime co
 | [AGENTS.md](AGENTS.md) | Agent install protocol |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Processes, transport, DTO rules |
 | [docs/bake.md](docs/bake.md) | Adaptive bake and body privacy |
+| [docs/localization.md](docs/localization.md) | UI languages, overrides, hot reload |
 | [docs/roadmap.md](docs/roadmap.md) | Near-term hardening and non-goals |
 | [docs/kei-equipment-import.md](docs/kei-equipment-import.md) | KEI SQLite tools (`--toolsets kei`) |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |

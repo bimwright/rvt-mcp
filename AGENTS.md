@@ -313,6 +313,19 @@ For anything not in this table, open an issue at <https://github.com/bimwright/r
 
 ---
 
+## Fixing UI translations
+
+The plugin UI (ribbon, toasts, History, dialogs) follows the Revit UI language or the user's pick in the ribbon slide-out Language combo. If the user reports a wrong or awkward string, you can fix it live on their machine — no reinstall, no restart:
+
+1. **Read** `%LOCALAPPDATA%\RvtMcp\locales\_active.<locale>.json` — every key's currently displayed value, plus the `locked` list.
+2. **Write** the corrected `"key": "text"` pairs into `%LOCALAPPDATA%\RvtMcp\locales\strings.<locale>.json` (create the file/folder if absent). Keep `{placeholder}` tokens identical to the English value.
+3. **Verify** by re-reading `_report.<locale>.json` — your key must not appear under `rejected`. If it does, the `reason` tells you why (`unknown_key`, `placeholder_mismatch`, `locked_key`, …).
+4. Tell the user it applied immediately via hot reload.
+
+Rules: `security.*` keys are locked and can never be overridden. Keys not in `_active` don't exist — don't invent new ones. Never edit files inside the plugin's install directory; only `locales\`. Full details: [docs/localization.md](docs/localization.md).
+
+---
+
 ## Honest scope
 
 rvt-mcp handles `revit_get_current_view_info`, `revit_batch_execute`, `revit_send_code_to_revit`, and 220+ other tools across Revit 2022–2027 when started with `--toolsets all`. The default surface is `query` + `create` + `view` + `meta` only. It does not handle installing Revit, licensing, cloud sync, or any Autodesk account operations. If the user asks for those, point them at <https://www.autodesk.com/support/revit>.
