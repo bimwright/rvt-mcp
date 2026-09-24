@@ -47,7 +47,12 @@ namespace RvtMcp.Plugin.Localization
             var missing = new JArray();
             if (en != null)
             {
-                var present = embeddedLocale ?? en;   // for en, embedded == en → nothing missing
+                // "missing" = en keys absent from the embedded LOCALE catalog.
+                // en itself: embedded == en → nothing missing. Absent non-en catalog → all missing.
+                var present = embeddedLocale
+                    ?? (string.Equals(locale, "en", StringComparison.Ordinal)
+                        ? en
+                        : (IReadOnlyDictionary<string, string>)new Dictionary<string, string>());
                 foreach (var kv in en)
                     if (!present.ContainsKey(kv.Key))
                         missing.Add(new JObject { ["key"] = kv.Key, ["en"] = kv.Value });

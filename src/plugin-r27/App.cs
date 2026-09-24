@@ -42,6 +42,8 @@ namespace RvtMcp.Plugin
             LegacyDataMigration.MigrateOnce();
             SessionLog = new McpSessionLog();
             Config = RvtMcpConfig.Load(args: null);
+            Localization.LocalizationHost.InitializePlugin(
+                application.ControlledApplication.Language.ToString(), Config.UiLanguage);
             ToastEnabled = Config.EnableToastOrDefault;
             DebugLog("OnStartup: McpLogger + SessionLog OK");
 
@@ -73,6 +75,7 @@ namespace RvtMcp.Plugin
         public Result OnShutdown(UIControlledApplication application)
         {
             application.Idling -= OnIdling;
+            Localization.LocalizationHost.ShutdownPlugin();
             _historyWindow?.Close();
             _bakeInboxWindow?.Close();
 

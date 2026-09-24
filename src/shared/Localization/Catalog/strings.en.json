@@ -1,0 +1,26 @@
+{
+  "_meta": {
+    "locale": "en",
+    "schema": 1,
+    "note": "Canonical catalog — all shipped locales mirror this key set. Placeholders: {name} = invariant fill, {name:n} = culture-formatted count/measure. Keys are flat, dot-namespaced; security.* keys cannot be overridden."
+  },
+  "ribbon.toggle.text.running": "MCP: ON",
+  "ribbon.toggle.text.stopped": "MCP: OFF",
+  "ribbon.toggle.tooltip": "Start/Stop MCP Server",
+  "ribbon.toggle.tooltip.running": "MCP Server running on {connectionInfo}\nClient: {client}\nLast command: {lastCmd}\nClick to stop",
+  "ribbon.toggle.tooltip.stopped": "MCP Server stopped\nClick to start",
+  "ribbon.toggle.client.connected": "Connected",
+  "ribbon.toggle.client.waiting": "Waiting",
+  "ribbon.toggle.lastCmd.none": "None",
+  "ribbon.history.text": "History ({count:n})",
+  "ribbon.history.tooltip": "Show MCP command history",
+  "ribbon.toast.text": "Toast",
+  "ribbon.toast.tooltip.enabled": "MCP activity toasts enabled\nShows top-left notifications when AI tools run\nClick to disable",
+  "ribbon.toast.tooltip.disabled": "MCP activity toasts disabled\nClick to enable top-left AI activity notifications",
+  "ribbon.bakeInbox.text": "Bake Inbox",
+  "ribbon.bakeInbox.tooltip": "Show accepted baked tools",
+  "ribbon.bakedTool.fallback": "Baked Tool",
+  "ribbon.language.label": "Language",
+  "ribbon.language.tooltip": "Plugin UI language. Auto follows the Revit UI language; the choice persists across restarts unless BIMWRIGHT_UI_LANGUAGE is set.",
+  "ribbon.language.auto": "Auto"
+}

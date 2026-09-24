@@ -36,6 +36,9 @@
   <!-- Shared source compiled into this project -->
   <ItemGroup>
     <Compile Include="..\shared\**\*.cs" LinkBase="Shared" />
+    <EmbeddedResource Include="..\shared\Localization\Catalog\strings.*.json" WithCulture="false">
+      <LogicalName>RvtMcp.Localization.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <Target Name="Deploy" AfterTargets="Build" Condition="'$(Configuration)' != '' and '$(RvtMcpSkipDeploy)' != 'true'">

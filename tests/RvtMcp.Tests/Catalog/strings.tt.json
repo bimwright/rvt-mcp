@@ -1,0 +1,6 @@
+{
+  "_meta": { "locale": "tt", "note": "test fixture — not a shipped locale" },
+  "tt.known": "fixture-value",
+  "tt.count": "N = {count:n}",
+  "tt.nonstring.bad": 42
+}

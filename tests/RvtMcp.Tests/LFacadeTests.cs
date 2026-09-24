@@ -7,6 +7,7 @@ using Xunit;
 
 namespace RvtMcp.Tests
 {
+    [Collection("L10n")]
     public class LFacadeTests : IDisposable
     {
         public LFacadeTests() => L.ResetForTests();

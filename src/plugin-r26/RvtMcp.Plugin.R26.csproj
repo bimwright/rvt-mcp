@@ -14,6 +14,9 @@
   <!-- Shared source (same glob as plugin-r22) -->
   <ItemGroup>
     <Compile Include="..\shared\**\*.cs" LinkBase="Shared" />
+    <EmbeddedResource Include="..\shared\Localization\Catalog\strings.*.json" WithCulture="false">
+      <LogicalName>RvtMcp.Localization.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <!-- Revit 2026 API via Nice3point NuGet packages -->

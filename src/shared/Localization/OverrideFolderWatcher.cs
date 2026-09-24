@@ -29,11 +29,13 @@ namespace RvtMcp.Plugin.Localization
         /// <param name="dir">Override folder. Missing/null dir → injection-only watcher.</param>
         /// <param name="activeLocale">Returns the currently active locale code.</param>
         /// <param name="debounce">Null → <see cref="DefaultDebounce"/>. ≤ 0 → synchronous raise.</param>
-        public OverrideFolderWatcher(string dir, Func<string> activeLocale, TimeSpan? debounce = null)
+        /// <param name="watchFilesystem">False → no FileSystemWatcher; feed via <see cref="OnFileEvent"/> only (tests).</param>
+        public OverrideFolderWatcher(string dir, Func<string> activeLocale,
+            TimeSpan? debounce = null, bool watchFilesystem = true)
         {
             _activeLocale = activeLocale ?? (() => "en");
             _debounce = debounce ?? DefaultDebounce;
-            if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+            if (watchFilesystem && !string.IsNullOrEmpty(dir) && Directory.Exists(dir))
             {
                 _fsw = new FileSystemWatcher(dir, "strings.*.json")
                 {

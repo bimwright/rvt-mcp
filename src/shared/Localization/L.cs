@@ -63,10 +63,13 @@ namespace RvtMcp.Plugin.Localization
             RequestBuild(_current != null ? _current.Locale : "en");
         }
 
+        /// <summary>Diagnostic: why the last build didn't swap.</summary>
+        internal static string LastSkipReason;
+
         private static void RequestBuild(string locale)
         {
             var buildFor = _buildFor;
-            if (buildFor == null) return;
+            if (buildFor == null) { LastSkipReason = "no_buildFor"; return; }
             var gen = Interlocked.Increment(ref _generation);
             if (ForceSyncBuilds)
             {
@@ -80,9 +83,10 @@ namespace RvtMcp.Plugin.Localization
         {
             StringTable table;
             try { table = buildFor(locale); }
-            catch { return; }
-            if (table == null) return;
-            if (gen != _generation) return;   // a newer request superseded this build
+            catch (Exception ex) { LastSkipReason = "throw:" + ex.GetType().Name + ":" + ex.Message; return; }
+            if (table == null) { LastSkipReason = "null_table"; return; }
+            if (gen != _generation) { LastSkipReason = "stale"; return; }   // a newer request superseded this build
+            LastSkipReason = null;
             Swap(table);
         }
 
