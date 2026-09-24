@@ -165,6 +165,25 @@ namespace RvtMcp.Plugin.Localization
             return Convert.ToString(value, CultureInfo.InvariantCulture);
         }
 
+        /// <summary>Raw <c>{...}</c> token set of a template, including any ":n" suffix.
+        /// Shared with OverrideValidator for placeholder-set comparison.</summary>
+        internal static HashSet<string> ExtractTokens(string text)
+        {
+            var set = new HashSet<string>(StringComparer.Ordinal);
+            if (text == null) return set;
+            var i = 0;
+            while (i < text.Length)
+            {
+                var open = text.IndexOf('{', i);
+                if (open < 0) break;
+                var close = text.IndexOf('}', open + 1);
+                if (close < 0) break;
+                set.Add(text.Substring(open + 1, close - open - 1));
+                i = close + 1;
+            }
+            return set;
+        }
+
         private void LogOnce(string dedupeKey, string message)
         {
             lock (_logLock)
