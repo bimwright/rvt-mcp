@@ -73,7 +73,10 @@ namespace RvtMcp.Plugin.Views.Toast
                 AutoDismissSeconds = 6
             };
 
-            Deliver(vm);
+            // Startup confirmation posts directly, not via Deliver: during boot the
+            // frame can be disabled by the home/splash screen, which would hold this
+            // one-shot toast past the moment the user looks for it.
+            _host.Post(manager => manager.Complete(vm));
         }
 
         /// <summary>
