@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using RvtMcp.Plugin;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -42,6 +44,69 @@ namespace RvtMcp.Tests
             {
                 try { Directory.Delete(_tempDir, true); } catch { }
             }
+        }
+
+        [Fact]
+        public void ConcurrentJournalAppendsRetainEveryCompleteUniqueRow()
+        {
+            var succeeded = new bool[800];
+            Parallel.For(0, succeeded.Length, new ParallelOptions { MaxDegreeOfParallelism = 8 }, i =>
+            {
+                succeeded[i] = SendCodeJournal.TryAppend(_activeConfig, "stress",
+                    "// " + i + "\n" + new string('x', 2048), true, 1, null, null);
+            });
+
+            Assert.All(succeeded, value => Assert.True(value));
+            var rows = File.ReadAllLines(SendCodeJournal.JournalPath).Select(JObject.Parse).ToArray();
+            Assert.Equal(800, rows.Length);
+            Assert.Equal(800, rows.Select(row => row.Value<string>("code_hash")).Distinct().Count());
+        }
+
+        [Fact]
+        public void ConcurrentCallLogAppendsRetainEveryCompleteUniqueRow()
+        {
+            Parallel.For(0, 800, new ParallelOptions { MaxDegreeOfParallelism = 8 }, i =>
+                McpLogger.Log("probe_" + i, "{}", true, 1,
+                    resultJson: JsonConvert.SerializeObject(new { payload = new string('x', 2048) })));
+
+            var rows = File.ReadAllLines(McpLogger.CurrentLogPath).Select(JObject.Parse).ToArray();
+            Assert.Equal(800, rows.Length);
+            Assert.Equal(800, rows.Select(row => row.Value<string>("tool")).Distinct().Count());
+        }
+
+        [Fact]
+        public void ConcurrentJournalRotationRetainsArchiveAndAllNewRows()
+        {
+            File.WriteAllText(SendCodeJournal.JournalPath,
+                JsonConvert.SerializeObject(new { padding = new string('x', (int)SendCodeJournal.MaxFileSize) }) + "\n");
+            var succeeded = new bool[200];
+            Parallel.For(0, succeeded.Length, new ParallelOptions { MaxDegreeOfParallelism = 8 }, i =>
+                succeeded[i] = SendCodeJournal.TryAppend(_activeConfig, "stress", "return " + i + ";", true, 1, null, null));
+
+            Assert.All(succeeded, value => Assert.True(value));
+            var archive = Assert.Single(Directory.GetFiles(_tempDir, "send-code-journal-*.jsonl"));
+            Assert.NotNull(JObject.Parse(File.ReadAllText(archive))["padding"]);
+            var rows = File.ReadAllLines(SendCodeJournal.JournalPath).Select(JObject.Parse).ToArray();
+            Assert.Equal(200, rows.Length);
+            Assert.Equal(200, rows.Select(row => row.Value<string>("code_hash")).Distinct().Count());
+        }
+
+        [Fact]
+        public void ConcurrentReadersAndMaintenanceDoNotDropAppends()
+        {
+            Assert.True(SendCodeJournal.TryAppend(_activeConfig, "seed", "return 42;", true, 1, null, null));
+            var seedHash = BakeRedactor.HashBody("return 42;");
+            Parallel.For(0, 200, new ParallelOptions { MaxDegreeOfParallelism = 8 }, i =>
+            {
+                Assert.Equal("return 42;", SendCodeJournal.TryFindCodeByHash(seedHash));
+                SendCodeJournal.RunMaintenance(_activeConfig);
+                Assert.True(SendCodeJournal.TryAppend(_activeConfig, "stress", "// " + i, true, 1, null, null));
+                McpLogger.Log("probe_" + i, "{}", true, 1);
+                SessionLogHistoryLoader.LoadPastSessions(Path.GetDirectoryName(McpLogger.CurrentLogPath), "other", 0);
+            });
+
+            Assert.Equal(201, File.ReadAllLines(SendCodeJournal.JournalPath).Length);
+            Assert.Equal(200, File.ReadAllLines(McpLogger.CurrentLogPath).Length);
         }
 
         [Fact]

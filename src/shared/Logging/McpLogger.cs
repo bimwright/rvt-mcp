@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -31,7 +32,39 @@ namespace RvtMcp.Plugin
             _sessionId = DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" +
                           Guid.NewGuid().ToString("N").Substring(0, 4);
 
-            RotateIfNeeded(dir);
+            try { WithFileLock(_logPath, () => { RotateIfNeeded(dir); return true; }); }
+            catch { _logPath = null; } // logging failure must not prevent add-in startup
+        }
+
+        /// <summary>
+        /// Serialize file operations across threads, Revit versions and processes.
+        /// Use the same lock for append, rotation and maintenance. Callbacks must be
+        /// synchronous: mutex ownership is thread-affine. Timeout never writes unlocked.
+        /// </summary>
+        internal static T WithFileLock<T>(string path, Func<T> action, int timeoutMilliseconds = 2000)
+        {
+            var fullPath = Path.GetFullPath(path);
+            var windows = Path.DirectorySeparatorChar == '\\';
+            if (windows) fullPath = fullPath.ToUpperInvariant();
+            // Global covers different Windows sessions of the same user sharing
+            // LocalAppData. Hash the full path, not just the filename (test/profile isolation).
+            var name = (windows ? @"Global\" : "") + "RvtMcp.Log." + BakeRedactor.HashBody(fullPath);
+            using (var mutex = new Mutex(false, name))
+            {
+                var acquired = false;
+                try
+                {
+                    try { acquired = mutex.WaitOne(timeoutMilliseconds); }
+                    catch (AbandonedMutexException) { acquired = true; }
+                    if (!acquired)
+                        throw new TimeoutException("Timed out waiting for the MCP log file lock.");
+                    return action();
+                }
+                finally
+                {
+                    if (acquired) mutex.ReleaseMutex();
+                }
+            }
         }
 
         private static void RotateIfNeeded(string dir)
@@ -109,7 +142,11 @@ namespace RvtMcp.Plugin
                     result = BuildLogSafeResult(toolName, resultJson)
                 };
                 var line = JsonConvert.SerializeObject(entry, Formatting.None);
-                File.AppendAllText(_logPath, line + "\n");
+                WithFileLock(_logPath, () =>
+                {
+                    File.AppendAllText(_logPath, line + "\n");
+                    return true;
+                });
             }
             catch { }
         }

@@ -18,15 +18,19 @@ namespace RvtMcp.Plugin
 
         public static void RunMaintenance(RvtMcpConfig config, DateTimeOffset? now = null)
         {
-            var utc = now ?? DateTimeOffset.UtcNow;
-            var root = RootDir;
             try
             {
-                Directory.CreateDirectory(root);
+                McpLogger.WithFileLock(JournalPath, () =>
+                {
+                    var utc = now ?? DateTimeOffset.UtcNow;
+                    var root = RootDir;
+                    Directory.CreateDirectory(root);
+                    var isActive = config != null && config.IsPersistSendCodeBodiesActive(utc);
+                    MaybePurge(root, isActive, utc);
+                    return true;
+                });
             }
-            catch { }
-            var isActive = config != null && config.IsPersistSendCodeBodiesActive(utc);
-            MaybePurge(root, isActive, utc);
+            catch { } // best-effort maintenance; never mutate without the lock
         }
 
         public static bool TryAppend(
@@ -39,14 +43,21 @@ namespace RvtMcp.Plugin
             string resultJson,
             DateTimeOffset? now = null)
         {
-            var utc = now ?? DateTimeOffset.UtcNow;
-            var root = RootDir;
-
             try
             {
-                Directory.CreateDirectory(root);
+                return McpLogger.WithFileLock(JournalPath, () => AppendUnderLock(
+                    config, sessionId, rawCode, success, durationMs, error, resultJson, now));
             }
-            catch { }
+            catch { return false; } // includes lock timeout; no unlocked fallback
+        }
+
+        private static bool AppendUnderLock(
+            RvtMcpConfig config, string sessionId, string rawCode, bool success,
+            long durationMs, string error, string resultJson, DateTimeOffset? now)
+        {
+            var utc = now ?? DateTimeOffset.UtcNow;
+            var root = RootDir;
+            Directory.CreateDirectory(root);
 
             var isActive = config != null && config.IsPersistSendCodeBodiesActive(utc);
             
@@ -93,12 +104,20 @@ namespace RvtMcp.Plugin
         public static string TryFindCodeByHash(string codeHash)
         {
             if (string.IsNullOrEmpty(codeHash)) return null;
-            foreach (var file in JournalFilesNewestFirst())
+            try
             {
-                var body = FindInFile(file, codeHash);
-                if (body != null) return body;
+                // File.ReadLines otherwise denies a concurrent writer's open on Windows.
+                return McpLogger.WithFileLock(JournalPath, () =>
+                {
+                    foreach (var file in JournalFilesNewestFirst())
+                    {
+                        var body = FindInFile(file, codeHash);
+                        if (body != null) return body;
+                    }
+                    return (string)null;
+                });
             }
-            return null;
+            catch { return null; }
         }
 
         private static IEnumerable<string> JournalFilesNewestFirst()

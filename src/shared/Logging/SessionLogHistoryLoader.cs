@@ -67,7 +67,13 @@ namespace RvtMcp.Plugin
 
         private static string[] SafeReadAllLines(string path)
         {
-            try { return File.ReadAllLines(path); }
+            try
+            {
+                // Archives and the live file belong to the same rotation family.
+                // Coordinate readers too: ReadAllLines can deny AppendAllText on Windows.
+                var livePath = Path.Combine(Path.GetDirectoryName(path), "mcp-calls.jsonl");
+                return McpLogger.WithFileLock(livePath, () => File.ReadAllLines(path));
+            }
             catch { return new string[0]; }
         }
 

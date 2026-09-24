@@ -34,11 +34,15 @@ Changes on `master` since v0.6.2. Not in any published release yet.
 
 - **Toasts** — BIMwright wordmark in the footer with a brand sweep reveal (matching ipt-mcp). Toasts are held while the Revit window is minimized, hidden or blocked by a modal dialog, then shown once it is usable again. Toasts no longer take keyboard focus from Revit.
 - **Ribbon and History window** — the ribbon keeps Toggle + History only (Status button removed); the toast toggle shows a dot (yellow on, gray off). The History window gets BIMwright styling, centered columns, a collapsible detail pane, a glyph status column, and **New Session** (was Clear Session) behind a confirmation.
-- **Session log bounds** — in-memory history caps at 1,000 entries (evicted rows reload from the log as history); params over 64 KB are truncated and cannot re-run; file-log field caps raised to params 8 KB, result 10 KB, error 4 KB.
+- **Session log bounds** — in-memory live-session history caps at 1,000 entries (evicted rows reload from the log as history); params over 64 KB are truncated and cannot re-run; file-log field caps raised to params 8 KB, result 10 KB, error 4 KB.
 - **Brand strings** centralized in `src/shared/Views/BrandAssets.cs` for forks that rebrand.
 
 ### Fixed
 
+- **History privacy** — redact the grid Summary as well as detail fields, including raw output returned by successful `send_code` re-runs.
+- **History count and cap** — past-session rows stay pinned and no longer count toward the 1,000 live-row cap or ribbon badge; New Session leaves the live count at zero.
+- **Cached `send_code` re-runs** — recover missing code snippets from executed parameters when body caching is enabled, preserving the numbered code view and subsequent re-runs without retaining bodies when caching is off.
+- **Concurrent log writes** — coordinate call-log and send-code-journal append, rotation, maintenance and file reads with per-path cross-process mutexes. Lock timeouts never fall back to unlocked writes; logging remains best-effort on timeout or I/O failure.
 - `send_code` compilation no longer fails when a stale add-in DLL is still loaded in the AppDomain but its file is gone.
 - The startup "Agent connected" toast shows immediately instead of waiting for a project to open.
 

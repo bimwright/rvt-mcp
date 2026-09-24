@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -50,9 +51,11 @@ namespace RvtMcp.Plugin
             entry.Index = _nextIndex++;
             if (entry.Timestamp == default)
                 entry.Timestamp = DateTime.Now;
-            // Bound session memory: evict the oldest beyond the cap.
-            while (Entries.Count >= MaxEntries)
-                Entries.RemoveAt(0);
+            // Historical rows are pinned, view-only, and have a separate loader cap.
+            // Loading them must not evict live rows or make the next Add discard history.
+            if (!entry.IsHistorical)
+                while (Count >= MaxEntries)
+                    Entries.Remove(Entries.First(e => !e.IsHistorical));
             Entries.Add(entry);
             EntryAdded?.Invoke(entry);
         }
@@ -67,7 +70,9 @@ namespace RvtMcp.Plugin
             _nextIndex = 1;
         }
 
-        public int Count => Entries.Count;
+        // Entries is also edited directly by the history loader, so derive the live
+        // count instead of maintaining a counter that can drift from the collection.
+        public int Count => Entries.Count(e => !e.IsHistorical);
 
         private static void ApplyPrivacyPolicy(McpCallEntry entry)
         {
@@ -76,6 +81,7 @@ namespace RvtMcp.Plugin
 
             var isSendCode = string.Equals(entry.ToolName, "send_code_to_revit", StringComparison.OrdinalIgnoreCase);
             entry.ErrorMessage = McpResponsePrivacy.RedactErrorForResponse(entry.ErrorMessage);
+            entry.Summary = BakeRedactor.RedactForBake(entry.Summary);
             entry.ResultJson = BakeRedactor.RedactForBake(entry.ResultJson, redactResultFields: isSendCode);
 
             if (!isSendCode)
@@ -96,6 +102,13 @@ namespace RvtMcp.Plugin
 
             if (cacheBodies)
             {
+                // Re-run entries can omit the display copy. Recover it from the
+                // executed params, never from an older (possibly truncated) snippet.
+                if (string.IsNullOrEmpty(entry.CodeSnippet))
+                {
+                    try { entry.CodeSnippet = JObject.Parse(entry.ParamsJson ?? "{}").Value<string>("code"); }
+                    catch { } // malformed/redacted params do not become executable code
+                }
                 // ParamsJson keeps the full body so re-run still works; bound only
                 // the display copy (CodeSnippet feeds the INPUT code view).
                 if (entry.CodeSnippet != null && entry.CodeSnippet.Length > MaxCodeSnippetLength)
