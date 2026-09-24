@@ -60,6 +60,7 @@
     <Compile Include="..\..\src\shared\Localization\L.cs" Link="Shared\Localization\L.cs" />
     <Compile Include="..\..\src\shared\Localization\OverrideValidator.cs" Link="Shared\Localization\OverrideValidator.cs" />
     <Compile Include="..\..\src\shared\Localization\LocalizationReport.cs" Link="Shared\Localization\LocalizationReport.cs" />
+    <Compile Include="..\..\src\shared\Localization\OverrideFolderWatcher.cs" Link="Shared\Localization\OverrideFolderWatcher.cs" />
   </ItemGroup>
 
   <ItemGroup>
