@@ -422,4 +422,6 @@ The name **bimwright** combines **BIM** with **wright**, an old word for a maker
 
 Apache-2.0 — [LICENSE](LICENSE).
 
+Forks and rebrands are welcome — the license terms are all that's required (keep `LICENSE` and the copyright notices, mark changed files). If rvt-mcp helped you, a star or a mention of BIMwright in your product is appreciated but entirely optional. Issues and PRs are always welcome.
+
 Revit and Autodesk are trademarks of Autodesk, Inc. bimwright is independent and not affiliated with Autodesk.

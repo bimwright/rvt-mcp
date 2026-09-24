@@ -412,4 +412,6 @@ AI アシスタントと BIM・CAD アプリケーションをつなぐオープ
 
 Apache-2.0 — [LICENSE](LICENSE)。
 
+フォークやリブランドは歓迎します。必要なのはライセンス条項の遵守のみです（`LICENSE` と著作権表示を残し、変更したファイルを明記すること）。rvt-mcp が役に立った場合、スターや製品内での BIMwright への言及をいただけると嬉しいですが、完全に任意です。Issue や PR はいつでも歓迎します。
+
 Revit および Autodesk は Autodesk, Inc. の商標です。bimwright は独立したオープンソースプロジェクトであり、Autodesk とは提携していません。

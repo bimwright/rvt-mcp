@@ -412,4 +412,6 @@ Tên **bimwright** ghép **BIM** với **wright**, một từ tiếng Anh cổ c
 
 Apache-2.0 — [LICENSE](LICENSE).
 
+Bạn cứ tự do fork và đổi thương hiệu — chỉ cần tuân thủ điều khoản license (giữ `LICENSE` và các copyright notice, ghi chú file đã sửa). Nếu rvt-mcp có ích cho bạn, một star hoặc lời nhắc tới BIMwright trong sản phẩm của bạn là điều tác giả rất trân trọng, nhưng hoàn toàn tùy ý. Luôn chào đón issue và PR.
+
 Revit và Autodesk là trademark của Autodesk, Inc. bimwright độc lập, không liên kết Autodesk.

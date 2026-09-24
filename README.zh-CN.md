@@ -412,4 +412,6 @@ pwsh scripts/stage-plugin-zip.ps1 -Config Release
 
 Apache-2.0 — [LICENSE](LICENSE)。
 
+欢迎 fork 和重新品牌化——只需遵守许可证条款（保留 `LICENSE` 和版权声明，并标注已修改的文件）。如果 rvt-mcp 对你有帮助，欢迎 star 或在你的产品中提及 BIMwright，但这完全是自愿的。随时欢迎 Issue 和 PR。
+
 Revit 与 Autodesk 为 Autodesk, Inc. 商标。bimwright 为独立开源项目，与 Autodesk 无隶属关系。
