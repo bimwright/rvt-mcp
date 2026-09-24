@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using Newtonsoft.Json.Linq;
 using RvtMcp.Plugin;
+using RvtMcp.Plugin.Localization;
 
 namespace RvtMcp.Plugin.Views.Toast
 {
@@ -75,8 +76,8 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private static ToastContent BuildFailureContent(string toolName, string errorMessage, string toolDescription)
         {
-            var category = "MCP · Failed";
-            var summary = Truncate(errorMessage ?? "Tool call failed", 120);
+            var category = L.T("toast.category.failed");
+            var summary = Truncate(errorMessage ?? L.T("toast.failed.default"), 120);
             var detail = !string.IsNullOrWhiteSpace(toolDescription)
                 ? Truncate(toolDescription, 100)
                 : ToolNameFormatter.Format(toolName);
@@ -90,24 +91,24 @@ namespace RvtMcp.Plugin.Views.Toast
             var format = (result?.Value<string>("image_format") ?? "png").ToUpperInvariant();
             var viewId = result?.Value<long?>("view_id");
 
-            var fileName = GetFileNameSafe(savedPath, "image");
+            var fileName = GetFileNameSafe(savedPath, L.T("toast.capture.imageFallback"));
             var summary = pixelSize.HasValue
-                ? $"Saved {fileName} · {pixelSize}px {format}"
-                : $"Saved {fileName}";
+                ? L.T("toast.capture.savedPx", ("fileName", fileName), ("pixelSize", pixelSize.Value), ("format", format))
+                : L.T("toast.capture.saved", ("fileName", fileName));
 
             var thumb = IsSafeImagePath(savedPath) ? savedPath : null;
             var detailParts = new System.Collections.Generic.List<string>();
             if (viewId.HasValue)
-                detailParts.Add($"View id {viewId}");
+                detailParts.Add(L.T("toast.capture.viewId", ("viewId", viewId.Value)));
             if (thumb != null)
-                detailParts.Add("Click to open");
+                detailParts.Add(L.T("toast.capture.clickToOpen"));
             var detail = string.Join(" · ", detailParts);
             return new ToastContent(category, summary, detail, thumb);
         }
 
         private static ToastContent BuildCurrentViewSuccess(string category, JObject result)
         {
-            var viewName = result?.Value<string>("viewName") ?? result?.Value<string>("view_name") ?? "Active view";
+            var viewName = result?.Value<string>("viewName") ?? result?.Value<string>("view_name") ?? L.T("toast.currentView.active");
             var viewType = result?.Value<string>("viewType") ?? result?.Value<string>("view_type");
             var scale = result?.Value<int?>("scale");
             var level = result?.Value<string>("levelName") ?? result?.Value<string>("level_name");
@@ -115,7 +116,7 @@ namespace RvtMcp.Plugin.Views.Toast
             var summary = viewType != null ? $"{viewName} · {viewType}" : viewName;
             var detailParts = new System.Collections.Generic.List<string>();
             if (scale.HasValue && scale.Value > 0)
-                detailParts.Add($"Scale 1:{scale.Value}");
+                detailParts.Add(L.T("toast.currentView.scale", ("scale", scale.Value)));
             if (!string.IsNullOrWhiteSpace(level))
                 detailParts.Add(level);
             return new ToastContent(category, summary, string.Join(" · ", detailParts));
@@ -130,13 +131,13 @@ namespace RvtMcp.Plugin.Views.Toast
 
             var count = total ?? returned;
             var summary = count.HasValue
-                ? (count.Value == 0 ? "No rooms in model" : $"Found {count.Value} room{(count.Value == 1 ? "" : "s")}")
-                : "Room query complete";
+                ? (count.Value == 0 ? L.T("toast.rooms.none") : L.T("toast.rooms.found", ("count", count.Value)))
+                : L.T("toast.rooms.complete");
 
             var detail = DescribeRoomFilters(parms);
             if (placed.HasValue || unplaced.HasValue)
             {
-                var stats = $"Placed {placed ?? 0}, unplaced {unplaced ?? 0}";
+                var stats = L.T("toast.rooms.placedStats", ("placed", placed ?? 0), ("unplaced", unplaced ?? 0));
                 detail = string.IsNullOrEmpty(detail) ? stats : $"{detail} · {stats}";
             }
 
@@ -147,8 +148,8 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             var total = result?.Value<int?>("total") ?? result?.Value<int?>("returned");
             var summary = total.HasValue
-                ? (total.Value == 0 ? "No sheets in project" : $"{total.Value} drawing sheet{(total.Value == 1 ? "" : "s")}")
-                : "Sheet list ready";
+                ? (total.Value == 0 ? L.T("toast.sheets.none") : L.T("toast.sheets.found", ("count", total.Value)))
+                : L.T("toast.sheets.ready");
 
             string detail = null;
             var sheets = result?["sheets"] as JArray;
@@ -158,9 +159,9 @@ namespace RvtMcp.Plugin.Views.Toast
                 var num = first?.Value<string>("sheet_number");
                 var name = first?.Value<string>("sheet_name");
                 if (!string.IsNullOrWhiteSpace(num) || !string.IsNullOrWhiteSpace(name))
-                    detail = $"First: {num} {name}".Trim();
+                    detail = L.T("toast.sheets.first", ("number", num), ("name", name)).Trim();
                 if (sheets.Count > 1)
-                    detail = (detail ?? "Sheets") + $" (+{sheets.Count - 1} more)";
+                    detail = (detail ?? L.T("toast.sheets.fallback")) + " " + L.T("toast.sheets.more", ("count", sheets.Count - 1));
             }
 
             return new ToastContent(category, summary, detail);
@@ -170,14 +171,14 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             var isShared = result?.Value<bool?>("isWorkshared");
             if (isShared == false)
-                return new ToastContent(category, "Model is not workshared", "No worksets to list");
+                return new ToastContent(category, L.T("toast.worksets.notWorkshared"), L.T("toast.worksets.none"));
 
             var count = result?.Value<int?>("count");
             var active = result?.Value<string>("activeWorksetName") ?? result?.Value<string>("active_workset_name");
             var summary = count.HasValue
-                ? $"{count.Value} workset{(count.Value == 1 ? "" : "s")}"
-                : "Workset query complete";
-            var detail = !string.IsNullOrWhiteSpace(active) ? $"Active: {active}" : null;
+                ? L.T("toast.worksets.found", ("count", count.Value))
+                : L.T("toast.worksets.complete");
+            var detail = !string.IsNullOrWhiteSpace(active) ? L.T("toast.worksets.active", ("name", active)) : null;
             return new ToastContent(category, summary, detail);
         }
 
@@ -186,8 +187,8 @@ namespace RvtMcp.Plugin.Views.Toast
             var count = result?.Value<int?>("count");
             var categoryName = result?.Value<string>("category");
             var summary = count.HasValue
-                ? $"Matched {count.Value} {categoryName ?? "elements"}"
-                : "Element filter complete";
+                ? L.T("toast.filter.matched", ("count", count.Value), ("category", categoryName ?? L.T("toast.filter.elementsFallback")))
+                : L.T("toast.filter.complete");
             return new ToastContent(category, summary, null);
         }
 
@@ -195,22 +196,22 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             var count = result?.Value<int?>("count");
             var summary = count.HasValue
-                ? $"{count.Value} selected element{(count.Value == 1 ? "" : "s")}"
-                : "Selection read";
+                ? L.T("toast.selected.count", ("count", count.Value))
+                : L.T("toast.selected.done");
             return new ToastContent(category, summary, null);
         }
 
         private static ToastContent BuildSendCodeSuccess(string category, JObject result)
         {
             var text = result?.Value<string>("result");
-            var summary = string.IsNullOrWhiteSpace(text) ? "Script finished" : Truncate(FirstLine(text), 100);
-            return new ToastContent(category, summary, "Custom C# executed in Revit");
+            var summary = string.IsNullOrWhiteSpace(text) ? L.T("toast.sendCode.finished") : Truncate(FirstLine(text), 100);
+            return new ToastContent(category, summary, L.T("toast.sendCode.detail"));
         }
 
         private static ToastContent BuildGenericSuccess(string category, string toolName, JObject result)
         {
             if (result == null)
-                return new ToastContent(category, "Completed successfully", ToolNameFormatter.Format(toolName));
+                return new ToastContent(category, L.T("toast.generic.completed"), ToolNameFormatter.Format(toolName));
 
             var total = result.Value<int?>("total");
             var returned = result.Value<int?>("returned");
@@ -222,54 +223,54 @@ namespace RvtMcp.Plugin.Views.Toast
             if (total.HasValue || returned.HasValue)
             {
                 var n = total ?? returned;
-                return new ToastContent(category, $"{n} result{(n == 1 ? "" : "s")}", ToolNameFormatter.Format(toolName));
+                return new ToastContent(category, L.T("toast.generic.results", ("count", n.Value)), ToolNameFormatter.Format(toolName));
             }
             if (count.HasValue)
-                return new ToastContent(category, $"{count.Value} item{(count.Value == 1 ? "" : "s")}", ToolNameFormatter.Format(toolName));
+                return new ToastContent(category, L.T("toast.generic.items", ("count", count.Value)), ToolNameFormatter.Format(toolName));
             if (rowCount.HasValue)
-                return new ToastContent(category, $"{rowCount.Value} rows", ToolNameFormatter.Format(toolName));
+                return new ToastContent(category, L.T("toast.generic.rows", ("count", rowCount.Value)), ToolNameFormatter.Format(toolName));
             if (!string.IsNullOrWhiteSpace(viewName))
                 return new ToastContent(category, viewName, ToolNameFormatter.Format(toolName));
             if (!string.IsNullOrWhiteSpace(savedPath))
             {
                 var thumb = IsSafeImagePath(savedPath) ? savedPath : null;
-                return new ToastContent(category, GetFileNameSafe(savedPath, "file"), ToolNameFormatter.Format(toolName), thumb);
+                return new ToastContent(category, GetFileNameSafe(savedPath, L.T("toast.generic.fileFallback")), ToolNameFormatter.Format(toolName), thumb);
             }
 
             var message = result.Value<string>("message") ?? result.Value<string>("summary");
             if (!string.IsNullOrWhiteSpace(message))
                 return new ToastContent(category, Truncate(message, 100), ToolNameFormatter.Format(toolName));
 
-            return new ToastContent(category, "Completed successfully", ToolNameFormatter.Format(toolName));
+            return new ToastContent(category, L.T("toast.generic.completed"), ToolNameFormatter.Format(toolName));
         }
 
         private static string CategoryFor(ToolActivityKind kind, string toolName)
         {
             if (toolName == "send_code_to_revit" || toolName == "batch_execute" || toolName == "run_baked_tool")
-                return "MCP · Script";
+                return L.T("toast.category.script");
             if (toolName != null && toolName.StartsWith("export_", StringComparison.OrdinalIgnoreCase))
-                return "MCP · Export";
+                return L.T("toast.category.export");
             if (toolName == "capture_view_image")
-                return "MCP · Snapshot";
+                return L.T("toast.category.snapshot");
 
             if (kind == ToolActivityKind.Write)
-                return "MCP · Modified";
-            return "MCP · Query";
+                return L.T("toast.category.modified");
+            return L.T("toast.category.query");
         }
 
         private static string DescribeRoomFilters(JObject parms)
         {
             if (parms == null)
-                return "All levels · all phases";
+                return L.T("toast.filters.allLevelsPhases");
 
             var level = parms.Value<string>("level_name");
             var phase = parms.Value<string>("phase_name");
             var status = parms.Value<string>("status");
             var parts = new System.Collections.Generic.List<string>();
-            parts.Add(string.IsNullOrWhiteSpace(level) ? "All levels" : $"Level: {level}");
-            parts.Add(string.IsNullOrWhiteSpace(phase) ? "All phases" : $"Phase: {phase}");
+            parts.Add(string.IsNullOrWhiteSpace(level) ? L.T("toast.filters.allLevels") : L.T("toast.filters.level", ("level", level)));
+            parts.Add(string.IsNullOrWhiteSpace(phase) ? L.T("toast.filters.allPhases") : L.T("toast.filters.phase", ("phase", phase)));
             if (!string.IsNullOrWhiteSpace(status) && !string.Equals(status, "all", StringComparison.OrdinalIgnoreCase))
-                parts.Add($"Status: {status}");
+                parts.Add(L.T("toast.filters.status", ("status", status)));
             return string.Join(" · ", parts);
         }
 

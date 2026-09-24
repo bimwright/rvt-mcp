@@ -1,11 +1,23 @@
+using System;
 using RvtMcp.Plugin;
+using RvtMcp.Plugin.Localization;
 using RvtMcp.Plugin.Views.Toast;
 using Xunit;
 
 namespace RvtMcp.Tests
 {
-    public class ToastContentBuilderTests
+    [Collection("L10n")]
+    public class ToastContentBuilderTests : IDisposable
     {
+        public ToastContentBuilderTests()
+        {
+            L.ResetForTests();
+            var en = EmbeddedCatalog.Load(typeof(ToastContentBuilderTests).Assembly, "en");
+            L.InitializeForTests(StringTable.Build("en", en, null, null));
+        }
+
+        public void Dispose() => L.ResetForTests();
+
         [Fact]
         public void BuildCompleted_get_current_view_info_includes_view_name()
         {
@@ -38,7 +50,7 @@ namespace RvtMcp.Tests
                 toolDescription: null
             );
 
-            Assert.Contains("3 rooms", vm.Summary);
+            Assert.Equal("Rooms found: 3", vm.Summary);
             Assert.Contains("Level: L1", vm.Detail);
             Assert.Contains("Placed 2", vm.Detail);
         }
@@ -198,6 +210,58 @@ namespace RvtMcp.Tests
 
             Assert.Equal("MCP · Script", vm.CategoryLabel);
             Assert.Equal("Hello from script", vm.Summary);
+        }
+
+        [Fact]
+        public void BuildCompleted_uses_active_string_table_but_keeps_data_verbatim()
+        {
+            var table = StringTable.Build("tt", new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["toast.category.query"] = "TRUY VẤN",
+                ["toast.rooms.found"] = "Tìm thấy phòng: {count:n}",
+                ["toast.filters.level"] = "Tầng: {level}",
+                ["toast.filters.allPhases"] = "Mọi pha",
+            }, null, null);
+            L.InitializeForTests(table);
+
+            var vm = ToastContentBuilder.BuildCompleted(
+                toolName: "list_rooms",
+                paramsJson: "{\"level_name\":\"L1\"}",
+                resultJson: "{\"total\":3,\"returned\":3}",
+                success: true,
+                errorMessage: null,
+                durationMs: 40,
+                toolDescription: null
+            );
+
+            Assert.Equal("TRUY VẤN", vm.CategoryLabel);
+            Assert.Equal("Tìm thấy phòng: 3", vm.Summary);
+            Assert.Equal("Tầng: L1 · Mọi pha", vm.Detail);
+        }
+
+        [Fact]
+        public void BuildCompleted_failure_keeps_error_message_verbatim_under_localization()
+        {
+            var table = StringTable.Build("tt", new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["toast.category.failed"] = "THẤT BẠI",
+                ["toast.failed.default"] = "Lỗi không rõ",
+            }, null, null);
+            L.InitializeForTests(table);
+
+            var vm = ToastContentBuilder.BuildCompleted(
+                toolName: "capture_view_image",
+                paramsJson: null,
+                resultJson: null,
+                success: false,
+                errorMessage: "output_path is required.",
+                durationMs: 0,
+                toolDescription: "Export a view to a raster image."
+            );
+
+            Assert.Equal("THẤT BẠI", vm.CategoryLabel);
+            Assert.Equal("output_path is required.", vm.Summary);
+            Assert.Contains("raster image", vm.Detail);
         }
     }
 }

@@ -15,6 +15,10 @@
     <Compile Include="../../src/shared/Views/Toast/ToastContentBuilder.cs" Link="ToastContentBuilder.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastThumbnailLoader.cs" Link="ToastThumbnailLoader.cs" />
     <Compile Include="../../src/shared/Security/PathAllowlist.cs" Link="PathAllowlist.cs" />
+    <Compile Include="../../src/shared/Views/BrandAssets.cs" Link="BrandAssets.cs" />
+    <Compile Include="../../src/shared/Localization/L.cs" Link="Localization\L.cs" />
+    <Compile Include="../../src/shared/Localization/StringTable.cs" Link="Localization\StringTable.cs" />
+    <Compile Include="../../src/shared/Localization/LocaleResolver.cs" Link="Localization\LocaleResolver.cs" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 </Project>

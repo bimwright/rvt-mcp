@@ -22,5 +22,67 @@
   "ribbon.bakedTool.fallback": "Baked Tool",
   "ribbon.language.label": "Language",
   "ribbon.language.tooltip": "Plugin UI language. Auto follows the Revit UI language; the choice persists across restarts unless BIMWRIGHT_UI_LANGUAGE is set.",
-  "ribbon.language.auto": "Auto"
+  "ribbon.language.auto": "Auto",
+
+  "toast.category.query": "MCP · Query",
+  "toast.category.modified": "MCP · Modified",
+  "toast.category.script": "MCP · Script",
+  "toast.category.export": "MCP · Export",
+  "toast.category.snapshot": "MCP · Snapshot",
+  "toast.category.connected": "MCP · Connected",
+  "toast.category.failed": "MCP · Failed",
+
+  "toast.connected.title": "Agent connected",
+  "toast.connected.summary": "rvt-mcp is ready",
+
+  "toast.failed.default": "Tool call failed",
+
+  "toast.capture.saved": "Saved {fileName}",
+  "toast.capture.savedPx": "Saved {fileName} · {pixelSize:n}px {format}",
+  "toast.capture.viewId": "View id {viewId}",
+  "toast.capture.clickToOpen": "Click to open",
+  "toast.capture.imageFallback": "image",
+
+  "toast.currentView.active": "Active view",
+  "toast.currentView.scale": "Scale 1:{scale}",
+
+  "toast.rooms.none": "No rooms in model",
+  "toast.rooms.found": "Rooms found: {count:n}",
+  "toast.rooms.complete": "Room query complete",
+  "toast.rooms.placedStats": "Placed {placed:n}, unplaced {unplaced:n}",
+  "toast.filters.allLevelsPhases": "All levels · all phases",
+  "toast.filters.allLevels": "All levels",
+  "toast.filters.level": "Level: {level}",
+  "toast.filters.allPhases": "All phases",
+  "toast.filters.phase": "Phase: {phase}",
+  "toast.filters.status": "Status: {status}",
+
+  "toast.sheets.none": "No sheets in project",
+  "toast.sheets.found": "Drawing sheets: {count:n}",
+  "toast.sheets.ready": "Sheet list ready",
+  "toast.sheets.first": "First: {number} {name}",
+  "toast.sheets.more": "(+{count:n} more)",
+  "toast.sheets.fallback": "Sheets",
+
+  "toast.worksets.notWorkshared": "Model is not workshared",
+  "toast.worksets.none": "No worksets to list",
+  "toast.worksets.found": "Worksets: {count:n}",
+  "toast.worksets.complete": "Workset query complete",
+  "toast.worksets.active": "Active: {name}",
+
+  "toast.filter.matched": "Matched {count:n} {category}",
+  "toast.filter.elementsFallback": "elements",
+  "toast.filter.complete": "Element filter complete",
+
+  "toast.selected.count": "Elements selected: {count:n}",
+  "toast.selected.done": "Selection read",
+
+  "toast.sendCode.finished": "Script finished",
+  "toast.sendCode.detail": "Custom C# executed in Revit",
+
+  "toast.generic.completed": "Completed successfully",
+  "toast.generic.results": "Results: {count:n}",
+  "toast.generic.items": "Items: {count:n}",
+  "toast.generic.rows": "Rows: {count:n}",
+  "toast.generic.fileFallback": "file"
 }

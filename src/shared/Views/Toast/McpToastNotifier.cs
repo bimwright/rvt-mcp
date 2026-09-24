@@ -64,9 +64,9 @@ namespace RvtMcp.Plugin.Views.Toast
             var vm = new McpToastViewModel
             {
                 CommandName = "client_connected",
-                Title = "Agent connected",
-                CategoryLabel = "MCP · Connected",
-                Summary = "rvt-mcp is ready",
+                Title = Localization.L.T("toast.connected.title"),
+                CategoryLabel = Localization.L.T("toast.category.connected"),
+                Summary = Localization.L.T("toast.connected.summary"),
                 Detail = connectionInfo,
                 Kind = ToolActivityKind.Read,
                 Success = true,
