@@ -6,14 +6,17 @@ namespace RvtMcp.Plugin
     public class IdlingUpdater
     {
         private readonly RibbonResult _ribbon;
+        private readonly Views.Toast.McpToastNotifier _toastNotifier;
         private DateTime _lastUpdate = DateTime.MinValue;
         private bool _lastRunning;
+        private bool _wasClientConnected;
         private int _lastCount;
         private bool _lastToastEnabled;
 
-        public IdlingUpdater(RibbonResult ribbon)
+        public IdlingUpdater(RibbonResult ribbon, Views.Toast.McpToastNotifier toastNotifier = null)
         {
             _ribbon = ribbon;
+            _toastNotifier = toastNotifier;
         }
 
         public void Update(bool isRunning, ITransportServer transport, McpSessionLog sessionLog, bool toastEnabled)
@@ -23,6 +26,13 @@ namespace RvtMcp.Plugin
             var now = DateTime.Now;
             if ((now - _lastUpdate).TotalMilliseconds < 1000) return;
             _lastUpdate = now;
+
+            // Rising edge: first client attach (and each re-attach) confirms
+            // the agent↔plugin wire end-to-end.
+            var connected = isRunning && transport != null && transport.IsClientConnected;
+            if (connected && !_wasClientConnected)
+                _toastNotifier?.OnClientConnected(transport.ConnectionInfo);
+            _wasClientConnected = connected;
 
             var count = sessionLog?.Count ?? 0;
 

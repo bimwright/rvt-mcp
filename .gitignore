@@ -23,6 +23,7 @@ dist/
 # Temp
 __temp_research/
 tests/server-staging/
+tests/**/TestResults/
 
 # Private — internal research, checklists, TODOs, journal, reference repos.
 # Never goes public. Single catch-all. See .private/README.md for index.

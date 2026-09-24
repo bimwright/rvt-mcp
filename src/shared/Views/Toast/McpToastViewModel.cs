@@ -15,5 +15,7 @@ namespace RvtMcp.Plugin.Views.Toast
         public ToolActivityKind Kind { get; set; }
         public bool Success { get; set; }
         public long DurationMs { get; set; }
+        /// <summary>Optional override for auto-dismiss delay (seconds).</summary>
+        public int? AutoDismissSeconds { get; set; }
     }
 }

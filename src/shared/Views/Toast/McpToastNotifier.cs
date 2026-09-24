@@ -42,6 +42,30 @@ namespace RvtMcp.Plugin.Views.Toast
             _host.Post(manager => manager.Complete(vm));
         }
 
+        /// <summary>
+        /// One-shot "agent connected" confirmation when a client first attaches
+        /// to the transport (or re-attaches after a drop). Not a tool result.
+        /// </summary>
+        public void OnClientConnected(string connectionInfo)
+        {
+            if (!_isEnabled())
+                return;
+
+            var vm = new McpToastViewModel
+            {
+                CommandName = "client_connected",
+                Title = "Agent connected",
+                CategoryLabel = "MCP · Connected",
+                Summary = "rvt-mcp is ready",
+                Detail = connectionInfo,
+                Kind = ToolActivityKind.Read,
+                Success = true,
+                AutoDismissSeconds = 6
+            };
+
+            _host.Post(manager => manager.Complete(vm));
+        }
+
         public void DismissAll()
         {
             _host.DismissAll(synchronous: false);

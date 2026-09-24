@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -15,6 +16,7 @@ namespace RvtMcp.Plugin.Views.Toast
     internal sealed class McpToastWindow : Window
     {
         private const double CardWidth = 340;
+        private const double BrandRestOpacity = 0.4;
 
         private readonly Action<McpToastWindow> _onClosed;
         private readonly TextBlock _iconText;
@@ -23,6 +25,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly TextBlock _summaryText;
         private readonly TextBlock _detailText;
         private readonly TextBlock _durationText;
+        private readonly TextBlock _brandText;
         private readonly Border _thumbnailHost;
         private readonly Image _thumbnailImage;
         private readonly Border _root;
@@ -195,15 +198,35 @@ namespace RvtMcp.Plugin.Views.Toast
             Grid.SetRow(_thumbnailHost, 4);
             content.Children.Add(_thumbnailHost);
 
+            var footer = new DockPanel { Margin = new Thickness(24, 6, 0, 0) };
+
+            _brandText = new TextBlock
+            {
+                // Logo casing and colours; dimmed at rest, fades to full on hover.
+                FontSize = 10,
+                FontWeight = FontWeights.SemiBold,
+                Opacity = BrandRestOpacity,
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = "bimwright rvt-mcp",
+                Inlines =
+                {
+                    new Run("BIM") { Foreground = McpToastTheme.BrandBim },
+                    new Run("wright") { Foreground = McpToastTheme.BrandWright }
+                }
+            };
+            DockPanel.SetDock(_brandText, Dock.Right);
+            footer.Children.Add(_brandText);
+
             _durationText = new TextBlock
             {
                 Text = FormatDuration(viewModel),
                 FontSize = 11,
                 Foreground = McpToastTheme.TextSecondary,
-                Margin = new Thickness(24, 6, 0, 0)
+                VerticalAlignment = VerticalAlignment.Center
             };
-            Grid.SetRow(_durationText, 5);
-            content.Children.Add(_durationText);
+            footer.Children.Add(_durationText);
+            Grid.SetRow(footer, 5);
+            content.Children.Add(footer);
 
             ApplyViewModelText(viewModel);
             ApplyThumbnail(viewModel.ThumbnailPath);
@@ -216,12 +239,14 @@ namespace RvtMcp.Plugin.Views.Toast
             {
                 _isMouseOver = true;
                 _autoDismissTimer.Stop();
+                FadeBrand(1);
             };
             MouseLeave += (_, __) =>
             {
                 _isMouseOver = false;
                 if (!_isClosing)
                     _autoDismissTimer.Start();
+                FadeBrand(BrandRestOpacity);
             };
             MouseLeftButtonUp += (_, e) =>
             {
@@ -384,6 +409,13 @@ namespace RvtMcp.Plugin.Views.Toast
             }
         }
 
+        /// <summary>Brand mark: dimmed at rest, quick fade to full on hover, slower fade back on leave.</summary>
+        private void FadeBrand(double to)
+        {
+            var anim = new DoubleAnimation(to, TimeSpan.FromMilliseconds(to > 0 ? 180 : 350));
+            _brandText.BeginAnimation(UIElement.OpacityProperty, anim);
+        }
+
         private void BeginClose()
         {
             if (_isClosing)
@@ -409,6 +441,8 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private static double GetAutoDismissSeconds(McpToastViewModel vm)
         {
+            if (vm.AutoDismissSeconds.HasValue)
+                return vm.AutoDismissSeconds.Value;
             if (!vm.Success)
                 return 8;
             if (!string.IsNullOrEmpty(vm.ThumbnailPath))

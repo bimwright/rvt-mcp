@@ -29,6 +29,7 @@ namespace RvtMcp.Plugin
         private HistoryWindow _historyWindow;
         private BakeInboxWindow _bakeInboxWindow;
         private UIControlledApplication _ribbonApplication;
+        private bool _mainWindowCaptured;
 
         public Result OnStartup(UIControlledApplication application)
         {
@@ -62,7 +63,7 @@ namespace RvtMcp.Plugin
             var ribbonResult = RibbonSetup.Create(application, Config, BakedToolRuntimeCache);
             DebugLog("OnStartup: RibbonSetup OK");
 
-            _idlingUpdater = new IdlingUpdater(ribbonResult);
+            _idlingUpdater = new IdlingUpdater(ribbonResult, ToastNotifier);
             application.Idling += OnIdling;
             DebugLog("OnStartup: END");
 
@@ -178,6 +179,17 @@ namespace RvtMcp.Plugin
 
         private void OnIdling(object sender, IdlingEventArgs e)
         {
+            // Capture the owner early so pre-command toasts (e.g. agent
+            // connected) anchor to the Revit window instead of the screen.
+            if (!_mainWindowCaptured)
+            {
+                var hwnd = _ribbonApplication?.MainWindowHandle ?? IntPtr.Zero;
+                if (hwnd != IntPtr.Zero)
+                {
+                    CaptureMainWindowHandle(hwnd);
+                    _mainWindowCaptured = true;
+                }
+            }
             _idlingUpdater?.Update(IsTransportRunning, Transport, SessionLog, ToastEnabled);
         }
 

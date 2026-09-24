@@ -21,6 +21,9 @@ namespace RvtMcp.Plugin.Views.Toast
         public static readonly SolidColorBrush Success = Brush("#38A169");
         public static readonly SolidColorBrush Error = Brush("#E53E3E");
         public static readonly SolidColorBrush MutedAccent = Brush("#94A3B8");
+        // Brand wordmark colours come from the logo: navy "BIM" + green "wright".
+        public static readonly SolidColorBrush BrandBim = Brush("#0C3F76");
+        public static readonly SolidColorBrush BrandWright = Brush("#589039");
 
         public static Brush BuildAccentBrush(McpToastViewModel vm)
         {
