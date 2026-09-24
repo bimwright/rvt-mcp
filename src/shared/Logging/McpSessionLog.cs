@@ -20,10 +20,14 @@ namespace RvtMcp.Plugin
         public string Summary { get; set; }
         public string ToolDescription { get; set; }
         public int? RerunOfIndex { get; set; }
+        /// <summary>ParamsJson exceeded the in-memory cap and was truncated — entry cannot be re-run.</summary>
+        public bool ParamsTruncated { get; set; }
     }
 
     public class McpSessionLog
     {
+        private const int MaxParamsJsonLength = 64 * 1024;
+        private const int MaxEntries = 1000;
         private int _nextIndex = 1;
         internal static Func<RvtMcpConfig> ConfigLoader = () => RvtMcpConfig.Load();
 
@@ -37,6 +41,9 @@ namespace RvtMcp.Plugin
             entry.Index = _nextIndex++;
             if (entry.Timestamp == default)
                 entry.Timestamp = DateTime.Now;
+            // Bound session memory: evict the oldest beyond the cap.
+            while (Entries.Count >= MaxEntries)
+                Entries.RemoveAt(0);
             Entries.Add(entry);
             EntryAdded?.Invoke(entry);
         }
@@ -59,7 +66,16 @@ namespace RvtMcp.Plugin
             entry.ResultJson = BakeRedactor.RedactForBake(entry.ResultJson, redactResultFields: isSendCode);
 
             if (!isSendCode)
+            {
+                // Bound in-memory size for fat payloads (e.g. batch_execute); the
+                // file log caps params separately at 2KB.
+                if (entry.ParamsJson != null && entry.ParamsJson.Length > MaxParamsJsonLength)
+                {
+                    entry.ParamsJson = entry.ParamsJson.Substring(0, MaxParamsJsonLength) + "... (truncated)";
+                    entry.ParamsTruncated = true;
+                }
                 return;
+            }
 
             var cacheBodies = false;
             try { cacheBodies = ConfigLoader?.Invoke()?.CacheSendCodeBodiesOrDefault ?? false; }

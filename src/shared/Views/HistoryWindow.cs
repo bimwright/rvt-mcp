@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using Newtonsoft.Json.Linq;
+using RvtMcp.Plugin.Views.Toast;
 
 namespace RvtMcp.Plugin.Views
 {
@@ -16,6 +19,7 @@ namespace RvtMcp.Plugin.Views
         private readonly DataGrid _grid;
         private TextBox _searchBox;
         private ComboBox _filterCombo;
+        private ComboBox _kindCombo;
         private readonly CollectionViewSource _viewSource;
 
         // Detail panel fields
@@ -193,6 +197,25 @@ namespace RvtMcp.Plugin.Views
             _filterCombo.SelectionChanged += (s, e) => _viewSource.View.Refresh();
             panel.Children.Add(_filterCombo);
 
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Kind:",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(4, 0, 4, 0)
+            });
+
+            _kindCombo = new ComboBox { Width = 70, Margin = new Thickness(0, 0, 8, 0) };
+            _kindCombo.Items.Add("All");
+            _kindCombo.Items.Add("Read");
+            _kindCombo.Items.Add("Write");
+            _kindCombo.SelectedIndex = 0;
+            _kindCombo.SelectionChanged += (s, e) => _viewSource.View.Refresh();
+            panel.Children.Add(_kindCombo);
+
+            var logsBtn = new Button { Content = "Open logs", Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 8, 0) };
+            logsBtn.Click += (s, e) => OpenLogFolder();
+            panel.Children.Add(logsBtn);
+
             var clearBtn = new Button { Content = "Clear Session", Padding = new Thickness(8, 2, 8, 2) };
             clearBtn.Click += (s, e) =>
             {
@@ -215,8 +238,7 @@ namespace RvtMcp.Plugin.Views
             if (entry == null) { e.Accepted = false; return; }
 
             var search = _searchBox?.Text;
-            if (!string.IsNullOrEmpty(search) &&
-                entry.ToolName.IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0)
+            if (!string.IsNullOrEmpty(search) && !MatchesSearch(entry, search))
             {
                 e.Accepted = false;
                 return;
@@ -226,7 +248,37 @@ namespace RvtMcp.Plugin.Views
             if (filter == "Success" && !entry.Success) { e.Accepted = false; return; }
             if (filter == "Failed" && entry.Success) { e.Accepted = false; return; }
 
+            var kind = _kindCombo?.SelectedItem as string;
+            if (kind == "Read" && ToolActivityClassifier.Classify(entry.ToolName) != ToolActivityKind.Read) { e.Accepted = false; return; }
+            if (kind == "Write" && ToolActivityClassifier.Classify(entry.ToolName) != ToolActivityKind.Write) { e.Accepted = false; return; }
+
             e.Accepted = true;
+        }
+
+        private static bool MatchesSearch(McpCallEntry entry, string search)
+        {
+            return Contains(entry.ToolName, search)
+                || Contains(entry.Summary, search)
+                || Contains(entry.ParamsJson, search)
+                || Contains(entry.ErrorMessage, search);
+        }
+
+        private static bool Contains(string haystack, string needle)
+        {
+            return haystack != null && haystack.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static void OpenLogFolder()
+        {
+            var dir = Path.Combine(
+                McpLogger.LocalAppDataOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "RvtMcp");
+            try
+            {
+                Directory.CreateDirectory(dir);
+                Process.Start(new ProcessStartInfo(dir) { UseShellExecute = true });
+            }
+            catch { }
         }
 
         private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -255,6 +307,11 @@ namespace RvtMcp.Plugin.Views
             if (entry.ToolName == "send_code_to_revit" && string.IsNullOrEmpty(entry.CodeSnippet))
             {
                 _warningLabel.Text = "⚠ send_code body redacted from history (code_hash only) — re-run unavailable";
+                _warningLabel.Visibility = Visibility.Visible;
+            }
+            else if (entry.ParamsTruncated)
+            {
+                _warningLabel.Text = "⚠ Params truncated in history (large payload) — re-run unavailable";
                 _warningLabel.Visibility = Visibility.Visible;
             }
             else if (entry.ToolName == "send_code_to_revit")
@@ -490,7 +547,9 @@ namespace RvtMcp.Plugin.Views
         {
             // send_code bodies are redacted to {code_hash, code_length} unless
             // CacheSendCodeBodies is on — without the code there is nothing to re-run.
+            // Same for params that exceeded the in-memory cap and were truncated.
             return entry != null
+                && !entry.ParamsTruncated
                 && !(entry.ToolName == "send_code_to_revit" && string.IsNullOrEmpty(entry.CodeSnippet));
         }
 
@@ -501,6 +560,7 @@ namespace RvtMcp.Plugin.Views
             if (_selectedEntry.ToolName == "send_code_to_revit")
             {
                 var confirm = MessageBox.Show(
+                    this,
                     "This will execute C# code in Revit. Continue?",
                     "Re-run Confirmation",
                     MessageBoxButton.YesNo,

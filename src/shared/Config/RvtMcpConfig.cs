@@ -96,6 +96,9 @@ namespace RvtMcp.Plugin
                 "RvtMcp",
                 "rvtmcp.config.json");
 
+        /// <summary>Test hook: redirects every Load that does not pass an explicit path.</summary>
+        internal static string ConfigFilePathOverride { get; set; }
+
         /// <summary>
         /// Load config from JSON → overlay env vars → overlay CLI args. Pass <c>null</c>
         /// for args to skip the CLI layer (plugin-process callers do this since Revit
@@ -108,7 +111,7 @@ namespace RvtMcp.Plugin
 
         internal static RvtMcpConfig Load(string[] args, string configFilePath, Func<string, string> envLookup)
         {
-            var path = configFilePath ?? DefaultConfigFilePath;
+            var path = configFilePath ?? ConfigFilePathOverride ?? DefaultConfigFilePath;
             var config = LoadFromJsonFile(path)
                          ?? new RvtMcpConfig();
 

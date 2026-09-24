@@ -66,5 +66,53 @@ namespace RvtMcp.Tests
                 McpSessionLog.ConfigLoader = () => RvtMcpConfig.Load();
             }
         }
+
+        [Fact]
+        public void Add_TruncatesOversizedParamsAndFlagsEntry()
+        {
+            var log = new McpSessionLog();
+
+            log.Add(new McpCallEntry
+            {
+                ToolName = "batch_execute",
+                ParamsJson = new string('x', 70 * 1024),
+                Success = true,
+                DurationMs = 5
+            });
+
+            var entry = log.Entries[0];
+
+            Assert.True(entry.ParamsTruncated);
+            Assert.Contains("truncated", entry.ParamsJson);
+            Assert.True(entry.ParamsJson.Length < 70 * 1024);
+        }
+
+        [Fact]
+        public void Add_KeepsLargeSendCodeParamsWhenBodyCacheEnabled()
+        {
+            var log = new McpSessionLog();
+            McpSessionLog.ConfigLoader = () => new RvtMcpConfig { CacheSendCodeBodies = true };
+            try
+            {
+                var big = "{\"code\":\"" + new string('x', 70 * 1024) + "\"}";
+                log.Add(new McpCallEntry
+                {
+                    ToolName = "send_code_to_revit",
+                    ParamsJson = big,
+                    CodeSnippet = new string('x', 70 * 1024),
+                    Success = true,
+                    DurationMs = 5
+                });
+
+                var entry = log.Entries[0];
+
+                Assert.False(entry.ParamsTruncated);
+                Assert.Equal(big, entry.ParamsJson);
+            }
+            finally
+            {
+                McpSessionLog.ConfigLoader = () => RvtMcpConfig.Load();
+            }
+        }
     }
 }
