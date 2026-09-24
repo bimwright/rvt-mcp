@@ -1,6 +1,52 @@
 ﻿# Changelog
 
-## v0.6.2 - Release candidate (not yet published)
+## Release history
+
+| Version | Date | Available as |
+|---|---|---|
+| Unreleased | — | Source on `master` only |
+| v0.6.2 | 2026-09-22 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.2) (latest) |
+| v0.6.1 | 2026-08-28 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.1); NuGet `RvtMcp.Server` 0.6.1 |
+| v0.6.0 | — | Not published on its own; shipped inside v0.6.1 |
+| v0.5.0 | 2026-05-22 | Git tag |
+| v0.4.0 | 2026-05-21 | Git tag |
+| v0.3.1 | 2026-05-18 | Git tag |
+| v0.3.0 | 2026-04-27 | Git tag |
+| v0.2.1 | 2026-04-24 | Git tag |
+| v0.2.0 | 2026-04-21 | Git tag |
+| v0.1.2 | 2026-04-19 | Git tag |
+| v0.1.1 | 2026-04-19 | Git tag |
+| v0.1.0 | 2026-04-17 | Git tag (public launch) |
+
+Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
+
+## Unreleased
+
+Changes on `master` since v0.6.2. Not in any published release yet.
+
+### Added
+
+- **History window search and past sessions** — search matches summary, params and error text, with a Read/Write kind filter. **Load past sessions** reads archived `mcp-calls-*.jsonl` logs as read-only rows; **Open logs** opens `%LOCALAPPDATA%\RvtMcp`.
+- **`send_code` re-run from the journal** — redacted `send_code` entries can re-run by matching `code_hash` in `send-code-journal.jsonl`, including rotated archives, after an extra confirmation that the body is bake-redacted. Entries with no recoverable body show why Re-run is disabled.
+- **"Agent connected" toast** when an MCP client attaches to the plugin transport.
+
+### Changed
+
+- **Toasts** — BIMwright wordmark in the footer with a brand sweep reveal (matching ipt-mcp). Toasts are held while the Revit window is minimized, hidden or blocked by a modal dialog, then shown once it is usable again. Toasts no longer take keyboard focus from Revit.
+- **Ribbon and History window** — the ribbon keeps Toggle + History only (Status button removed); the toast toggle shows a dot (yellow on, gray off). The History window gets BIMwright styling, centered columns, a collapsible detail pane, a glyph status column, and **New Session** (was Clear Session) behind a confirmation.
+- **Session log bounds** — in-memory history caps at 1,000 entries (evicted rows reload from the log as history); params over 64 KB are truncated and cannot re-run; file-log field caps raised to params 8 KB, result 10 KB, error 4 KB.
+- **Brand strings** centralized in `src/shared/Views/BrandAssets.cs` for forks that rebrand.
+
+### Fixed
+
+- `send_code` compilation no longer fails when a stale add-in DLL is still loaded in the AppDomain but its file is gone.
+- The startup "Agent connected" toast shows immediately instead of waiting for a project to open.
+
+### Docs
+
+- README credits community bug reports and proposals; the License section adds a note on forks and optional credit.
+
+## v0.6.2 - Safer upgrades and placement/MEP fixes
 
 ### Added
 
@@ -18,7 +64,7 @@
 
 ### Changed
 
-- Placement and MEP contracts are documented in [the behavior guide](docs/placement-and-mep-contracts.md). These schema changes require updated server and plugin builds plus restarted MCP connections; no new release is announced.
+- Placement and MEP contracts are documented in [the behavior guide](docs/placement-and-mep-contracts.md). These schema changes require updating the server and plugin together and restarting Revit and the MCP connection.
 - **Stairs (#14)** — documented conversation/send-code workflow, tested examples and execution safeguards; a dedicated stair tool remains deferred. See [coverage and limits](docs/stairs-workflow.md).
 - **Completion toast now defaults ON** — fresh installs show result-only toasts out of the box. Disable via ribbon **Toast** (persisted), `enableToast: false`, or `BIMWRIGHT_ENABLE_TOAST=0`. Existing explicit `enableToast` config values are untouched.
 - Optional developer path: NuGet global tool **`RvtMcp.Server` 0.6.1** (MCP server only; Revit plugins still come from the GitHub Release ZIP). Legacy **`Bimwright.Rvt.Server` 0.1–0.3** is obsolete.
@@ -37,6 +83,8 @@ First GitHub Release after v0.5.0 was unpublished. The client setup ZIP is `RvtM
 - Tool counts: default **40**, `--toolsets all` **229**, adaptive bake **232**.
 
 ## v0.6.0 - Agent guardrails, oversized-response spill, toast/privacy, and KEI tools
+
+Not published on its own — this surface first shipped in v0.6.1.
 
 ### Added
 
@@ -178,6 +226,17 @@ Tool surface grew from 32 → **249 tools** (default) / **254 tools** (adaptive 
 - Added 15 non-schedule Revit data tools: 10 read tools for elements, parameters, groups, assemblies, and worksets, plus 5 write tools for parameters, type changes, worksets, and group creation.
 - Added 10 Revit schedule tools in a new default-on `schedule` toolset: `list_schedules`, `get_schedule_definition`, `get_schedule_data`, `get_schedule_formulas`, `get_schedulable_fields`, `find_schedule_elements`, `create_schedule`, `add_schedule_field`, `update_schedule_field`, `apply_schedule_filter_sort`.
 
+## v0.3.1 - Client setup installer
+
+### Added
+
+- **Client setup ZIP** — self-contained Windows setup flow for Revit client machines: installer wiring, uninstall support, no-deploy plugin builds, and CI artifact upload.
+
+### Changed
+
+- README narrative rewrite (personal-automation positioning); translated READMEs and install guides synced (#3, #4, #5).
+- Post-v0.3.0 cleanup: docs sync, dependency bumps, install fixes.
+
 ## v0.3.0 - ToolBaker redesign
 
 ### Breaking
@@ -214,3 +273,63 @@ Tool surface grew from 32 → **249 tools** (default) / **254 tools** (adaptive 
 - Hardened durable logs, journals, prompts, markdown, and live responses so send-code outputs and sensitive literals are redacted or hashed before persistence.
 - Added redaction boundary fixes for paths, filenames, escaped outputs, and legacy orphan call archives.
 - Added compiler denylist coverage and plugin allow-list narrowing for baked C# execution.
+
+## v0.2.1 - Lint toolset + switch_target
+
+### Added
+
+- **`lint` toolset (default on)** — `analyze_view_naming_patterns`, `suggest_view_name_corrections`, `detect_firm_profile`: view-name pattern extraction, outlier detection with edit-distance suggestions, and firm-profile detection with an empty-folder fallback. Firm-profile schema documented under `docs/firm-profiles/`.
+- **`switch_target`** — MCP tool to choose which running Revit version receives commands (#2).
+- MCP `ToolAnnotations` on tools, with tightened tool descriptions.
+
+### Changed
+
+- Ribbon: BIMwright moved into the Add-Ins tab, with a Status button.
+- README: full tools table, Project Structure section (EN / vi / zh-CN), corrected Revit 2025–2026 transport.
+
+## v0.2.0 - Tool-logic review backlog closed
+
+### Fixed
+
+- **ToolBaker** — atomic registry writes, thread-safe access and quarantine of corrupt registry files; `run_baked_tool` counts only successful calls; assembly-version conflicts during compilation are logged.
+- **`delete_element`** returns `deletedIds` / `failedIds` / `errors` so callers can act on partial failures.
+- **Large models** — `analyze_model_statistics` and `get_model_overview` stop at 100,000 elements and report truncation, so Revit no longer freezes on big federated/IFC models.
+- **`get_selected_elements`** returns `staleIds` for elements deleted between selection and retrieval.
+- The bake confirmation dialog shows the full code behind **Show details** instead of truncating at 300 characters.
+
+### Docs
+
+- README rewritten in an engineer voice; added the zh-CN mirror; new rvt-mcp product logo and bimwright footer.
+
+## v0.1.2 - Critical tool-logic fixes
+
+### Fixed
+
+- **`operate_element`** — schema enum now matches the handler (`select`, `hide`, `unhide`, `isolate`, `setcolor`); it previously advertised a non-overlapping set.
+- **`create_room`** — uses `NewRoom(level, point)` on Revit 2022–2027; the 2023+ path threw a NullReferenceException.
+- **`create_surface_based_element`** — returns a clean "No floor/ceiling type loaded" error on empty projects instead of crashing.
+
+Plugin DLLs changed; no breaking changes.
+
+## v0.1.1 - Client wiring, uninstall-all, agent-led install
+
+### Added
+
+- `install.ps1 -WireClient opencode|codex` for scripted MCP client config; `uninstall-all.ps1` for one-pass removal (tool, plugin, client configs, discovery files, cache).
+- `AGENTS.md` — agent-readable install guide for 9 MCP clients, with preview / approval / rollback rules.
+- Golden snapshot tests for the MCP tool list; response-size observability (`ResponseSizeGuard`).
+- Listed on the MCP Registry as `io.github.bimwright/rvt-mcp`; `smithery.yaml` for Smithery.
+
+### Changed
+
+- Repo renamed `bimwright/bimwright` → `bimwright/rvt-mcp`; namespaces `Bimwright.*` → `Bimwright.Rvt.*`.
+- README rewrite, Vietnamese mirror `README.vi.md`, plus `SECURITY.md` and `CODE_OF_CONDUCT.md`.
+
+## v0.1.0 - Public launch
+
+- MCP gateway for Autodesk Revit 2022–2027: 28 tools across 10 toolsets.
+- Progressive disclosure with `--toolsets` and `--read-only`.
+- `batch_execute` with Revit `TransactionGroup` semantics.
+- ToolBaker self-evolution (Debug builds only).
+- Security: loopback by default, token auth, strict schema validation, path-leak masking.
+- Packaging: .NET global tool, per-year plugin ZIPs and `install.ps1`; CI matrix for Revit 2022–2027.
