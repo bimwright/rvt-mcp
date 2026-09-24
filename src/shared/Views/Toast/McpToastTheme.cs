@@ -24,6 +24,10 @@ namespace RvtMcp.Plugin.Views.Toast
         // Brand wordmark colours come from the logo: navy "BIM" + green "wright".
         public static readonly SolidColorBrush BrandBim = Brush("#0C3F76");
         public static readonly SolidColorBrush BrandWright = Brush("#589039");
+        // Lighter tints (brand blended 45% toward white) for the glint band that
+        // sweeps through the wordmark on the brand reveal.
+        public static readonly SolidColorBrush BrandBimShine = Frozen(Lighten(BrandBim.Color, 0.45));
+        public static readonly SolidColorBrush BrandWrightShine = Frozen(Lighten(BrandWright.Color, 0.45));
 
         public static Brush BuildAccentBrush(McpToastViewModel vm)
         {
@@ -77,7 +81,12 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private static SolidColorBrush Brush(string hex)
         {
-            var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+            return Frozen((Color)ColorConverter.ConvertFromString(hex));
+        }
+
+        private static SolidColorBrush Frozen(Color color)
+        {
+            var brush = new SolidColorBrush(color);
             brush.Freeze();
             return brush;
         }
