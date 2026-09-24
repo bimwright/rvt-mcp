@@ -41,21 +41,6 @@ namespace RvtMcp.Plugin
             EntryAdded?.Invoke(entry);
         }
 
-        // Legacy overload — kept for backward compatibility until all callers migrate
-        public void Add(string toolName, string paramsJson, bool success,
-                        long durationMs, string errorMsg = null, string codeSnippet = null)
-        {
-            Add(new McpCallEntry
-            {
-                ToolName = toolName,
-                ParamsJson = paramsJson,
-                Success = success,
-                DurationMs = durationMs,
-                ErrorMessage = errorMsg,
-                CodeSnippet = codeSnippet
-            });
-        }
-
         public void Clear()
         {
             Entries.Clear();

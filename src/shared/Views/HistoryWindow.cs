@@ -32,9 +32,6 @@ namespace RvtMcp.Plugin.Views
         private readonly Button _rerunButton;
         private McpCallEntry _selectedEntry;
 
-        private static readonly System.Collections.Generic.HashSet<string> DirectCallTools =
-            new System.Collections.Generic.HashSet<string>();
-
         public HistoryWindow(McpSessionLog sessionLog, CommandDispatcher dispatcher,
                              McpEventHandler eventHandler, Autodesk.Revit.UI.ExternalEvent externalEvent)
         {
@@ -239,7 +236,7 @@ namespace RvtMcp.Plugin.Views
 
             var entry = _grid.SelectedItem as McpCallEntry;
             _selectedEntry = entry;
-            _rerunButton.IsEnabled = entry != null;
+            _rerunButton.IsEnabled = IsRerunPossible(entry);
 
             if (entry == null)
             {
@@ -255,7 +252,12 @@ namespace RvtMcp.Plugin.Views
             // WHAT
             _whatName.Text = entry.ToolName;
             _whatDesc.Text = entry.ToolDescription ?? "";
-            if (entry.ToolName == "send_code_to_revit")
+            if (entry.ToolName == "send_code_to_revit" && string.IsNullOrEmpty(entry.CodeSnippet))
+            {
+                _warningLabel.Text = "⚠ send_code body redacted from history (code_hash only) — re-run unavailable";
+                _warningLabel.Visibility = Visibility.Visible;
+            }
+            else if (entry.ToolName == "send_code_to_revit")
             {
                 _warningLabel.Text = "\u26A0 Compile + execute C# inside Revit (dangerous)";
                 _warningLabel.Visibility = Visibility.Visible;
@@ -484,9 +486,17 @@ namespace RvtMcp.Plugin.Views
             }
         }
 
+        private static bool IsRerunPossible(McpCallEntry entry)
+        {
+            // send_code bodies are redacted to {code_hash, code_length} unless
+            // CacheSendCodeBodies is on — without the code there is nothing to re-run.
+            return entry != null
+                && !(entry.ToolName == "send_code_to_revit" && string.IsNullOrEmpty(entry.CodeSnippet));
+        }
+
         private async void OnRerunClick(object sender, RoutedEventArgs e)
         {
-            if (_selectedEntry == null) return;
+            if (!IsRerunPossible(_selectedEntry)) return;
 
             if (_selectedEntry.ToolName == "send_code_to_revit")
             {
@@ -508,46 +518,32 @@ namespace RvtMcp.Plugin.Views
                 var originalIndex = _selectedEntry.Index;
                 var originalResultJson = _selectedEntry.ResultJson;
 
-                CommandResult result;
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-
-                if (DirectCallTools.Contains(toolName))
+                var result = await System.Threading.Tasks.Task.Run(async () =>
                 {
-                    result = await System.Threading.Tasks.Task.Run(() =>
+                    var tcs = new System.Threading.Tasks.TaskCompletionSource<string>();
+                    var request = new PendingRequest
                     {
-                        var command = _dispatcher.GetCommand(toolName);
-                        return command?.Execute(null, paramsJson)
-                            ?? CommandResult.Fail($"Unknown tool: {toolName}");
-                    });
-                }
-                else
-                {
-                    result = await System.Threading.Tasks.Task.Run(async () =>
-                    {
-                        var tcs = new System.Threading.Tasks.TaskCompletionSource<string>();
-                        var request = new PendingRequest
-                        {
-                            Id = Guid.NewGuid().ToString(),
-                            CommandName = toolName,
-                            ParamsJson = paramsJson,
-                            Tcs = tcs
-                        };
-                        _eventHandler.Enqueue(request);
-                        _externalEvent.Raise();
+                        Id = Guid.NewGuid().ToString(),
+                        CommandName = toolName,
+                        ParamsJson = paramsJson,
+                        Tcs = tcs
+                    };
+                    _eventHandler.Enqueue(request);
+                    _externalEvent.Raise();
 
-                        var responseJson = await tcs.Task;
-                        var response = JObject.Parse(responseJson);
-                        bool success = response.Value<bool>("success");
-                        string error = response.Value<string>("error");
-                        object data = response["data"]?.ToObject<object>();
-                        return new CommandResult
-                        {
-                            Success = success,
-                            Error = error,
-                            Data = data
-                        };
-                    });
-                }
+                    var responseJson = await tcs.Task;
+                    var response = JObject.Parse(responseJson);
+                    bool success = response.Value<bool>("success");
+                    string error = response.Value<string>("error");
+                    object data = response["data"]?.ToObject<object>();
+                    return new CommandResult
+                    {
+                        Success = success,
+                        Error = error,
+                        Data = data
+                    };
+                });
 
                 sw.Stop();
 
