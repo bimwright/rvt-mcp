@@ -1,10 +1,12 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
@@ -17,6 +19,9 @@ namespace RvtMcp.Plugin.Views.Toast
     {
         private const double CardWidth = 340;
         private const double BrandRestOpacity = 0.4;
+        private const int GwlExStyle = -20;
+        private const long WsExNoActivate = 0x08000000L;
+        private const long WsExToolWindow = 0x00000080L;
 
         private readonly Action<McpToastWindow> _onClosed;
         private readonly TextBlock _iconText;
@@ -266,6 +271,10 @@ namespace RvtMcp.Plugin.Views.Toast
             {
                 StartAutoDismiss();
             };
+
+            // Without WS_EX_NOACTIVATE each shown toast can steal keyboard focus
+            // from Revit mid-typing. Clicks are still delivered; only activation is blocked.
+            SourceInitialized += (_, __) => MakeNoActivate();
         }
 
         public void PlayEnterAnimation()
@@ -449,5 +458,28 @@ namespace RvtMcp.Plugin.Views.Toast
                 return 9;
             return vm.Kind == ToolActivityKind.Write ? 6 : 3;
         }
+
+        private void MakeNoActivate()
+        {
+            try
+            {
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero)
+                    return;
+                var exStyle = GetWindowLongPtr(hwnd, GwlExStyle).ToInt64()
+                              | WsExNoActivate | WsExToolWindow;
+                SetWindowLongPtr(hwnd, GwlExStyle, new IntPtr(exStyle));
+            }
+            catch
+            {
+                // Best-effort — toast still works without the style.
+            }
+        }
+
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+        private static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int index);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+        private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int index, IntPtr value);
     }
 }

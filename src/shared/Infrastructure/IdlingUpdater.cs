@@ -27,6 +27,9 @@ namespace RvtMcp.Plugin
             if ((now - _lastUpdate).TotalMilliseconds < 1000) return;
             _lastUpdate = now;
 
+            // Toasts held while the frame was minimized/modal flush here.
+            _toastNotifier?.FlushPendingIfUsable();
+
             // Rising edge: first client attach (and each re-attach) confirms
             // the agent↔plugin wire end-to-end.
             var connected = isRunning && transport != null && transport.IsClientConnected;

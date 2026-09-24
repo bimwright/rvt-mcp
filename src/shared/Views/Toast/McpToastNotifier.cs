@@ -1,11 +1,17 @@
 using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 namespace RvtMcp.Plugin.Views.Toast
 {
     public sealed class McpToastNotifier
     {
+        private const int MaxPending = 5;
         private readonly McpToastHost _host;
         private readonly Func<bool> _isEnabled;
+        private readonly object _pendingGate = new object();
+        private readonly List<McpToastViewModel> _pending = new List<McpToastViewModel>();
+        private IntPtr _ownerHwnd;
 
         public McpToastNotifier(McpToastHost host, Func<bool> isEnabled)
         {
@@ -13,7 +19,11 @@ namespace RvtMcp.Plugin.Views.Toast
             _isEnabled = isEnabled ?? throw new ArgumentNullException(nameof(isEnabled));
         }
 
-        public void SetOwnerHandle(IntPtr hwnd) => _host.SetOwnerHandle(hwnd);
+        public void SetOwnerHandle(IntPtr hwnd)
+        {
+            _ownerHwnd = hwnd;
+            _host.SetOwnerHandle(hwnd);
+        }
 
         public void SetHostDispatcher(System.Windows.Threading.Dispatcher dispatcher) =>
             _host.SetHostDispatcher(dispatcher);
@@ -39,7 +49,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 durationMs,
                 toolDescription);
 
-            _host.Post(manager => manager.Complete(vm));
+            Deliver(vm);
         }
 
         /// <summary>
@@ -63,17 +73,83 @@ namespace RvtMcp.Plugin.Views.Toast
                 AutoDismissSeconds = 6
             };
 
-            _host.Post(manager => manager.Complete(vm));
+            Deliver(vm);
+        }
+
+        /// <summary>
+        /// Show now when the Revit frame is usable, else hold the toast until the
+        /// frame is restored. A minimized or modal-blocked frame still gets its
+        /// toasts — they flush on the next usable tick instead of firing unseen
+        /// or covering a dialog's buttons.
+        /// </summary>
+        private void Deliver(McpToastViewModel vm)
+        {
+            if (IsOwnerFrameUsable())
+            {
+                _host.Post(manager => manager.Complete(vm));
+                return;
+            }
+
+            lock (_pendingGate)
+            {
+                _pending.Add(vm);
+                while (_pending.Count > MaxPending)
+                    _pending.RemoveAt(0);
+            }
+        }
+
+        /// <summary>
+        /// Flush held toasts once the Revit frame is usable again. Called on the
+        /// Revit UI thread by IdlingUpdater — cheap early-out when nothing is held.
+        /// </summary>
+        public void FlushPendingIfUsable()
+        {
+            List<McpToastViewModel> held;
+            lock (_pendingGate)
+            {
+                if (_pending.Count == 0 || !IsOwnerFrameUsable())
+                    return;
+                held = new List<McpToastViewModel>(_pending);
+                _pending.Clear();
+            }
+
+            foreach (var vm in held)
+                _host.Post(manager => manager.Complete(vm));
+        }
+
+        /// <summary>No known frame → keep showing toasts (positions at screen edge).</summary>
+        private bool IsOwnerFrameUsable()
+        {
+            var hwnd = _ownerHwnd;
+            if (hwnd == IntPtr.Zero || !IsWindow(hwnd))
+                return true;
+            return IsWindowVisible(hwnd) && !IsIconic(hwnd) && IsWindowEnabled(hwnd);
         }
 
         public void DismissAll()
         {
+            lock (_pendingGate)
+                _pending.Clear();
             _host.DismissAll(synchronous: false);
         }
 
         public void Shutdown()
         {
+            lock (_pendingGate)
+                _pending.Clear();
             _host.Shutdown();
         }
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsIconic(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowEnabled(IntPtr hWnd);
     }
 }
