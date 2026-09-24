@@ -58,7 +58,7 @@ namespace RvtMcp.Tests
             L.SetLanguage("ja");
             Assert.Equal("ja", L.Locale);
             Assert.True(L.Version > v0);
-            Assert.True(fired >= 1);
+            Assert.Equal(1, fired);
         }
 
         [Fact]

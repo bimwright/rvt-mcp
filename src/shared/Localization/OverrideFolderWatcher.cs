@@ -44,7 +44,14 @@ namespace RvtMcp.Plugin.Localization
                 };
                 _fsw.Created += (s, e) => OnFileEvent(e.FullPath);
                 _fsw.Changed += (s, e) => OnFileEvent(e.FullPath);
-                _fsw.Renamed += (s, e) => OnFileEvent(e.FullPath);
+                // Deleting or renaming away an override must reload too —
+                // that is how a user backs a change out.
+                _fsw.Deleted += (s, e) => OnFileEvent(e.FullPath);
+                _fsw.Renamed += (s, e) =>
+                {
+                    OnFileEvent(e.OldFullPath);
+                    OnFileEvent(e.FullPath);
+                };
             }
         }
 

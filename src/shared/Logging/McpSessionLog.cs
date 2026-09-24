@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -29,8 +30,8 @@ namespace RvtMcp.Plugin
         public string SessionTag { get; set; }
         /// <summary>Grid label: historical rows get a date prefix to separate them from live rows.</summary>
         public string TimeLabel => IsHistorical
-            ? Timestamp.ToString("MM-dd HH:mm")
-            : Timestamp.ToString("HH:mm:ss");
+            ? Timestamp.ToString("MM-dd HH:mm", CultureInfo.InvariantCulture)
+            : Timestamp.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
     }
 
     public class McpSessionLog

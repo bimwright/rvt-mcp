@@ -160,9 +160,13 @@ namespace RvtMcp.Plugin.Localization
             {
                 var integral = value is byte || value is sbyte || value is short || value is ushort
                     || value is int || value is uint || value is long || value is ulong;
-                return formattable.ToString(integral ? "N0" : "N", _culture);
+                // "N"/"N0" throws FormatException on non-numeric IFormattables
+                // (DateTime, TimeSpan) — T() must never throw, fall back to invariant.
+                try { return formattable.ToString(integral ? "N0" : "N", _culture); }
+                catch { }
             }
-            return Convert.ToString(value, CultureInfo.InvariantCulture);
+            try { return Convert.ToString(value, CultureInfo.InvariantCulture); }
+            catch { return string.Empty; }
         }
 
         /// <summary>Raw <c>{...}</c> token set of a template, including any ":n" suffix.

@@ -12,7 +12,7 @@ namespace RvtMcp.Tests
     public class CatalogCompletenessTests
     {
         private static readonly string[] ExpectedLocales =
-            { "zh-CN", "zh-TW", "ja", "ko", "de", "fr", "es", "it", "nl", "pt-BR", "ru", "cs", "pl", "hu" };
+            LocaleResolver.SupportedLocales.Where(c => c != "en" && c != "auto").ToArray();
 
         private static IReadOnlyDictionary<string, string> En() =>
             EmbeddedCatalog.Load(typeof(CatalogCompletenessTests).Assembly, "en");
@@ -60,6 +60,22 @@ namespace RvtMcp.Tests
                     var tokens = StringTable.ExtractTokens(value);
                     Assert.True(enTokens.SetEquals(tokens),
                         $"{code}:{kv.Key} placeholders {string.Join(",", tokens)} != en {string.Join(",", enTokens)}");
+                }
+            }
+        }
+
+        [Fact]
+        public void Catalog_meta_locale_matches_filename()
+        {
+            var asm = typeof(CatalogCompletenessTests).Assembly;
+            foreach (var code in LocaleResolver.SupportedLocales)
+            {
+                if (code == "auto") continue;
+                using (var stream = asm.GetManifestResourceStream(EmbeddedCatalog.ResourceName(code)))
+                {
+                    Assert.True(stream != null, $"missing resource for {code}");
+                    var root = Newtonsoft.Json.Linq.JObject.Parse(new StreamReader(stream).ReadToEnd());
+                    Assert.Equal(code, (string)root["_meta"]?["locale"]);
                 }
             }
         }

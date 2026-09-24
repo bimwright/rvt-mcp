@@ -21,7 +21,7 @@ Accepted values: `auto`, or one of the 15 shipped codes — `en`, `zh-CN`,
 `auto`. A missing key inside a locale falls back to the English string; a
 missing catalog falls back to English entirely.
 
-Pick a language from the **Language** combo in the ribbon slide-out (Bimwright
+Pick a language from the **Language** combo in the ribbon slide-out (RvtMcp
 panel → expand the slide-out). The combo always shows the *effective* language,
 including when the env var is overriding. Selection persists across restarts
 unless `BIMWRIGHT_UI_LANGUAGE` is set — the env var wins every launch.
@@ -113,8 +113,10 @@ Run once per release on at least the oldest and newest shells (Revit 2022 /
 
 **Overrides + hot reload**
 
-- [ ] Create `%LOCALAPPDATA%\RvtMcp\locales\strings.en.json` with one changed
-      key (e.g. `ribbon.history.text`) → ribbon updates within ~1s, no restart.
+- [ ] With `en` active, create `%LOCALAPPDATA%\RvtMcp\locales\strings.en.json`
+      with one changed key (e.g. `ribbon.history.text`) → ribbon updates within
+      ~1s, no restart. (Under another locale the shipped translation still wins —
+      en overrides are the fallback layer.)
 - [ ] Write an entry with a wrong placeholder (`{count}` → `{n}`) → string
       stays unchanged; `_report.en.json` lists it under `rejected` with
       `placeholder_mismatch`.

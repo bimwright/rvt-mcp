@@ -43,8 +43,9 @@ namespace RvtMcp.Plugin
 
             // Language change (combo switch or override-file hot reload) forces a
             // full text refresh even when running/count/toast flags are unchanged.
-            var locChanged = L.Version != _lastLocVersion;
-            if (locChanged) _lastLocVersion = L.Version;
+            var locVersion = L.Version;
+            var locChanged = locVersion != _lastLocVersion;
+            if (locChanged) _lastLocVersion = locVersion;
 
             // Only update UI if state changed
             if (locChanged || isRunning != _lastRunning)

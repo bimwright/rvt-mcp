@@ -25,7 +25,7 @@
   "toast.category.query": "MCP · 쿼리",
   "toast.category.modified": "MCP · 수정됨",
   "toast.category.script": "MCP · 스크립트",
-  "toast.category.export": "MCP ·보내기",
+  "toast.category.export": "MCP · 내보내기",
   "toast.category.snapshot": "MCP · 스냅샷",
   "toast.category.connected": "MCP · 연결됨",
   "toast.category.failed": "MCP · 실패",

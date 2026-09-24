@@ -18,6 +18,7 @@ namespace RvtMcp.Plugin.Localization
         private static string _revitLanguageName = "Unknown";
         private static Func<string, StringTable> _buildFor;
         private static Action<StringTable> _afterSwap;
+        private static readonly object _swapGate = new object();
 
         /// <summary>Test hook: run reload builds inline instead of on a thread-pool thread.</summary>
         internal static bool ForceSyncBuilds;
@@ -41,6 +42,7 @@ namespace RvtMcp.Plugin.Localization
         internal static void Initialize(string revitLanguageName, string mergedUiLanguage,
             Func<string, StringTable> buildFor, Action<StringTable> afterSwap)
         {
+            Interlocked.Increment(ref _generation);   // drop any in-flight build from a prior session
             _revitLanguageName = revitLanguageName ?? "Unknown";
             _buildFor = buildFor;
             _afterSwap = afterSwap;
@@ -85,9 +87,12 @@ namespace RvtMcp.Plugin.Localization
             try { table = buildFor(locale); }
             catch (Exception ex) { LastSkipReason = "throw:" + ex.GetType().Name + ":" + ex.Message; return; }
             if (table == null) { LastSkipReason = "null_table"; return; }
-            if (gen != _generation) { LastSkipReason = "stale"; return; }   // a newer request superseded this build
-            LastSkipReason = null;
-            Swap(table);
+            lock (_swapGate)   // staleness check + swap must be atomic — a newer request may land between them
+            {
+                if (gen != _generation) { LastSkipReason = "stale"; return; }
+                LastSkipReason = null;
+                Swap(table);
+            }
         }
 
         private static void Swap(StringTable table)
@@ -98,7 +103,11 @@ namespace RvtMcp.Plugin.Localization
             var handler = Changed;
             if (handler != null)
             {
-                try { handler(null, EventArgs.Empty); } catch { }
+                // one throwing subscriber must not starve the rest of the invocation list
+                foreach (EventHandler h in handler.GetInvocationList())
+                {
+                    try { h(null, EventArgs.Empty); } catch { }
+                }
             }
         }
 

@@ -315,12 +315,14 @@ For anything not in this table, open an issue at <https://github.com/bimwright/r
 
 ## Fixing UI translations
 
-The plugin UI (ribbon, toasts, History, dialogs) follows the Revit UI language or the user's pick in the ribbon slide-out Language combo. If the user reports a wrong or awkward string, you can fix it live on their machine — no reinstall, no restart:
+The plugin UI (ribbon, toasts, History, dialogs) follows the Revit UI language, or the user's pick in the ribbon slide-out Language combo, or `BIMWRIGHT_UI_LANGUAGE` if that env var is set (it beats the user's pick at every launch). If the user reports a wrong or awkward string, you can fix it live on their machine — no reinstall, no restart:
 
 1. **Read** `%LOCALAPPDATA%\RvtMcp\locales\_active.<locale>.json` — every key's currently displayed value, plus the `locked` list.
 2. **Write** the corrected `"key": "text"` pairs into `%LOCALAPPDATA%\RvtMcp\locales\strings.<locale>.json` (create the file/folder if absent). Keep `{placeholder}` tokens identical to the English value.
-3. **Verify** by re-reading `_report.<locale>.json` — your key must not appear under `rejected`. If it does, the `reason` tells you why (`unknown_key`, `placeholder_mismatch`, `locked_key`, …).
+3. **Verify** by re-reading `_report.<locale>.json` after ~1 second (debounced reload). Your key must not appear under `rejected` — if it does, the `reason` tells you why (`unknown_key`, `placeholder_mismatch`, `locked_key`, …). If the file is **absent**, there is nothing to report: the write applied cleanly.
 4. Tell the user it applied immediately via hot reload.
+
+**Precondition:** the live loop above only works when `<locale>` is the *active* locale (or `en`, the fallback layer). Check `_active.<locale>.json` exists for the locale you're editing — the watcher ignores override files for inactive locales, so those edits apply only when the user next switches to that language.
 
 Rules: `security.*` keys are locked and can never be overridden. Keys not in `_active` don't exist — don't invent new ones. Never edit files inside the plugin's install directory; only `locales\`. Full details: [docs/localization.md](docs/localization.md).
 

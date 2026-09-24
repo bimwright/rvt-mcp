@@ -27,16 +27,11 @@ namespace RvtMcp.Plugin.Localization
             StringTable table,
             OverrideValidator.Result validation)
         {
-            try
-            {
-                Directory.CreateDirectory(dir);
-                WriteReport(dir, locale, en, embeddedLocale, validation);
-                WriteActive(dir, locale, table);
-            }
-            catch
-            {
-                // reporting must never break the plugin
-            }
+            try { Directory.CreateDirectory(dir); }
+            catch { return; }   // reporting must never break the plugin
+            // isolate per file — a locked _report must not skip _active
+            try { WriteReport(dir, locale, en, embeddedLocale, validation); } catch { }
+            try { WriteActive(dir, locale, table); } catch { }
         }
 
         private static void WriteReport(string dir, string locale,

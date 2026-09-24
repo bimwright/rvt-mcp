@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -43,6 +44,8 @@ namespace RvtMcp.Plugin.Views
         private Button _loadHistoryButton;
         private McpCallEntry _selectedEntry;
         private Dictionary<string, string> _journalBodyCache;
+        private readonly EventHandler _lChangedHandler;
+
         // Relocalizable chrome (ApplyLocalization rewrites these on L.Changed)
         private readonly DataGridColumn _colTime;
         private readonly DataGridColumn _colTool;
@@ -82,15 +85,22 @@ namespace RvtMcp.Plugin.Views
 
             Title = L.T("history.window.title", ("brand", BrandAssets.Wordmark));
             // L.Changed may fire on the watcher thread — marshal to this window's
-            // dispatcher. The window is hidden, never closed, so one subscription
-            // covers its whole lifetime.
-            L.Changed += (s, e) =>
+            // dispatcher. Subscribe on Loaded / unsubscribe on Unloaded: Hide()
+            // unloads the window and App.cs then builds a NEW instance on reopen,
+            // so a ctor-time subscription would root every discarded window.
+            _lChangedHandler = (s, e) =>
             {
                 var d = Dispatcher;
                 if (d == null || d.HasShutdownStarted) return;
                 if (d.CheckAccess()) ApplyLocalization();
                 else d.BeginInvoke(new Action(ApplyLocalization));
             };
+            Loaded += (s, e) =>
+            {
+                L.Changed += _lChangedHandler;
+                ApplyLocalization();   // catch up on swaps that happened while hidden
+            };
+            Unloaded += (s, e) => L.Changed -= _lChangedHandler;
             Width = 900;
             Height = 600;
             MinWidth = 720;
@@ -863,7 +873,7 @@ namespace RvtMcp.Plugin.Views
                 _outputContainer.Children.Clear();
                 _outputContainer.Children.Add(new TextBlock
                 {
-                    Text = L.T("history.rerun.resultHeader", ("time", DateTime.Now.ToString("HH:mm:ss"))),
+                    Text = L.T("history.rerun.resultHeader", ("time", DateTime.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture))),
                     FontWeight = FontWeights.Bold,
                     FontSize = 11,
                     Margin = new Thickness(0, 0, 0, 4)
