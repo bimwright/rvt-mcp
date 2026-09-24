@@ -66,7 +66,7 @@ If that fails, install is not done yet — fix client config / plugin load befor
 
 Updates are manual. Close all Revit windows and stop the MCP connection in your AI client, extract the new release ZIP into a separate folder, then run its `install.ps1 -WhatIf` followed by `install.ps1`. Upgrade the server and plugins together; restart Revit and the MCP client, then repeat the checks above. Do not uninstall first: the full uninstaller also removes personal ToolBaker data and logs.
 
-The **unreleased installer in this source tree** preserves existing `rvt-mcp` arguments, environment, enabled/disabled state and other options while updating the executable path. It leaves other entries (including legacy aliases) intact. Custom launcher wrappers and unsupported TOML layouts require `-Client none` plus a manual path update; project-level configs are not scanned. These protections are not in the published v0.6.1 installer.
+Since **v0.6.2**, the installer preserves existing `rvt-mcp` arguments, environment, enabled/disabled state and other options while updating the executable path. It leaves other entries (including legacy aliases) intact. Custom launcher wrappers and unsupported TOML layouts require `-Client none` plus a manual path update; project-level configs are not scanned. Installers from v0.6.1 and earlier do not have these protections.
 
 Before replacing files, the new installer checks package checksums when a manifest is present, validates every selected plugin ZIP, stages the payload and refuses installation while Revit is running. Caught installation errors restore earlier plugin/server/config changes. Config backups use `<config>.rvtmcp.bak`. If rollback is blocked by file locks or permissions, the error identifies retained `.rvtmcp-rollback-*` backups; hard termination or power loss requires manual recovery. See [installer verification](docs/testing/installer-upgrade/README.md).
 
@@ -164,7 +164,7 @@ revit_send_code_to_revit   # C# body, compiled and run inside the plugin
 
 That tool is on by default (toolset `meta`). Strip it with `--read-only` or `--disable-toolbaker` if you do not want agents compiling code in the model.
 
-The source checkout also supports a C# body with helper type declarations and an opt-in failure preprocessor; these additions are not in the published v0.6.1 plugin. See [send-code source forms and failure handling](docs/send-code.md). Upgrade the server and plugin together so tool descriptions match the loaded runtime.
+Since v0.6.2, `revit_send_code_to_revit` also accepts a C# body with helper type declarations and an opt-in failure preprocessor. See [send-code source forms and failure handling](docs/send-code.md). Upgrade the server and plugin together so tool descriptions match the loaded runtime.
 
 For stairs, use the [conversation and send-code workflow](docs/stairs-workflow.md): tested scripts plus sample questions to resolve layout, dimensions, and railing intent before adapting the code. A dedicated `create_stairs` tool is deferred.
 
@@ -275,9 +275,9 @@ Golden snapshots in tests pin the exact surface; if counts and code disagree, tr
 
 ---
 
-### Unreleased placement and MEP fixes
+### Placement and MEP fixes (v0.6.2)
 
-The source tree includes explicit hosts and verified positions for doors/windows (#13), pipe system inheritance and incompatible-system rejection (#12), and corrected MEP network membership/counts (#11). See [behavior and examples](docs/placement-and-mep-contracts.md) and the [acceptance record](docs/testing/2026-09-22-issue-handoff.md). These changes are not in the published v0.6.1 ZIP; adopting them requires updated server/plugin builds and restarted connections.
+v0.6.2 adds explicit hosts and verified positions for doors/windows (#13), pipe system inheritance and incompatible-system rejection (#12), and corrected MEP network membership/counts (#11). See [behavior and examples](docs/placement-and-mep-contracts.md) and the [acceptance record](docs/testing/2026-09-22-issue-handoff.md). Update the server and plugin together, then restart Revit and the MCP connection to load the new schemas.
 
 ## Supported Revit versions
 

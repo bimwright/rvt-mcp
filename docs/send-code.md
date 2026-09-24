@@ -1,6 +1,6 @@
 # Send-code source forms and failure handling
 
-The source-builder and `SafeFailuresPreprocessor` additions below are unreleased. Published v0.6.1 supports a plain body or complete source, but detects complete source using the literal substring `class `, including inside comments/strings. Revit must restart after deploying an updated plugin.
+The source-builder and `SafeFailuresPreprocessor` additions below shipped in v0.6.2. v0.6.1 and earlier support a plain body or complete source, but detect complete source using the literal substring `class `, including inside comments/strings. Revit must restart after installing an updated plugin.
 
 ## Source forms
 

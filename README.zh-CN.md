@@ -263,9 +263,9 @@ MCP 名：`revit_*`。server↔plugin 线名：无前缀 snake_case。
 
 ---
 
-### 尚未发布的放置与 MEP 修复
+### 放置与 MEP 修复（v0.6.2）
 
-当前源码增加了门窗的显式宿主和实际位置校验（#13）、延长管道时继承系统并拒绝连接不同系统类型（#12），以及正确的 MEP 网络成员统计（#11）。参见[行为与示例](docs/placement-and-mep-contracts.md)和[验收记录](docs/testing/2026-09-22-issue-handoff.md)。这些修改尚未包含在已发布的 v0.6.1 ZIP 中；使用时需更新服务器与插件，并重新启动连接。
+v0.6.2 增加了门窗的显式宿主和实际位置校验（#13）、延长管道时继承系统并拒绝连接不同系统类型（#12），以及正确的 MEP 网络成员统计（#11）。参见[行为与示例](docs/placement-and-mep-contracts.md)和[验收记录](docs/testing/2026-09-22-issue-handoff.md)。请同时更新服务器与插件，并重启 Revit 和 MCP 连接。
 
 楼梯请使用[设计沟通与 C# 执行流程](docs/stairs-workflow.md)；暂未提供独立的 `create_stairs` 工具。
 

@@ -18,7 +18,7 @@ A working sample is not a default design. Ask only for missing decisions that af
 | [U-stair presentation](testing/issue-14/present-u-stair-2027.cs) | Requires that U stair's IDs; changes its railing instances, camera, crop, and exports an image | Final railing change committed without warnings; this was an authorized demo choice, not an automatic repair rule |
 | [Portable reporter example](testing/issue-14/reporter-u-stair.cs) / [JSON tool arguments](testing/issue-14/reporter-u-stair.tool-arguments.json) | Full source with its own preprocessor; architectural test project; creates two levels, one U stair, and a view at the project origin using project defaults; does not save | Tested on the updated Revit 2027 plugin with `KeepResult=false`; outer group rolled back. The default retained branch and Revit 2025/v0.6.1 runtime were not tested for this exact payload |
 
-See the [verification record and images](testing/issue-14/README.md) and [source forms/failure handling](send-code.md). The built-in `RvtMcp.Plugin.SafeFailuresPreprocessor` and mixed body/helper support are unreleased additions. The portable example uses the existing full-class entrypoint and includes its own helper; do not strip its class or imports when submitting it.
+See the [verification record and images](testing/issue-14/README.md) and [source forms/failure handling](send-code.md). The built-in `RvtMcp.Plugin.SafeFailuresPreprocessor` and mixed body/helper support are available since v0.6.2. The portable example uses the existing full-class entrypoint and includes its own helper; do not strip its class or imports when submitting it.
 
 When adapting a script, distinguish these parts:
 

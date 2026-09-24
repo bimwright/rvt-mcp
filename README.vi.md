@@ -263,9 +263,9 @@ Snapshot golden trong test khóa surface; lệch count thì tin test/code.
 
 ---
 
-### Sửa placement và MEP — chưa phát hành
+### Sửa placement và MEP (v0.6.2)
 
-Source hiện yêu cầu chỉ định host và kiểm tra vị trí cửa/cửa sổ (#13), kế thừa system khi nối dài ống và từ chối nối khác system type (#12), cùng cách đếm thành viên mạng MEP đã sửa (#11). Xem [hành vi và ví dụ](docs/placement-and-mep-contracts.md) và [biên bản nghiệm thu](docs/testing/2026-09-22-issue-handoff.md). Các thay đổi này chưa có trong ZIP v0.6.1; cần cập nhật cả server/plugin rồi khởi động lại kết nối.
+Từ v0.6.2, rvt-mcp yêu cầu chỉ định host và kiểm tra vị trí cửa/cửa sổ (#13), kế thừa system khi nối dài ống và từ chối nối khác system type (#12), cùng cách đếm thành viên mạng MEP đã sửa (#11). Xem [hành vi và ví dụ](docs/placement-and-mep-contracts.md) và [biên bản nghiệm thu](docs/testing/2026-09-22-issue-handoff.md). Cần cập nhật server và plugin cùng lúc, rồi khởi động lại Revit và kết nối MCP.
 
 Với cầu thang, xem [quy trình hỏi thiết kế và chạy C#](docs/stairs-workflow.md). Chưa có tool `create_stairs` riêng.
 

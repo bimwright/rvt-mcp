@@ -33,7 +33,7 @@ This file is machine-readable install instructions for AI coding agents (Claude 
    - Before running `install.ps1` without `-WhatIf`.
    - Before editing any MCP host config file outside the setup installer's own preview/apply flow.
 4. **Never bypass the Revit undo stack at runtime.** rvt-mcp's design guarantee is that every edit is reviewable and reversible. Don't advise users to work around transaction wrapping or disable `batch_execute` safety.
-5. **On any failure, verify rollback.** Config edits are auto-backed up to `<file>.rvtmcp.bak`. The unreleased source installer restores earlier changes on caught installation errors and reports retained backups if recovery fails. Do not use full uninstall as an upgrade rollback: it also removes personal ToolBaker data and logs.
+5. **On any failure, verify rollback.** Config edits are auto-backed up to `<file>.rvtmcp.bak`. Since v0.6.2, the installer restores earlier changes on caught installation errors and reports retained backups if recovery fails. Do not use full uninstall as an upgrade rollback: it also removes personal ToolBaker data and logs.
 6. **Verify before claiming done.** After wiring, run `tools/list` in the host and confirm the single `rvt-mcp` entry responds, then call `get_current_view_info` with no args.
 
 If the user explicitly says "skip the prompts, just install" — still do gate 1 (preview) and gate 5 (verify), but collapse gates 2 and 3 into a single upfront approval. **Never silently skip preview or verify.**
@@ -81,7 +81,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 The installer detects Revit years, installs all matching plugin ZIPs, copies the bundled server to `%LOCALAPPDATA%\RvtMcp\rvt\server\<version>\`, and wires detected Codex/OpenCode/Claude configs with one auto-detect entry named `rvt-mcp`.
 
-For upgrades, close Revit and stop MCP sessions first, then use the new ZIP's installer without uninstalling the old version. Preserve existing arguments/environment and restart both applications afterward. The unreleased source installer preserves these options automatically and rejects custom launcher wrappers or unsupported TOML layouts with manual-wiring guidance; published v0.6.1 does not contain these protections. See [upgrade instructions](README.md#upgrade-an-existing-installation).
+For upgrades, close Revit and stop MCP sessions first, then use the new ZIP's installer without uninstalling the old version. Preserve existing arguments/environment and restart both applications afterward. Since v0.6.2, the installer preserves these options automatically and rejects custom launcher wrappers or unsupported TOML layouts with manual-wiring guidance; installers from v0.6.1 and earlier do not. See [upgrade instructions](README.md#upgrade-an-existing-installation).
 
 Use `-Client codex`, `-Client opencode`, `-Client claude`, or `-Client none` when the user wants a specific config behavior.
 

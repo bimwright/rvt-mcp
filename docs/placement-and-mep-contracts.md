@@ -1,6 +1,6 @@
-# Family placement and MEP behavior (unreleased)
+# Family placement and MEP behavior (v0.6.2)
 
-These changes address issues #11–#13 in the local source tree. They are **not part of the published v0.6.1 ZIP**. Update both the server and the matching Revit plugin when adopting this source build; close Revit before deploying, then restart Revit and the client's MCP server connection so the client sees the new schemas. Tool counts remain 40 by default, 229 with `--toolsets all`, and 232 with adaptive bake.
+These changes address issues #11–#13 and shipped in **v0.6.2**. Update both the server and the matching Revit plugin together; close Revit before installing, then restart Revit and the client's MCP server connection so the client sees the new schemas. Tool counts remain 40 by default, 229 with `--toolsets all`, and 232 with adaptive bake.
 
 ## Place a door, window, or furniture instance
 
