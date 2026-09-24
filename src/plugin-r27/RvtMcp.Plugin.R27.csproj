@@ -3,7 +3,8 @@
     <TargetFramework>net10.0-windows7.0</TargetFramework>
     <RootNamespace>RvtMcp.Plugin</RootNamespace>
     <AssemblyName>RvtMcp.Plugin</AssemblyName>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Version>0.6.3</Version>
+    <GenerateTargetPlatformAttribute>false</GenerateTargetPlatformAttribute>
     <NuGetAuditMode>all</NuGetAuditMode>
     <UseWPF>true</UseWPF>
     <EnableDynamicLoading>true</EnableDynamicLoading>

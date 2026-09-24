@@ -8,6 +8,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Linq;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -241,13 +242,19 @@ namespace RvtMcp.Server
         // agent asking "list Revit tools" returns nothing even though 224 tools are exposed.
         // Anthropic truncates this field at 2KB; the keyword-dense first paragraph carries
         // the discoverability load if the SDK or proxy truncates later.
+        // InformationalVersion carries "+githash"; report clean semver to MCP clients.
+        private static readonly string ServerVersion =
+            (Assembly.GetExecutingAssembly()
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion ?? "0.0.0").Split('+')[0];
+
         private static void ConfigureMcpServerOptions(ModelContextProtocol.Server.McpServerOptions opts)
         {
             opts.ServerInfo = new ModelContextProtocol.Protocol.Implementation
             {
                 Name = "rvt-mcp",
                 Title = "Revit MCP",
-                Version = "0.6.2",
+                Version = ServerVersion,
                 Description = "Model Context Protocol gateway for Autodesk Revit 2022-2027",
                 WebsiteUrl = "https://github.com/bimwright/rvt-mcp"
             };
