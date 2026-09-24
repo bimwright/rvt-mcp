@@ -9,7 +9,6 @@ namespace RvtMcp.Plugin
     {
         public PushButton ToggleButton { get; set; }
         public PushButton HistoryButton { get; set; }
-        public PushButton StatusButton { get; set; }
         public PushButton ToastButton { get; set; }
         public PushButton BakeInboxButton { get; set; }
     }
@@ -44,22 +43,23 @@ namespace RvtMcp.Plugin
                 ToolTip = "Show MCP command history"
             };
 
-            var statusData = new PushButtonData(
-                "ShowStatus", "Status",
+            var toastEnabled = config?.EnableToastOrDefault == true;
+            var toastData = new PushButtonData(
+                "ToggleToast", "Toast",
                 assemblyPath,
-                "RvtMcp.Plugin.Commands.ShowStatusCommand")
+                "RvtMcp.Plugin.Commands.ToggleToastCommand")
             {
-                LargeImage = IconGenerator.Info32,
-                Image = IconGenerator.Info16,
-                ToolTip = "Show MCP connection, toast, and bake/privacy flags"
+                LargeImage = toastEnabled ? IconGenerator.ToastOn32 : IconGenerator.ToastOff32,
+                Image = toastEnabled ? IconGenerator.ToastOn16 : IconGenerator.ToastOff16,
+                ToolTip = toastEnabled
+                    ? "MCP activity toasts enabled\nShows top-left notifications when AI tools run\nClick to disable"
+                    : "MCP activity toasts disabled\nClick to enable top-left AI activity notifications"
             };
 
-            var stack = panel.AddStackedItems(toggleData, historyData, statusData);
+            var stack = panel.AddStackedItems(toggleData, historyData, toastData);
             PushButton bakeInboxButton = null;
             if (config?.EnableAdaptiveBakeOrDefault == true)
                 bakeInboxButton = AddBakeInboxButton(panel, assemblyPath);
-
-            var toastButton = AddToastButton(panel, assemblyPath, config);
 
             if (config?.EnableAdaptiveBakeOrDefault == true)
                 AddOrUpdateBakedToolButtons(application, runtimeCache);
@@ -68,8 +68,7 @@ namespace RvtMcp.Plugin
             {
                 ToggleButton = stack[0] as PushButton,
                 HistoryButton = stack[1] as PushButton,
-                StatusButton = stack[2] as PushButton,
-                ToastButton = toastButton,
+                ToastButton = stack[2] as PushButton,
                 BakeInboxButton = bakeInboxButton
             };
         }
@@ -110,39 +109,6 @@ namespace RvtMcp.Plugin
                 {
                     CreatedButtons.Add(buttonName);
                 }
-            }
-        }
-
-        private static PushButton AddToastButton(RibbonPanel panel, string assemblyPath, RvtMcpConfig config)
-        {
-            const string buttonName = "ToggleToast";
-            if (CreatedButtons.Contains(buttonName))
-                return null;
-
-            var enabled = config?.EnableToastOrDefault == true;
-            var data = new PushButtonData(
-                buttonName,
-                enabled ? "Toast: ON" : "Toast: OFF",
-                assemblyPath,
-                "RvtMcp.Plugin.Commands.ToggleToastCommand")
-            {
-                LargeImage = enabled ? IconGenerator.ToastOn32 : IconGenerator.ToastOff32,
-                Image = enabled ? IconGenerator.ToastOn16 : IconGenerator.ToastOff16,
-                ToolTip = enabled
-                    ? "MCP activity toasts enabled\nShows top-left notifications when AI tools run\nClick to disable"
-                    : "MCP activity toasts disabled\nClick to enable top-left AI activity notifications"
-            };
-
-            try
-            {
-                var button = panel.AddItem(data) as PushButton;
-                CreatedButtons.Add(buttonName);
-                return button;
-            }
-            catch
-            {
-                CreatedButtons.Add(buttonName);
-                return null;
             }
         }
 

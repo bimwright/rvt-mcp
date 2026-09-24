@@ -28,9 +28,11 @@ namespace RvtMcp.Plugin.Handlers
                 var fullCode = SendCodeSourceBuilder.Build(code);
                 var syntaxTree = CSharpSyntaxTree.ParseText(fullCode);
 
-                // Gather references from loaded assemblies (safe for any .NET runtime)
+                // Gather references from loaded assemblies (safe for any .NET runtime).
+                // File.Exists guards stale add-ins whose dll was deleted after Revit
+                // loaded them into the AppDomain (assembly Location points nowhere).
                 var references = AppDomain.CurrentDomain.GetAssemblies()
-                    .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
+                    .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && File.Exists(a.Location))
                     .GroupBy(a => a.GetName().Name)
                     .Select(g => g.OrderByDescending(a => a.GetName().Version).First())
                     .Select(a => MetadataReference.CreateFromFile(a.Location))

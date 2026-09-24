@@ -86,14 +86,12 @@ namespace RvtMcp.Plugin
                 _lastToastEnabled = toastEnabled;
                 if (toastEnabled)
                 {
-                    _ribbon.ToastButton.ItemText = "Toast: ON";
                     _ribbon.ToastButton.LargeImage = IconGenerator.ToastOn32;
                     _ribbon.ToastButton.Image = IconGenerator.ToastOn16;
                     _ribbon.ToastButton.ToolTip = "MCP activity toasts enabled\nShows top-left notifications when AI tools run\nClick to disable";
                 }
                 else
                 {
-                    _ribbon.ToastButton.ItemText = "Toast: OFF";
                     _ribbon.ToastButton.LargeImage = IconGenerator.ToastOff32;
                     _ribbon.ToastButton.Image = IconGenerator.ToastOff16;
                     _ribbon.ToastButton.ToolTip = "MCP activity toasts disabled\nClick to enable top-left AI activity notifications";

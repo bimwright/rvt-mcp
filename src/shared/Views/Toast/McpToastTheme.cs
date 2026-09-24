@@ -5,7 +5,7 @@ using System.Windows.Media;
 namespace RvtMcp.Plugin.Views.Toast
 {
     /// <summary>
-    /// Light toast palette aligned with KEI DesignTokens (no KEI assembly reference).
+    /// Light toast palette — shared design tokens, self-contained.
     /// </summary>
     internal static class McpToastTheme
     {

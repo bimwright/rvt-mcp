@@ -134,41 +134,6 @@ namespace RvtMcp.Plugin
             }
         }
 
-        public static BitmapSource CreateToastIcon(int size, Color color)
-        {
-            using (var bmp = new Bitmap(size, size))
-            using (var g = Graphics.FromImage(bmp))
-            {
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.Clear(Color.Transparent);
-
-                var m = size / 7;
-                var bodyW = size - 2 * m;
-                var bodyH = (int)(bodyW * 0.62f);
-                var bodyRect = new Rectangle(m, m + size / 10, bodyW, bodyH);
-
-                using (var brush = new SolidBrush(color))
-                {
-                    var radius = Math.Max(size / 7, 2);
-                    var path = new GraphicsPath();
-                    path.AddArc(bodyRect.Left, bodyRect.Top, radius * 2, radius * 2, 180, 90);
-                    path.AddArc(bodyRect.Right - radius * 2, bodyRect.Top, radius * 2, radius * 2, 270, 90);
-                    path.AddArc(bodyRect.Right - radius * 2, bodyRect.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
-                    path.AddArc(bodyRect.Left, bodyRect.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
-                    path.CloseFigure();
-                    g.FillPath(brush, path);
-                }
-
-                using (var pen = new Pen(Color.White, Math.Max(size / 14f, 1f)))
-                {
-                    var lineY = bodyRect.Top + bodyRect.Height / 2;
-                    g.DrawLine(pen, bodyRect.Left + size / 6, lineY, bodyRect.Right - size / 6, lineY);
-                }
-
-                return BitmapToBitmapSource(bmp);
-            }
-        }
-
         // Pre-generated icons cached for Ribbon use
         public static BitmapSource McpOn32 { get; } = CreateCircleIcon(32, Color.FromArgb(76, 175, 80));
         public static BitmapSource McpOn16 { get; } = CreateCircleIcon(16, Color.FromArgb(76, 175, 80));
@@ -180,9 +145,10 @@ namespace RvtMcp.Plugin
         public static BitmapSource Info16 { get; } = CreateInfoIcon(16);
         public static BitmapSource Chat32 { get; } = CreateChatIcon(32);
         public static BitmapSource Chat16 { get; } = CreateChatIcon(16);
-        public static BitmapSource ToastOn32 { get; } = CreateToastIcon(32, Color.FromArgb(255, 152, 0));
-        public static BitmapSource ToastOn16 { get; } = CreateToastIcon(16, Color.FromArgb(255, 152, 0));
-        public static BitmapSource ToastOff32 { get; } = CreateToastIcon(32, Color.FromArgb(158, 158, 158));
-        public static BitmapSource ToastOff16 { get; } = CreateToastIcon(16, Color.FromArgb(158, 158, 158));
+        // Toast toggle shows state as a plain dot: yellow = on, gray = off.
+        public static BitmapSource ToastOn32 { get; } = CreateCircleIcon(32, Color.FromArgb(255, 193, 7));
+        public static BitmapSource ToastOn16 { get; } = CreateCircleIcon(16, Color.FromArgb(255, 193, 7));
+        public static BitmapSource ToastOff32 { get; } = CreateCircleIcon(32, Color.FromArgb(158, 158, 158));
+        public static BitmapSource ToastOff16 { get; } = CreateCircleIcon(16, Color.FromArgb(158, 158, 158));
     }
 }

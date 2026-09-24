@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Media;
 using Newtonsoft.Json.Linq;
@@ -23,13 +24,17 @@ namespace RvtMcp.Plugin.Views
         private readonly CollectionViewSource _viewSource;
 
         // Detail panel fields
-        private readonly StackPanel _detailPanel;
+        private readonly Grid _detailPanel;
         private readonly TextBlock _whatName;
         private readonly TextBlock _whatDesc;
         private readonly TextBlock _warningLabel;
         private readonly ContentControl _inputContent;
         private readonly StackPanel _outputContainer;
         private readonly TextBlock _footerText;
+        private readonly RowDefinition _detailRow;
+        private readonly Border _detailBorder;
+        private readonly GridSplitter _detailSplitter;
+        private GridLength _lastDetailHeight = new GridLength(300);
         private readonly CommandDispatcher _dispatcher;
         private readonly McpEventHandler _eventHandler;
         private readonly Autodesk.Revit.UI.ExternalEvent _externalEvent;
@@ -46,15 +51,23 @@ namespace RvtMcp.Plugin.Views
             _eventHandler = eventHandler;
             _externalEvent = externalEvent;
 
-            Title = "MCP Command History";
+            Title = "BIMwright · MCP Command History";
             Width = 900;
             Height = 600;
+            MinWidth = 720;
+            MinHeight = 420;
+            MaxWidth = SystemParameters.WorkArea.Width;
+            MaxHeight = SystemParameters.WorkArea.Height;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            FontFamily = new FontFamily("Segoe UI");
+            Resources.MergedDictionaries.Add(BimwrightStyles.Dictionary);
+            ScrollBarFadeBehavior.SetIsEnabled(this, true);
 
             var mainGrid = new Grid();
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(250) });
+            _detailRow = new RowDefinition { Height = new GridLength(0) };
+            mainGrid.RowDefinitions.Add(_detailRow);
 
             // Row 0: Toolbar
             var toolbar = CreateToolbar();
@@ -75,8 +88,16 @@ namespace RvtMcp.Plugin.Views
                 ItemsSource = _viewSource.View,
                 Margin = new Thickness(4)
             };
-            _grid.Columns.Add(new DataGridTextColumn { Header = "#", Binding = new Binding("Index"), Width = 40 });
-            _grid.Columns.Add(new DataGridTextColumn { Header = "Time", Binding = new Binding("TimeLabel"), Width = 80 });
+            var headerStyle = new Style(typeof(DataGridColumnHeader));
+            headerStyle.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Bold));
+            headerStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
+            _grid.ColumnHeaderStyle = headerStyle;
+
+            var centerCell = new Style(typeof(TextBlock));
+            centerCell.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
+
+            _grid.Columns.Add(new DataGridTextColumn { Header = "#", Binding = new Binding("Index"), Width = 40, ElementStyle = centerCell });
+            _grid.Columns.Add(new DataGridTextColumn { Header = "Time", Binding = new Binding("TimeLabel"), Width = 92, ElementStyle = centerCell });
             _grid.Columns.Add(new DataGridTextColumn { Header = "Tool", Binding = new Binding("ToolName"), Width = 160 });
             _grid.Columns.Add(new DataGridTextColumn
             {
@@ -85,82 +106,101 @@ namespace RvtMcp.Plugin.Views
                 Width = new DataGridLength(1, DataGridLengthUnitType.Star),
                 ElementStyle = CreateTrimStyle()
             });
+            _grid.Columns.Add(new DataGridTextColumn { Header = "ms", Binding = new Binding("DurationMs"), Width = 55, ElementStyle = centerCell });
             _grid.Columns.Add(new DataGridTextColumn
             {
                 Header = "Status",
                 Binding = new Binding("Success") { Converter = new BoolToStatusConverter() },
-                Width = 50
+                Width = 50,
+                ElementStyle = centerCell
             });
-            _grid.Columns.Add(new DataGridTextColumn { Header = "ms", Binding = new Binding("DurationMs"), Width = 55 });
             _grid.SelectionChanged += OnSelectionChanged;
 
             Grid.SetRow(_grid, 1);
             mainGrid.Children.Add(_grid);
 
-            // Row 2: Detail panel
-            var detailBorder = new Border
+            // Row 2: Detail panel — collapsed until a row is selected
+            _detailBorder = new Border
             {
                 BorderThickness = new Thickness(0, 1, 0, 0),
                 BorderBrush = Brushes.LightGray,
-                Margin = new Thickness(4)
+                Margin = new Thickness(4),
+                Visibility = Visibility.Collapsed
             };
             var detailScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-            _detailPanel = new StackPanel { Margin = new Thickness(4) };
+            _detailPanel = new Grid { Margin = new Thickness(4) };
+            _detailPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            _detailPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            for (var r = 0; r < 6; r++)
+                _detailPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            void Add(UIElement el, int row, int col)
+            {
+                Grid.SetRow(el, row);
+                Grid.SetColumn(el, col);
+                _detailPanel.Children.Add(el);
+            }
+            TextBlock SectionLabel(string text) => new TextBlock
+            {
+                Text = text,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.Gray,
+                FontSize = 10,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 2, 10, 0)
+            };
 
             // WHAT section
             var whatHeader = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
-            var whatLabel = new TextBlock { Text = "WHAT", FontWeight = FontWeights.Bold, Foreground = Brushes.Gray, FontSize = 10, Width = 55 };
             _whatName = new TextBlock { FontWeight = FontWeights.Bold, FontSize = 14 };
             _rerunButton = new Button
             {
                 Content = "\u25B6 Re-run",
-                Padding = new Thickness(12, 2, 12, 2),
+                Style = (Style)FindResource(BimwrightStyles.PrimaryButtonKey),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 IsEnabled = false
             };
             _rerunButton.Click += OnRerunClick;
             DockPanel.SetDock(_rerunButton, Dock.Right);
             whatHeader.Children.Add(_rerunButton);
-            DockPanel.SetDock(whatLabel, Dock.Left);
-            whatHeader.Children.Add(whatLabel);
             whatHeader.Children.Add(_whatName);
-            _whatDesc = new TextBlock { FontStyle = FontStyles.Italic, Foreground = Brushes.Gray, FontSize = 11, Margin = new Thickness(55, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
-            _warningLabel = new TextBlock { Foreground = Brushes.OrangeRed, FontSize = 11, Margin = new Thickness(55, 0, 0, 8), Visibility = Visibility.Collapsed };
-            _detailPanel.Children.Add(whatHeader);
-            _detailPanel.Children.Add(_whatDesc);
-            _detailPanel.Children.Add(_warningLabel);
+            _whatDesc = new TextBlock { FontStyle = FontStyles.Italic, Foreground = Brushes.Gray, FontSize = 11, Margin = new Thickness(0, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
+            _warningLabel = new TextBlock { Foreground = Brushes.OrangeRed, FontSize = 11, Margin = new Thickness(0, 0, 0, 8), Visibility = Visibility.Collapsed };
+            Add(SectionLabel("WHAT"), 0, 0);
+            Add(whatHeader, 0, 1);
+            Add(_whatDesc, 1, 1);
+            Add(_warningLabel, 2, 1);
 
             // INPUT section
-            var inputLabel = new TextBlock { Text = "INPUT", FontWeight = FontWeights.Bold, Foreground = Brushes.Gray, FontSize = 10, Margin = new Thickness(0, 4, 0, 2) };
-            _inputContent = new ContentControl { Margin = new Thickness(55, 0, 0, 8) };
-            _detailPanel.Children.Add(inputLabel);
-            _detailPanel.Children.Add(_inputContent);
+            _inputContent = new ContentControl { Margin = new Thickness(0, 0, 0, 8) };
+            Add(SectionLabel("INPUT"), 3, 0);
+            Add(_inputContent, 3, 1);
 
             // OUTPUT section
-            var outputLabel = new TextBlock { Text = "OUTPUT", FontWeight = FontWeights.Bold, Foreground = Brushes.Gray, FontSize = 10, Margin = new Thickness(0, 4, 0, 2) };
-            _outputContainer = new StackPanel { Margin = new Thickness(55, 0, 0, 8) };
-            _detailPanel.Children.Add(outputLabel);
-            _detailPanel.Children.Add(_outputContainer);
+            _outputContainer = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+            Add(SectionLabel("OUTPUT"), 4, 0);
+            Add(_outputContainer, 4, 1);
 
             // Footer
             _footerText = new TextBlock { Foreground = Brushes.Gray, FontSize = 10, Margin = new Thickness(0, 8, 0, 0) };
-            _detailPanel.Children.Add(_footerText);
+            Add(_footerText, 5, 1);
 
             detailScroll.Content = _detailPanel;
-            detailBorder.Child = detailScroll;
-            Grid.SetRow(detailBorder, 2);
-            mainGrid.Children.Add(detailBorder);
+            _detailBorder.Child = detailScroll;
+            Grid.SetRow(_detailBorder, 2);
+            mainGrid.Children.Add(_detailBorder);
 
             // Splitter between grid and detail
-            var splitter = new GridSplitter
+            _detailSplitter = new GridSplitter
             {
                 Height = 4,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Bottom,
-                Background = Brushes.Transparent
+                Background = Brushes.Transparent,
+                Visibility = Visibility.Collapsed
             };
-            Grid.SetRow(splitter, 1);
-            mainGrid.Children.Add(splitter);
+            Grid.SetRow(_detailSplitter, 1);
+            mainGrid.Children.Add(_detailSplitter);
 
             Content = mainGrid;
         }
@@ -180,7 +220,13 @@ namespace RvtMcp.Plugin.Views
                 Margin = new Thickness(4, 0, 4, 0)
             });
 
-            _searchBox = new TextBox { Width = 150, Margin = new Thickness(0, 0, 8, 0) };
+            _searchBox = new TextBox
+            {
+                Width = 150,
+                Height = 24,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 8, 0)
+            };
             _searchBox.TextChanged += (s, e) => _viewSource.View.Refresh();
             panel.Children.Add(_searchBox);
 
@@ -191,7 +237,7 @@ namespace RvtMcp.Plugin.Views
                 Margin = new Thickness(4, 0, 4, 0)
             });
 
-            _filterCombo = new ComboBox { Width = 90, Margin = new Thickness(0, 0, 8, 0) };
+            _filterCombo = new ComboBox { Width = 90, Height = 24, Margin = new Thickness(0, 0, 8, 0) };
             _filterCombo.Items.Add("All");
             _filterCombo.Items.Add("Success");
             _filterCombo.Items.Add("Failed");
@@ -206,7 +252,7 @@ namespace RvtMcp.Plugin.Views
                 Margin = new Thickness(4, 0, 4, 0)
             });
 
-            _kindCombo = new ComboBox { Width = 70, Margin = new Thickness(0, 0, 8, 0) };
+            _kindCombo = new ComboBox { Width = 70, Height = 24, Margin = new Thickness(0, 0, 8, 0) };
             _kindCombo.Items.Add("All");
             _kindCombo.Items.Add("Read");
             _kindCombo.Items.Add("Write");
@@ -214,18 +260,29 @@ namespace RvtMcp.Plugin.Views
             _kindCombo.SelectionChanged += (s, e) => _viewSource.View.Refresh();
             panel.Children.Add(_kindCombo);
 
-            var logsBtn = new Button { Content = "Open logs", Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 8, 0) };
+            var toolbarStyle = (Style)FindResource(BimwrightStyles.ToolbarButtonKey);
+
+            var logsBtn = new Button { Content = "Open logs", Style = toolbarStyle };
             logsBtn.Click += (s, e) => OpenLogFolder();
             panel.Children.Add(logsBtn);
 
-            _loadHistoryButton = new Button { Content = "Load past sessions", Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 8, 0) };
+            _loadHistoryButton = new Button { Content = "Load past sessions", Style = toolbarStyle };
             _loadHistoryButton.Click += (s, e) => LoadPastSessions();
             panel.Children.Add(_loadHistoryButton);
 
-            var clearBtn = new Button { Content = "Clear Session", Padding = new Thickness(8, 2, 8, 2) };
+            var clearBtn = new Button { Content = "New Session", Style = toolbarStyle };
             clearBtn.Click += (s, e) =>
             {
+                var confirm = MessageBox.Show(
+                    this,
+                    "Start a new session? Current entries will be cleared.\n(Past sessions stay loadable via \"Load past sessions\".)",
+                    "New Session",
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Question);
+                if (confirm != MessageBoxResult.OK) return;
+
                 _sessionLog.Clear();
+                SetDetailVisible(false);
                 _whatName.Text = "";
                 _whatDesc.Text = "Select a command to view details";
                 _warningLabel.Visibility = Visibility.Collapsed;
@@ -308,6 +365,16 @@ namespace RvtMcp.Plugin.Views
             catch { }
         }
 
+        private void SetDetailVisible(bool visible)
+        {
+            if (!visible && _detailRow.Height.Value > 0)
+                _lastDetailHeight = _detailRow.Height; // keep user-resized height
+            _detailRow.MinHeight = visible ? 120 : 0; // detail is secondary — grid gets priority
+            _detailRow.Height = visible ? _lastDetailHeight : new GridLength(0);
+            _detailBorder.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            _detailSplitter.Visibility = _detailBorder.Visibility;
+        }
+
         private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             // Guard: event fires during construction before detail panel fields exist
@@ -319,6 +386,7 @@ namespace RvtMcp.Plugin.Views
 
             if (entry == null)
             {
+                SetDetailVisible(false);
                 _whatName.Text = "";
                 _whatDesc.Text = "Select a command to view details";
                 _warningLabel.Visibility = Visibility.Collapsed;
@@ -327,6 +395,8 @@ namespace RvtMcp.Plugin.Views
                 _footerText.Text = "";
                 return;
             }
+
+            SetDetailVisible(true);
 
             // WHAT
             _whatName.Text = entry.ToolName;
