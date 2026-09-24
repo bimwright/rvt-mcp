@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -84,18 +85,40 @@ namespace RvtMcp.Plugin
         }
 
         /// <summary>
-        /// Latest journal body matching a code_hash, or null. Journal bodies are
-        /// bake-redacted (paths/secrets become placeholders) — callers re-running a
-        /// recovered body must surface that caveat.
+        /// Journal body matching a code_hash, or null. Scans the live journal then
+        /// rotated archives newest-first; first match wins (same hash ⇒ same body).
+        /// Bodies are bake-redacted (paths/secrets become placeholders) — callers
+        /// re-running a recovered body must surface that caveat.
         /// </summary>
         public static string TryFindCodeByHash(string codeHash)
         {
             if (string.IsNullOrEmpty(codeHash)) return null;
+            foreach (var file in JournalFilesNewestFirst())
+            {
+                var body = FindInFile(file, codeHash);
+                if (body != null) return body;
+            }
+            return null;
+        }
+
+        private static IEnumerable<string> JournalFilesNewestFirst()
+        {
+            var dir = Path.GetDirectoryName(JournalPath);
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) yield break;
+
+            if (File.Exists(JournalPath)) yield return JournalPath;
+
+            // Archive names carry a timestamp → ordinal-desc = newest first.
+            var archives = Directory.GetFiles(dir, "send-code-journal-*.jsonl");
+            Array.Sort(archives, StringComparer.OrdinalIgnoreCase);
+            for (var i = archives.Length - 1; i >= 0; i--)
+                yield return archives[i];
+        }
+
+        private static string FindInFile(string path, string codeHash)
+        {
             try
             {
-                var path = JournalPath;
-                if (!File.Exists(path)) return null;
-                string found = null;
                 foreach (var line in File.ReadLines(path))
                 {
                     if (string.IsNullOrWhiteSpace(line)) continue;
@@ -103,13 +126,13 @@ namespace RvtMcp.Plugin
                     {
                         var obj = JObject.Parse(line);
                         if (string.Equals(obj.Value<string>("code_hash"), codeHash, StringComparison.Ordinal))
-                            found = obj.Value<string>("code");
+                            return obj.Value<string>("code");
                     }
                     catch { }
                 }
-                return found;
             }
-            catch { return null; }
+            catch { }
+            return null;
         }
 
         private static void MaybePurge(string rootDir, bool isActive, DateTimeOffset now)

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using RvtMcp.Plugin;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -149,6 +150,56 @@ namespace RvtMcp.Tests
 
             SendCodeJournal.TryAppend(_activeConfig, "session1", "var x = 1;", true, 50, null, null);
             Assert.Null(SendCodeJournal.TryFindCodeByHash("deadbeef")); // file exists, hash doesn't
+        }
+
+        [Fact]
+        public void TryFindCodeByHash_ScansRotatedArchives()
+        {
+            // Body lives only in a rotated archive — the live journal has no match.
+            var code = "var archived = 42;";
+            var hash = BakeRedactor.HashBody(code);
+            var archiveLine = JsonConvert.SerializeObject(new
+            {
+                timestamp = "2026-09-01T00:00:00Z",
+                session_id = "old-session",
+                success = true,
+                duration_ms = 1L,
+                code_hash = hash,
+                code_length = code.Length,
+                error = (string)null,
+                code,
+                result = (string)null
+            });
+            File.WriteAllText(
+                Path.Combine(_tempDir, "send-code-journal-20260901-000000.jsonl"),
+                archiveLine + "\n");
+            SendCodeJournal.TryAppend(_activeConfig, "session1", "var other = 0;", true, 10, null, null);
+
+            Assert.Equal(code, SendCodeJournal.TryFindCodeByHash(hash));
+        }
+
+        [Fact]
+        public void TryFindCodeByHash_LiveFileWinsOverArchive()
+        {
+            var code = "var x = 1;";
+            var hash = BakeRedactor.HashBody(code);
+            // Same hash in an archive with a different body — the live file is newer
+            // and must win, so the lookup returns its (redacted) body first.
+            var archiveLine = JsonConvert.SerializeObject(new
+            {
+                timestamp = "2026-09-01T00:00:00Z",
+                session_id = "old",
+                code_hash = hash,
+                code = "STALE_ARCHIVE_BODY"
+            });
+            File.WriteAllText(
+                Path.Combine(_tempDir, "send-code-journal-20260901-000000.jsonl"),
+                archiveLine + "\n");
+            SendCodeJournal.TryAppend(_activeConfig, "session1", code, true, 10, null, null);
+
+            var body = SendCodeJournal.TryFindCodeByHash(hash);
+            Assert.Equal("var x = 1;", body);
+            Assert.NotEqual("STALE_ARCHIVE_BODY", body);
         }
 
         [Fact]
