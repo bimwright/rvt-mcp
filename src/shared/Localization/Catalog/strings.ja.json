@@ -22,6 +22,7 @@
   "ribbon.language.label": "言語",
   "ribbon.language.tooltip": "プラグイン UI の言語。Auto は Revit の UI 言語に従います。BIMWRIGHT_UI_LANGUAGE が未設定の場合、選択は再起動後も保持されます。",
   "ribbon.language.auto": "自動",
+  "ribbon.language.current": "言語: {name}",
   "toast.category.query": "MCP · クエリ",
   "toast.category.modified": "MCP · 変更",
   "toast.category.script": "MCP · スクリプト",

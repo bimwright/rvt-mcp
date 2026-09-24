@@ -153,7 +153,6 @@ namespace RvtMcp.Plugin
             }
             if (combo == null) return null;
 
-            combo.ItemText = L.T("ribbon.language.label");
             var mergedCode = LocaleResolver.NormalizeCode(config?.UiLanguage);
             var autoDisplay = L.T("ribbon.language.auto");
 
@@ -167,12 +166,18 @@ namespace RvtMcp.Plugin
                 if (mergedCode == locale) selected = item;
             }
             if (selected != null) combo.Current = selected;
+            // The collapsed box must be self-describing — a bare "Auto"/"Deutsch"
+            // reads as a mystery control. Keep it labeled: "Language: Auto".
+            // Assign after Current so the member's own text can't overwrite it.
+            combo.ItemText = L.T("ribbon.language.current",
+                ("name", selected?.ItemText ?? autoDisplay));
 
             combo.CurrentChanged += (s, e) =>
             {
                 var current = combo.Current;
                 if (current == null) return;
                 var code = current.Name;
+                combo.ItemText = L.T("ribbon.language.current", ("name", current.ItemText));
                 L.SetLanguage(code);
                 // Persist only when the env var is absent — env wins at next startup anyway.
                 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(RvtMcpConfig.EnvUiLanguage)))

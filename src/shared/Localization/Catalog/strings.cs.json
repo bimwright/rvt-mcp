@@ -22,6 +22,7 @@
   "ribbon.language.label": "Jazyk",
   "ribbon.language.tooltip": "Jazyk rozhraní pluginu. Auto sleduje jazyk rozhraní Revit; volba se po restartu zachová, pokud není nastavena BIMWRIGHT_UI_LANGUAGE.",
   "ribbon.language.auto": "Auto",
+  "ribbon.language.current": "Jazyk: {name}",
   "toast.category.query": "MCP · Dotaz",
   "toast.category.modified": "MCP · Změněno",
   "toast.category.script": "MCP · Skript",

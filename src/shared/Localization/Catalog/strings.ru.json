@@ -22,6 +22,7 @@
   "ribbon.language.label": "Язык",
   "ribbon.language.tooltip": "Язык интерфейса плагина. Auto следует языку интерфейса Revit; выбор сохраняется после перезапуска, если не задана BIMWRIGHT_UI_LANGUAGE.",
   "ribbon.language.auto": "Авто",
+  "ribbon.language.current": "Язык: {name}",
   "toast.category.query": "MCP · Запрос",
   "toast.category.modified": "MCP · Изменено",
   "toast.category.script": "MCP · Скрипт",

@@ -93,11 +93,12 @@ namespace RvtMcp.Plugin
                 }
                 if (_ribbon.LanguageCombo != null)
                 {
-                    _ribbon.LanguageCombo.ItemText = L.T("ribbon.language.label");
                     _ribbon.LanguageCombo.ToolTip = L.T("ribbon.language.tooltip");
                     var autoItem = FindComboMember(_ribbon.LanguageCombo, LocaleResolver.Auto);
                     if (autoItem != null)
                         autoItem.ItemText = L.T("ribbon.language.auto");
+                    _ribbon.LanguageCombo.ItemText = L.T("ribbon.language.current",
+                        ("name", _ribbon.LanguageCombo.Current?.ItemText ?? ""));
                 }
                 // Baked-tool button labels are user-authored — verbatim, not localized.
             }

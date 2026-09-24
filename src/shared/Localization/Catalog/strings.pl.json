@@ -22,6 +22,7 @@
   "ribbon.language.label": "Język",
   "ribbon.language.tooltip": "Język interfejsu wtyczki. Auto podąża za językiem interfejsu Revit; wybór zostaje po restarcie, chyba że ustawiono BIMWRIGHT_UI_LANGUAGE.",
   "ribbon.language.auto": "Auto",
+  "ribbon.language.current": "Język: {name}",
   "toast.category.query": "MCP · Zapytanie",
   "toast.category.modified": "MCP · Zmodyfikowano",
   "toast.category.script": "MCP · Skrypt",

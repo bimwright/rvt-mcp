@@ -22,6 +22,7 @@
   "ribbon.language.label": "Nyelv",
   "ribbon.language.tooltip": "A beépülő modul felületének nyelve. Auto a Revit felületének nyelvét követi; a választás újraindítás után is megmarad, ha a BIMWRIGHT_UI_LANGUAGE nincs beállítva.",
   "ribbon.language.auto": "Auto",
+  "ribbon.language.current": "Nyelv: {name}",
   "toast.category.query": "MCP · Lekérdezés",
   "toast.category.modified": "MCP · Módosítva",
   "toast.category.script": "MCP · Szkript",

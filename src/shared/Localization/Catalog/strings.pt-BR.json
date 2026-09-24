@@ -22,6 +22,7 @@
   "ribbon.language.label": "Idioma",
   "ribbon.language.tooltip": "Idioma da interface do plug-in. Auto segue o idioma da interface do Revit; a escolha persiste após reiniciar, a menos que BIMWRIGHT_UI_LANGUAGE esteja definido.",
   "ribbon.language.auto": "Auto",
+  "ribbon.language.current": "Idioma: {name}",
   "toast.category.query": "MCP · Consulta",
   "toast.category.modified": "MCP · Modificado",
   "toast.category.script": "MCP · Script",

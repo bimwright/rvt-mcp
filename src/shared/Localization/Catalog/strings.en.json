@@ -23,6 +23,7 @@
   "ribbon.language.label": "Language",
   "ribbon.language.tooltip": "Plugin UI language. Auto follows the Revit UI language; the choice persists across restarts unless BIMWRIGHT_UI_LANGUAGE is set.",
   "ribbon.language.auto": "Auto",
+  "ribbon.language.current": "Language: {name}",
 
   "toast.category.query": "MCP · Query",
   "toast.category.modified": "MCP · Modified",

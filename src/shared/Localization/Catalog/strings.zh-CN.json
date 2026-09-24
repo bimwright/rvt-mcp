@@ -22,6 +22,7 @@
   "ribbon.language.label": "语言",
   "ribbon.language.tooltip": "插件界面语言。Auto 跟随 Revit 界面语言；除非设置了 BIMWRIGHT_UI_LANGUAGE，否则选择会跨重启保留。",
   "ribbon.language.auto": "自动",
+  "ribbon.language.current": "语言: {name}",
   "toast.category.query": "MCP · 查询",
   "toast.category.modified": "MCP · 已修改",
   "toast.category.script": "MCP · 脚本",
