@@ -72,7 +72,8 @@ namespace RvtMcp.Plugin
                             Success = false,
                             DurationMs = sw.ElapsedMilliseconds,
                             ErrorMessage = unknownError,
-                            Summary = $"Unknown: {request.CommandName}"
+                            Summary = Localization.L.T("history.summary.unknown", ("tool", request.CommandName)),
+                            PreserveSummary = true
                         });
                         var errorResponse = JsonConvert.SerializeObject(new
                         {
@@ -115,7 +116,8 @@ namespace RvtMcp.Plugin
                             DurationMs = sw.ElapsedMilliseconds,
                             ErrorMessage = validationError,
                             ToolDescription = command.Description,
-                            Summary = Localization.L.T("history.summary.validationFailed", ("error", validationError))
+                            Summary = Localization.L.T("history.summary.validationFailed", ("error", validationError)),
+                            PreserveSummary = true
                         });
                         var validationResponse = JsonConvert.SerializeObject(new
                         {

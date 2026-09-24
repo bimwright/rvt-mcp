@@ -366,21 +366,7 @@ namespace RvtMcp.Plugin
                     Directory.CreateDirectory(dir);
 
                 JObject root;
-                if (File.Exists(path))
-                {
-                    try
-                    {
-                        root = JObject.Parse(File.ReadAllText(path)) ?? new JObject();
-                    }
-                    catch
-                    {
-                        root = new JObject();
-                    }
-                }
-                else
-                {
-                    root = new JObject();
-                }
+                if (!TryReadConfigRoot(path, out root)) return;
 
                 root["enableToast"] = enabled;
                 File.WriteAllText(path, root.ToString(Formatting.Indented));
@@ -405,21 +391,7 @@ namespace RvtMcp.Plugin
                     Directory.CreateDirectory(dir);
 
                 JObject root;
-                if (File.Exists(path))
-                {
-                    try
-                    {
-                        root = JObject.Parse(File.ReadAllText(path)) ?? new JObject();
-                    }
-                    catch
-                    {
-                        root = new JObject();
-                    }
-                }
-                else
-                {
-                    root = new JObject();
-                }
+                if (!TryReadConfigRoot(path, out root)) return;
 
                 root["uiLanguage"] = code;
                 File.WriteAllText(path, root.ToString(Formatting.Indented));
@@ -440,21 +412,7 @@ namespace RvtMcp.Plugin
                     Directory.CreateDirectory(dir);
 
                 JObject root;
-                if (File.Exists(path))
-                {
-                    try
-                    {
-                        root = JObject.Parse(File.ReadAllText(path)) ?? new JObject();
-                    }
-                    catch
-                    {
-                        root = new JObject();
-                    }
-                }
-                else
-                {
-                    root = new JObject();
-                }
+                if (!TryReadConfigRoot(path, out root)) return;
 
                 root["persistSendCodeBodies"] = enabled;
                 if (enabled && untilUtc.HasValue)
@@ -486,21 +444,7 @@ namespace RvtMcp.Plugin
                     Directory.CreateDirectory(dir);
 
                 JObject root;
-                if (File.Exists(path))
-                {
-                    try
-                    {
-                        root = JObject.Parse(File.ReadAllText(path)) ?? new JObject();
-                    }
-                    catch
-                    {
-                        root = new JObject();
-                    }
-                }
-                else
-                {
-                    root = new JObject();
-                }
+                if (!TryReadConfigRoot(path, out root)) return;
 
                 root.Remove("persistSendCodeBodies");
                 root.Remove("persistSendCodeBodiesUntil");
@@ -514,6 +458,28 @@ namespace RvtMcp.Plugin
             catch
             {
                 // Best-effort
+            }
+        }
+
+        /// <summary>
+        /// Read the existing config root for a single-key update. Returns false when the
+        /// file exists but cannot be read or parsed — a torn read (e.g. another Revit
+        /// instance mid-write) must never be treated as an empty config, or the write
+        /// would silently drop readOnly and every other setting.
+        /// </summary>
+        private static bool TryReadConfigRoot(string path, out JObject root)
+        {
+            root = new JObject();
+            if (!File.Exists(path)) return true;
+            try
+            {
+                root = JObject.Parse(File.ReadAllText(path)) ?? new JObject();
+                return true;
+            }
+            catch
+            {
+                root = null;
+                return false;
             }
         }
 

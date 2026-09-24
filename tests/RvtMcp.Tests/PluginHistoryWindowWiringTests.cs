@@ -41,6 +41,41 @@ namespace RvtMcp.Tests
                 $"{pluginFolder}: expected Load → InitializePlugin → RibbonSetup ordering " +
                 $"(load={config}, init={init}, ribbon={ribbon})");
             Assert.Contains("LocalizationHost.ShutdownPlugin()", source);
+            // Missing-key + init diagnostics must reach the real debug log file.
+            Assert.Contains("Config.UiLanguage, DebugLog", source);
+        }
+
+        [Fact]
+        public void LocalizationHost_init_is_nonfatal_and_logs_missing_keys()
+        {
+            var source = File.ReadAllText(Path.Combine(GetRepoRoot(),
+                "src", "shared", "Localization", "LocalizationHost.cs"));
+
+            // Init failure falls back to an English table instead of killing OnStartup.
+            Assert.Contains("catch (Exception ex)", source);
+            Assert.Contains("L.Initialize(\"Unknown\", \"en\"", source);
+            // StringTable.Build gets the log callback — missing keys are logged.
+            Assert.Contains("overrides, _log", source);
+        }
+
+        [Fact]
+        public void ShowMessage_wire_payload_stays_english_while_display_localizes()
+        {
+            var source = File.ReadAllText(Path.Combine(GetRepoRoot(),
+                "src", "shared", "Handlers", "ShowMessageHandler.cs"));
+
+            Assert.Contains("TaskDialog.Show(title, displayMessage)", source);
+            Assert.Contains("message_char_count = wireMessage.Length", source);
+        }
+
+        [Fact]
+        public void McpEventHandler_unknown_summary_is_localized_and_preserved()
+        {
+            var source = File.ReadAllText(Path.Combine(GetRepoRoot(),
+                "src", "shared", "Infrastructure", "McpEventHandler.cs"));
+
+            Assert.Contains("history.summary.unknown", source);
+            Assert.DoesNotContain("$\"Unknown:", source);
         }
 
         private static string GetRepoRoot([CallerFilePath] string testFile = "")

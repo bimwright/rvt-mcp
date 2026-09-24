@@ -319,10 +319,12 @@ The plugin UI (ribbon, toasts, History, dialogs) follows the Revit UI language, 
 
 1. **Read** `%LOCALAPPDATA%\RvtMcp\locales\_active.<locale>.json` — every key's currently displayed value, plus the `locked` list.
 2. **Write** the corrected `"key": "text"` pairs into `%LOCALAPPDATA%\RvtMcp\locales\strings.<locale>.json` (create the file/folder if absent). Keep `{placeholder}` tokens identical to the English value.
-3. **Verify** by re-reading `_report.<locale>.json` after ~1 second (debounced reload). Your key must not appear under `rejected` — if it does, the `reason` tells you why (`unknown_key`, `placeholder_mismatch`, `locked_key`, …). If the file is **absent**, there is nothing to report: the write applied cleanly.
+3. **Verify** by re-reading `_active.<locale>.json` after ~1 second (debounced reload) — your key must show the **new value** there. `_report.<locale>.json` lists current validation problems; if your key appears under `rejected`, the `reason` tells you why (`unknown_key`, `placeholder_mismatch`, `locked_key`, …). An **absent** `_report` only means "nothing to report" — it does not prove your edit applied (an ignored wrong-locale file produces no report either). The value inside `_active` is the proof.
 4. Tell the user it applied immediately via hot reload.
 
-**Precondition:** the live loop above only works when `<locale>` is the *active* locale (or `en`, the fallback layer). Check `_active.<locale>.json` exists for the locale you're editing — the watcher ignores override files for inactive locales, so those edits apply only when the user next switches to that language.
+**Precondition:** `<locale>` must be the *active* locale — the watcher ignores override files for inactive locales, so those edits apply only when the user next switches to that language. (`en` is the fallback layer and is always live: an `en` override applies under every locale.)
+
+To find the active locale, check `locales\` for `_active.<locale>.json` files — one exists per locale ever used and old files are **never deleted**, so existence proves nothing. The current one is the most recently written (sidecars refresh on every table swap). When in doubt, ask the user which language the ribbon Language combo shows.
 
 Rules: `security.*` keys are locked and can never be overridden. Keys not in `_active` don't exist — don't invent new ones. Never edit files inside the plugin's install directory; only `locales\`. Full details: [docs/localization.md](docs/localization.md).
 

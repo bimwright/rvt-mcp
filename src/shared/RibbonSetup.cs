@@ -20,8 +20,6 @@ namespace RvtMcp.Plugin
     {
         private const string PanelName = "RvtMcp";
         private static readonly HashSet<string> CreatedButtons = new HashSet<string>();
-        private static bool _suppressComboChanged;
-
         /// <summary>
         /// Revit routes every item added after <c>AddSlideOut()</c> into the
         /// slide-out — so ordering is contractual: all main-panel items first,
@@ -39,9 +37,9 @@ namespace RvtMcp.Plugin
                 assemblyPath,
                 "RvtMcp.Plugin.Commands.ToggleMcpCommand")
             {
-                LargeImage = IconGenerator.McpOn32,
-                Image = IconGenerator.McpOn16,
-                ToolTip = L.T("ribbon.toggle.tooltip")
+                LargeImage = IconGenerator.McpOff32,
+                Image = IconGenerator.McpOff16,
+                ToolTip = L.T("ribbon.toggle.tooltip.stopped")
             };
 
             var historyData = new PushButtonData(
@@ -159,27 +157,19 @@ namespace RvtMcp.Plugin
             var mergedCode = LocaleResolver.NormalizeCode(config?.UiLanguage);
             var autoDisplay = L.T("ribbon.language.auto");
 
-            _suppressComboChanged = true;
+            // Populate before wiring CurrentChanged — no handler can fire during setup.
             ComboBoxMember selected = null;
-            try
+            var autoItem = combo.AddItem(new ComboBoxMemberData(LocaleResolver.Auto, autoDisplay));
+            if (mergedCode == LocaleResolver.Auto) selected = autoItem;
+            foreach (var locale in LocaleResolver.SupportedLocales)
             {
-                var autoItem = combo.AddItem(new ComboBoxMemberData(LocaleResolver.Auto, autoDisplay));
-                if (mergedCode == LocaleResolver.Auto) selected = autoItem;
-                foreach (var locale in LocaleResolver.SupportedLocales)
-                {
-                    var item = combo.AddItem(new ComboBoxMemberData(locale, LocaleResolver.NativeName(locale)));
-                    if (mergedCode == locale) selected = item;
-                }
-                if (selected != null) combo.Current = selected;
+                var item = combo.AddItem(new ComboBoxMemberData(locale, LocaleResolver.NativeName(locale)));
+                if (mergedCode == locale) selected = item;
             }
-            finally
-            {
-                _suppressComboChanged = false;
-            }
+            if (selected != null) combo.Current = selected;
 
             combo.CurrentChanged += (s, e) =>
             {
-                if (_suppressComboChanged) return;
                 var current = combo.Current;
                 if (current == null) return;
                 var code = current.Name;

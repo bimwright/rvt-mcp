@@ -63,6 +63,7 @@ namespace RvtMcp.Plugin
             {
                 _lastCount = count;
                 _ribbon.HistoryButton.ItemText = L.T("ribbon.history.text", ("count", count));
+                _ribbon.HistoryButton.ToolTip = L.T("ribbon.history.tooltip");
             }
 
             if (_ribbon.ToastButton != null && (locChanged || toastEnabled != _lastToastEnabled))

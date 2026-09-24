@@ -21,6 +21,7 @@ namespace RvtMcp.Plugin.Localization
 
         private readonly string _overrideDir;
         private readonly Func<string, IReadOnlyDictionary<string, string>> _embeddedLoader;
+        private readonly Action<string> _log;
         private readonly TimeSpan? _watcherDebounce;
         private readonly bool _watchFilesystem;
         private readonly ConditionalWeakTable<StringTable, BuildContext> _contexts =
@@ -46,12 +47,15 @@ namespace RvtMcp.Plugin.Localization
         /// <param name="embeddedLoader">Null → embedded catalogs of this assembly.</param>
         /// <param name="watcherDebounce">Null → watcher default. ≤ 0 → synchronous.</param>
         /// <param name="watchFilesystem">False → watcher runs injection-only (tests).</param>
+        /// <param name="log">Sink for missing-key + init diagnostics; null → Debug.WriteLine.</param>
         public LocalizationHost(string overrideDir = null,
             Func<string, IReadOnlyDictionary<string, string>> embeddedLoader = null,
-            TimeSpan? watcherDebounce = null, bool watchFilesystem = true)
+            TimeSpan? watcherDebounce = null, bool watchFilesystem = true,
+            Action<string> log = null)
         {
             _overrideDir = overrideDir ?? DefaultOverrideDir;
             _embeddedLoader = embeddedLoader ?? DefaultLoader;
+            _log = log ?? (m => System.Diagnostics.Debug.WriteLine(m));
             _watcherDebounce = watcherDebounce;
             _watchFilesystem = watchFilesystem;
         }
@@ -59,12 +63,29 @@ namespace RvtMcp.Plugin.Localization
         private static IReadOnlyDictionary<string, string> DefaultLoader(string locale)
             => EmbeddedCatalog.Load(typeof(LocalizationHost).Assembly, locale);
 
-        /// <summary>Plugin entry point — call once from App.OnStartup after config load.</summary>
-        public static LocalizationHost InitializePlugin(string revitLanguageName, string mergedUiLanguage)
+        /// <summary>Plugin entry point — call once from App.OnStartup after config load.
+        /// Localization is auxiliary: any init failure falls back to an English-only
+        /// table instead of propagating into OnStartup and disabling the add-in.</summary>
+        public static LocalizationHost InitializePlugin(string revitLanguageName, string mergedUiLanguage,
+            Action<string> log = null)
         {
             ShutdownPlugin();
-            var host = new LocalizationHost();
-            host.Initialize(revitLanguageName, mergedUiLanguage);
+            var host = new LocalizationHost(log: log);
+            try
+            {
+                host.Initialize(revitLanguageName, mergedUiLanguage);
+            }
+            catch (Exception ex)
+            {
+                host._log("[RvtMcp] localization init failed: " + ex.Message);
+                try
+                {
+                    L.Initialize("Unknown", "en",
+                        loc => StringTable.Build(loc, host._embeddedLoader("en"), null, null, host._log),
+                        null);
+                }
+                catch { }
+            }
             Current = host;
             return host;
         }
@@ -74,7 +95,7 @@ namespace RvtMcp.Plugin.Localization
         {
             var host = Current;
             Current = null;
-            host?.Dispose();
+            try { host?.Dispose(); } catch { }
         }
 
         public void Initialize(string revitLanguageName, string mergedUiLanguage, bool startWatcher = true)
@@ -119,7 +140,7 @@ namespace RvtMcp.Plugin.Localization
                 validation = enValidation;
             }
 
-            var table = StringTable.Build(locale, enEffective, embedded, overrides);
+            var table = StringTable.Build(locale, enEffective, embedded, overrides, _log);
             var ctx = new BuildContext
             {
                 EnEmbedded = enEmbedded,

@@ -69,5 +69,42 @@ namespace RvtMcp.Tests
             var config = RvtMcpConfig.Load(null, Cfg, EnvLookup(null));
             Assert.Equal("auto", config.UiLanguage);
         }
+
+        // A torn read (another Revit instance mid-write) must never be treated as
+        // an empty config — the write would silently drop readOnly and friends.
+
+        private const string TornConfig = "{ \"readOnly\": true, \"uiLanguage\": \"en\"";
+
+        [Fact]
+        public void SaveUiLanguage_MalformedConfig_LeavesFileUntouched()
+        {
+            File.WriteAllText(Cfg, TornConfig);
+            RvtMcpConfig.SaveUiLanguage("ja", Cfg);
+            Assert.Equal(TornConfig, File.ReadAllText(Cfg));
+        }
+
+        [Fact]
+        public void SaveEnableToast_MalformedConfig_LeavesFileUntouched()
+        {
+            File.WriteAllText(Cfg, TornConfig);
+            RvtMcpConfig.SaveEnableToast(true, Cfg);
+            Assert.Equal(TornConfig, File.ReadAllText(Cfg));
+        }
+
+        [Fact]
+        public void SavePersistSendCodeBodies_MalformedConfig_LeavesFileUntouched()
+        {
+            File.WriteAllText(Cfg, TornConfig);
+            RvtMcpConfig.SavePersistSendCodeBodies(true, null, Cfg);
+            Assert.Equal(TornConfig, File.ReadAllText(Cfg));
+        }
+
+        [Fact]
+        public void ClearPersistSendCodeBodies_MalformedConfig_LeavesFileUntouched()
+        {
+            File.WriteAllText(Cfg, TornConfig);
+            RvtMcpConfig.ClearPersistSendCodeBodies(Cfg, requireExplicitEnable: true);
+            Assert.Equal(TornConfig, File.ReadAllText(Cfg));
+        }
     }
 }

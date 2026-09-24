@@ -61,6 +61,8 @@ namespace RvtMcp.Plugin.Views
         private Button _newSessionButton;
         private int? _pastLoaded;
         private bool _rerunInProgress;
+        private bool _detailShowsRerun;
+        private int _lastSeenL10nVersion = -1;
 
         private static readonly Dictionary<string, string> FilterKeys = new Dictionary<string, string>
         {
@@ -264,6 +266,7 @@ namespace RvtMcp.Plugin.Views
             mainGrid.Children.Add(_detailSplitter);
 
             Content = mainGrid;
+            _lastSeenL10nVersion = L.Version;
             ApplyLocalization();
         }
 
@@ -274,6 +277,9 @@ namespace RvtMcp.Plugin.Views
         /// </summary>
         private void ApplyLocalization()
         {
+            var version = L.Version;
+            var localeChanged = version != _lastSeenL10nVersion;
+            _lastSeenL10nVersion = version;
             Title = L.T("history.window.title", ("brand", BrandAssets.Wordmark));
             _colTime.Header = L.T("history.col.time");
             _colTool.Header = L.T("history.col.tool");
@@ -297,10 +303,17 @@ namespace RvtMcp.Plugin.Views
             _inputSection.Text = L.T("history.section.input");
             _outputSection.Text = L.T("history.section.output");
             _rerunButton.Content = L.T(_rerunInProgress ? "history.rerun.running" : "history.rerun.button");
-            foreach (var entry in _sessionLog.Entries)
-                McpSessionLog.RefreshSummary(entry);
-            _viewSource.View.Refresh();
-            ShowEntry(_selectedEntry);
+            // Regenerating 1000 summaries parses JSON + runs regex — only worth it
+            // when the table actually changed, and PreserveSummary entries are skipped.
+            if (localeChanged)
+            {
+                foreach (var entry in _sessionLog.Entries)
+                    McpSessionLog.RefreshSummary(entry);
+                _viewSource.View.Refresh();
+            }
+            // Re-run results live in _outputContainer — a locale swap must not wipe them.
+            if (!_rerunInProgress && !_detailShowsRerun)
+                ShowEntry(_selectedEntry);
         }
 
         private StackPanel CreateToolbar()
@@ -337,7 +350,7 @@ namespace RvtMcp.Plugin.Views
 
             // Items carry a stable Tag — display text is localized, filter
             // logic compares the tag, never the translated string.
-            _filterCombo = new ComboBox { Width = 90, Height = 24, Margin = new Thickness(0, 0, 8, 0) };
+            _filterCombo = new ComboBox { MinWidth = 120, Height = 24, Margin = new Thickness(0, 0, 8, 0) };
             foreach (var tag in new[] { "all", "success", "failed" })
                 _filterCombo.Items.Add(new ComboBoxItem { Tag = tag });
             _filterCombo.SelectedIndex = 0;
@@ -351,7 +364,7 @@ namespace RvtMcp.Plugin.Views
             };
             panel.Children.Add(_kindLabel);
 
-            _kindCombo = new ComboBox { Width = 70, Height = 24, Margin = new Thickness(0, 0, 8, 0) };
+            _kindCombo = new ComboBox { MinWidth = 90, Height = 24, Margin = new Thickness(0, 0, 8, 0) };
             foreach (var tag in new[] { "all", "read", "write" })
                 _kindCombo.Items.Add(new ComboBoxItem { Tag = tag });
             _kindCombo.SelectedIndex = 0;
@@ -482,6 +495,7 @@ namespace RvtMcp.Plugin.Views
 
         private void ShowEntry(McpCallEntry entry)
         {
+            _detailShowsRerun = false;
             if (entry == null)
             {
                 SetDetailVisible(false);
@@ -937,6 +951,7 @@ namespace RvtMcp.Plugin.Views
             finally
             {
                 _rerunInProgress = false;
+                _detailShowsRerun = true;
                 _rerunButton.Content = L.T("history.rerun.button");
                 _rerunButton.IsEnabled = true;
             }

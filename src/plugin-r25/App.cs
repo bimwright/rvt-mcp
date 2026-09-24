@@ -43,7 +43,7 @@ namespace RvtMcp.Plugin
             SessionLog = new McpSessionLog();
             Config = RvtMcpConfig.Load(args: null);
             Localization.LocalizationHost.InitializePlugin(
-                application.ControlledApplication.Language.ToString(), Config.UiLanguage);
+                application.ControlledApplication.Language.ToString(), Config.UiLanguage, DebugLog);
             ToastEnabled = Config.EnableToastOrDefault;
             DebugLog("OnStartup: McpLogger + SessionLog OK");
 

@@ -122,7 +122,7 @@ Run once per release on at least the oldest and newest shells (Revit 2022 /
       `placeholder_mismatch`.
 - [ ] Write an unknown key → `rejected`/`unknown_key`. Write a `security.*`
       key → `rejected`/`locked_key`.
-- [ ] Break the JSON (trailing comma) → previous good values stay live;
+- [ ] Break the JSON (delete the closing `}`) → previous good values stay live;
       report shows `invalid_json` file error.
 - [ ] `_active.<locale>.json` exists, reflects the effective value, and lists
       `security.*` under `locked`.

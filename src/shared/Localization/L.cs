@@ -16,6 +16,7 @@ namespace RvtMcp.Plugin.Localization
         private static int _version;
         private static int _generation;
         private static string _revitLanguageName = "Unknown";
+        private static volatile string _desiredLocale = "en";
         private static Func<string, StringTable> _buildFor;
         private static Action<StringTable> _afterSwap;
         private static readonly object _swapGate = new object();
@@ -47,7 +48,8 @@ namespace RvtMcp.Plugin.Localization
             _buildFor = buildFor;
             _afterSwap = afterSwap;
             var code = LocaleResolver.NormalizeCode(mergedUiLanguage);
-            Swap(buildFor(LocaleResolver.ResolveLocale(_revitLanguageName, code)));
+            _desiredLocale = LocaleResolver.ResolveLocale(_revitLanguageName, code);
+            Swap(buildFor(_desiredLocale));
         }
 
         /// <summary>Manual switch. <paramref name="code"/> is "auto" or a locale code;
@@ -56,13 +58,16 @@ namespace RvtMcp.Plugin.Localization
         {
             var locale = LocaleResolver.ResolveLocale(
                 _revitLanguageName, LocaleResolver.NormalizeCode(code));
+            _desiredLocale = locale;
             RequestBuild(locale);
         }
 
-        /// <summary>Called by the override-folder watcher.</summary>
+        /// <summary>Called by the override-folder watcher. Rebuilds the requested
+        /// locale — not the visible one — so a reload mid-switch cannot cancel the
+        /// pending language change (it only needs to beat the older generation).</summary>
         internal static void RequestReload()
         {
-            RequestBuild(_current != null ? _current.Locale : "en");
+            RequestBuild(_desiredLocale ?? (_current != null ? _current.Locale : "en"));
         }
 
         /// <summary>Diagnostic: why the last build didn't swap.</summary>
@@ -118,7 +123,8 @@ namespace RvtMcp.Plugin.Localization
             _buildFor = null;
             _afterSwap = null;
             _revitLanguageName = "Unknown";
-            _generation = 0;
+            _desiredLocale = table?.Locale ?? "en";
+            Interlocked.Increment(ref _generation);   // never rewind — stale builds from earlier tests must stay stale
             Swap(table);
         }
 
@@ -126,10 +132,11 @@ namespace RvtMcp.Plugin.Localization
         {
             _current = null;
             _version = 0;
-            _generation = 0;
+            Interlocked.Increment(ref _generation);
             _buildFor = null;
             _afterSwap = null;
             _revitLanguageName = "Unknown";
+            _desiredLocale = "en";
             ForceSyncBuilds = false;
             Changed = null;
         }

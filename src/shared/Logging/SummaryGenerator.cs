@@ -16,6 +16,10 @@ namespace RvtMcp.Plugin
 
         public static string Generate(string toolName, string paramsJson, string resultJson, bool success, string error)
         {
+            // Failed calls surface the real error before any JSON parsing —
+            // truncated or non-object params must not swallow it.
+            if (!success)
+                return Truncate(error ?? L.T("history.summary.failed"), MaxLength);
             try
             {
                 var parms = !string.IsNullOrEmpty(paramsJson) ? JObject.Parse(paramsJson) : null;
@@ -26,9 +30,6 @@ namespace RvtMcp.Plugin
                         ("hash", parms.Value<string>("code_hash")),
                         ("length", parms.Value<long?>("code_length") ?? 0));
                 }
-
-                if (!success)
-                    return Truncate(error ?? L.T("history.summary.failed"), MaxLength);
 
                 var result = !string.IsNullOrEmpty(resultJson) ? JObject.Parse(resultJson) : null;
 
@@ -46,7 +47,7 @@ namespace RvtMcp.Plugin
             }
             catch
             {
-                return success ? L.T("history.summary.ok") : L.T("history.summary.failed");
+                return L.T("history.summary.ok");
             }
         }
 

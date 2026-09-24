@@ -24,6 +24,9 @@ namespace RvtMcp.Plugin
         public int? RerunOfIndex { get; set; }
         /// <summary>ParamsJson exceeded the in-memory cap and was truncated — entry cannot be re-run.</summary>
         public bool ParamsTruncated { get; set; }
+        /// <summary>Summary cannot be regenerated from stored fields (redacted result,
+        /// or text not produced by SummaryGenerator) — RefreshSummary must keep it.</summary>
+        public bool PreserveSummary { get; set; }
         /// <summary>Loaded from mcp-calls.jsonl (a previous session) — read-only, never re-runnable.</summary>
         public bool IsHistorical { get; set; }
         /// <summary>Short session tag for historical entries (e.g. "0923-1442").</summary>
@@ -114,6 +117,9 @@ namespace RvtMcp.Plugin
                 // the display copy (CodeSnippet feeds the INPUT code view).
                 if (entry.CodeSnippet != null && entry.CodeSnippet.Length > MaxCodeSnippetLength)
                     entry.CodeSnippet = entry.CodeSnippet.Substring(0, MaxCodeSnippetLength) + "... (truncated)";
+                // ResultJson fields were bake-redacted (<result_N>) while params stay
+                // whole — regenerating would turn "Walls: 42" into a placeholder.
+                entry.PreserveSummary = true;
                 return;
             }
 
@@ -138,7 +144,7 @@ namespace RvtMcp.Plugin
         /// </summary>
         internal static void RefreshSummary(McpCallEntry entry)
         {
-            if (entry == null || entry.ParamsTruncated)
+            if (entry == null || entry.ParamsTruncated || entry.PreserveSummary)
                 return;
             var summary = SummaryGenerator.Generate(
                 entry.ToolName, entry.ParamsJson, entry.ResultJson, entry.Success, entry.ErrorMessage);

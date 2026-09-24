@@ -38,7 +38,7 @@
   "toast.failed.default": "Tool call failed",
 
   "toast.capture.saved": "Saved {fileName}",
-  "toast.capture.savedPx": "Saved {fileName} · {pixelSize:n}px {format}",
+  "toast.capture.savedPx": "Saved {fileName} · {pixelSize}px {format}",
   "toast.capture.viewId": "View id {viewId}",
   "toast.capture.clickToOpen": "Click to open",
   "toast.capture.imageFallback": "image",
@@ -134,9 +134,10 @@
   "history.summary.selected": "Elements selected: {count:n}",
   "history.summary.rows": "Rows: {count:n}",
   "history.summary.items": "Items: {count:n}",
+  "history.summary.unknown": "Unknown: {tool}",
   "history.summary.validationFailed": "Validation failed: {error}",
 
-  "security.send_code.redacted_summary": "send_code_to_revit body redacted; code_hash={hash}; code_length={length:n}",
+  "security.send_code.redacted_summary": "send_code_to_revit body redacted; code_hash={hash}; code_length={length}",
   "security.send_code.journal_redacted_rerun": "⚠ send_code body recovered from journal is bake-redacted (paths/secrets → placeholders) — verify before re-run",
   "security.send_code.redacted_no_rerun": "⚠ send_code body redacted from history (code_hash only) — re-run unavailable",
   "security.send_code.params_truncated": "⚠ Params truncated in history (large payload) — re-run unavailable",

@@ -95,6 +95,39 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void RequestReload_DuringPendingSwitch_RebuildsDesiredLocale()
+        {
+            var gate = new ManualResetEventSlim(false);
+            var requested = new List<string>();
+            Func<string, StringTable> buildFor = loc =>
+            {
+                lock (requested) requested.Add(loc);
+                if (loc == "ja") gate.Wait(TimeSpan.FromSeconds(10));
+                return TableFor(loc);
+            };
+            L.Initialize("English_USA", "auto", buildFor, null);   // en, sync
+            Assert.Equal("en", L.Locale);
+
+            L.SetLanguage("ja");                 // async gen1 — pending on gate
+            L.ForceSyncBuilds = true;
+            try
+            {
+                L.RequestReload();               // watcher fires mid-switch
+                // Rebuild must target the requested locale (ja), not the visible
+                // table's locale (en) — otherwise the pending switch is cancelled.
+                lock (requested) Assert.Equal("ja", requested[requested.Count - 1]);
+                Assert.Equal("ja", L.Locale);
+            }
+            finally
+            {
+                gate.Set();
+                L.ForceSyncBuilds = false;
+            }
+            Thread.Sleep(300);
+            Assert.Equal("ja", L.Locale);        // stale gen1 must not downgrade either
+        }
+
+        [Fact]
         public async Task ConcurrentReads_DuringSwap_NoThrow()
         {
             L.ForceSyncBuilds = true;
