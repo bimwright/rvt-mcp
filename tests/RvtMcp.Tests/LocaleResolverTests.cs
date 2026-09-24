@@ -64,5 +64,17 @@ namespace RvtMcp.Tests
         {
             Assert.Equal(15, LocaleResolver.SupportedLocales.Count);
         }
+
+        [Fact]
+        public void EverySupportedLocale_HasNativeName()
+        {
+            foreach (var locale in LocaleResolver.SupportedLocales)
+            {
+                var name = LocaleResolver.NativeName(locale);
+                Assert.False(string.IsNullOrEmpty(name));
+                Assert.NotEqual(locale, name);   // resolved to a real display name
+            }
+            Assert.Equal(15, LocaleResolver.NativeNames.Count);
+        }
     }
 }

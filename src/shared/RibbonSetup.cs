@@ -1,6 +1,8 @@
+using System;
 using System.Reflection;
 using System.Collections.Generic;
 using Autodesk.Revit.UI;
+using RvtMcp.Plugin.Localization;
 using RvtMcp.Plugin.ToolBaker;
 
 namespace RvtMcp.Plugin
@@ -11,49 +13,58 @@ namespace RvtMcp.Plugin
         public PushButton HistoryButton { get; set; }
         public PushButton ToastButton { get; set; }
         public PushButton BakeInboxButton { get; set; }
+        public ComboBox LanguageCombo { get; set; }
     }
 
     public static class RibbonSetup
     {
         private const string PanelName = "RvtMcp";
         private static readonly HashSet<string> CreatedButtons = new HashSet<string>();
+        private static bool _suppressComboChanged;
 
+        /// <summary>
+        /// Revit routes every item added after <c>AddSlideOut()</c> into the
+        /// slide-out — so ordering is contractual: all main-panel items first,
+        /// then AddSlideOut, then the Language combo; baked-tool buttons added
+        /// later (startup or mid-session via RefreshBakedRibbonButtons) land in
+        /// the slide-out below Language. Spec §5.2 + owner decision.
+        /// </summary>
         public static RibbonResult Create(UIControlledApplication application, RvtMcpConfig config = null, BakedToolRuntimeCache runtimeCache = null)
         {
             var assemblyPath = Assembly.GetExecutingAssembly().Location;
             var panel = ResolvePanel(application);
 
             var toggleData = new PushButtonData(
-                "ToggleMcp", "MCP: ON",
+                "ToggleMcp", L.T("ribbon.toggle.text.stopped"),
                 assemblyPath,
                 "RvtMcp.Plugin.Commands.ToggleMcpCommand")
             {
                 LargeImage = IconGenerator.McpOn32,
                 Image = IconGenerator.McpOn16,
-                ToolTip = "Start/Stop MCP Server"
+                ToolTip = L.T("ribbon.toggle.tooltip")
             };
 
             var historyData = new PushButtonData(
-                "ShowHistory", "History (0)",
+                "ShowHistory", L.T("ribbon.history.text", ("count", 0)),
                 assemblyPath,
                 "RvtMcp.Plugin.Commands.ShowHistoryCommand")
             {
                 LargeImage = IconGenerator.History32,
                 Image = IconGenerator.History16,
-                ToolTip = "Show MCP command history"
+                ToolTip = L.T("ribbon.history.tooltip")
             };
 
             var toastEnabled = config?.EnableToastOrDefault == true;
             var toastData = new PushButtonData(
-                "ToggleToast", "Toast",
+                "ToggleToast", L.T("ribbon.toast.text"),
                 assemblyPath,
                 "RvtMcp.Plugin.Commands.ToggleToastCommand")
             {
                 LargeImage = toastEnabled ? IconGenerator.ToastOn32 : IconGenerator.ToastOff32,
                 Image = toastEnabled ? IconGenerator.ToastOn16 : IconGenerator.ToastOff16,
                 ToolTip = toastEnabled
-                    ? "MCP activity toasts enabled\nShows top-left notifications when AI tools run\nClick to disable"
-                    : "MCP activity toasts disabled\nClick to enable top-left AI activity notifications"
+                    ? L.T("ribbon.toast.tooltip.enabled")
+                    : L.T("ribbon.toast.tooltip.disabled")
             };
 
             var stack = panel.AddStackedItems(toggleData, historyData, toastData);
@@ -61,6 +72,12 @@ namespace RvtMcp.Plugin
             if (config?.EnableAdaptiveBakeOrDefault == true)
                 bakeInboxButton = AddBakeInboxButton(panel, assemblyPath);
 
+            panel.AddSlideOut();
+            var languageCombo = AddLanguageCombo(panel, config);
+
+            // Baked-tool buttons must come AFTER the slide-out — they intentionally
+            // appear below the Language combo (owner decision; there is no API slot
+            // that puts them back in the main panel once a slide-out exists).
             if (config?.EnableAdaptiveBakeOrDefault == true)
                 AddOrUpdateBakedToolButtons(application, runtimeCache);
 
@@ -69,7 +86,8 @@ namespace RvtMcp.Plugin
                 ToggleButton = stack[0] as PushButton,
                 HistoryButton = stack[1] as PushButton,
                 ToastButton = stack[2] as PushButton,
-                BakeInboxButton = bakeInboxButton
+                BakeInboxButton = bakeInboxButton,
+                LanguageCombo = languageCombo
             };
         }
 
@@ -112,6 +130,68 @@ namespace RvtMcp.Plugin
             }
         }
 
+        /// <summary>
+        /// Slide-out language picker: "Auto" + the 15 shipped locales shown under
+        /// their native names. Selection applies immediately via <see cref="L.SetLanguage"/>
+        /// and persists to <c>uiLanguage</c> unless BIMWRIGHT_UI_LANGUAGE is set
+        /// (env wins again at next startup). <c>CurrentChanged</c> is suppressed while
+        /// populating so startup cannot overwrite the persisted value.
+        /// </summary>
+        private static ComboBox AddLanguageCombo(RibbonPanel panel, RvtMcpConfig config)
+        {
+            var comboData = new ComboBoxData("LanguageCombo")
+            {
+                ToolTip = L.T("ribbon.language.tooltip")
+            };
+
+            ComboBox combo;
+            try
+            {
+                combo = panel.AddItem(comboData) as ComboBox;
+            }
+            catch
+            {
+                return null;
+            }
+            if (combo == null) return null;
+
+            combo.ItemText = L.T("ribbon.language.label");
+            var mergedCode = LocaleResolver.NormalizeCode(config?.UiLanguage);
+            var autoDisplay = L.T("ribbon.language.auto");
+
+            _suppressComboChanged = true;
+            ComboBoxMember selected = null;
+            try
+            {
+                var autoItem = combo.AddItem(new ComboBoxMemberData(LocaleResolver.Auto, autoDisplay));
+                if (mergedCode == LocaleResolver.Auto) selected = autoItem;
+                foreach (var locale in LocaleResolver.SupportedLocales)
+                {
+                    var item = combo.AddItem(new ComboBoxMemberData(locale, LocaleResolver.NativeName(locale)));
+                    if (mergedCode == locale) selected = item;
+                }
+                if (selected != null) combo.Current = selected;
+            }
+            finally
+            {
+                _suppressComboChanged = false;
+            }
+
+            combo.CurrentChanged += (s, e) =>
+            {
+                if (_suppressComboChanged) return;
+                var current = combo.Current;
+                if (current == null) return;
+                var code = current.Name;
+                L.SetLanguage(code);
+                // Persist only when the env var is absent — env wins at next startup anyway.
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(RvtMcpConfig.EnvUiLanguage)))
+                    RvtMcpConfig.SaveUiLanguage(code);
+            };
+
+            return combo;
+        }
+
         private static PushButton AddBakeInboxButton(RibbonPanel panel, string assemblyPath)
         {
             const string buttonName = "ShowBakeInbox";
@@ -120,13 +200,13 @@ namespace RvtMcp.Plugin
 
             var data = new PushButtonData(
                 buttonName,
-                "Bake Inbox",
+                L.T("ribbon.bakeInbox.text"),
                 assemblyPath,
                 "RvtMcp.Plugin.Commands.ShowBakeInboxCommand")
             {
                 LargeImage = IconGenerator.Info32,
                 Image = IconGenerator.Info16,
-                ToolTip = "Show accepted baked tools"
+                ToolTip = L.T("ribbon.bakeInbox.tooltip")
             };
 
             try
@@ -145,7 +225,7 @@ namespace RvtMcp.Plugin
         private static string ShortLabel(string label)
         {
             if (string.IsNullOrWhiteSpace(label))
-                return "Baked Tool";
+                return L.T("ribbon.bakedTool.fallback");
             return label.Length <= 18 ? label : label.Substring(0, 18);
         }
 

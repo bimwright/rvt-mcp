@@ -44,6 +44,34 @@ namespace RvtMcp.Plugin.Localization
             ["Brazilian_Portuguese"] = "pt-BR",
         };
 
+        /// <summary>Native (endonym) display names for the ribbon ComboBox —
+        /// invariant per locale, not translated.</summary>
+        public static readonly IReadOnlyDictionary<string, string> NativeNames =
+            new Dictionary<string, string>
+            {
+                ["en"] = "English",
+                ["zh-CN"] = "简体中文",
+                ["zh-TW"] = "繁體中文",
+                ["ja"] = "日本語",
+                ["ko"] = "한국어",
+                ["de"] = "Deutsch",
+                ["fr"] = "Français",
+                ["es"] = "Español",
+                ["it"] = "Italiano",
+                ["nl"] = "Nederlands",
+                ["pt-BR"] = "Português (Brasil)",
+                ["ru"] = "Русский",
+                ["cs"] = "Čeština",
+                ["pl"] = "Polski",
+                ["hu"] = "Magyar",
+            };
+
+        public static string NativeName(string code)
+        {
+            string name;
+            return NativeNames.TryGetValue(code ?? string.Empty, out name) ? name : code;
+        }
+
         /// <summary>
         /// Closed set, case-sensitive: "auto" or one of <see cref="SupportedLocales"/>.
         /// Anything else — including "vi" or "pt-br" — resolves to "auto".
