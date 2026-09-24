@@ -55,6 +55,7 @@
     <Compile Include="..\..\src\shared\Lint\ViewNamingAnalyzer.cs" Link="Shared\ViewNamingAnalyzer.cs" />
     <Compile Include="..\..\src\shared\Lint\FirmProfile.cs" Link="Shared\FirmProfile.cs" />
     <Compile Include="..\..\src\shared\Lint\FirmProfileLibrary.cs" Link="Shared\FirmProfileLibrary.cs" />
+    <Compile Include="..\..\src\shared\Localization\LocaleResolver.cs" Link="Shared\Localization\LocaleResolver.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -29,6 +29,7 @@ namespace RvtMcp.Plugin
         public const string EnvEnableToast               = "BIMWRIGHT_ENABLE_TOAST";
         public const string EnvPersistSendCodeBodies     = "BIMWRIGHT_PERSIST_SEND_CODE_BODIES";
         public const string EnvPersistSendCodeBodiesTtl  = "BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL";
+        public const string EnvUiLanguage                = "BIMWRIGHT_UI_LANGUAGE";
 
         public const bool DefaultReadOnly                  = false;
         public const bool DefaultAllowLanBind              = false;
@@ -74,6 +75,13 @@ namespace RvtMcp.Plugin
         /// </summary>
         [JsonProperty("persistSendCodeBodiesRequiresExplicitEnable")]
         public bool? PersistSendCodeBodiesRequiresExplicitEnable { get; set; }
+
+        /// <summary>
+        /// Plugin UI language override: "auto" or a shipped locale code (en, ja, …).
+        /// Read by the plugin only; the server ignores it.
+        /// </summary>
+        [JsonProperty("uiLanguage")]
+        public string UiLanguage { get; set; }
 
         public bool ReadOnlyOrDefault              => ReadOnly           ?? DefaultReadOnly;
         public bool AllowLanBindOrDefault          => AllowLanBind       ?? DefaultAllowLanBind;
@@ -185,6 +193,11 @@ namespace RvtMcp.Plugin
 
             var enableToast = ParseBool(lookup(EnvEnableToast));
             if (enableToast.HasValue) config.EnableToast = enableToast;
+
+            // BIMWRIGHT_UI_LANGUAGE is a Revit.exe process env var (Windows user/machine);
+            // the env block in MCP client configs reaches the server, not the plugin.
+            var uiLanguage = lookup(EnvUiLanguage);
+            if (!string.IsNullOrWhiteSpace(uiLanguage)) config.UiLanguage = uiLanguage.Trim();
 
             var persistEnv = lookup(EnvPersistSendCodeBodies);
             if (!string.IsNullOrWhiteSpace(persistEnv))
@@ -375,6 +388,45 @@ namespace RvtMcp.Plugin
             catch
             {
                 // Best-effort — toggle still works in-memory for this session.
+            }
+        }
+
+        /// <summary>
+        /// Persist only <c>uiLanguage</c> into the JSON config file, preserving other keys.
+        /// Used by the ribbon Language combo so the preference survives Revit restarts.
+        /// </summary>
+        public static void SaveUiLanguage(string code, string configFilePath = null)
+        {
+            var path = string.IsNullOrWhiteSpace(configFilePath) ? DefaultConfigFilePath : configFilePath;
+            try
+            {
+                var dir = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(dir))
+                    Directory.CreateDirectory(dir);
+
+                JObject root;
+                if (File.Exists(path))
+                {
+                    try
+                    {
+                        root = JObject.Parse(File.ReadAllText(path)) ?? new JObject();
+                    }
+                    catch
+                    {
+                        root = new JObject();
+                    }
+                }
+                else
+                {
+                    root = new JObject();
+                }
+
+                root["uiLanguage"] = code;
+                File.WriteAllText(path, root.ToString(Formatting.Indented));
+            }
+            catch
+            {
+                // Best-effort — language still changes in-memory for this session.
             }
         }
 
