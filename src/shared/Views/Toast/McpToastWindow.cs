@@ -217,12 +217,12 @@ namespace RvtMcp.Plugin.Views.Toast
                 FontSize = 10,
                 FontWeight = FontWeights.SemiBold,
                 VerticalAlignment = VerticalAlignment.Center,
-                ToolTip = "bimwright rvt-mcp",
+                ToolTip = BrandAssets.ProductTag,
                 OpacityMask = BuildBrandMask(_brandSweep),
                 Inlines =
                 {
-                    new Run("BIM") { Foreground = McpToastTheme.BrandBim },
-                    new Run("wright") { Foreground = McpToastTheme.BrandWright }
+                    new Run(BrandAssets.WordmarkLeft) { Foreground = McpToastTheme.BrandBim },
+                    new Run(BrandAssets.WordmarkRight) { Foreground = McpToastTheme.BrandWright }
                 }
             };
 
@@ -237,8 +237,8 @@ namespace RvtMcp.Plugin.Views.Toast
                 OpacityMask = BuildShineMask(_shineSweep),
                 Inlines =
                 {
-                    new Run("BIM") { Foreground = McpToastTheme.BrandBimShine },
-                    new Run("wright") { Foreground = McpToastTheme.BrandWrightShine }
+                    new Run(BrandAssets.WordmarkLeft) { Foreground = McpToastTheme.BrandBimShine },
+                    new Run(BrandAssets.WordmarkRight) { Foreground = McpToastTheme.BrandWrightShine }
                 }
             };
 

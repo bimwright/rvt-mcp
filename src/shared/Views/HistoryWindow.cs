@@ -51,7 +51,7 @@ namespace RvtMcp.Plugin.Views
             _eventHandler = eventHandler;
             _externalEvent = externalEvent;
 
-            Title = "BIMwright · MCP Command History";
+            Title = BrandAssets.Wordmark + " · MCP Command History";
             Width = 900;
             Height = 600;
             MinWidth = 720;
