@@ -124,7 +124,24 @@ namespace RvtMcp.Plugin
                 code_length = code.Length
             }, Formatting.None);
             entry.CodeSnippet = null;
-            entry.Summary = $"send_code_to_revit body redacted; code_hash={codeHash}; code_length={code.Length}";
+            // Recompute through the single summary path — the redacted params
+            // carry code_hash, so Generate emits the locked security note.
+            entry.Summary = SummaryGenerator.Generate(
+                entry.ToolName, entry.ParamsJson, entry.ResultJson, entry.Success, entry.ErrorMessage);
+        }
+
+        /// <summary>
+        /// Recompute Summary in the current language (L.Changed). Truncated params
+        /// can't be reparsed — keep the stored summary. Output goes through the
+        /// same bake-redaction as Add so recovered text can't leak paths/secrets.
+        /// </summary>
+        internal static void RefreshSummary(McpCallEntry entry)
+        {
+            if (entry == null || entry.ParamsTruncated)
+                return;
+            var summary = SummaryGenerator.Generate(
+                entry.ToolName, entry.ParamsJson, entry.ResultJson, entry.Success, entry.ErrorMessage);
+            entry.Summary = BakeRedactor.RedactForBake(summary);
         }
 
         private static string ExtractCodeBody(string paramsJson, string codeSnippet)

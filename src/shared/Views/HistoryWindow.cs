@@ -10,6 +10,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Media;
 using Newtonsoft.Json.Linq;
+using RvtMcp.Plugin.Localization;
 using RvtMcp.Plugin.Views.Toast;
 
 namespace RvtMcp.Plugin.Views
@@ -42,6 +43,34 @@ namespace RvtMcp.Plugin.Views
         private Button _loadHistoryButton;
         private McpCallEntry _selectedEntry;
         private Dictionary<string, string> _journalBodyCache;
+        // Relocalizable chrome (ApplyLocalization rewrites these on L.Changed)
+        private readonly DataGridColumn _colTime;
+        private readonly DataGridColumn _colTool;
+        private readonly DataGridColumn _colSummary;
+        private readonly DataGridColumn _colStatus;
+        private TextBlock _searchLabel;
+        private TextBlock _filterLabel;
+        private TextBlock _kindLabel;
+        private TextBlock _whatSection;
+        private TextBlock _inputSection;
+        private TextBlock _outputSection;
+        private Button _logsButton;
+        private Button _newSessionButton;
+        private int? _pastLoaded;
+        private bool _rerunInProgress;
+
+        private static readonly Dictionary<string, string> FilterKeys = new Dictionary<string, string>
+        {
+            ["all"] = "history.filter.all",
+            ["success"] = "history.filter.success",
+            ["failed"] = "history.filter.failed"
+        };
+        private static readonly Dictionary<string, string> KindKeys = new Dictionary<string, string>
+        {
+            ["all"] = "history.filter.all",
+            ["read"] = "history.kind.read",
+            ["write"] = "history.kind.write"
+        };
 
         public HistoryWindow(McpSessionLog sessionLog, CommandDispatcher dispatcher,
                              McpEventHandler eventHandler, Autodesk.Revit.UI.ExternalEvent externalEvent)
@@ -51,7 +80,17 @@ namespace RvtMcp.Plugin.Views
             _eventHandler = eventHandler;
             _externalEvent = externalEvent;
 
-            Title = BrandAssets.Wordmark + " · MCP Command History";
+            Title = L.T("history.window.title", ("brand", BrandAssets.Wordmark));
+            // L.Changed may fire on the watcher thread — marshal to this window's
+            // dispatcher. The window is hidden, never closed, so one subscription
+            // covers its whole lifetime.
+            L.Changed += (s, e) =>
+            {
+                var d = Dispatcher;
+                if (d == null || d.HasShutdownStarted) return;
+                if (d.CheckAccess()) ApplyLocalization();
+                else d.BeginInvoke(new Action(ApplyLocalization));
+            };
             Width = 900;
             Height = 600;
             MinWidth = 720;
@@ -97,15 +136,17 @@ namespace RvtMcp.Plugin.Views
             centerCell.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
 
             _grid.Columns.Add(new DataGridTextColumn { Header = "#", Binding = new Binding("Index"), Width = 40, ElementStyle = centerCell });
-            _grid.Columns.Add(new DataGridTextColumn { Header = "Time", Binding = new Binding("TimeLabel"), Width = 92, ElementStyle = centerCell });
-            _grid.Columns.Add(new DataGridTextColumn { Header = "Tool", Binding = new Binding("ToolName"), Width = 160 });
-            _grid.Columns.Add(new DataGridTextColumn
+            _colTime = new DataGridTextColumn { Binding = new Binding("TimeLabel"), Width = 92, ElementStyle = centerCell };
+            _grid.Columns.Add(_colTime);
+            _colTool = new DataGridTextColumn { Binding = new Binding("ToolName"), Width = 160 };
+            _grid.Columns.Add(_colTool);
+            _colSummary = new DataGridTextColumn
             {
-                Header = "Summary",
                 Binding = new Binding("Summary"),
                 Width = new DataGridLength(1, DataGridLengthUnitType.Star),
                 ElementStyle = CreateTrimStyle()
-            });
+            };
+            _grid.Columns.Add(_colSummary);
             _grid.Columns.Add(new DataGridTextColumn { Header = "ms", Binding = new Binding("DurationMs"), Width = 55, ElementStyle = centerCell });
             // Status: ✓ green / ✗ red — glyph + colour, readable at a glance.
             var statusCell = new Style(typeof(TextBlock));
@@ -116,13 +157,13 @@ namespace RvtMcp.Plugin.Views
             statusFail.Setters.Add(new Setter(TextBlock.ForegroundProperty, FrozenBrush(0xE5, 0x3E, 0x3E)));
             statusCell.Triggers.Add(statusFail);
 
-            _grid.Columns.Add(new DataGridTextColumn
+            _colStatus = new DataGridTextColumn
             {
-                Header = "Status",
                 Binding = new Binding("Success") { Converter = new BoolToStatusConverter() },
                 Width = 50,
                 ElementStyle = statusCell
-            });
+            };
+            _grid.Columns.Add(_colStatus);
             _grid.SelectionChanged += OnSelectionChanged;
 
             Grid.SetRow(_grid, 1);
@@ -149,9 +190,8 @@ namespace RvtMcp.Plugin.Views
                 Grid.SetColumn(el, col);
                 _detailPanel.Children.Add(el);
             }
-            TextBlock SectionLabel(string text) => new TextBlock
+            TextBlock SectionLabel() => new TextBlock
             {
-                Text = text,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.Gray,
                 FontSize = 10,
@@ -164,7 +204,6 @@ namespace RvtMcp.Plugin.Views
             _whatName = new TextBlock { FontWeight = FontWeights.Bold, FontSize = 14 };
             _rerunButton = new Button
             {
-                Content = "\u25B6 Re-run",
                 Style = (Style)FindResource(BimwrightStyles.PrimaryButtonKey),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 IsEnabled = false
@@ -175,19 +214,22 @@ namespace RvtMcp.Plugin.Views
             whatHeader.Children.Add(_whatName);
             _whatDesc = new TextBlock { FontStyle = FontStyles.Italic, Foreground = Brushes.Gray, FontSize = 11, Margin = new Thickness(0, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
             _warningLabel = new TextBlock { Foreground = Brushes.OrangeRed, FontSize = 11, Margin = new Thickness(0, 0, 0, 8), Visibility = Visibility.Collapsed };
-            Add(SectionLabel("WHAT"), 0, 0);
+            _whatSection = SectionLabel();
+            Add(_whatSection, 0, 0);
             Add(whatHeader, 0, 1);
             Add(_whatDesc, 1, 1);
             Add(_warningLabel, 2, 1);
 
             // INPUT section
             _inputContent = new ContentControl { Margin = new Thickness(0, 0, 0, 8) };
-            Add(SectionLabel("INPUT"), 3, 0);
+            _inputSection = SectionLabel();
+            Add(_inputSection, 3, 0);
             Add(_inputContent, 3, 1);
 
             // OUTPUT section
             _outputContainer = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
-            Add(SectionLabel("OUTPUT"), 4, 0);
+            _outputSection = SectionLabel();
+            Add(_outputSection, 4, 0);
             Add(_outputContainer, 4, 1);
 
             // Footer
@@ -212,6 +254,43 @@ namespace RvtMcp.Plugin.Views
             mainGrid.Children.Add(_detailSplitter);
 
             Content = mainGrid;
+            ApplyLocalization();
+        }
+
+        /// <summary>
+        /// Re-apply every localized string after an L.Changed swap: chrome labels,
+        /// combo contents (stable Tag survives), the summary column (recomputed
+        /// from in-memory ParamsJson/ResultJson), and the open detail pane.
+        /// </summary>
+        private void ApplyLocalization()
+        {
+            Title = L.T("history.window.title", ("brand", BrandAssets.Wordmark));
+            _colTime.Header = L.T("history.col.time");
+            _colTool.Header = L.T("history.col.tool");
+            _colSummary.Header = L.T("history.col.summary");
+            _colStatus.Header = L.T("history.col.status");
+            _searchLabel.Text = L.T("history.toolbar.search");
+            _filterLabel.Text = L.T("history.toolbar.filter");
+            _kindLabel.Text = L.T("history.toolbar.kind");
+            _logsButton.Content = L.T("history.toolbar.openLogs");
+            _newSessionButton.Content = L.T("history.toolbar.newSession");
+            _loadHistoryButton.Content = _pastLoaded == null
+                ? L.T("history.toolbar.loadPast")
+                : _pastLoaded == 0
+                    ? L.T("history.toolbar.noPastEntries")
+                    : L.T("history.toolbar.loadedPast", ("count", _pastLoaded.Value));
+            foreach (ComboBoxItem item in _filterCombo.Items)
+                item.Content = L.T(FilterKeys[(string)item.Tag]);
+            foreach (ComboBoxItem item in _kindCombo.Items)
+                item.Content = L.T(KindKeys[(string)item.Tag]);
+            _whatSection.Text = L.T("history.section.what");
+            _inputSection.Text = L.T("history.section.input");
+            _outputSection.Text = L.T("history.section.output");
+            _rerunButton.Content = L.T(_rerunInProgress ? "history.rerun.running" : "history.rerun.button");
+            foreach (var entry in _sessionLog.Entries)
+                McpSessionLog.RefreshSummary(entry);
+            _viewSource.View.Refresh();
+            ShowEntry(_selectedEntry);
         }
 
         private StackPanel CreateToolbar()
@@ -222,12 +301,12 @@ namespace RvtMcp.Plugin.Views
                 Margin = new Thickness(4)
             };
 
-            panel.Children.Add(new TextBlock
+            _searchLabel = new TextBlock
             {
-                Text = "Search:",
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(4, 0, 4, 0)
-            });
+            };
+            panel.Children.Add(_searchLabel);
 
             _searchBox = new TextBox
             {
@@ -239,67 +318,61 @@ namespace RvtMcp.Plugin.Views
             _searchBox.TextChanged += (s, e) => _viewSource.View.Refresh();
             panel.Children.Add(_searchBox);
 
-            panel.Children.Add(new TextBlock
+            _filterLabel = new TextBlock
             {
-                Text = "Filter:",
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(4, 0, 4, 0)
-            });
+            };
+            panel.Children.Add(_filterLabel);
 
+            // Items carry a stable Tag — display text is localized, filter
+            // logic compares the tag, never the translated string.
             _filterCombo = new ComboBox { Width = 90, Height = 24, Margin = new Thickness(0, 0, 8, 0) };
-            _filterCombo.Items.Add("All");
-            _filterCombo.Items.Add("Success");
-            _filterCombo.Items.Add("Failed");
+            foreach (var tag in new[] { "all", "success", "failed" })
+                _filterCombo.Items.Add(new ComboBoxItem { Tag = tag });
             _filterCombo.SelectedIndex = 0;
             _filterCombo.SelectionChanged += (s, e) => _viewSource.View.Refresh();
             panel.Children.Add(_filterCombo);
 
-            panel.Children.Add(new TextBlock
+            _kindLabel = new TextBlock
             {
-                Text = "Kind:",
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(4, 0, 4, 0)
-            });
+            };
+            panel.Children.Add(_kindLabel);
 
             _kindCombo = new ComboBox { Width = 70, Height = 24, Margin = new Thickness(0, 0, 8, 0) };
-            _kindCombo.Items.Add("All");
-            _kindCombo.Items.Add("Read");
-            _kindCombo.Items.Add("Write");
+            foreach (var tag in new[] { "all", "read", "write" })
+                _kindCombo.Items.Add(new ComboBoxItem { Tag = tag });
             _kindCombo.SelectedIndex = 0;
             _kindCombo.SelectionChanged += (s, e) => _viewSource.View.Refresh();
             panel.Children.Add(_kindCombo);
 
             var toolbarStyle = (Style)FindResource(BimwrightStyles.ToolbarButtonKey);
 
-            var logsBtn = new Button { Content = "Open logs", Style = toolbarStyle };
-            logsBtn.Click += (s, e) => OpenLogFolder();
-            panel.Children.Add(logsBtn);
+            _logsButton = new Button { Style = toolbarStyle };
+            _logsButton.Click += (s, e) => OpenLogFolder();
+            panel.Children.Add(_logsButton);
 
-            _loadHistoryButton = new Button { Content = "Load past sessions", Style = toolbarStyle };
+            _loadHistoryButton = new Button { Style = toolbarStyle };
             _loadHistoryButton.Click += (s, e) => LoadPastSessions();
             panel.Children.Add(_loadHistoryButton);
 
-            var clearBtn = new Button { Content = "New Session", Style = toolbarStyle };
-            clearBtn.Click += (s, e) =>
+            _newSessionButton = new Button { Style = toolbarStyle };
+            _newSessionButton.Click += (s, e) =>
             {
                 var confirm = MessageBox.Show(
                     this,
-                    "Start a new session? Current entries will be cleared.\n(Past sessions stay loadable via \"Load past sessions\".)",
-                    "New Session",
+                    L.T("history.newSession.confirm"),
+                    L.T("history.newSession.title"),
                     MessageBoxButton.OKCancel,
                     MessageBoxImage.Question);
                 if (confirm != MessageBoxResult.OK) return;
 
                 _sessionLog.Clear();
-                SetDetailVisible(false);
-                _whatName.Text = "";
-                _whatDesc.Text = "Select a command to view details";
-                _warningLabel.Visibility = Visibility.Collapsed;
-                _inputContent.Content = null;
-                _outputContainer.Children.Clear();
-                _footerText.Text = "";
+                ShowEntry(null);
             };
-            panel.Children.Add(clearBtn);
+            panel.Children.Add(_newSessionButton);
 
             return panel;
         }
@@ -316,13 +389,13 @@ namespace RvtMcp.Plugin.Views
                 return;
             }
 
-            var filter = _filterCombo?.SelectedItem as string;
-            if (filter == "Success" && !entry.Success) { e.Accepted = false; return; }
-            if (filter == "Failed" && entry.Success) { e.Accepted = false; return; }
+            var filter = (_filterCombo?.SelectedItem as ComboBoxItem)?.Tag as string;
+            if (filter == "success" && !entry.Success) { e.Accepted = false; return; }
+            if (filter == "failed" && entry.Success) { e.Accepted = false; return; }
 
-            var kind = _kindCombo?.SelectedItem as string;
-            if (kind == "Read" && ToolActivityClassifier.Classify(entry.ToolName) != ToolActivityKind.Read) { e.Accepted = false; return; }
-            if (kind == "Write" && ToolActivityClassifier.Classify(entry.ToolName) != ToolActivityKind.Write) { e.Accepted = false; return; }
+            var kind = (_kindCombo?.SelectedItem as ComboBoxItem)?.Tag as string;
+            if (kind == "read" && ToolActivityClassifier.Classify(entry.ToolName) != ToolActivityKind.Read) { e.Accepted = false; return; }
+            if (kind == "write" && ToolActivityClassifier.Classify(entry.ToolName) != ToolActivityKind.Write) { e.Accepted = false; return; }
 
             e.Accepted = true;
         }
@@ -358,7 +431,10 @@ namespace RvtMcp.Plugin.Views
             }
 
             _loadHistoryButton.IsEnabled = false;
-            _loadHistoryButton.Content = entries.Count == 0 ? "No past entries" : $"Loaded {entries.Count} past";
+            _pastLoaded = entries.Count;
+            _loadHistoryButton.Content = entries.Count == 0
+                ? L.T("history.toolbar.noPastEntries")
+                : L.T("history.toolbar.loadedPast", ("count", entries.Count));
         }
 
         private static void OpenLogFolder()
@@ -389,15 +465,18 @@ namespace RvtMcp.Plugin.Views
             // Guard: event fires during construction before detail panel fields exist
             if (_whatName == null) return;
 
-            var entry = _grid.SelectedItem as McpCallEntry;
-            _selectedEntry = entry;
-            _rerunButton.IsEnabled = IsRerunPossible(entry);
+            _selectedEntry = _grid.SelectedItem as McpCallEntry;
+            _rerunButton.IsEnabled = IsRerunPossible(_selectedEntry);
+            ShowEntry(_selectedEntry);
+        }
 
+        private void ShowEntry(McpCallEntry entry)
+        {
             if (entry == null)
             {
                 SetDetailVisible(false);
                 _whatName.Text = "";
-                _whatDesc.Text = "Select a command to view details";
+                _whatDesc.Text = L.T("history.detail.selectPrompt");
                 _warningLabel.Visibility = Visibility.Collapsed;
                 _inputContent.Content = null;
                 _outputContainer.Children.Clear();
@@ -413,25 +492,25 @@ namespace RvtMcp.Plugin.Views
             _warningLabel.Foreground = Brushes.OrangeRed;
             if (entry.IsHistorical)
             {
-                _warningLabel.Text = "From a previous session — view only";
+                _warningLabel.Text = L.T("history.detail.historicalNote");
                 _warningLabel.Foreground = Brushes.Gray;
                 _warningLabel.Visibility = Visibility.Visible;
             }
             else if (entry.ToolName == "send_code_to_revit" && string.IsNullOrEmpty(entry.CodeSnippet))
             {
                 _warningLabel.Text = IsRerunPossible(entry)
-                    ? "⚠ send_code body recovered from journal is bake-redacted (paths/secrets → placeholders) — verify before re-run"
-                    : "⚠ send_code body redacted from history (code_hash only) — re-run unavailable";
+                    ? L.T("security.send_code.journal_redacted_rerun")
+                    : L.T("security.send_code.redacted_no_rerun");
                 _warningLabel.Visibility = Visibility.Visible;
             }
             else if (entry.ParamsTruncated)
             {
-                _warningLabel.Text = "⚠ Params truncated in history (large payload) — re-run unavailable";
+                _warningLabel.Text = L.T("security.send_code.params_truncated");
                 _warningLabel.Visibility = Visibility.Visible;
             }
             else if (entry.ToolName == "send_code_to_revit")
             {
-                _warningLabel.Text = "\u26A0 Compile + execute C# inside Revit (dangerous)";
+                _warningLabel.Text = L.T("security.send_code.execute_warning");
                 _warningLabel.Visibility = Visibility.Visible;
             }
             else
@@ -447,9 +526,13 @@ namespace RvtMcp.Plugin.Views
             FormatOutput(entry, _outputContainer);
 
             // Footer
-            var rerunNote = entry.RerunOfIndex.HasValue ? $" \u00B7 re-run of #{entry.RerunOfIndex}" : "";
-            var sessionNote = entry.IsHistorical ? $" \u00B7 session {entry.SessionTag}" : "";
-            _footerText.Text = $"{entry.DurationMs}ms \u00B7 {(entry.Success ? "OK" : "FAIL")} \u00B7 {entry.TimeLabel}{rerunNote}{sessionNote}";
+            var rerunNote = entry.RerunOfIndex.HasValue
+                ? L.T("history.footer.rerunOf", ("index", entry.RerunOfIndex.Value))
+                : "";
+            var sessionNote = entry.IsHistorical
+                ? L.T("history.footer.session", ("tag", entry.SessionTag))
+                : "";
+            _footerText.Text = $"{entry.DurationMs}ms · {(entry.Success ? L.T("history.footer.ok") : L.T("history.footer.fail"))} · {entry.TimeLabel}{rerunNote}{sessionNote}";
         }
 
         private UIElement BuildInputControl(McpCallEntry entry)
@@ -481,7 +564,7 @@ namespace RvtMcp.Plugin.Views
                     codeBox.MaxHeight = 300;
                     return new Expander
                     {
-                        Header = $"Code ({lines.Length} lines)",
+                        Header = L.T("history.input.codeLines", ("lines", lines.Length)),
                         IsExpanded = false,
                         Content = codeBox
                     };
@@ -490,7 +573,7 @@ namespace RvtMcp.Plugin.Views
             }
 
             if (string.IsNullOrEmpty(entry.ParamsJson))
-                return new TextBlock { Text = "(no parameters)", Foreground = Brushes.Gray };
+                return new TextBlock { Text = L.T("history.input.noParams"), Foreground = Brushes.Gray };
 
             try
             {
@@ -556,7 +639,7 @@ namespace RvtMcp.Plugin.Views
             {
                 container.Children.Add(new TextBlock
                 {
-                    Text = entry.ErrorMessage ?? "Unknown error",
+                    Text = entry.ErrorMessage ?? L.T("history.output.unknownError"),
                     Foreground = Brushes.Red,
                     FontFamily = new FontFamily("Consolas"),
                     FontSize = 11,
@@ -567,7 +650,7 @@ namespace RvtMcp.Plugin.Views
 
             if (string.IsNullOrEmpty(entry.ResultJson))
             {
-                container.Children.Add(new TextBlock { Text = "(no output)", Foreground = Brushes.Gray });
+                container.Children.Add(new TextBlock { Text = L.T("history.output.noOutput"), Foreground = Brushes.Gray });
                 return;
             }
 
@@ -623,7 +706,7 @@ namespace RvtMcp.Plugin.Views
                     {
                         container.Children.Add(new TextBlock
                         {
-                            Text = $"Showing 10 of {rows.Count} rows",
+                            Text = L.T("history.output.showingRows", ("shown", 10), ("total", rows.Count)),
                             Foreground = Brushes.Gray,
                             FontSize = 10,
                             Margin = new Thickness(0, 2, 0, 0)
@@ -704,18 +787,19 @@ namespace RvtMcp.Plugin.Views
                         .ToString(Newtonsoft.Json.Formatting.None);
                 }
                 var prompt = redacted
-                    ? "Body recovered from the send-code journal is redacted (paths/secrets → placeholders) — it may behave differently than the original. Execute anyway?"
-                    : "This will execute C# code in Revit. Continue?";
+                    ? L.T("security.send_code.rerunConfirmRedacted")
+                    : L.T("security.send_code.rerunConfirm");
                 var confirm = MessageBox.Show(
                     this,
                     prompt,
-                    "Re-run Confirmation",
+                    L.T("security.send_code.rerunConfirmTitle"),
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
                 if (confirm != MessageBoxResult.Yes) return;
             }
 
-            _rerunButton.Content = "Running...";
+            _rerunInProgress = true;
+            _rerunButton.Content = L.T("history.rerun.running");
             _rerunButton.IsEnabled = false;
 
             try
@@ -779,7 +863,7 @@ namespace RvtMcp.Plugin.Views
                 _outputContainer.Children.Clear();
                 _outputContainer.Children.Add(new TextBlock
                 {
-                    Text = $"Re-run result ({DateTime.Now:HH:mm:ss})",
+                    Text = L.T("history.rerun.resultHeader", ("time", DateTime.Now.ToString("HH:mm:ss"))),
                     FontWeight = FontWeights.Bold,
                     FontSize = 11,
                     Margin = new Thickness(0, 0, 0, 4)
@@ -805,7 +889,9 @@ namespace RvtMcp.Plugin.Views
                                     var sign = delta > 0 ? "+" : "";
                                     _outputContainer.Children.Add(new TextBlock
                                     {
-                                        Text = $"  {prop.Name}: {newVal} (was {oldVal} \u2014 {sign}{delta})",
+                                        Text = L.T("history.rerun.diffLine",
+                                            ("name", prop.Name), ("value", newVal),
+                                            ("old", oldVal), ("delta", sign + delta.ToString())),
                                         Foreground = Brushes.DarkCyan,
                                         FontFamily = new FontFamily("Consolas"),
                                         FontSize = 11
@@ -826,21 +912,22 @@ namespace RvtMcp.Plugin.Views
                 };
                 FormatOutput(rerunEntry, _outputContainer);
 
-                _footerText.Text = $"{sw.ElapsedMilliseconds}ms \u00B7 {(result.Success ? "OK" : "FAIL")} \u00B7 re-run of #{originalIndex}";
+                _footerText.Text = $"{sw.ElapsedMilliseconds}ms · {(result.Success ? L.T("history.footer.ok") : L.T("history.footer.fail"))}{L.T("history.footer.rerunOf", ("index", originalIndex))}";
             }
             catch (Exception ex)
             {
                 _outputContainer.Children.Clear();
                 _outputContainer.Children.Add(new TextBlock
                 {
-                    Text = $"Re-run failed: {ex.Message}",
+                    Text = L.T("history.rerun.failed", ("message", ex.Message)),
                     Foreground = Brushes.Red,
                     TextWrapping = TextWrapping.Wrap
                 });
             }
             finally
             {
-                _rerunButton.Content = "\u25B6 Re-run";
+                _rerunInProgress = false;
+                _rerunButton.Content = L.T("history.rerun.button");
                 _rerunButton.IsEnabled = true;
             }
         }
