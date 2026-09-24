@@ -1,5 +1,32 @@
 # Installer upgrade verification — 2026-09-22
 
+## Update 2026-09-24 — Revit-side guarantees (unreleased, supersedes the client-wiring notes below)
+
+The installer no longer reads or writes MCP client configs; agents or users connect clients themselves (`AGENTS.md` Step 3). The installer now guarantees the Revit side:
+
+- **Detection.** A Revit year counts only when a `Revit.exe` exists, found via `InstallationLocation` or the default Program Files folder. On the dev machine, the leftover 2023/2025 registry keys are no longer detected.
+- **Package validation.** Each plugin ZIP manifest must carry RvtMcp's fixed AddInId for its year and `<Assembly>RvtMcp\RvtMcp.Plugin.dll</Assembly>`. All six v0.6.2 ZIPs pass.
+- **Duplicates and legacy copies.**
+  - Per-user manifests with the same AddInId — Bimwright-era copies — are moved into the rollback transaction, together with assembly folders only they use.
+  - A machine-wide copy under `%ProgramData%` blocks the install before any change.
+- **Fixed server path.** `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` for every version.
+  - A previous copy that a running MCP client still uses is kept whole, detected by trying to delete its exe first, and swept at the next install.
+  - Legacy versioned folders are listed and removed with `-PruneOldServers`.
+- **Server check.** The installed server is unblocked (Mark-of-the-Web) and started once with `--help`. Failure rolls back add-ins and server.
+- **Verification.** Installed add-ins are compared byte for byte with the package. Exactly one manifest per year may carry RvtMcp's AddInId.
+- **Uninstall.** `install.ps1 -Uninstall` covers 2022–2027 without detection, legacy copies included. `uninstall-all.ps1` never half-deletes a running server copy.
+
+**Automated evidence (2026-09-24):**
+
+- `tests/installer/upgrade.Tests.ps1`: 25/25 on Windows PowerShell 5.1 and on PowerShell 7.
+- `tests/installer/uninstall.Tests.ps1`: 11/11 on Windows PowerShell 5.1 and on PowerShell 7.
+- In-use behaviour is tested with a real running process (a copy of `PING.EXE`).
+- `tests/installer/upgrade-package.ps1`, from the real v0.6.2 payload to a package built from this code: all six years match the package; the **real** `rvt-mcp.exe --help` smoke check passed; the legacy `0.6.2` folder was kept.
+
+Sections below describe the v0.6.2 release and remain as its historical record.
+
+## v0.6.2 record
+
 Status: local installer fixes complete and v0.6.2 setup ZIP built and verified; not published. Server project, MCP handshake and server registry metadata now agree on 0.6.2. This record does not replace the earlier live Revit issue acceptance.
 
 ## Initial working-tree v0.6.2 package (historical)
@@ -23,7 +50,7 @@ The installer now updates only the managed executable path, preserving arguments
 
 All selected plugin archives and manifest checksums are validated before replacement. Payload extraction/copy completes in a staging directory first. Running Revit blocks apply, with another check after staging. Old plugin directories, addin manifests and an existing target server version are moved to unique adjacent backups. Config writes remain atomic and receive transaction snapshots. A later error restores earlier changes in reverse order. If one restore fails, other restores still run and the failed backup path is reported and retained.
 
-`-WhatIf` performs validation and previews but creates no staging/config files. Versioned older server directories remain untouched. No full uninstall or personal ToolBaker/cache deletion is part of upgrade.
+`-WhatIf` performs validation and previews but creates no staging/config files. Versioned older server directories remain untouched unless `-PruneOldServers` is passed. No full uninstall or personal ToolBaker/cache deletion is part of upgrade.
 
 ## Automated evidence
 
@@ -34,7 +61,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/installer/upgrade.Test
 pwsh -NoProfile -File tests/installer/upgrade.Tests.ps1
 ```
 
-The harness loads production function definitions and the actual install control flow via the PowerShell AST. Only process discovery and destination/config routing are redirected for full-flow tests. It uses real ZIP extraction, file moves, atomic config replacement and an exclusive Windows file lock. Dummy binary payloads are intentionally never executed. CI runs both PowerShell shells.
+The harness loads production function definitions and the actual install control flow via the PowerShell AST. Only process discovery and destination/config routing are redirected for full-flow tests. It uses real ZIP extraction, file moves, atomic config replacement and an exclusive Windows file lock. Dummy binary payloads are intentionally never executed. Profile environment variables (`USERPROFILE`, `APPDATA`, `LOCALAPPDATA`) are redirected to a per-run sandbox so no test can reach real user data. CI runs both PowerShell shells.
 
 - [Windows PowerShell 5.1](powershell-5.1.json): 19/19 passed.
 - [PowerShell 7](powershell-7.json): 19/19 passed.

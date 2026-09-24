@@ -22,11 +22,13 @@ jobs:
           New-Item -ItemType Directory -Path artifacts -Force | Out-Null
           & ${{ matrix.shell }} -NoProfile -ExecutionPolicy Bypass -File ./tests/installer/upgrade.Tests.ps1 -ResultPath artifacts/installer-upgrade-${{ matrix.shell }}.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & ${{ matrix.shell }} -NoProfile -ExecutionPolicy Bypass -File ./tests/installer/uninstall.Tests.ps1 -ResultPath artifacts/installer-uninstall-${{ matrix.shell }}.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: installer-upgrade-${{ matrix.shell }}
-          path: artifacts/installer-upgrade-*.json
+          path: artifacts/installer-*.json
 
   plugin:
     name: plugin-${{ matrix.revit }}

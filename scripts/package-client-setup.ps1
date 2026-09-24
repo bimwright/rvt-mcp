@@ -26,7 +26,10 @@ param(
 
     [string]$Version,
 
-    [string]$OutputDir
+    [string]$OutputDir,
+
+    # Package an uncommitted working tree for a throwaway test build.
+    [switch]$AllowDirty
 )
 
 $ErrorActionPreference = 'Stop'
@@ -36,6 +39,17 @@ if (-not $RepoRoot) {
 }
 
 $RepoRoot = (Resolve-Path $RepoRoot).Path
+
+# A package must match a commit, otherwise testers exercise code nobody can
+# identify. -AllowDirty marks the manifest instead.
+$dirty = $false
+$status = $null
+try { $status = & git -C $RepoRoot status --porcelain 2>$null } catch { $status = $null } # no git: commit stays unknown, as below
+if ($status) {
+    if (-not $AllowDirty) { throw 'Working tree has uncommitted changes. Commit them so the package matches a commit, or pass -AllowDirty for a throwaway test package.' }
+    $dirty = $true
+    Write-Warning 'Packaging a dirty working tree (-AllowDirty): manifest records dirty=true.'
+}
 if (-not $OutputDir) {
     $OutputDir = Join-Path $RepoRoot 'build\client-setup'
 }
@@ -125,6 +139,7 @@ foreach ($zip in $pluginZips) {
 }
 
 Copy-Item -Path (Join-Path $RepoRoot 'scripts\install.ps1') -Destination (Join-Path $stageRoot 'install.ps1') -Force
+Copy-Item -Path (Join-Path $RepoRoot 'AGENTS.md') -Destination (Join-Path $stageRoot 'AGENTS.md') -Force
 Copy-Item -Path (Join-Path $RepoRoot 'scripts\uninstall-all.ps1') -Destination (Join-Path $stageRoot 'uninstall.ps1') -Force
 Copy-Item -Path (Join-Path $RepoRoot 'scripts\uninstall-all.ps1') -Destination (Join-Path $stageRoot 'uninstall-all.ps1') -Force
 
@@ -175,6 +190,7 @@ $manifest = [ordered]@{
     version = $Version
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString('o')
     commit = $commit
+    dirty = $dirty
     platform = 'win-x64'
     supportedRevitYears = @(2022, 2023, 2024, 2025, 2026, 2027)
     server = [ordered]@{
