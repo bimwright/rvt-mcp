@@ -9,6 +9,8 @@
       2022-2027 (a year counts when its Revit.exe exists)
     - the self-contained MCP server from server/ at the fixed path
       %LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe
+    - a default %LOCALAPPDATA%\RvtMcp\rvtmcp.config.json with toolsets=["all"]
+      (skipped when the file already sets toolsets)
 
   It never reads or writes MCP client configs: point your MCP client at the
   server path above (see AGENTS.md). Updating keeps that path, so clients only
@@ -464,6 +466,38 @@ function Remove-StaleServerVersions {
     }
 }
 
+# Fresh installs default the server to the full tool surface: seed
+# rvtmcp.config.json with toolsets=["all"]. An existing toolsets key is the
+# user's explicit choice and is kept; --toolsets/--read-only args and
+# BIMWRIGHT_* env vars still outrank the file. The write rides the install
+# transaction, so a failed install restores the previous config.
+function Set-DefaultToolsetsConfig {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param([string]$ConfigPath)
+    $full = [IO.Path]::GetFullPath($ConfigPath)
+    $existed = Test-Path -LiteralPath $full
+    $root = $null
+    if ($existed) {
+        try { $root = Get-Content -LiteralPath $full -Raw | ConvertFrom-Json }
+        catch {
+            Write-Warning ("[config] {0} is not valid JSON; left unchanged." -f $full)
+            return 'skipped'
+        }
+        if ($null -ne $root -and $root.PSObject.Properties.Match('toolsets').Count) { return 'kept' }
+    }
+    if (-not $PSCmdlet.ShouldProcess($full, 'Seed default toolsets=all in rvtmcp.config.json')) {
+        Write-Host ("[config] preview seed toolsets=all -> {0}" -f $full)
+        return 'previewed'
+    }
+    New-Item -ItemType Directory -Path (Split-Path -Parent $full) -Force | Out-Null
+    if ($existed) { Move-ToRollback $full }
+    else { $script:installChanges.Add([pscustomobject]@{Path=$full;Backup=$null}) }
+    if ($null -eq $root) { $root = [pscustomobject]@{} }
+    $root | Add-Member -NotePropertyName toolsets -NotePropertyValue @('all') -Force
+    [IO.File]::WriteAllText($full, ($root | ConvertTo-Json -Depth 8))
+    return $(if ($existed) { 'merged' } else { 'seeded' })
+}
+
 if (-not $Years -or $Years.Count -eq 0) {
     if ($Uninstall) {
         # Removal must not depend on Revit still being installed.
@@ -492,6 +526,7 @@ $inUse = @()
 $legacyServers = @()
 $serverCommand = $null
 $serverCheck = 'not run'
+$configDefault = $null
 # A caller-supplied -ServerInstallRoot's parent is not ours to prune or sweep.
 $ownServerRoot = -not $PSBoundParameters.ContainsKey('ServerInstallRoot')
 $Years = @($Years | Sort-Object -Unique)
@@ -605,6 +640,7 @@ try {
         } elseif ($serverCommand) {
             $serverCheck = 'skipped (WhatIf)'
         }
+        $configDefault = Set-DefaultToolsetsConfig -ConfigPath (Join-Path $env:LOCALAPPDATA 'RvtMcp\rvtmcp.config.json')
         if (-not $WhatIfPreference) {
             foreach ($year in $Years) {
                 $yearTwo = "{0:D2}" -f ($year - 2000)
@@ -655,6 +691,13 @@ if ($verified.Count) { Write-Host ("Verified: {0} match the package" -f ($verifi
 if (-not $Uninstall) {
     if ($serverCommand) { Write-Host ("Server  : {0} (check: {1})" -f $serverCommand, $serverCheck) }
     else { Write-Host 'Server  : not in this package' }
+    switch ($configDefault) {
+        'seeded'    { Write-Host ("Config  : seeded toolsets=all -> {0}\RvtMcp\rvtmcp.config.json" -f $env:LOCALAPPDATA) }
+        'merged'    { Write-Host ("Config  : added toolsets=all to {0}\RvtMcp\rvtmcp.config.json" -f $env:LOCALAPPDATA) }
+        'kept'      { Write-Host 'Config  : kept existing toolsets setting' }
+        'skipped'   { Write-Host 'Config  : unreadable config - unchanged' }
+        'previewed' { Write-Host ("Config  : preview seed toolsets=all -> {0}\RvtMcp\rvtmcp.config.json" -f $env:LOCALAPPDATA) }
+    }
 }
 if ($inUse.Count) { Write-Host ("In use  : {0} - restart MCP clients; removed at next install" -f ($inUse -join ', ')) }
 if ($legacyServers.Count) { Write-Host ("Legacy  : {0} - repoint clients to the Server path, then run install.ps1 -PruneOldServers" -f (($legacyServers | ForEach-Object { $_.Name }) -join ', ')) }

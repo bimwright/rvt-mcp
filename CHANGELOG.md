@@ -26,9 +26,13 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 ### Added
 
 - **MCP prompts** — `revit_getting_started`, `revit_model_audit`, `revit_pre_issue_check`, `revit_stairs`: user-invoked markdown workflows, always listed; a prompt whose toolsets aren't enabled returns the exact `--toolsets` line instead of its steps. `revit_stairs` is the one write-capable prompt (via `send_code`) and asks for confirmation before writing.
+- **Full tool surface on install** — the installer seeds `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json` with `"toolsets": ["all"]` when the file doesn't already set `toolsets`, so fresh installs expose all 229 tools. An explicit `toolsets` choice is preserved on upgrade; `--toolsets`, `BIMWRIGHT_TOOLSETS` and `--read-only` still outrank the file, and a bare `rvt-mcp.exe` without it still defaults to `query,create,view,meta`.
 
 ### Fixed
 
+- **Prompt configuration notices** — missing read-only toolsets no longer trigger advice to disable `--read-only`; enabling required write-capable toolsets remains an explicit user decision.
+- **Pre-issue scope and coverage** — named sheet sets require explicit member sheets rather than being mistaken for sheet-name filters. Bounded model warnings do not certify individual sheets; unresolved or incomplete checks report `NOT VERIFIED`.
+- **Standalone stair guidance** — the embedded prompt includes its transaction, failure-reporting and scope-cleanup template instead of depending on documents from a source checkout.
 - **`dotnet build src/RvtMcp.sln` on a clean tree** — the test project's server reference now compiles into its own `obj`, so parallel builds no longer collide with the solution's server build (`MSB3371`/`CS2012`).
 
 ## v0.6.3 - Localized UI and a Revit-only installer

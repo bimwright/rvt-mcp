@@ -89,11 +89,12 @@ Removes the add-ins and the server but keeps settings, translations, ToolBaker d
 
 | Mode | Tools | Notes |
 |------|------:|-------|
-| Default | **40** | `query` + `create` + `view` + `meta` |
+| Fresh install | **229** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **40** | `query` + `create` + `view` + `meta` |
 | `--toolsets all` | **229** | Full catalog |
 | `all` + adaptive bake | **232** | Adds 3 suggestion-lifecycle tools |
 
-Counts exclude your personal baked tools. Other toolsets stay off until you ask for them, e.g. `--toolsets query,view,meta,mep` or `--toolsets all`; `--read-only` drops every write-capable toolset (including `create`).
+Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 40-tool surface. `--read-only` drops every write-capable toolset (including `create`) regardless of source.
 
 | Toolset | What it covers |
 |---------|----------------|
@@ -135,10 +136,10 @@ Four ready-made workflows ship as MCP prompts — pick `/mcp__rvt-mcp__revit_<na
 
 - `revit_getting_started` — orient in the open model (read-only, works on defaults).
 - `revit_model_audit` — health audit: warnings, families, dry-run purge candidates (needs `workflows,families,lint,meta`).
-- `revit_pre_issue_check` — are these sheets ready to issue (needs `sheets,view,annotation,lint,meta`).
-- `revit_stairs` — guided stair creation through `send_code` (writes only after your confirmation).
+- `revit_pre_issue_check` — checks resolved sheets before issue (needs `sheets,view,annotation,lint,meta`). Supply sheet numbers/IDs, an explicit number/name filter, or `all`; a named sheet set needs its member sheets. Sampled model warnings and incomplete checks are reported as **NOT VERIFIED**, not a sheet-level pass.
+- `revit_stairs` — guided stair creation through `send_code` (writes only after your confirmation). Includes the transaction/failure/cleanup template; no source checkout is needed.
 
-If a prompt's toolsets aren't enabled, it answers with the exact `--toolsets` line to add — nothing runs half-configured.
+If a prompt's toolsets aren't enabled, it answers with the exact `--toolsets` line to add — nothing runs half-configured. Read-only protection stays on when the missing tools allow it; prompts requiring write-capable toolsets explain the conflict rather than silently changing configuration. Prompts are instructions for the agent, not server-enforced workflow locks.
 
 ---
 

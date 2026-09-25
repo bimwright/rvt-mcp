@@ -365,6 +365,42 @@ try {
         Assert (Test-Path -LiteralPath $script:installChanges[1].Backup) 'Failed rollback deleted its recovery backup'
         $script:installChanges=$null
     }
+    Test 'Install seeds toolsets=all config and keeps an explicit toolsets choice' {
+        $cfgPath = Join-Path $sandboxLocalAppData 'RvtMcp\rvtmcp.config.json'
+        Remove-Item -LiteralPath $cfgPath -Force -ErrorAction SilentlyContinue
+        $fixture = New-SetupFixture
+        $output = Invoke-FixtureSetup $fixture 3>&1 6>&1 | Out-String -Width 4096
+        Assert (Test-Path -LiteralPath $cfgPath) 'rvtmcp.config.json not seeded'
+        $cfg = Get-Content -LiteralPath $cfgPath -Raw | ConvertFrom-Json
+        Assert (@($cfg.toolsets) -contains 'all') 'toolsets=all not seeded'
+        Assert ($output -match 'Config\s*:\s*seeded toolsets=all') 'Config seed not reported'
+        # An explicit toolsets choice survives the next install.
+        Set-Content -LiteralPath $cfgPath '{"toolsets":["query","meta"],"enableToast":false}'
+        $output = Invoke-FixtureSetup $fixture 3>&1 6>&1 | Out-String -Width 4096
+        $cfg = Get-Content -LiteralPath $cfgPath -Raw | ConvertFrom-Json
+        Assert (($cfg.toolsets -join ',') -eq 'query,meta') 'User toolsets clobbered'
+        Assert ($cfg.enableToast -eq $false) 'Other config keys clobbered'
+        Assert ($output -match 'Config\s*:\s*kept existing') 'Kept setting not reported'
+    }
+    Test 'Install merges toolsets=all into a config that lacks the key' {
+        $cfgPath = Join-Path $sandboxLocalAppData 'RvtMcp\rvtmcp.config.json'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $cfgPath) -Force | Out-Null
+        Set-Content -LiteralPath $cfgPath '{"enableToast":false}'
+        $fixture = New-SetupFixture
+        Invoke-FixtureSetup $fixture | Out-Null
+        $cfg = Get-Content -LiteralPath $cfgPath -Raw | ConvertFrom-Json
+        Assert (@($cfg.toolsets) -contains 'all') 'toolsets=all not merged'
+        Assert ($cfg.enableToast -eq $false) 'Existing key clobbered by merge'
+        Assert (@(Get-ChildItem -LiteralPath $fixture.Root -Recurse -Filter '*.rvtmcp-rollback-*').Count -eq 0) 'Transaction backups leaked after success'
+    }
+    Test 'WhatIf reports the seed without writing the config' {
+        $cfgPath = Join-Path $sandboxLocalAppData 'RvtMcp\rvtmcp.config.json'
+        Remove-Item -LiteralPath $cfgPath -Force -ErrorAction SilentlyContinue
+        $fixture = New-SetupFixture
+        $output = Invoke-FixtureSetup $fixture -WhatIf 3>&1 6>&1 | Out-String -Width 4096
+        Assert (-not (Test-Path -LiteralPath $cfgPath)) 'WhatIf wrote the config'
+        Assert ($output -match 'preview seed toolsets=all') 'Seed preview missing'
+    }
 } finally {
     $env:USERPROFILE = $savedUserProfile
     $env:APPDATA = $savedAppData

@@ -84,6 +84,7 @@ The installer:
 - detects installed Revit years (a year counts when its `Revit.exe` exists);
 - removes older add-in copies that carry RvtMcp's AddInId (Bimwright-era leftovers);
 - installs the matching add-ins and the server, and checks that the server starts;
+- seeds `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json` with `"toolsets": ["all"]` so a fresh install exposes the full tool surface — a `toolsets` key the user already set is kept, and the file stays user data (uninstall keeps it, `-Purge` removes it);
 - verifies the installed add-ins against the package.
 
 Any error restores the previous add-ins and server. A machine-wide copy under `%ProgramData%` stops the install before anything changes (removing it needs admin rights). The installer **does not configure MCP clients** — that is Step 3.
@@ -137,7 +138,7 @@ JSON-style clients usually take:
 
 ## Step 4 — Verify
 
-1. **List tools.** Ask the host to call `tools/list` against the wired server. Default toolsets are `query,create,view,meta` — expect `revit_get_current_view_info`, `revit_batch_execute`, and `revit_send_code_to_revit`. Clash/export/MEP need `--toolsets all` (or an explicit CSV).
+1. **List tools.** Ask the host to call `tools/list` against the wired server. Installed servers seed `toolsets=all`, so expect the full surface including `revit_get_current_view_info`, `revit_batch_execute`, `revit_send_code_to_revit` and clash/export/MEP tools. If the user removed the seeded key or set their own list, the bare default is `query,create,view,meta` — check `rvtmcp.config.json` and the client entry's `args`.
 
 2. **Handshake call.** With Revit 2022–2027 running and a model open, call `revit_get_current_view_info` with no args. A valid response looks like:
 
