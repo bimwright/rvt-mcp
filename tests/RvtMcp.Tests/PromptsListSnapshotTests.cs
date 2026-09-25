@@ -24,24 +24,7 @@ namespace RvtMcp.Tests
         {
             var captured = CapturePromptsList();
 
-            var update = Environment.GetEnvironmentVariable("UPDATE_SNAPSHOTS") == "1";
-            var goldenExists = File.Exists(GoldenPath);
-
-            if (update || !goldenExists)
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(GoldenPath)!);
-                File.WriteAllText(GoldenPath, captured);
-                if (!goldenExists)
-                {
-                    Console.Error.WriteLine(
-                        $"[PromptsListSnapshot] Golden file bootstrapped at {GoldenPath}. " +
-                        "Please commit it.");
-                }
-                return;
-            }
-
-            var expected = File.ReadAllText(GoldenPath);
-            Assert.Equal(expected.ReplaceLineEndings("\n"), captured.ReplaceLineEndings("\n"));
+            SnapshotSerializer.VerifyGolden(GoldenPath, captured, "PromptsListSnapshot");
         }
 
         private static string CapturePromptsList()

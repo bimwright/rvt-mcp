@@ -9,6 +9,7 @@ namespace RvtMcp.Tests
 {
     /// <summary>Spec D2: missing toolsets → enable notice replaces the body;
     /// send_code gate → its own notice; args substitute after gating.</summary>
+    [Collection("ServerStateConfig")]
     public class PromptBodyTests : IDisposable
     {
         private const string Body =
@@ -59,6 +60,17 @@ namespace RvtMcp.Tests
             var rendered = PromptBody.Render(Body, new[] { "workflows" }, false, args);
 
             Assert.Equal(Body.Replace("{scope}", "level 2"), rendered);
+        }
+
+        [Fact]
+        public void Enable_notice_warns_when_read_only_would_restrip_write_capable_sets()
+        {
+            ServerState.Config = new RvtMcpConfig { ReadOnly = true };
+
+            var rendered = PromptBody.Render(Body, new[] { "workflows" }, false);
+
+            Assert.Contains("--read-only", rendered);
+            Assert.Contains("write-capable", rendered);
         }
 
         [Fact]

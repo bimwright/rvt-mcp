@@ -17,4 +17,4 @@ Report
 - End with the 3 fixes that matter most. Ask before fixing anything.
 
 Do not
-- Delete, rename or retag anything. Do not use revit_send_code_to_revit.
+- Do not delete, rename or retag anything. Do not use revit_send_code_to_revit.

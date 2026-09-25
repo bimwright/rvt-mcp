@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using RvtMcp.Plugin;
 
 namespace RvtMcp.Server.Prompts
 {
@@ -54,7 +53,8 @@ namespace RvtMcp.Server.Prompts
                 .Where(t => !enabled.Contains(t))
                 .ToArray();
 
-            if (missing.Length > 0) return MissingToolsetsNotice(missing, enabled);
+            if (missing.Length > 0)
+                return MissingToolsetsNotice(missing, enabled, ServerState.Config?.ReadOnlyOrDefault == true);
             if (requiresSendCode && !Program.IncludeSendCode(enabled, ServerState.Config))
                 return SendCodeOffNotice();
             return ApplyArgs(body, args);
@@ -68,19 +68,22 @@ namespace RvtMcp.Server.Prompts
             return body;
         }
 
-        internal static string MissingToolsetsNotice(string[] missing, HashSet<string> enabled)
+        private static string MissingToolsetsNotice(string[] missing, HashSet<string> enabled, bool readOnly)
         {
             var merged = ToolsetFilter.KnownToolsets
-                .Where(t => enabled.Contains(t) || missing.Contains(t))
+                .Where(t => enabled.Contains(t) || missing.Contains(t, StringComparer.OrdinalIgnoreCase))
                 .ToArray();
             return
                 "This prompt needs toolsets that are not enabled on this server.\n" +
                 "Missing: " + string.Join(", ", missing.OrderBy(t => t, StringComparer.Ordinal)) + ".\n" +
                 "Add them to the server command line, e.g.:  --toolsets " + string.Join(",", merged) + "\n" +
-                "(or --toolsets all), then restart the MCP connection so the client picks up the new tool list.";
+                "(or --toolsets all), then restart the MCP connection so the client picks up the new tool list." +
+                (readOnly
+                    ? "\nThe server also runs with --read-only, which re-strips write-capable toolsets — drop that flag too."
+                    : string.Empty);
         }
 
-        internal static string SendCodeOffNotice()
+        private static string SendCodeOffNotice()
         {
             return
                 "This prompt works through revit_send_code_to_revit, which is not exposed right now.\n" +

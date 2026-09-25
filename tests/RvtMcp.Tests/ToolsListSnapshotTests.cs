@@ -29,24 +29,7 @@ namespace RvtMcp.Tests
         {
             var captured = CaptureToolsList(AllToolsetsConfig(enableAdaptiveBake: false));
 
-            var update = Environment.GetEnvironmentVariable("UPDATE_SNAPSHOTS") == "1";
-            var goldenExists = File.Exists(GoldenPath);
-
-            if (update || !goldenExists)
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(GoldenPath)!);
-                File.WriteAllText(GoldenPath, captured);
-                if (!goldenExists)
-                {
-                    Console.Error.WriteLine(
-                        $"[ToolsListSnapshot] Golden file bootstrapped at {GoldenPath}. " +
-                        "Please commit it.");
-                }
-                return;
-            }
-
-            var expected = File.ReadAllText(GoldenPath);
-            Assert.Equal(expected.ReplaceLineEndings("\n"), captured.ReplaceLineEndings("\n"));
+            SnapshotSerializer.VerifyGolden(GoldenPath, captured, "ToolsListSnapshot");
         }
 
         [Fact]
@@ -58,24 +41,7 @@ namespace RvtMcp.Tests
                 Toolsets = new System.Collections.Generic.List<string> { "all" }
             });
 
-            var update = Environment.GetEnvironmentVariable("UPDATE_SNAPSHOTS") == "1";
-            var goldenExists = File.Exists(AdaptiveGoldenPath);
-
-            if (update || !goldenExists)
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(AdaptiveGoldenPath)!);
-                File.WriteAllText(AdaptiveGoldenPath, captured);
-                if (!goldenExists)
-                {
-                    Console.Error.WriteLine(
-                        $"[ToolsListSnapshot] Adaptive golden file bootstrapped at {AdaptiveGoldenPath}. " +
-                        "Please commit it.");
-                }
-                return;
-            }
-
-            var expected = File.ReadAllText(AdaptiveGoldenPath);
-            Assert.Equal(expected.ReplaceLineEndings("\n"), captured.ReplaceLineEndings("\n"));
+            SnapshotSerializer.VerifyGolden(AdaptiveGoldenPath, captured, "ToolsListSnapshot");
         }
 
         [Fact]
@@ -86,24 +52,7 @@ namespace RvtMcp.Tests
                 Toolsets = new System.Collections.Generic.List<string> { "structural" }
             });
 
-            var update = Environment.GetEnvironmentVariable("UPDATE_SNAPSHOTS") == "1";
-            var goldenExists = File.Exists(StructuralGoldenPath);
-
-            if (update || !goldenExists)
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(StructuralGoldenPath)!);
-                File.WriteAllText(StructuralGoldenPath, captured);
-                if (!goldenExists)
-                {
-                    Console.Error.WriteLine(
-                        $"[ToolsListSnapshot] Structural golden file bootstrapped at {StructuralGoldenPath}. " +
-                        "Please commit it.");
-                }
-                return;
-            }
-
-            var expected = File.ReadAllText(StructuralGoldenPath);
-            Assert.Equal(expected.ReplaceLineEndings("\n"), captured.ReplaceLineEndings("\n"));
+            SnapshotSerializer.VerifyGolden(StructuralGoldenPath, captured, "ToolsListSnapshot");
         }
 
         [Fact]

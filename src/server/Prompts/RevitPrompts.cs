@@ -13,9 +13,13 @@ namespace RvtMcp.Server.Prompts
     [McpServerPromptType]
     public class RevitPrompts
     {
-        internal static readonly string[] GettingStartedSets = { "query", "meta" };
-        internal static readonly string[] ModelAuditSets = { "workflows", "families", "lint", "meta" };
-        internal static readonly string[] PreIssueSets = { "sheets", "view", "annotation", "lint", "meta" };
+        private static readonly string[] GettingStartedSets = { "query", "meta" };
+        private static readonly string[] ModelAuditSets = { "workflows", "families", "lint", "meta" };
+        private static readonly string[] PreIssueSets = { "sheets", "view", "annotation", "lint", "meta" };
+        // Spec §3: stairs needs meta (revit_get_current_target) even though send_code
+        // can also ride the toolbaker set — without the gate a toolbaker-only server
+        // would render a body whose first step isn't exposed.
+        private static readonly string[] StairsSets = { "meta" };
 
         [McpServerPrompt(Name = "revit_getting_started"),
          Description("Read-only orientation for the connected Revit: current target, active view, model statistics. Safe first command.")]
@@ -56,7 +60,7 @@ namespace RvtMcp.Server.Prompts
         public static string Stairs()
         {
             return PromptBody.Render(
-                PromptBody.Load("stairs"), null, requiresSendCode: true);
+                PromptBody.Load("stairs"), StairsSets, requiresSendCode: true);
         }
     }
 }

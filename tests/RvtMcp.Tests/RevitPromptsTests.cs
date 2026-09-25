@@ -7,6 +7,7 @@ using Xunit;
 
 namespace RvtMcp.Tests
 {
+    [Collection("ServerStateConfig")]
     public class RevitPromptsTests : IDisposable
     {
         public RevitPromptsTests() { ServerState.Config = new RvtMcpConfig(); }
@@ -15,6 +16,8 @@ namespace RvtMcp.Tests
         [Theory]
         [InlineData("getting_started")]
         [InlineData("model_audit")]
+        [InlineData("pre_issue_check")]
+        [InlineData("stairs")]
         public void Embedded_prompt_body_loads(string name)
         {
             Assert.False(string.IsNullOrWhiteSpace(PromptBody.Load(name)), $"missing RvtMcp.Prompts.{name}.md");
@@ -72,14 +75,6 @@ namespace RvtMcp.Tests
             Assert.Contains("all", rendered);
         }
 
-        [Theory]
-        [InlineData("pre_issue_check")]
-        [InlineData("stairs")]
-        public void Embedded_prompt_body_loads_batch2(string name)
-        {
-            Assert.False(string.IsNullOrWhiteSpace(PromptBody.Load(name)), $"missing RvtMcp.Prompts.{name}.md");
-        }
-
         [Fact]
         public void PreIssueCheck_returns_enable_notice_under_default_config()
         {
@@ -126,6 +121,23 @@ namespace RvtMcp.Tests
             var rendered = RevitPrompts.Stairs();
 
             Assert.Contains("--read-only", rendered);
+            Assert.DoesNotContain("resolved design", rendered);
+        }
+
+        [Fact]
+        public void Stairs_returns_enable_notice_when_meta_off_even_with_toolbaker()
+        {
+            // send_code stays available via the toolbaker set, but the body's step-0
+            // revit_get_current_target lives in meta — the prompt must gate on it.
+            ServerState.Config = new RvtMcpConfig
+            {
+                Toolsets = new List<string> { "toolbaker" }
+            };
+
+            var rendered = RevitPrompts.Stairs();
+
+            Assert.Contains("meta", rendered);
+            Assert.Contains("--toolsets", rendered);
             Assert.DoesNotContain("resolved design", rendered);
         }
     }
