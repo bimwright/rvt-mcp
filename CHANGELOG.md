@@ -23,7 +23,9 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
-No changes on `master` since v0.6.3 yet.
+### Fixed
+
+- **`dotnet build src/RvtMcp.sln` on a clean tree** — the test project's server reference now compiles into its own `obj`, so parallel builds no longer collide with the solution's server build (`MSB3371`/`CS2012`).
 
 ## v0.6.3 - Localized UI and a Revit-only installer
 

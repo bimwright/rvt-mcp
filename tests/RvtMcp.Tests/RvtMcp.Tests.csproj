@@ -77,9 +77,11 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <!-- Own obj: the solution also builds the server with default properties, and a shared
+       obj lets parallel builds collide on its files (MSB3371). -->
   <ItemGroup>
     <ProjectReference Include="..\..\src\server\RvtMcp.Server.csproj">
-      <AdditionalProperties>UseAppHost=false;OutputPath=$(MSBuildThisFileDirectory)..\server-staging\</AdditionalProperties>
+      <AdditionalProperties>UseAppHost=false;OutputPath=$(MSBuildThisFileDirectory)..\server-staging\;IntermediateOutputPath=$(MSBuildThisFileDirectory)..\server-staging\obj\$(Configuration)\</AdditionalProperties>
     </ProjectReference>
   </ItemGroup>
 
