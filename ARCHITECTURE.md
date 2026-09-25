@@ -46,7 +46,7 @@ Each file is a self-describing JSON object:
 }
 ```
 
-Server scans these on connect, verifies the PID is alive, and auto-deletes orphan files. Installer-generated MCP config uses one auto-detect `rvt-mcp` entry; the agent can call `revit_list_available_targets` to discover which years are running, then `revit_switch_target` (or explicit `--target 2024` at server start) to pin a specific version when multiple Revits run concurrently. **Versions are 4-digit calendar years (`2024`), not R-codes (`R24`) — v0.5+ rejects R-codes with an educational error pointing back to `revit_list_available_targets`.**
+Server scans these on connect, verifies the PID is alive, and auto-deletes orphan files. MCP clients register one auto-detect `rvt-mcp` entry (the installer does not edit client configs; see [AGENTS.md](AGENTS.md) Step 3); the agent can call `revit_list_available_targets` to discover which years are running, then `revit_switch_target` (or explicit `--target 2024` at server start) to pin a specific version when multiple Revits run concurrently. **Versions are 4-digit calendar years (`2024`), not R-codes (`R24`) — v0.5+ rejects R-codes with an educational error pointing back to `revit_list_available_targets`.**
 
 ## Multi-version strategy
 
