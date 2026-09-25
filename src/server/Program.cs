@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using RvtMcp.Plugin; // RvtMcpConfig
 using RvtMcp.Server.Bake;
 using RvtMcp.Server.Handlers;
+using RvtMcp.Server.Prompts;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -132,6 +133,7 @@ namespace RvtMcp.Server
                 .WithStdioServerTransport();
             mcp = RegisterToolsets(mcp, enabled, config);
             mcp.WithResources<RevitResources>();
+            mcp.WithPrompts<RevitPrompts>();
             var app = builder.Build();
             await app.RunAsync();
         }
@@ -145,6 +147,7 @@ namespace RvtMcp.Server
                 .WithHttpTransport();
             mcp = RegisterToolsets(mcp, enabled, config);
             mcp.WithResources<RevitResources>();
+            mcp.WithPrompts<RevitPrompts>();
 
             builder.WebHost.UseUrls($"http://127.0.0.1:{port}");
 

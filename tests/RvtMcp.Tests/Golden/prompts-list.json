@@ -1,0 +1,40 @@
+{
+  "generated_by": "PromptsListSnapshotTests",
+  "prompt_count": 4,
+  "prompts": [
+    {
+      "name": "revit_getting_started",
+      "description_hash": "sha256:19067ff5ae4a40c32ec8422141482604957a5832e51f9e89d282751b8255d431",
+      "arguments": []
+    },
+    {
+      "name": "revit_model_audit",
+      "description_hash": "sha256:3e4a28de3a4fa169fb8caf1b809a4ada21b10bd45088c7f1ccee5088e8ff133c",
+      "arguments": [
+        {
+          "name": "scope",
+          "required": false,
+          "default": "all",
+          "description_hash": "sha256:abfd5f8525c96a1cfe8fe1ae972342ddbf3cec71ce7674bd99033cc4d4ca869c"
+        }
+      ]
+    },
+    {
+      "name": "revit_pre_issue_check",
+      "description_hash": "sha256:3c72c1ce0fbbf1e89ae1aca3015d3daeb8b5fd056fb5294f792499b93bae86f8",
+      "arguments": [
+        {
+          "name": "scope",
+          "required": false,
+          "default": "all",
+          "description_hash": "sha256:418602b4d2505359fe731ff6497a0aaf9a91a89457b3c4068075e8c168502d9b"
+        }
+      ]
+    },
+    {
+      "name": "revit_stairs",
+      "description_hash": "sha256:6ee83d96cfe8b4a2670d316cdf62cda417f3ba4417167399a4cc5ade5de296f7",
+      "arguments": []
+    }
+  ]
+}
