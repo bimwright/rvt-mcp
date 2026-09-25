@@ -48,11 +48,18 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf
 powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-Close Revit first. The installer finds each Revit 2022–2027 that has a `Revit.exe`, installs the matching add-ins and the server at `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`, verifies both and rolls back on error. It does not touch MCP client configs. Details and other install paths (developer, NuGet server only): [docs/install.md](docs/install.md).
+Close Revit first. The installer finds each Revit 2022–2027 that has a `Revit.exe`, installs the matching add-ins and the server at `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`, verifies both and rolls back on error. MCP client configs stay untouched unless you pass `-Client` (below). Details and other install paths (developer, NuGet server only): [docs/install.md](docs/install.md).
 
 ### Connect your MCP client
 
-Register one stdio server named `rvt-mcp` whose command is the server path above, written out as an absolute path, using the client's own `mcp add` command, settings UI or config file. Any stdio MCP client works (Claude Code, Claude Desktop, Codex, Cursor, VS Code, Gemini CLI, OpenCode, Kilo, …). Verified per-client steps: [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md).
+Easiest: re-run the installer with `-Client` — it detects installed clients and wires them per [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md) (backup first, minimal text edits, JSONC comments survive, custom launchers reported not replaced):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto            # every detected client
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client cursor,claude   # named clients
+```
+
+Or do it by hand: register one stdio server named `rvt-mcp` whose command is the server path above, written out as an absolute path, using the client's own `mcp add` command, settings UI or config file. Any stdio MCP client works (Claude Code, Claude Desktop, Codex, Cursor, VS Code, Gemini CLI, OpenCode, Kilo, …).
 
 ### Check that it works
 

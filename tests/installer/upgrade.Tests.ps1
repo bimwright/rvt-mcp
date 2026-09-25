@@ -83,15 +83,30 @@ function New-SetupFixture([string]$Parent = $testRoot) {
 }
 function Invoke-FixtureSetup {
     [CmdletBinding(SupportsShouldProcess=$true)]
-    param($Fixture, [string]$Client='none', [switch]$PruneOldServers, [switch]$Uninstall, [int[]]$Years=@(2026,2027))
+    param($Fixture, [string[]]$Client='none', [string]$WireClient, [switch]$PruneOldServers, [switch]$Uninstall, [int[]]$Years=@(2026,2027))
     # Only OS boundaries are redirected. Main control flow, ZIP extraction,
     # directory replacement and rollback are production code.
     function Get-AddinsRoot([int]$year) { Join-Path $Fixture.Root "addins/$year" }
     function Get-MachineAddinsRoot([int]$year) { Join-Path $Fixture.Root "machine/$year" }
     function Get-Process { param($Name, $ErrorAction) if ($Fixture.Running) { [pscustomobject]@{Name='Revit';Id=1234} } }
     function Test-ServerExecutable { param([string]$Path, [int]$TimeoutSeconds) if ($Fixture.SmokeFails) { throw 'Server executable could not start (stub). Antivirus or policy may have blocked it.' } }
+    # Client CLIs never touch the real PATH here: detected only when the
+    # fixture opts in with Add-Member FakeCli $true, then calls are recorded.
+    $Fixture | Add-Member -NotePropertyName CliCalls -NotePropertyValue (New-Object 'System.Collections.Generic.List[string]') -Force
+    function Get-Command { param($Name, $ErrorAction)
+        if ($Name -in @('claude', 'codex', 'grok')) {
+            if ($Fixture.PSObject.Properties['FakeCli'] -and $Fixture.FakeCli) { return [pscustomobject]@{Name=$Name;Source="C:\fake\$Name.exe"} }
+            return
+        }
+        Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    if ($Fixture.PSObject.Properties['FakeCli'] -and $Fixture.FakeCli) {
+        function claude { $Fixture.CliCalls.Add('claude ' + ($args -join ' ')) }
+        function codex { $Fixture.CliCalls.Add('codex ' + ($args -join ' ')) }
+        function grok { $Fixture.CliCalls.Add('grok ' + ($args -join ' ')) }
+    }
     $SourceDir=$Fixture.Source; $pluginSourceDir=Join-Path $SourceDir 'plugins'; $serverSourceDir=Join-Path $SourceDir 'server'
-    $ServerInstallRoot=Join-Path $Fixture.Root 'server\current'; $manifest=$Fixture.Manifest; $WireClient=$null; $setupVersion='0.6.3'
+    $ServerInstallRoot=Join-Path $Fixture.Root 'server\current'; $manifest=$Fixture.Manifest; $setupVersion='0.6.3'
     & $mainBody
 }
 function Assert-OldInstall($Fixture) {
@@ -166,15 +181,16 @@ try {
         Assert (-not (Test-Path -LiteralPath $leftover)) 'Exact leftover was not swept'
         Assert ((Test-Path -LiteralPath "$s/current.backup/rvt-mcp.exe") -and (Test-Path -LiteralPath "$s/0.6.1.rvtmcp-rollback-xyz/rvt-mcp.exe")) 'Sweep touched a non-matching name'
     }
-    Test 'Deprecated -Client warns and still installs; none and default do not warn' {
+    Test 'Deprecated -WireClient warns and merges into -Client; none and default do not warn' {
         $fixture = New-SetupFixture
-        $output = Invoke-FixtureSetup $fixture -Client codex 3>&1 6>&1 | Out-String -Width 4096
-        Assert ($output -match 'no longer edits MCP client configs') 'Deprecation warning missing'
-        Assert ((Get-Content -LiteralPath "$($fixture.Root)/server/current/rvt-mcp.exe" -Raw).Trim() -eq 'new-server') 'Install did not proceed'
+        $fixture | Add-Member -NotePropertyName FakeCli -NotePropertyValue $true
+        $output = Invoke-FixtureSetup $fixture -WireClient claude 3>&1 6>&1 | Out-String -Width 4096
+        Assert ($output -match 'WireClient is deprecated') 'Deprecation warning missing'
+        Assert (@($fixture.CliCalls | Where-Object { $_ -like 'claude mcp add *' }).Count -eq 1) 'WireClient did not merge into -Client'
         foreach ($clientArgs in @(@{Client='none'}, @{})) {
             $f = New-SetupFixture
             $out = Invoke-FixtureSetup $f @clientArgs 3>&1 6>&1 | Out-String -Width 4096
-            Assert (-not ($out -match 'no longer edits')) 'Warned without an explicit client'
+            Assert (-not ($out -match 'deprecated')) 'Warned without an explicit client'
         }
     }
     Test 'Revit running blocks the upgrade before any replacement' {
@@ -400,6 +416,88 @@ try {
         $output = Invoke-FixtureSetup $fixture -WhatIf 3>&1 6>&1 | Out-String -Width 4096
         Assert (-not (Test-Path -LiteralPath $cfgPath)) 'WhatIf wrote the config'
         Assert ($output -match 'preview seed toolsets=all') 'Seed preview missing'
+    }
+    Test 'Client wiring: auto wires present file clients; JSONC comments and siblings survive' {
+        $fixture = New-SetupFixture
+        New-Item -ItemType Directory -Path "$sandboxUserProfile\.cursor", "$sandboxUserProfile\.config\kilo" -Force | Out-Null
+        $cursor = "$sandboxUserProfile\.cursor\mcp.json"
+        Set-Content -LiteralPath $cursor -Value '{ "mcpServers": { "other": { "command": "x" } } }'
+        $kilo = "$sandboxUserProfile\.config\kilo\kilo.jsonc"
+        Set-Content -LiteralPath $kilo -Value "// kilo config`n{`n  /* keep me */`n  `"mcp`": {}`n}"
+        $output = Invoke-FixtureSetup $fixture -Client 'auto' | Out-Null
+        $c = Get-Content -LiteralPath $cursor -Raw | ConvertFrom-Json
+        Assert ($c.mcpServers.'rvt-mcp'.command -match 'server[\\/]+current[\\/]+rvt-mcp\.exe$') 'cursor entry missing or mispointed'
+        Assert ($c.mcpServers.other.command -eq 'x') 'cursor sibling clobbered'
+        Assert (Test-Path -LiteralPath "$cursor.bak") 'cursor backup missing'
+        $kraw = Get-Content -LiteralPath $kilo -Raw
+        Assert ($kraw.Contains('keep me') -and $kraw.Contains('// kilo config')) 'JSONC comments lost'
+        $k = ConvertFrom-JsoncText $kraw
+        Assert ($k.mcp.'rvt-mcp'.command[0] -match 'server[\\/]+current[\\/]+rvt-mcp\.exe$') 'kilo entry missing'
+        Assert ($k.mcp.'rvt-mcp'.type -eq 'local') 'kilo entry shape wrong'
+        # Second run must be idempotent, not a duplicate.
+        $res = Invoke-McpClientWiring -Clients 'cursor' -Exe "$($fixture.Root)\server\current\rvt-mcp.exe" -Mode Add
+        Assert ($res -match 'already') 're-wire not idempotent'
+        Assert (@((ConvertFrom-Json (Get-Content -LiteralPath $cursor -Raw)).mcpServers.PSObject.Properties.Name).Count -eq 2) 'duplicate entry added'
+    }
+    Test 'Client wiring repoints versioned paths and preserves custom launchers' {
+        $fixture = New-SetupFixture
+        $exe = "$($fixture.Root)\server\current\rvt-mcp.exe"
+        New-Item -ItemType Directory -Path "$sandboxUserProfile\.cursor" -Force | Out-Null
+        $cursor = "$sandboxUserProfile\.cursor\mcp.json"
+        Set-Content -LiteralPath $cursor -Value '{ "mcpServers": { "rvt-mcp": { "command": "C:\\old\\rvt\\server\\0.6.2\\rvt-mcp.exe", "args": ["--read-only"] } } }'
+        $res = Invoke-McpClientWiring -Clients 'cursor' -Exe $exe -Mode Add
+        Assert ($res -match 'repointed') "expected repoint, got: $res"
+        $c = Get-Content -LiteralPath $cursor -Raw | ConvertFrom-Json
+        Assert ($c.mcpServers.'rvt-mcp'.command -match 'server[\\/]+current[\\/]+rvt-mcp\.exe$') 'not repointed to current'
+        Assert ($c.mcpServers.'rvt-mcp'.args[0] -eq '--read-only') 'existing args lost'
+        # A custom launcher is reported and left alone.
+        Set-Content -LiteralPath $cursor -Value '{ "mcpServers": { "rvt-mcp": { "command": "C:\\tools\\my-wrapper.cmd" } } }'
+        $res = Invoke-McpClientWiring -Clients 'cursor' -Exe $exe -Mode Add
+        Assert ($res -match 'custom') "expected custom, got: $res"
+        Assert ((Get-Content -LiteralPath $cursor -Raw).Contains('my-wrapper.cmd')) 'custom launcher clobbered'
+    }
+    Test 'Client wiring: explicit uninstalled client reports; uninstall removes only rvt-mcp' {
+        $fixture = New-SetupFixture
+        $res = Invoke-McpClientWiring -Clients 'zed' -Exe 'x' -Mode Add
+        Assert ($res -match 'not detected') "expected not-detected report, got: $res"
+        Assert (-not (Test-Path "$sandboxUserProfile\.config\zed")) 'undetected client dir created'
+        New-Item -ItemType Directory -Path "$sandboxUserProfile\.cursor" -Force | Out-Null
+        $cursor = "$sandboxUserProfile\.cursor\mcp.json"
+        Set-Content -LiteralPath $cursor -Value '{ "mcpServers": { "other": { "command": "x" }, "rvt-mcp": { "command": "y" } } }'
+        Invoke-FixtureSetup $fixture -Client 'cursor' -Uninstall | Out-Null
+        $c = Get-Content -LiteralPath $cursor -Raw | ConvertFrom-Json
+        Assert (-not $c.mcpServers.PSObject.Properties['rvt-mcp']) 'rvt-mcp entry not removed'
+        Assert ($c.mcpServers.other.command -eq 'x') 'sibling removed'
+        Assert (Test-Path -LiteralPath "$cursor.bak") 'removal backup missing'
+    }
+    Test 'Client wiring: malformed config warned not clobbered; WhatIf writes nothing' {
+        $fixture = New-SetupFixture
+        New-Item -ItemType Directory -Path "$sandboxUserProfile\.cursor" -Force | Out-Null
+        $cursor = "$sandboxUserProfile\.cursor\mcp.json"
+        Set-Content -LiteralPath $cursor -Value '{ "mcpServers": { oops'
+        $res = Invoke-McpClientWiring -Clients 'cursor' -Exe 'x' -Mode Add 3>&1 | Out-String
+        Assert ($res -match 'not valid JSON') "expected malformed report, got: $res"
+        Assert ((Get-Content -LiteralPath $cursor -Raw).Contains('oops')) 'malformed file clobbered'
+        Invoke-FixtureSetup $fixture -Client 'cursor' -WhatIf | Out-Null
+        Assert ((Get-Content -LiteralPath $cursor -Raw).Contains('oops')) 'WhatIf wrote client config'
+    }
+    Test 'Client wiring: CLI clients detected only via PATH and invoked through their CLI' {
+        $fixture = New-SetupFixture
+        $fixture | Add-Member -NotePropertyName FakeCli -NotePropertyValue $true
+        Invoke-FixtureSetup $fixture -Client 'claude' | Out-Null
+        Assert (@($fixture.CliCalls | Where-Object { $_ -like 'claude mcp add *' }).Count -eq 1) "claude mcp add not invoked: $($fixture.CliCalls -join ';')"
+        Assert (@($fixture.CliCalls | Where-Object { $_ -like '*rvt-mcp*' }).Count -ge 1) 'entry name missing from cli call'
+    }
+    Test 'Client wiring: none default leaves configs untouched even when present' {
+        $fixture = New-SetupFixture
+        Remove-Item -LiteralPath "$sandboxUserProfile\.cursor" -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Path "$sandboxUserProfile\.cursor" -Force | Out-Null
+        $cursor = "$sandboxUserProfile\.cursor\mcp.json"
+        Set-Content -LiteralPath $cursor -Value '{ "mcpServers": {} }'
+        $output = Invoke-FixtureSetup $fixture 6>&1 | Out-String -Width 4096
+        Assert ((Get-Content -LiteralPath $cursor -Raw).Trim() -eq '{ "mcpServers": {} }') 'default install touched client config'
+        Assert (-not (Test-Path -LiteralPath "$cursor.bak")) 'backup created on no-op'
+        Assert ($output -match 'wire with -Client') 'detection hint missing'
     }
 } finally {
     $env:USERPROFILE = $savedUserProfile

@@ -12,9 +12,12 @@
     - a default %LOCALAPPDATA%\RvtMcp\rvtmcp.config.json with toolsets=["all"]
       (skipped when the file already sets toolsets)
 
-  It never reads or writes MCP client configs: point your MCP client at the
-  server path above (see AGENTS.md). Updating keeps that path, so clients only
-  need a restart.
+  Client configs stay untouched unless -Client asks for wiring: it then
+  applies the procedures in docs/mcp-client-wiring.md — minimal text edits
+  (JSONC comments survive), a <config>.bak backup first, client-native
+  verification where available, custom launchers and legacy bimwright-rvt*
+  entries reported but never replaced. Updating keeps the server path, so
+  wired clients only need a restart.
 
   Every replacement is recorded and rolled back on error. Other add-in
   manifests carrying RvtMcp's AddInId (Bimwright-era copies) are removed; a
@@ -35,11 +38,14 @@
   stay; use uninstall-all.ps1 for a full removal.
 
 .PARAMETER Client
-  Deprecated. The installer no longer edits MCP client configs; any value other
-  than none only prints a warning.
+  Wire MCP clients after installing: a comma list of client names
+  (claude, codex, cursor, vscode, ...), 'auto'/'all' for every detected
+  client, or 'none' (default) to leave client configs untouched. Every
+  edit is previewed under -WhatIf and backed up to <config>.bak first.
+  With -Uninstall, removes the rvt-mcp entry instead.
 
 .PARAMETER WireClient
-  Deprecated alias of -Client.
+  Deprecated alias of -Client; merged into the client list if passed.
 
 .PARAMETER PruneOldServers
   Remove legacy version-named server copies (for example 0.6.2\) beside
@@ -49,17 +55,22 @@
 .EXAMPLE
   pwsh .\install.ps1 -WhatIf
   pwsh .\install.ps1
+  pwsh .\install.ps1 -Client auto           # wire every detected MCP client
+  pwsh .\install.ps1 -Client cursor,claude  # wire specific clients
   pwsh .\install.ps1 -Years 2024
-  pwsh .\install.ps1 -PruneOldServers
-  pwsh .\install.ps1 -Uninstall
+  pwsh .\install.ps1 -Uninstall -Client cursor
 #>
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [string]$SourceDir,
     [switch]$Uninstall,
     [ValidateRange(2022, 2027)][int[]]$Years,
-    [ValidateSet('Auto', 'codex', 'opencode', 'kilo', 'claude', 'none')]
-    [string]$Client = 'Auto',
+    [ValidateSet('none', 'auto', 'all',
+        'claude', 'claude-desktop', 'codex', 'grok',
+        'cursor', 'cline', 'gemini', 'antigravity', 'devin', 'lmstudio',
+        'kiro', 'qwen', 'windsurf', 'opencode', 'kilo', 'vscode', 'kun',
+        'zed', 'cherry-studio')]
+    [string[]]$Client = @('none'),
     [ValidateSet('opencode', 'codex', 'kilo')]
     [string]$WireClient,
     [string]$ServerInstallRoot,
@@ -466,6 +477,353 @@ function Remove-StaleServerVersions {
     }
 }
 
+# ==== MCP client wiring (docs/mcp-client-wiring.md, scripted) ===========
+# -Client wires the installed server into MCP clients after a successful
+# install. File configs get a minimal text edit — never a JSON round-trip,
+# so JSONC comments and key order survive — with a <path>.bak backup and a
+# parse-check that restores the backup on failure. CLI clients go through
+# their own `mcp add`. Nothing is touched unless -Client names it.
+# The config entry key is always the literal 'rvt-mcp'.
+
+# Per-client spec. Kind: cli (own `mcp` command), file (edit config),
+# deeplink (no safe file path — hand the user a cherrystudio:// URL).
+# RootKey/EntryKind describe the entry shape; DetectPaths/Paths use
+# %USERPROFILE%/%APPDATA%/%LOCALAPPDATA% so tests can sandbox them.
+function Get-McpClientSpecs {
+    $up = $env:USERPROFILE; $la = $env:LOCALAPPDATA; $ra = $env:APPDATA
+    @(
+        [pscustomobject]@{ Name='claude';    Kind='cli'; Cli='claude'; DetectPaths=@((Join-Path $up '.claude.json')); Paths=@((Join-Path $up '.claude.json')); RootKey='mcpServers'; EntryKind='standard' }
+        [pscustomobject]@{ Name='codex';     Kind='cli'; Cli='codex';  DetectPaths=@((Join-Path $up '.codex')) }
+        [pscustomobject]@{ Name='grok';      Kind='cli'; Cli='grok';   DetectPaths=@((Join-Path $up '.grok')) }
+        [pscustomobject]@{ Name='claude-desktop'; Kind='file'; EntryKind='standard'; RootKey='mcpServers'; Paths=@((Join-Path $la 'Packages\Claude_*\LocalCache\Roaming\Claude\claude_desktop_config.json'), (Join-Path $ra 'Claude\claude_desktop_config.json')); DetectPaths=@((Join-Path $la 'Packages\Claude_*'), (Join-Path $ra 'Claude')) }
+        [pscustomobject]@{ Name='cursor';    Kind='file'; EntryKind='standard'; RootKey='mcpServers'; Paths=@((Join-Path $up '.cursor\mcp.json'));            DetectPaths=@((Join-Path $up '.cursor')) }
+        # Cline and Roo-style VS Code extensions keep their MCP settings under
+        # globalStorage\<publisher>.<ext>\settings — first existing wins.
+        [pscustomobject]@{ Name='cline';     Kind='file'; EntryKind='standard'; RootKey='mcpServers'; Paths=@((Join-Path $ra 'Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json'), (Join-Path $ra 'Code\User\globalStorage\rooveterinaryinc.roo-cline\settings\mcp_settings.json'), (Join-Path $ra 'Code\User\globalStorage\rooveterinaryinc.roo-cline\settings\cline_mcp_settings.json')); DetectPaths=@((Join-Path $ra 'Code\User\globalStorage\saoudrizwan.claude-dev'), (Join-Path $ra 'Code\User\globalStorage\rooveterinaryinc.roo-cline')) }
+        [pscustomobject]@{ Name='gemini';    Kind='file'; EntryKind='standard'; RootKey='mcpServers'; Paths=@((Join-Path $up '.gemini\settings.json'));           DetectPaths=@((Join-Path $up '.gemini\settings.json')) }
+        [pscustomobject]@{ Name='antigravity'; Kind='file'; EntryKind='standard'; RootKey='mcpServers'; Paths=@((Join-Path $up '.gemini\antigravity\mcp_config.json'), (Join-Path $up '.gemini\config\mcp_config.json')); DetectPaths=@((Join-Path $up '.gemini\antigravity'), (Join-Path $up '.gemini\config')) }
+        [pscustomobject]@{ Name='devin';     Kind='file'; EntryKind='standard'; RootKey='mcpServers'; Paths=@((Join-Path $ra 'Devin\mcp_config.json'));              DetectPaths=@((Join-Path $ra 'Devin')) }
+        [pscustomobject]@{ Name='lmstudio';  Kind='file'; EntryKind='standard'; RootKey='mcpServers'; Paths=@((Join-Path $up '.lmstudio\mcp.json'));                 DetectPaths=@((Join-Path $up '.lmstudio')) }
+        [pscustomobject]@{ Name='kiro';      Kind='file'; EntryKind='standard'; RootKey='mcpServers'; Paths=@((Join-Path $up '.kiro\settings\mcp.json'));            DetectPaths=@((Join-Path $up '.kiro')) }
+        [pscustomobject]@{ Name='qwen';      Kind='file'; EntryKind='standard'; RootKey='mcpServers'; Paths=@((Join-Path $up '.qwen\settings.json'));                DetectPaths=@((Join-Path $up '.qwen')) }
+        [pscustomobject]@{ Name='windsurf';  Kind='file'; EntryKind='standard'; RootKey='mcpServers'; Paths=@((Join-Path $up '.codeium\windsurf\mcp_config.json'));  DetectPaths=@((Join-Path $up '.codeium\windsurf')) }
+        [pscustomobject]@{ Name='opencode';  Kind='file'; EntryKind='opencode'; RootKey='mcp';        Paths=@((Join-Path $up '.config\opencode\opencode.json'));     DetectPaths=@((Join-Path $up '.config\opencode')) }
+        [pscustomobject]@{ Name='kilo';      Kind='file'; EntryKind='opencode'; RootKey='mcp';        Paths=@((Join-Path $up '.config\kilo\kilo.jsonc'));            DetectPaths=@((Join-Path $up '.config\kilo')) }
+        [pscustomobject]@{ Name='vscode';    Kind='file'; EntryKind='vscode';   RootKey='servers';    Paths=@((Join-Path $ra 'Code\User\mcp.json'));                 DetectPaths=@((Join-Path $ra 'Code\User')) }
+        [pscustomobject]@{ Name='kun';       Kind='file'; EntryKind='kun';      RootKey='servers';    Paths=@((Join-Path $up '.kun\mcp.json'));                      DetectPaths=@((Join-Path $up '.kun')) }
+        [pscustomobject]@{ Name='zed';       Kind='file'; EntryKind='zed';      RootKey='context_servers'; Paths=@((Join-Path $ra 'Zed\settings.json'));             DetectPaths=@((Join-Path $ra 'Zed')) }
+        [pscustomobject]@{ Name='cherry-studio'; Kind='deeplink'; DetectPaths=@((Join-Path $ra 'Cherry Studio')) }
+    )
+}
+
+# The rvt-mcp entry literal per client shape (path escaped for JSON).
+function Get-McpEntryText([string]$EntryKind, [string]$Exe) {
+    $e = $Exe.Replace('\', '\\')
+    switch ($EntryKind) {
+        'opencode' { return '{ "type": "local", "command": ["' + $e + '"], "enabled": true }' }
+        'vscode'   { return '{ "type": "stdio", "command": "' + $e + '", "args": [] }' }
+        'kun'      { return '{ "command": "' + $e + '", "args": [], "env": {}, "url": null }' }
+        'zed'      { return '{ "command": { "path": "' + $e + '", "args": [] } }' }
+        default    { return '{ "command": "' + $e + '", "args": [] }' }
+    }
+}
+
+# Next index in $Text that is not whitespace or a // / /* */ comment.
+function Skip-JsonSpace([string]$Text, [int]$i) {
+    while ($i -lt $Text.Length) {
+        $c = $Text[$i]
+        if ($c -eq ' ' -or $c -eq "`t" -or $c -eq "`r" -or $c -eq "`n") { $i++; continue }
+        if ($c -eq '/' -and $i + 1 -lt $Text.Length -and $Text[$i + 1] -eq '/') {
+            while ($i -lt $Text.Length -and $Text[$i] -ne "`n") { $i++ }
+            continue
+        }
+        if ($c -eq '/' -and $i + 1 -lt $Text.Length -and $Text[$i + 1] -eq '*') {
+            $i += 2
+            while ($i + 1 -lt $Text.Length -and -not ($Text[$i] -eq '*' -and $Text[$i + 1] -eq '/')) { $i++ }
+            $i += 2
+            continue
+        }
+        break
+    }
+    return $i
+}
+
+# Index of the char that ends the JSON value starting at $i (string,
+# object/array via bracket balance, or scalar until , } ] ). Strings and
+# comments are skipped, so braces inside them cannot unbalance the count.
+function Get-JsonValueEnd([string]$Text, [int]$i) {
+    $i = Skip-JsonSpace $Text $i
+    if ($i -ge $Text.Length) { return $i }
+    if ($Text[$i] -eq '"') {
+        $i++
+        while ($i -lt $Text.Length) {
+            if ($Text[$i] -eq '\') { $i += 2; continue }
+            if ($Text[$i] -eq '"') { return $i + 1 }
+            $i++
+        }
+        return $i
+    }
+    if ($Text[$i] -eq '{' -or $Text[$i] -eq '[') {
+        $open = $Text[$i]; $close = $(if ($open -eq '{') { '}' } else { ']' })
+        $depth = 0
+        while ($i -lt $Text.Length) {
+            $c = $Text[$i]
+            if ($c -eq '"') { $i = Get-JsonValueEnd $Text $i; continue }
+            if ($c -eq '/' -and $i + 1 -lt $Text.Length -and ($Text[$i + 1] -eq '/' -or $Text[$i + 1] -eq '*')) {
+                $i = Skip-JsonSpace $Text $i; continue
+            }
+            if ($c -eq $open) { $depth++ }
+            elseif ($c -eq $close) { $depth--; if ($depth -eq 0) { return $i + 1 } }
+            $i++
+        }
+        return $i
+    }
+    while ($i -lt $Text.Length -and $Text[$i] -notin @(',', '}', ']')) { $i++ }
+    return $i
+}
+
+# Span of `"name": <value>` inside the object whose '{' is at $ObjOpen.
+# Returns MemberStart..MemberEnd (value end, comma excluded) or $null.
+function Get-JsonMemberSpan([string]$Text, [int]$ObjOpen, [string]$Name) {
+    $i = Skip-JsonSpace $Text ($ObjOpen + 1)
+    while ($i -lt $Text.Length -and $Text[$i] -ne '}') {
+        if ($Text[$i] -eq '"') {
+            $strStart = $i
+            $i = Get-JsonValueEnd $Text $i
+            $member = $Text.Substring($strStart + 1, $i - $strStart - 2)
+            $afterColon = Skip-JsonSpace $Text $i
+            if ($member -eq $Name -and $afterColon -lt $Text.Length -and $Text[$afterColon] -eq ':') {
+                $valueStart = Skip-JsonSpace $Text ($afterColon + 1)
+                return [pscustomobject]@{ MemberStart = $strStart; ValueStart = $valueStart; MemberEnd = (Get-JsonValueEnd $Text $valueStart) }
+            }
+            if ($afterColon -lt $Text.Length -and $Text[$afterColon] -eq ':') {
+                $i = Get-JsonValueEnd $Text (Skip-JsonSpace $Text ($afterColon + 1))
+            }
+            $i = Skip-JsonSpace $Text $i
+            continue
+        }
+        if ($Text[$i] -eq ',') { $i = Skip-JsonSpace $Text ($i + 1); continue }
+        $i++
+    }
+    return $null
+}
+
+# All member names of the JSON object whose '{' is at $ObjOpen.
+function Get-JsonObjectMemberNames([string]$Text, [int]$ObjOpen) {
+    $names = New-Object System.Collections.Generic.List[string]
+    $i = Skip-JsonSpace $Text ($ObjOpen + 1)
+    while ($i -lt $Text.Length -and $Text[$i] -ne '}') {
+        if ($Text[$i] -eq '"') {
+            $s = $i; $i = Get-JsonValueEnd $Text $i
+            $names.Add($Text.Substring($s + 1, $i - $s - 2))
+            $afterColon = Skip-JsonSpace $Text $i
+            if ($afterColon -lt $Text.Length -and $Text[$afterColon] -eq ':') {
+                $i = Get-JsonValueEnd $Text (Skip-JsonSpace $Text ($afterColon + 1))
+            }
+            $i = Skip-JsonSpace $Text $i
+            continue
+        }
+        $i++
+    }
+    return $names
+}
+
+# Skip-JsonSpace backwards: whitespace and /* */ blocks; // line comments are
+# left for the parse-check to catch (rare between a comma and a member).
+function Skip-JsonSpaceBack([string]$Text, [int]$i) {
+    while ($i -ge 0) {
+        $c = $Text[$i]
+        if ($c -eq ' ' -or $c -eq "`t" -or $c -eq "`r" -or $c -eq "`n") { $i--; continue }
+        if ($i -ge 1 -and $Text[$i] -eq '/' -and $Text[$i - 1] -eq '*') {
+            $i -= 2
+            while ($i -ge 0 -and -not ($Text[$i] -eq '/' -and $i + 1 -lt $Text.Length -and $Text[$i + 1] -eq '*')) { $i-- }
+            $i--
+            continue
+        }
+        break
+    }
+    return $i
+}
+
+# Strips // and /* */ comments so ConvertFrom-Json can verify JSONC files.
+function ConvertFrom-JsoncText([string]$Text) {
+    $out = New-Object Text.StringBuilder
+    $i = 0
+    while ($i -lt $Text.Length) {
+        $c = $Text[$i]
+        if ($c -eq '"') {
+            $end = Get-JsonValueEnd $Text $i
+            [void]$out.Append($Text.Substring($i, $end - $i)); $i = $end; continue
+        }
+        if ($c -eq '/' -and $i + 1 -lt $Text.Length -and ($Text[$i + 1] -eq '/' -or $Text[$i + 1] -eq '*')) {
+            $i = Skip-JsonSpace $Text $i; continue
+        }
+        [void]$out.Append($c); $i++
+    }
+    return ($out.ToString() | ConvertFrom-Json)
+}
+
+# Back up, write, and parse-verify a config edit; a failed parse restores
+# the .bak so a bad edit can never leave a broken client config behind.
+function Save-McpConfigText([string]$Path, [string]$NewText, [string]$OldText) {
+    $bak = "$Path.bak"
+    Copy-Item -LiteralPath $Path -Destination $bak -Force
+    try { $null = ConvertFrom-JsoncText $NewText }
+    catch {
+        Copy-Item -LiteralPath $bak -Destination $Path -Force
+        throw "Edit produced invalid JSON for $Path — restored backup. ($($_.Exception.Message))"
+    }
+    [IO.File]::WriteAllText($Path, $NewText)
+}
+
+# Minimal-edit add/remove of the rvt-mcp entry in a file config.
+# Returns a status word: created|added|repointed|already|custom|removed|absent|previewed.
+function Set-McpConfigEntry {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [string]$Path, [string]$RootKey, [string]$EntryKind,
+        [string]$Exe, [switch]$Remove
+    )
+    $full = [IO.Path]::GetFullPath($Path)
+    $escapedExe = if ($Exe) { $Exe.Replace('\', '\\') } else { $null }
+    $entryText = if ($Exe) { Get-McpEntryText $EntryKind $Exe } else { $null }
+    $legacyRx = '(?i)rvt(?:\\{2}|\\)+server(?:\\{2}|\\)+(?!current(?:\\{2}|\\)+)[^"\\]+(?:\\{2}|\\)+rvt-mcp\.exe'
+
+    if (-not (Test-Path -LiteralPath $full)) {
+        if ($Remove) { return 'absent' }
+        $body = '{ "' + $RootKey + '": { "rvt-mcp": ' + $entryText + ' } }'
+        if ($PSCmdlet.ShouldProcess($full, 'Wire rvt-mcp into client config')) {
+            New-Item -ItemType Directory -Path (Split-Path -Parent $full) -Force | Out-Null
+            [IO.File]::WriteAllText($full, $body)
+            return 'created'
+        }
+        return 'previewed'
+    }
+
+    $text = [IO.File]::ReadAllText($full)
+    if ($text -notmatch '\S') {
+        # Empty file (windsurf ships one) — write the full skeleton.
+        if ($Remove) { return 'absent' }
+        $body = '{ "' + $RootKey + '": { "rvt-mcp": ' + $entryText + ' } }'
+        if (-not $PSCmdlet.ShouldProcess($full, 'Wire rvt-mcp into client config')) { return 'previewed' }
+        Save-McpConfigText $full $body $text
+        return 'created'
+    }
+    $rootOpen = Skip-JsonSpace $text 0
+    if ($rootOpen -ge $text.Length -or $text[$rootOpen] -ne '{') {
+        Write-Warning "[client] $full is not a JSON object; left unchanged."
+        return 'skipped'
+    }
+    # An unparseable existing file is reported and left alone — never
+    # clobbered, never edited blind.
+    try { $null = ConvertFrom-JsoncText $text } catch {
+        Write-Warning "[client] $full is not valid JSON; left unchanged."
+        return 'skipped'
+    }
+    $keySpan = Get-JsonMemberSpan $text $rootOpen $RootKey
+    # Legacy pre-rename entries are reported, never removed silently.
+    if ($null -ne $keySpan -and $text[$keySpan.ValueStart] -eq '{') {
+        $legacy = @(Get-JsonObjectMemberNames $text $keySpan.ValueStart | Where-Object { $_ -like 'bimwright-rvt*' })
+        if ($legacy.Count) {
+            Write-Warning "[client] $full has legacy entries ($($legacy -join ', ')) — left in place; remove them in the client if unwanted."
+        }
+    }
+
+    if ($Remove) {
+        if ($null -eq $keySpan -or $text[$keySpan.ValueStart] -ne '{') { return 'absent' }
+        $entrySpan = Get-JsonMemberSpan $text $keySpan.ValueStart 'rvt-mcp'
+        if ($null -eq $entrySpan) { return 'absent' }
+        # Cut the member plus one adjacent comma (trailing preferred).
+        $after = Skip-JsonSpace $text $entrySpan.MemberEnd
+        $from = $entrySpan.MemberStart; $to = $entrySpan.MemberEnd
+        if ($after -lt $text.Length -and $text[$after] -eq ',') {
+            $to = $after + 1
+        } else {
+            $before = Skip-JsonSpaceBack $text ($entrySpan.MemberStart - 1)
+            if ($before -ge 0 -and $text[$before] -eq ',') { $from = $before }
+        }
+        if (-not $PSCmdlet.ShouldProcess($full, 'Remove rvt-mcp from client config')) { return 'previewed' }
+        Save-McpConfigText $full ($text.Substring(0, $from) + $text.Substring($to)) $text
+        return 'removed'
+    }
+
+    if ($null -eq $keySpan -or $text[$keySpan.ValueStart] -ne '{') {
+        # Insert "<RootKey>": { "rvt-mcp": <entry> } as the first root member.
+        $inner = '"' + $RootKey + '": { "rvt-mcp": ' + $entryText + ' }'
+        $next = Skip-JsonSpace $text ($rootOpen + 1)
+        if ($next -lt $text.Length -and $text[$next] -ne '}') { $inner += ',' }
+        $newText = $text.Insert($rootOpen + 1, "`n    " + $inner + "`n")
+        if (-not $PSCmdlet.ShouldProcess($full, 'Wire rvt-mcp into client config')) { return 'previewed' }
+        Save-McpConfigText $full $newText $text
+        return 'added'
+    }
+
+    $entrySpan = Get-JsonMemberSpan $text $keySpan.ValueStart 'rvt-mcp'
+    if ($null -eq $entrySpan) {
+        $next = Skip-JsonSpace $text ($keySpan.ValueStart + 1)
+        $inner = '"rvt-mcp": ' + $entryText
+        if ($next -lt $text.Length -and $text[$next] -ne '}') { $inner += ',' }
+        $newText = $text.Insert($keySpan.ValueStart + 1, "`n        " + $inner + "`n    ")
+        if (-not $PSCmdlet.ShouldProcess($full, 'Wire rvt-mcp into client config')) { return 'previewed' }
+        Save-McpConfigText $full $newText $text
+        return 'added'
+    }
+
+    # Entry exists: identical -> already; legacy versioned path -> repoint;
+    # anything else is a custom launcher and is reported, never replaced.
+    $memberText = $text.Substring($entrySpan.MemberStart, $entrySpan.MemberEnd - $entrySpan.MemberStart)
+    $normalized = $memberText -replace '\\\\', '\'
+    if ($normalized.Contains($Exe)) { return 'already' }
+    if ($memberText -match $legacyRx) {
+        # MatchEvaluator returns the escaped path literally — no regex
+        # metachar reinterpretation of the replacement string.
+        $newMember = [regex]::Replace($memberText, $legacyRx, { param($m) $escapedExe })
+        $newText = $text.Substring(0, $entrySpan.MemberStart) + $newMember + $text.Substring($entrySpan.MemberEnd)
+        if (-not $PSCmdlet.ShouldProcess($full, 'Repoint rvt-mcp to the current server')) { return 'previewed' }
+        Save-McpConfigText $full $newText $text
+        return 'repointed'
+    }
+    return 'custom'
+}
+
+# First existing candidate wins. When none exists: prefer a literal path
+# under a detected install dir, rebuild inside an MSIX package dir
+# (claude-desktop), else the first literal path (create-if-absent).
+function Resolve-McpConfigPath($spec) {
+    foreach ($p in $spec.Paths) {
+        $hit = @(Resolve-Path $p -ErrorAction SilentlyContinue)
+        if ($hit.Count) { return $hit[0].Path }
+    }
+    foreach ($p in $spec.Paths) {
+        if ($p -match '\*') { continue }
+        foreach ($d in @($spec.DetectPaths)) {
+            if ($d -and $d -notmatch '\*' -and $p.StartsWith($d, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $d)) { return $p }
+        }
+    }
+    $baseDir = Split-Path -Parent $spec.Paths[0]
+    while ($baseDir -match '\*') { $baseDir = Split-Path -Parent $baseDir }
+    if ($baseDir -and (Test-Path -LiteralPath $baseDir)) {
+        $pkg = @(Get-ChildItem -LiteralPath $baseDir -Directory -Filter 'Claude_*' -ErrorAction SilentlyContinue | Select-Object -First 1)
+        if ($pkg.Count) {
+            $tail = $spec.Paths[0].Substring($spec.Paths[0].IndexOf('*\') + 2)
+            return Join-Path $pkg[0].FullName $tail
+        }
+    }
+    return @($spec.Paths | Where-Object { $_ -notmatch '\*' } | Select-Object -First 1)
+}
+
+# codex `mcp add` replaces the whole entry — pull args forward from the
+# existing [mcp_servers.rvt-mcp] table so a repoint doesn't drop them.
+function Read-CodexEntryArgs([string]$TomlPath) {
+    if (-not (Test-Path -LiteralPath $TomlPath)) { return @() }
+    $text = [IO.File]::ReadAllText($TomlPath)
+    $m = [regex]::Match($text, '(?ms)^\[mcp_servers\.rvt-mcp\]\s*$(.*?)(?=^\[|\z)')
+    if (-not $m.Success) { return @() }
+    $a = [regex]::Match($m.Groups[1].Value, 'args\s*=\s*\[(.*?)\]')
+    if (-not $a.Success) { return @() }
+    return @([regex]::Matches($a.Groups[1].Value, '"((?:[^"\\]|\\.)*)"') | ForEach-Object { $_.Groups[1].Value -replace '\\(.)', '$1' })
+}
+
 # Fresh installs default the server to the full tool surface: seed
 # rvtmcp.config.json with toolsets=["all"]. An existing toolsets key is the
 # user's explicit choice and is kept; --toolsets/--read-only args and
@@ -498,6 +856,106 @@ function Set-DefaultToolsetsConfig {
     return $(if ($existed) { 'merged' } else { 'seeded' })
 }
 
+# A client counts as installed when its CLI is on PATH, its config file
+# exists, or its config directory does.
+function Test-McpClientDetected($spec) {
+    if ($spec.Cli -and (Get-Command $spec.Cli -ErrorAction SilentlyContinue)) { return $true }
+    foreach ($p in @($spec.Paths) + @($spec.DetectPaths)) {
+        if ($p -and (Test-Path $p)) { return $true }
+    }
+    return $false
+}
+
+# Wire (Mode=Add) or unwire (Mode=Remove) the requested clients.
+# $Clients entries: names, 'auto'/'all' (every detected client), 'none'.
+# Per-client failures are collected, never thrown — a bad client edit must
+# not roll back an otherwise-good install.
+function Invoke-McpClientWiring {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param([string[]]$Clients, [string]$Exe, [ValidateSet('Add', 'Remove')][string]$Mode)
+    $report = New-Object System.Collections.Generic.List[string]
+    $requested = @($Clients | Where-Object { $_ -and $_ -ne 'none' })
+    if ($requested.Count -eq 0) { return $report }
+
+    $specs = Get-McpClientSpecs
+    if ($requested | Where-Object { $_ -in @('auto', 'all', 'Auto') }) {
+        $requested = @($specs | Where-Object { Test-McpClientDetected $_ } | ForEach-Object { $_.Name })
+        if ($requested.Count -eq 0) { $report.Add('auto: no MCP clients detected'); return $report }
+    }
+
+    foreach ($name in $requested) {
+        $spec = $specs | Where-Object { $_.Name -eq $name } | Select-Object -First 1
+        if (-not $spec) { $report.Add("${name}: unknown client"); continue }
+        try {
+            switch ($spec.Kind) {
+                'cli' {
+                    $cli = Get-Command $spec.Cli -ErrorAction SilentlyContinue
+                    if (-not $cli -and $spec.Name -eq 'claude' -and $spec.Paths -and (Test-Path $spec.Paths[0])) {
+                        # Claude Code without the CLI on PATH: ~/.claude.json
+                        # carries the user-scope mcpServers key — same shape.
+                        $st = Set-McpConfigEntry -Path (Resolve-McpConfigPath $spec) -RootKey $spec.RootKey -EntryKind $spec.EntryKind -Exe $Exe -Remove:($Mode -eq 'Remove')
+                        $report.Add("claude: $st (file fallback ~/.claude.json)")
+                        continue
+                    }
+                    if (-not $cli) { $report.Add("$($spec.Name): $($spec.Cli) CLI not on PATH"); continue }
+                    if ($Mode -eq 'Add') {
+                        if (-not $PSCmdlet.ShouldProcess($spec.Name, 'wire rvt-mcp via client CLI')) { $report.Add("$($spec.Name): previewed"); continue }
+                        switch ($spec.Name) {
+                            'claude' {
+                                $null = & claude mcp remove rvt-mcp -s local 2>$null  # drop any project-local shadow
+                                $out = & claude mcp add -s user rvt-mcp -- $Exe 2>&1
+                                $verify = & claude mcp get rvt-mcp 2>&1
+                            }
+                            'codex' {
+                                $toml = Join-Path ($(if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' })) 'config.toml'
+                                $oldArgs = Read-CodexEntryArgs $toml
+                                $out = & codex mcp add rvt-mcp -- $Exe @oldArgs 2>&1
+                                $verify = & codex mcp get rvt-mcp --json 2>&1
+                            }
+                            'grok' {
+                                $out = & grok mcp add rvt-mcp $Exe --transport stdio 2>&1
+                                $verify = & grok mcp list 2>&1
+                            }
+                        }
+                        $verified = ($verify | Out-String) -match 'rvt-mcp'
+                        $report.Add("$($spec.Name): " + $(if ($verified) { 'wired' } else { 'wired (verify inconclusive — check the client)' }))
+                        if ($spec.Name -eq 'grok' -and ($verify | Out-String) -match '\(project\)') {
+                            $report.Add('grok: a project-scope entry may shadow the user one — check grok mcp list from the repo')
+                        }
+                    } else {
+                        if (-not $PSCmdlet.ShouldProcess($spec.Name, 'remove rvt-mcp via client CLI')) { $report.Add("$($spec.Name): previewed"); continue }
+                        switch ($spec.Name) {
+                            'claude' { $null = & claude mcp remove rvt-mcp -s user 2>&1 }
+                            'codex'  { $null = & codex mcp remove rvt-mcp 2>&1 }
+                            'grok'   { $null = & grok mcp remove rvt-mcp 2>&1 }
+                        }
+                        $report.Add("$($spec.Name): removed")
+                    }
+                }
+                'file' {
+                    if ($Mode -eq 'Add' -and -not (Test-McpClientDetected $spec)) {
+                        $report.Add("$($spec.Name): not detected — skipping (install the client first)")
+                        continue
+                    }
+                    $path = Resolve-McpConfigPath $spec
+                    if (-not $path) { $report.Add("$($spec.Name): no config file found — wire it manually per docs/mcp-client-wiring.md"); continue }
+                    $status = Set-McpConfigEntry -Path $path -RootKey $spec.RootKey -EntryKind $spec.EntryKind -Exe $Exe -Remove:($Mode -eq 'Remove')
+                    $report.Add("$($spec.Name): $status -> $path")
+                }
+                'deeplink' {
+                    if ($Mode -eq 'Remove') { $report.Add('cherry-studio: remove rvt-mcp in Settings → MCP Servers'); continue }
+                    $json = '{"mcpServers":{"rvt-mcp":{"command":"' + $Exe.Replace('\', '\\') + '","args":[]}}}'
+                    $url = 'cherrystudio://mcp/install?servers=' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
+                    $report.Add('cherry-studio: open this URL to install: ' + $url)
+                }
+            }
+        } catch {
+            $report.Add("$($spec.Name): failed — $($_.Exception.Message)")
+        }
+    }
+    return $report
+}
+
 if (-not $Years -or $Years.Count -eq 0) {
     if ($Uninstall) {
         # Removal must not depend on Revit still being installed.
@@ -513,8 +971,9 @@ if (-not $Years -or $Years.Count -eq 0) {
 }
 
 $agentsGuide = Get-AgentsGuidePath $PSScriptRoot
-if ($WireClient -or ($Client -and $Client -notin @('Auto', 'none'))) {
-    Write-Warning ("install.ps1 no longer edits MCP client configs; connect clients by following {0}." -f $agentsGuide)
+if ($WireClient) {
+    Write-Warning 'install.ps1 -WireClient is deprecated; merged into -Client.'
+    $Client = @($Client | Where-Object { $_ -ne 'none' }) + @($WireClient)
 }
 
 $handled = @()
@@ -527,6 +986,7 @@ $legacyServers = @()
 $serverCommand = $null
 $serverCheck = 'not run'
 $configDefault = $null
+$wiredClients = @()
 # A caller-supplied -ServerInstallRoot's parent is not ours to prune or sweep.
 $ownServerRoot = -not $PSBoundParameters.ContainsKey('ServerInstallRoot')
 $Years = @($Years | Sort-Object -Unique)
@@ -641,6 +1101,18 @@ try {
             $serverCheck = 'skipped (WhatIf)'
         }
         $configDefault = Set-DefaultToolsetsConfig -ConfigPath (Join-Path $env:LOCALAPPDATA 'RvtMcp\rvtmcp.config.json')
+        if (@($Client | Where-Object { $_ -ne 'none' }).Count) {
+            if ($serverCommand) {
+                $wiredClients = @(Invoke-McpClientWiring -Clients $Client -Exe $serverCommand -Mode Add)
+            } else {
+                $wiredClients = @('-Client requested but this package has no server to point at')
+            }
+        } elseif (-not $WhatIfPreference) {
+            $detected = @(Get-McpClientSpecs | Where-Object { Test-McpClientDetected $_ } | ForEach-Object { $_.Name })
+            if ($detected.Count) {
+                $wiredClients = @("detected: $($detected -join ', ') — wire with -Client <names> or -Client auto")
+            }
+        }
         if (-not $WhatIfPreference) {
             foreach ($year in $Years) {
                 $yearTwo = "{0:D2}" -f ($year - 2000)
@@ -649,6 +1121,9 @@ try {
                 $verified += "R$yearTwo"
             }
         }
+    }
+    if ($Uninstall -and @($Client | Where-Object { $_ -ne 'none' }).Count) {
+        $wiredClients = @(Invoke-McpClientWiring -Clients $Client -Mode Remove)
     }
 } catch {
     $installFailure = $_
@@ -698,6 +1173,10 @@ if (-not $Uninstall) {
         'skipped'   { Write-Host 'Config  : unreadable config - unchanged' }
         'previewed' { Write-Host ("Config  : preview seed toolsets=all -> {0}\RvtMcp\rvtmcp.config.json" -f $env:LOCALAPPDATA) }
     }
+}
+foreach ($w in $wiredClients) { Write-Host ("Client  : {0}" -f $w) }
+if ($Uninstall -and -not @($Client | Where-Object { $_ -ne 'none' }).Count) {
+    Write-Host 'Client  : entries left in place — re-run with -Client <names> to unwire'
 }
 if ($inUse.Count) { Write-Host ("In use  : {0} - restart MCP clients; removed at next install" -f ($inUse -join ', ')) }
 if ($legacyServers.Count) { Write-Host ("Legacy  : {0} - repoint clients to the Server path, then run install.ps1 -PruneOldServers" -f (($legacyServers | ForEach-Object { $_.Name }) -join ', ')) }

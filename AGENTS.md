@@ -33,7 +33,7 @@ This file is machine-readable install instructions for AI coding agents (Claude 
    - Before running `install.ps1` without `-WhatIf`.
    - Before editing any MCP client config (show the exact command or diff first).
 4. **Never bypass the Revit undo stack at runtime.** rvt-mcp's design guarantee is that every edit is reviewable and reversible. Don't advise users to work around transaction wrapping or disable `batch_execute` safety.
-5. **On any failure, verify rollback.** The installer restores the previous add-ins and server on any caught error and reports retained `.rvtmcp-rollback-*` backups if recovery fails. It never edits MCP client configs, so back up a client config yourself before editing it. Do not use full uninstall as an upgrade rollback: upgrades replace add-ins and server in place. Personal data is only removed with `-Purge`.
+5. **On any failure, verify rollback.** The installer restores the previous add-ins and server on any caught error and reports retained `.rvtmcp-rollback-*` backups if recovery fails. Client-config edits made by `-Client` are backed up to `<config>.bak` and verified by reparse — a failed write restores the backup on the spot. For hand edits, back up the client config yourself first. Do not use full uninstall as an upgrade rollback: upgrades replace add-ins and server in place. Personal data is only removed with `-Purge`.
 6. **Verify before claiming done.** After connecting a client, run `tools/list` in it and confirm the single `rvt-mcp` entry responds, then call `revit_get_current_view_info` with no args.
 
 If the user explicitly says "skip the prompts, just install" — still do gate 1 (preview) and gate 5 (verify), but collapse gates 2 and 3 into a single upfront approval. **Never silently skip preview or verify.**
@@ -87,7 +87,7 @@ The installer:
 - seeds `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json` with `"toolsets": ["all"]` so a fresh install exposes the full tool surface — a `toolsets` key the user already set is kept, and the file stays user data (uninstall keeps it, `-Purge` removes it);
 - verifies the installed add-ins against the package.
 
-Any error restores the previous add-ins and server. A machine-wide copy under `%ProgramData%` stops the install before anything changes (removing it needs admin rights). The installer **does not configure MCP clients** — that is Step 3.
+Any error restores the previous add-ins and server. A machine-wide copy under `%ProgramData%` stops the install before anything changes (removing it needs admin rights). Client configs stay untouched unless `-Client` is passed — that is Step 3.
 
 Read the summary:
 
@@ -97,13 +97,23 @@ Read the summary:
 
 **Updates.** Close Revit, then run the new ZIP's installer the same way, without uninstalling first. The server path stays the same, so MCP clients only need a restart.
 
-`-Client` is deprecated and only prints a warning.
+`-Client <names>` wires MCP clients as part of the install — see Step 3. `-WireClient` is a deprecated alias.
 
 ---
 
 ## Step 3 — Connect the MCP client
 
-The installer never edits client configs. Connect the client(s) the user asks for, using that client's own method: its `mcp add` command, settings UI or config file. **Verified per-client procedures (paths, config keys, native commands, gotchas): [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md).** The contract:
+Preferred path: re-run the installer with `-Client`. It applies the wiring guide itself — detection, `.bak` backup, minimal text edits (JSONC comments survive), repointing old versioned paths, reporting custom launchers and legacy `bimwright-rvt*` entries, and never duplicating an existing `rvt-mcp` entry:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto            # every detected client
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client cursor,claude   # named clients
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto -WhatIf    # preview only
+```
+
+`Client  :` lines in the summary report what happened per client (wired / already / repointed / custom launcher kept / not detected). Cherry Studio has no safe file path — the installer prints a `cherrystudio://` deeplink for the user to open instead.
+
+Manual path (clients the installer does not know, or when the user wants hand control): use that client's own `mcp add` command, settings UI or config file. **Verified per-client procedures (paths, config keys, native commands, gotchas): [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md).** The contract:
 
 | Field | Value |
 |---|---|
@@ -166,7 +176,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\uninstall.ps1" -Yes       # apply
 powershell -ExecutionPolicy Bypass -File "$dir\uninstall.ps1" -Purge     # also delete personal data (combine -KeepLogs to keep logs)
 ```
 
-First remove the `rvt-mcp` entry from each client you configured; the uninstaller never touches client configs.
+First remove the `rvt-mcp` entry from each client you configured — `install.ps1 -Uninstall -Client <names>` does it for supported clients; the uninstaller itself never touches client configs.
 
 The uninstaller removes:
 

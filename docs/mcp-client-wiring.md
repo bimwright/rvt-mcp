@@ -1,8 +1,12 @@
 # Wiring rvt-mcp into MCP clients
 
-Procedure for AI agents connecting `rvt-mcp` to a user's MCP client. The
-installer deliberately never edits client configs — this document is the
-agent-side half. Last verified on a live machine: 2026-09-25.
+Procedure for connecting `rvt-mcp` to a user's MCP client. Since v0.6.4 the
+installer implements this same procedure via `install.ps1 -Client <names>`
+(`-Client auto` wires every detected client; `-WhatIf` previews; `-Uninstall
+-Client <names>` unwires) — this document remains the reference for the
+manual path, for clients the installer does not know, and for understanding
+what `-Client` does under the hood. Last verified on a live machine:
+2026-09-25.
 
 ## The contract (same for every client)
 
