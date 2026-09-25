@@ -15,6 +15,7 @@ namespace RvtMcp.Server.Prompts
     {
         internal static readonly string[] GettingStartedSets = { "query", "meta" };
         internal static readonly string[] ModelAuditSets = { "workflows", "families", "lint", "meta" };
+        internal static readonly string[] PreIssueSets = { "sheets", "view", "annotation", "lint", "meta" };
 
         [McpServerPrompt(Name = "revit_getting_started"),
          Description("Read-only orientation for the connected Revit: current target, active view, model statistics. Safe first command.")]
@@ -35,6 +36,27 @@ namespace RvtMcp.Server.Prompts
                 {
                     ["scope"] = string.IsNullOrWhiteSpace(scope) ? "all" : scope
                 });
+        }
+
+        [McpServerPrompt(Name = "revit_pre_issue_check"),
+         Description("Read-only check whether sheets are ready to issue: layout, tags, dimensions, revisions, warnings.")]
+        public static string PreIssueCheck(
+            [Description("Sheet set name or 'all'")] string scope = "all")
+        {
+            return PromptBody.Render(
+                PromptBody.Load("pre_issue_check"), PreIssueSets, requiresSendCode: false,
+                args: new Dictionary<string, string>
+                {
+                    ["scope"] = string.IsNullOrWhiteSpace(scope) ? "all" : scope
+                });
+        }
+
+        [McpServerPrompt(Name = "revit_stairs"),
+         Description("Guided stair creation via send_code: resolve the design together, confirm, then write and verify.")]
+        public static string Stairs()
+        {
+            return PromptBody.Render(
+                PromptBody.Load("stairs"), null, requiresSendCode: true);
         }
     }
 }

@@ -71,5 +71,62 @@ namespace RvtMcp.Tests
             Assert.DoesNotContain("{scope}", rendered);
             Assert.Contains("all", rendered);
         }
+
+        [Theory]
+        [InlineData("pre_issue_check")]
+        [InlineData("stairs")]
+        public void Embedded_prompt_body_loads_batch2(string name)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(PromptBody.Load(name)), $"missing RvtMcp.Prompts.{name}.md");
+        }
+
+        [Fact]
+        public void PreIssueCheck_returns_enable_notice_under_default_config()
+        {
+            var rendered = RevitPrompts.PreIssueCheck();
+
+            Assert.Contains("annotation", rendered);
+            Assert.Contains("lint", rendered);
+            Assert.Contains("sheets", rendered);
+            Assert.Contains("--toolsets", rendered);
+            Assert.DoesNotContain("revit_list_sheets", rendered);
+        }
+
+        [Fact]
+        public void PreIssueCheck_renders_body_with_scope_under_all_toolsets()
+        {
+            ServerState.Config = new RvtMcpConfig
+            {
+                Toolsets = new List<string> { "all" }
+            };
+
+            var rendered = RevitPrompts.PreIssueCheck("ISSUE-SET-01");
+
+            Assert.Contains("ISSUE-SET-01", rendered);
+            Assert.Contains("revit_list_sheets", rendered);
+            Assert.Contains("revit_list_revisions", rendered);
+            Assert.DoesNotContain("{scope}", rendered);
+        }
+
+        [Fact]
+        public void Stairs_renders_body_under_default_config()
+        {
+            var rendered = RevitPrompts.Stairs();
+
+            Assert.Contains("revit_send_code_to_revit", rendered);
+            Assert.Contains("confirm", rendered, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("--toolsets", rendered);
+        }
+
+        [Fact]
+        public void Stairs_returns_sendcode_notice_under_read_only()
+        {
+            ServerState.Config = new RvtMcpConfig { ReadOnly = true };
+
+            var rendered = RevitPrompts.Stairs();
+
+            Assert.Contains("--read-only", rendered);
+            Assert.DoesNotContain("resolved design", rendered);
+        }
     }
 }
