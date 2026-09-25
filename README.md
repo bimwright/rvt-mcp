@@ -129,6 +129,17 @@ Counts exclude your personal baked tools. Other toolsets stay off until you ask 
 - **Ribbon:** start or stop the connection, open **History** to search and re-run past calls, and switch completion **Toasts** (on by default).
 - **UI languages:** the add-in UI comes in 15 languages and follows Revit's UI language; change it with the **Language** combo in the ribbon slide-out. Tool names and payloads stay English. See [docs/localization.md](docs/localization.md).
 
+### Prompts
+
+Four ready-made workflows ship as MCP prompts — pick `/mcp__rvt-mcp__revit_<name>` (Claude Code) or the prompts menu (Claude Desktop), and the agent follows the script with the tools it already has:
+
+- `revit_getting_started` — orient in the open model (read-only, works on defaults).
+- `revit_model_audit` — health audit: warnings, families, dry-run purge candidates (needs `workflows,families,lint,meta`).
+- `revit_pre_issue_check` — are these sheets ready to issue (needs `sheets,view,annotation,lint,meta`).
+- `revit_stairs` — guided stair creation through `send_code` (writes only after your confirmation).
+
+If a prompt's toolsets aren't enabled, it answers with the exact `--toolsets` line to add — nothing runs half-configured.
+
 ---
 
 ## Configuration

@@ -23,6 +23,10 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
+### Added
+
+- **MCP prompts** — `revit_getting_started`, `revit_model_audit`, `revit_pre_issue_check`, `revit_stairs`: user-invoked markdown workflows, always listed; a prompt whose toolsets aren't enabled returns the exact `--toolsets` line instead of its steps. `revit_stairs` is the one write-capable prompt (via `send_code`) and asks for confirmation before writing.
+
 ### Fixed
 
 - **`dotnet build src/RvtMcp.sln` on a clean tree** — the test project's server reference now compiles into its own `obj`, so parallel builds no longer collide with the solution's server build (`MSB3371`/`CS2012`).

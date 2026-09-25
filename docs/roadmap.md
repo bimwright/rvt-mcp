@@ -29,7 +29,7 @@ Compile gate is 6/6; unit coverage is pure .NET; runtime smoke still needs per-R
 - **Gap draft status** — `dismiss_bake_suggestion` can turn repeated send-code patterns into a local GitHub issue draft URL for user review. Bimwright does not submit the issue or send telemetry.
 - **Async job polling (A8)** — long-running Revit operations (full-model recompute, export-to-IFC, large family load) currently block the 30 s response timeout. Add a `jobs/status/<id>` pattern so the model can fire and check later.
 - **Aggregator listings** — submit to Smithery, mcp.so, PulseMCP, MCP Market, Cline's registry, MseeP. Each has its own metadata format; roll changes through `server.json` first where possible.
-- **Prompt library** — reintroduce the `MCP prompts` feature that was stripped from v0.1.0 (the original lived in `RevitPrompts.cs` before the fresh-repo split). Generic prompts only this time; no project-specific DB coupling.
+- **Prompt library** — _delivered 2026-09-25_ — 4 MCP prompts (`revit_getting_started`, `revit_model_audit`, `revit_pre_issue_check`, `revit_stairs`) as embedded markdown bodies with render-time toolset gating. Generic prompts only; no project-specific DB coupling.
 - **R27 GA promotion** — when .NET 10 ships GA and R27 is widely installed, drop the "experimental" caveat.
 
 ## v1.0 — governance + stability
