@@ -89,11 +89,12 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -Yes
 
 | モード | Tools | 注記 |
 |--------|------:|------|
-| 既定 | **40** | `query` + `create` + `view` + `meta` |
+| 新規インストール | **229** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
+| 素の `rvt-mcp.exe` | **40** | `query` + `create` + `view` + `meta` |
 | `--toolsets all` | **229** | フルカタログ |
 | `all` + adaptive bake | **232** | 提案ライフサイクル 3 ツールを追加 |
 
-件数に個人 baked ツールは含みません。その他の toolset は明示するまでオフです（例：`--toolsets query,view,meta,mep` または `--toolsets all`）。`--read-only` は書き込み可能な toolset をすべて落とします（`create` 含む）。
+件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 40 ツールに戻ります。`--read-only` は出所に関わらず書き込み可能 toolset（`create` 含む）をすべて落とします。
 
 | Toolset | 範囲 |
 |---------|------|

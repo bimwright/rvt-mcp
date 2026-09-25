@@ -44,6 +44,24 @@ Edge-case rules, all clients:
 - Never delete unrelated entries. Re-running this procedure must not
   duplicate the entry.
 
+## If you are the agent running inside the client being wired
+
+Wiring the very client your session runs in works the same mechanically, but
+three things differ — plan around them:
+
+1. **The new server's tools cannot appear in this session.** The client only
+   spawns the server at restart, and restarting the client *ends this agent
+   session*. Wire last, after everything else is done, and tell the user
+   plainly that the restart they need will close the current conversation.
+2. **The running client can overwrite your edit.** Both Claude Code
+   (`~/.claude.json`) and Claude Desktop (`claude_desktop_config.json`)
+   persist their config from memory on exit — an entry written while the app
+   runs may silently vanish when it quits. After the client restarts, check
+   the file again and re-apply if the entry is gone.
+3. **You cannot self-verify.** `tools/list` and `revit_get_current_view_info`
+   are only callable in the *next* session. Tell the user what to expect:
+   `revit_*` tools after restart, then run the Verify steps below there.
+
 ## Per-client procedures
 
 ### Claude Code (CLI — preferred path)

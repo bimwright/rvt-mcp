@@ -120,7 +120,7 @@ Manual path (clients the installer does not know, or when the user wants hand co
 | Name | `rvt-mcp` (exactly one entry per client) |
 | Transport | stdio |
 | Command | The `Server :` path from the install summary, as an absolute path — normally `C:\Users\<user>\AppData\Local\RvtMcp\rvt\server\current\rvt-mcp.exe` |
-| Args | None required. Optional flags (`--toolsets all`, `--read-only`, …) are in the README configuration table |
+| Args | None required — an installed machine already enables the full surface via `rvtmcp.config.json`. Optional flags (`--toolsets`, `--read-only`, …) are in the README configuration table |
 
 JSON-style clients usually take:
 
@@ -143,6 +143,7 @@ JSON-style clients usually take:
   - An entry pointing at `...\RvtMcp\rvt\server\<version>\rvt-mcp.exe` (older installers) should be repointed to the `current` path. Afterwards `install.ps1 -PruneOldServers` removes the old copies.
   - Leftover `bimwright-rvt*` entries come from pre-0.5 releases. Tell the user, and remove them only with their consent.
 - **Restart:** restart the client after changing its config.
+- **Wiring your own client:** if your session runs inside the client being configured, see [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md) §"If you are the agent running inside the client being wired" — tools only appear after a restart (which ends this session), the running app may overwrite the config on exit, and verification happens in the next session.
 
 ---
 
@@ -229,6 +230,6 @@ Rules: `security.*` keys are locked and can never be overridden. Keys not in `_a
 
 ## Honest scope
 
-rvt-mcp handles `revit_get_current_view_info`, `revit_batch_execute`, `revit_send_code_to_revit`, and 220+ other tools across Revit 2022–2027 when started with `--toolsets all`. The default surface is `query` + `create` + `view` + `meta` only. It does not handle installing Revit, licensing, cloud sync, or any Autodesk account operations. If the user asks for those, point them at <https://www.autodesk.com/support/revit>.
+rvt-mcp handles `revit_get_current_view_info`, `revit_batch_execute`, `revit_send_code_to_revit`, and 220+ other tools across Revit 2022–2027. Machines installed via `install.ps1` get the full surface by default (the installer seeds `toolsets=all` unless the user set their own list); a bare `rvt-mcp.exe` without that config defaults to `query` + `create` + `view` + `meta` only. It does not handle installing Revit, licensing, cloud sync, or any Autodesk account operations. If the user asks for those, point them at <https://www.autodesk.com/support/revit>.
 
 For extending the tool surface at runtime, see ToolBaker in the main [README.md](README.md).

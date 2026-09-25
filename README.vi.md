@@ -89,11 +89,12 @@ Gỡ add-in và server nhưng giữ cài đặt, bản dịch, dữ liệu ToolB
 
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
-| Default | **40** | `query` + `create` + `view` + `meta` |
+| Fresh install | **229** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **40** | `query` + `create` + `view` + `meta` |
 | `--toolsets all` | **229** | Full catalog |
 | `all` + adaptive bake | **232** | Thêm 3 tool vòng đời suggestion |
 
-Số lượng chưa tính baked tool cá nhân. Các toolset khác tắt cho tới khi bạn bật, ví dụ `--toolsets query,view,meta,mep` hoặc `--toolsets all`; `--read-only` gỡ mọi toolset write-capable (kể cả `create`).
+Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 40 tool. `--read-only` gỡ mọi toolset write-capable (kể cả `create`) bất kể nguồn nào.
 
 | Toolset | Phạm vi |
 |---------|---------|

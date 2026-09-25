@@ -89,11 +89,12 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -Yes
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
-| 默认 | **40** | `query` + `create` + `view` + `meta` |
+| 全新安装 | **229** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
+| 裸 `rvt-mcp.exe` | **40** | `query` + `create` + `view` + `meta` |
 | `--toolsets all` | **229** | 完整目录 |
 | `all` + adaptive bake | **232** | 再加 3 个 suggestion 生命周期工具 |
 
-数量不含个人 baked 工具。其余 toolset 默认关闭，需显式开启，例如 `--toolsets query,view,meta,mep` 或 `--toolsets all`；`--read-only` 会去掉所有可写 toolset（含 `create`）。
+数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 40 个工具。无论来源如何，`--read-only` 都会去掉所有可写 toolset（含 `create`）。
 
 | Toolset | 覆盖 |
 |---------|------|
