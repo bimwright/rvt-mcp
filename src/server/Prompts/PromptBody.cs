@@ -78,8 +78,9 @@ namespace RvtMcp.Server.Prompts
                 "Missing: " + string.Join(", ", missing.OrderBy(t => t, StringComparer.Ordinal)) + ".\n" +
                 "Add them to the server command line, e.g.:  --toolsets " + string.Join(",", merged) + "\n" +
                 "(or --toolsets all), then restart the MCP connection so the client picks up the new tool list." +
-                (readOnly
-                    ? "\nThe server also runs with --read-only, which re-strips write-capable toolsets — drop that flag too."
+                (readOnly && missing.Any(t => ToolsetFilter.WriteCapable.Contains(t, StringComparer.OrdinalIgnoreCase))
+                    ? "\nThe server also runs with --read-only, which re-strips the required write-capable toolsets. " +
+                      "Keep that protection unless you explicitly authorize enabling those toolsets; only then remove --read-only and restart."
                     : string.Empty);
         }
 

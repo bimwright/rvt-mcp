@@ -43,9 +43,9 @@ namespace RvtMcp.Server.Prompts
         }
 
         [McpServerPrompt(Name = "revit_pre_issue_check"),
-         Description("Read-only check whether sheets are ready to issue: layout, tags, dimensions, revisions, warnings.")]
+         Description("Read-only checks for resolved sheets: layout, tags, dimensions, revisions, and model-wide warning context. Incomplete checks are NOT VERIFIED.")]
         public static string PreIssueCheck(
-            [Description("Sheet set name or 'all'")] string scope = "all")
+            [Description("Sheet numbers/IDs, an explicit number/name filter, or 'all'; named sheet sets require their member sheets")] string scope = "all")
         {
             return PromptBody.Render(
                 PromptBody.Load("pre_issue_check"), PreIssueSets, requiresSendCode: false,

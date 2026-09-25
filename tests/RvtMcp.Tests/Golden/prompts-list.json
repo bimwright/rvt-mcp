@@ -21,13 +21,13 @@
     },
     {
       "name": "revit_pre_issue_check",
-      "description_hash": "sha256:3c72c1ce0fbbf1e89ae1aca3015d3daeb8b5fd056fb5294f792499b93bae86f8",
+      "description_hash": "sha256:da97ba588fc93226a65cc8b841cc722edcd98d2fd13f76f02e96e50f4797c188",
       "arguments": [
         {
           "name": "scope",
           "required": false,
           "default": "all",
-          "description_hash": "sha256:418602b4d2505359fe731ff6497a0aaf9a91a89457b3c4068075e8c168502d9b"
+          "description_hash": "sha256:3ecc22b6607f26507b3d4513b883ab9abf830ce3401f94f9326f5adec212c447"
         }
       ]
     },
