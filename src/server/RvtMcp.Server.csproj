@@ -42,6 +42,13 @@
     <Compile Include="..\shared\Infrastructure\LegacyDataMigration.cs" Link="Shared\LegacyDataMigration.cs" />
   </ItemGroup>
 
+  <!-- Prompt bodies (D1): embedded markdown, stable LogicalName like the localization catalogs -->
+  <ItemGroup>
+    <EmbeddedResource Include="Prompts\*.md">
+      <LogicalName>RvtMcp.Prompts.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
   <!-- Expose internal helpers (ParseCsv, ApplyCliArgs, ApplyEnvVars, Load overloads, etc.)
        to the test project. Required for RvtMcpConfigTests + ToolsListSnapshotTests. -->
   <ItemGroup>

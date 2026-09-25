@@ -296,7 +296,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - lint: find_untagged_elements, get_model_warnings_summary
 - toolbaker: list_baked_tools, run_baked_tool";
 
-        private static bool IncludeSendCode(HashSet<string> enabled, RvtMcpConfig config)
+        internal static bool IncludeSendCode(HashSet<string> enabled, RvtMcpConfig config)
         {
             var bakerOn = config == null || config.EnableToolbakerOrDefault;
             var writable = config == null || !config.ReadOnlyOrDefault;
