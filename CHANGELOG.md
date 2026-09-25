@@ -5,7 +5,8 @@
 | Version | Date | Available as |
 |---|---|---|
 | Unreleased | — | Source on `master` only |
-| v0.6.2 | 2026-09-22 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.2) (latest) |
+| v0.6.3 | 2026-09-25 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.3) (latest) |
+| v0.6.2 | 2026-09-22 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.2); NuGet `RvtMcp.Server` 0.6.2 |
 | v0.6.1 | 2026-08-28 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.1); NuGet `RvtMcp.Server` 0.6.1 |
 | v0.6.0 | — | Not published on its own; shipped inside v0.6.1 |
 | v0.5.0 | 2026-05-22 | Git tag |
@@ -22,7 +23,9 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
-Changes on `master` since v0.6.2. Not in any published release yet; planned as **v0.6.3**.
+No changes on `master` since v0.6.3 yet.
+
+## v0.6.3 - Localized UI and a Revit-only installer
 
 ### Added
 
