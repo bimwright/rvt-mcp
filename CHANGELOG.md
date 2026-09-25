@@ -31,6 +31,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ### Fixed
 
+- **Claude Desktop wiring on MSIX installs** — the resolver now probes `Packages\*\LocalCache\Roaming\Claude` for any package family name (not just `Claude_*`) and prefers a package that actually contains the Claude cache over a stray `%APPDATA%\Claude` dir, which an MSIX install never reads. Wiring while `claude.exe` is running emits a warning that the app rewrites the config from memory on quit; `cowork*` keys and other app state are preserved.
 - **Prompt configuration notices** — missing read-only toolsets no longer trigger advice to disable `--read-only`; enabling required write-capable toolsets remains an explicit user decision.
 - **Pre-issue scope and coverage** — named sheet sets require explicit member sheets rather than being mistaken for sheet-name filters. Bounded model warnings do not certify individual sheets; unresolved or incomplete checks report `NOT VERIFIED`.
 - **Standalone stair guidance** — the embedded prompt includes its transaction, failure-reporting and scope-cleanup template instead of depending on documents from a source checkout.

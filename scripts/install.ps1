@@ -495,7 +495,11 @@ function Get-McpClientSpecs {
         [pscustomobject]@{ Name='claude';    Kind='cli'; Cli='claude'; DetectPaths=@((Join-Path $up '.claude.json')); Paths=@((Join-Path $up '.claude.json')); RootKey='mcpServers'; EntryKind='standard' }
         [pscustomobject]@{ Name='codex';     Kind='cli'; Cli='codex';  DetectPaths=@((Join-Path $up '.codex')) }
         [pscustomobject]@{ Name='grok';      Kind='cli'; Cli='grok';   DetectPaths=@((Join-Path $up '.grok')) }
-        [pscustomobject]@{ Name='claude-desktop'; Kind='file'; EntryKind='standard'; RootKey='mcpServers'; Paths=@((Join-Path $la 'Packages\Claude_*\LocalCache\Roaming\Claude\claude_desktop_config.json'), (Join-Path $ra 'Claude\claude_desktop_config.json')); DetectPaths=@((Join-Path $la 'Packages\Claude_*'), (Join-Path $ra 'Claude')) }
+        # claude-desktop: MSIX keeps its virtualized Roaming under the package
+        # LocalCache — the package family name varies by install channel, so
+        # glob any name. Classic/native installers use %APPDATA%\Claude; the
+        # AnthropicClaude installer still reads that same Roaming path.
+        [pscustomobject]@{ Name='claude-desktop'; Kind='file'; EntryKind='standard'; RootKey='mcpServers'; ProcName='claude'; ProcPathLike='*WindowsApps*'; Paths=@((Join-Path $la 'Packages\*\LocalCache\Roaming\Claude\claude_desktop_config.json'), (Join-Path $ra 'Claude\claude_desktop_config.json')); DetectPaths=@((Join-Path $la 'Packages\*\LocalCache\Roaming\Claude'), (Join-Path $ra 'Claude'), (Join-Path $la 'AnthropicClaude')) }
         [pscustomobject]@{ Name='cursor';    Kind='file'; EntryKind='standard'; RootKey='mcpServers'; Paths=@((Join-Path $up '.cursor\mcp.json'));            DetectPaths=@((Join-Path $up '.cursor')) }
         # Cline and Roo-style VS Code extensions keep their MCP settings under
         # globalStorage\<publisher>.<ext>\settings — first existing wins.
@@ -786,27 +790,32 @@ function Set-McpConfigEntry {
     return 'custom'
 }
 
-# First existing candidate wins. When none exists: prefer a literal path
-# under a detected install dir, rebuild inside an MSIX package dir
-# (claude-desktop), else the first literal path (create-if-absent).
+# First existing candidate wins. When none exists: a globbed package dir that
+# already contains the app's cache (MSIX) beats a stray literal dir — an MSIX
+# app never reads the real %APPDATA%; else a literal path under a detected
+# install dir; else the first literal path (create-if-absent).
 function Resolve-McpConfigPath($spec) {
     foreach ($p in $spec.Paths) {
         $hit = @(Resolve-Path $p -ErrorAction SilentlyContinue)
         if ($hit.Count) { return $hit[0].Path }
     }
+    if ($spec.Paths[0] -match '\*') {
+        # Rebuild inside any package dir that already holds the app's cache —
+        # works regardless of the package family name (enterprise repackage).
+        $tail = $spec.Paths[0].Substring($spec.Paths[0].IndexOf('*\') + 2)
+        $innerDir = Split-Path -Parent $tail
+        $baseDir = $spec.Paths[0].Substring(0, $spec.Paths[0].IndexOf('*\'))
+        if (Test-Path -LiteralPath $baseDir) {
+            $pkg = @(Get-ChildItem -LiteralPath $baseDir -Directory -ErrorAction SilentlyContinue |
+                Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName $innerDir) } |
+                Select-Object -First 1)
+            if ($pkg.Count) { return Join-Path $pkg[0].FullName $tail }
+        }
+    }
     foreach ($p in $spec.Paths) {
         if ($p -match '\*') { continue }
         foreach ($d in @($spec.DetectPaths)) {
             if ($d -and $d -notmatch '\*' -and $p.StartsWith($d, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $d)) { return $p }
-        }
-    }
-    $baseDir = Split-Path -Parent $spec.Paths[0]
-    while ($baseDir -match '\*') { $baseDir = Split-Path -Parent $baseDir }
-    if ($baseDir -and (Test-Path -LiteralPath $baseDir)) {
-        $pkg = @(Get-ChildItem -LiteralPath $baseDir -Directory -Filter 'Claude_*' -ErrorAction SilentlyContinue | Select-Object -First 1)
-        if ($pkg.Count) {
-            $tail = $spec.Paths[0].Substring($spec.Paths[0].IndexOf('*\') + 2)
-            return Join-Path $pkg[0].FullName $tail
         }
     }
     return @($spec.Paths | Where-Object { $_ -notmatch '\*' } | Select-Object -First 1)
@@ -934,13 +943,23 @@ function Invoke-McpClientWiring {
                 }
                 'file' {
                     if ($Mode -eq 'Add' -and -not (Test-McpClientDetected $spec)) {
-                        $report.Add("$($spec.Name): not detected — skipping (install the client first)")
+                        $report.Add("$($spec.Name): not detected — skipping (checked: $($spec.DetectPaths -join '; '))")
                         continue
                     }
                     $path = Resolve-McpConfigPath $spec
                     if (-not $path) { $report.Add("$($spec.Name): no config file found — wire it manually per docs/mcp-client-wiring.md"); continue }
                     $status = Set-McpConfigEntry -Path $path -RootKey $spec.RootKey -EntryKind $spec.EntryKind -Exe $Exe -Remove:($Mode -eq 'Remove')
                     $report.Add("$($spec.Name): $status -> $path")
+                    # Some apps (Claude Desktop) persist their config from
+                    # memory on quit — an edit made while the app runs can be
+                    # overwritten. Surface it instead of silently losing the entry.
+                    if ($spec.ProcName -and $status -in @('added', 'created', 'repointed', 'removed')) {
+                        $running = @(Get-Process -Name $spec.ProcName -ErrorAction SilentlyContinue |
+                            Where-Object { -not $spec.ProcPathLike -or $_.Path -like $spec.ProcPathLike })
+                        if ($running.Count) {
+                            $report.Add("$($spec.Name): app is running — fully quit it and verify the entry survives before trusting it")
+                        }
+                    }
                 }
                 'deeplink' {
                     if ($Mode -eq 'Remove') { $report.Add('cherry-studio: remove rvt-mcp in Settings → MCP Servers'); continue }

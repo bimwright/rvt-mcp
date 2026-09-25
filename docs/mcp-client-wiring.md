@@ -62,10 +62,12 @@ claude mcp get rvt-mcp     # expect Scope: User config, Status: Connected
 
 ### Claude Desktop (file)
 
-- MSIX (this machine): `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json` — **check this first**.
-- Classic fallback: `%APPDATA%\Claude\claude_desktop_config.json`.
-- Key `mcpServers`, standard entry shape. Fully quit the app (tray included)
-  before editing, then relaunch.
+- MSIX (Store/MSIX install): `%LOCALAPPDATA%\Packages\<package-family>\LocalCache\Roaming\Claude\claude_desktop_config.json` — **check this first**. The family name is not always `Claude_*` (enterprise repackaging, channel variants) — probe `Packages\*\LocalCache\Roaming\Claude\` for any package that contains the `Claude` cache dir.
+- Classic/native installer (incl. the `AnthropicClaude` installer — app under `%LOCALAPPDATA%\AnthropicClaude`): `%APPDATA%\Claude\claude_desktop_config.json`.
+- An MSIX install **never reads `%APPDATA%\Claude`** — a stray Roaming dir there must not win over the package cache.
+- Key `mcpServers`, standard entry shape. `mcpServers` lives only in this file — the sibling `config.json` is app state (oauth, allowlists), do not write there.
+- The app **rewrites this file from memory on quit** — an edit made while `claude.exe` is running can be silently reverted. The installer warns when the app is running; fully quit (tray included), verify the entry survived, then relaunch.
+- Cowork sessions bridge local stdio MCP servers through `localMcpBridge` — a normal `command`/`args` entry works in cowork mode and drives the Revit on the same machine. Existing `cowork*` keys and grants in the file are preserved (edits are minimal text surgery, never a JSON round-trip).
 
 ### Codex (CLI)
 

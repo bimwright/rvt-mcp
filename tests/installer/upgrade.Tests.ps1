@@ -88,7 +88,12 @@ function Invoke-FixtureSetup {
     # directory replacement and rollback are production code.
     function Get-AddinsRoot([int]$year) { Join-Path $Fixture.Root "addins/$year" }
     function Get-MachineAddinsRoot([int]$year) { Join-Path $Fixture.Root "machine/$year" }
-    function Get-Process { param($Name, $ErrorAction) if ($Fixture.Running) { [pscustomobject]@{Name='Revit';Id=1234} } }
+    function Get-Process { param($Name, $ErrorAction)
+        if ($Name -eq 'claude' -and $Fixture.PSObject.Properties['ClaudeRunning'] -and $Fixture.ClaudeRunning) {
+            return [pscustomobject]@{Name='claude';Id=99;Path='C:\Program Files\WindowsApps\Claude_9.9_x64__testpfn\app\claude.exe'}
+        }
+        if ($Fixture.Running) { [pscustomobject]@{Name='Revit';Id=1234} }
+    }
     function Test-ServerExecutable { param([string]$Path, [int]$TimeoutSeconds) if ($Fixture.SmokeFails) { throw 'Server executable could not start (stub). Antivirus or policy may have blocked it.' } }
     # Client CLIs never touch the real PATH here: detected only when the
     # fixture opts in with Add-Member FakeCli $true, then calls are recorded.
@@ -487,6 +492,67 @@ try {
         Invoke-FixtureSetup $fixture -Client 'claude' | Out-Null
         Assert (@($fixture.CliCalls | Where-Object { $_ -like 'claude mcp add *' }).Count -eq 1) "claude mcp add not invoked: $($fixture.CliCalls -join ';')"
         Assert (@($fixture.CliCalls | Where-Object { $_ -like '*rvt-mcp*' }).Count -ge 1) 'entry name missing from cli call'
+    }
+    Test 'Client wiring: claude-desktop resolves the MSIX LocalCache config and preserves cowork keys' {
+        $fixture = New-SetupFixture
+        Remove-Item -LiteralPath "$sandboxLocalAppData\Packages" -Recurse -Force -ErrorAction SilentlyContinue
+        $pkgDir = "$sandboxLocalAppData\Packages\Claude_testpfn\LocalCache\Roaming\Claude"
+        New-Item -ItemType Directory -Path $pkgDir -Force | Out-Null
+        $cfg = "$pkgDir\claude_desktop_config.json"
+        Set-Content -LiteralPath $cfg -Value @'
+{
+  "mcpServers": { "other": { "command": "x" } },
+  "coworkUserFilesPath": "C:\\Users\\Cowork\\Claude",
+  "preferences": { "coworkBrowserToolsEnabled": true }
+}
+'@
+        $exe = "$($fixture.Root)\server\current\rvt-mcp.exe"
+        $res = Invoke-McpClientWiring -Clients 'claude-desktop' -Exe $exe -Mode Add
+        Assert ($res -match 'wired|added') "expected wired, got: $res"
+        Assert ($res -match [regex]::Escape($cfg)) 'resolved MSIX path not reported'
+        $d = Get-Content -LiteralPath $cfg -Raw | ConvertFrom-Json
+        Assert ($d.mcpServers.'rvt-mcp'.command -match 'server[\\/]+current[\\/]+rvt-mcp\.exe$') 'rvt-mcp entry missing at MSIX path'
+        Assert ($d.mcpServers.other.command -eq 'x') 'sibling server lost'
+        Assert ($d.coworkUserFilesPath -eq 'C:\Users\Cowork\Claude') 'cowork key lost'
+        Assert ($d.preferences.coworkBrowserToolsEnabled -eq $true) 'cowork prefs lost'
+        Assert (-not (Test-Path "$sandboxUserProfile\.claude.json")) 'claude code file touched by desktop wiring'
+        # Uninstall pulls only the rvt-mcp member.
+        Invoke-McpClientWiring -Clients 'claude-desktop' -Mode Remove | Out-Null
+        $d = Get-Content -LiteralPath $cfg -Raw | ConvertFrom-Json
+        Assert (-not $d.mcpServers.PSObject.Properties['rvt-mcp']) 'uninstall left the entry'
+        Assert ($d.coworkUserFilesPath -eq 'C:\Users\Cowork\Claude') 'uninstall lost cowork keys'
+    }
+    Test 'Client wiring: claude-desktop prefers the MSIX package cache over a stray Roaming dir' {
+        # Regression: %APPDATA%\Claude exists (native leftovers) but the app is
+        # MSIX and only reads its package LocalCache — and the package family
+        # name is arbitrary, not necessarily Claude_*.
+        $fixture = New-SetupFixture
+        Remove-Item -LiteralPath "$sandboxLocalAppData\Packages" -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Path "$sandboxAppData\Claude" -Force | Out-Null
+        New-Item -ItemType Directory -Path "$sandboxLocalAppData\Packages\Anthropic.Claude_9zz\LocalCache\Roaming\Claude" -Force | Out-Null
+        $res = Invoke-McpClientWiring -Clients 'auto' -Exe 'x' -Mode Add
+        Assert ($res -match 'claude-desktop') "auto did not pick up the MSIX package: $res"
+        $expected = "$sandboxLocalAppData\Packages\Anthropic.Claude_9zz\LocalCache\Roaming\Claude\claude_desktop_config.json"
+        Assert (Test-Path -LiteralPath $expected) 'entry not created inside the MSIX cache'
+        Assert (-not (Test-Path "$sandboxAppData\Claude\claude_desktop_config.json")) 'wrote to the Roaming dir the MSIX app ignores'
+        Remove-Item -LiteralPath "$sandboxAppData\Claude" -Recurse -Force
+    }
+    Test 'Client wiring: claude-desktop warns when the app is running and reports not-detected cleanly' {
+        $fixture = New-SetupFixture
+        Remove-Item -LiteralPath "$sandboxLocalAppData\Packages" -Recurse -Force -ErrorAction SilentlyContinue
+        $fixture | Add-Member -NotePropertyName ClaudeRunning -NotePropertyValue $true
+        $pkgDir = "$sandboxLocalAppData\Packages\Claude_pfn2\LocalCache\Roaming\Claude"
+        New-Item -ItemType Directory -Path $pkgDir -Force | Out-Null
+        $cfg = "$pkgDir\claude_desktop_config.json"
+        Set-Content -LiteralPath $cfg -Value '{ "mcpServers": {} }'
+        $output = Invoke-FixtureSetup $fixture -Client 'claude-desktop' 6>&1 | Out-String -Width 4096
+        Assert ($output -match 'claude-desktop:.*app is running') "running-app warning missing: $output"
+        Assert ((Get-Content -LiteralPath $cfg -Raw | ConvertFrom-Json).mcpServers.'rvt-mcp') 'entry not written while app running'
+        $f2 = New-SetupFixture
+        Remove-Item -LiteralPath "$sandboxLocalAppData\Packages" -Recurse -Force -ErrorAction SilentlyContinue
+        $out2 = Invoke-FixtureSetup $f2 -Client 'claude-desktop' 6>&1 | Out-String -Width 4096
+        Assert ($out2 -match 'claude-desktop: not detected') 'not-detected report missing on a clean machine'
+        Assert (-not (Test-Path "$sandboxAppData\Claude\claude_desktop_config.json")) 'created a config for an undetected client'
     }
     Test 'Client wiring: none default leaves configs untouched even when present' {
         $fixture = New-SetupFixture
