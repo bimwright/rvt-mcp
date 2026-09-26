@@ -148,6 +148,8 @@ namespace RvtMcp.Plugin
 
                     var result = command.Execute(app, request.ParamsJson);
                     sw.Stop();
+                    // Spill may replace result.Data; the outcome is judged on the handler's own data.
+                    var handlerData = result.Data;
 
                     // Explicit output=file and oversized arbitrary-code responses spill before
                     // logging and guarding, so neither the wire nor logs retain the bulk body.
@@ -192,24 +194,6 @@ namespace RvtMcp.Plugin
                         : responseResultJson;
 
                     var resultError = McpResponsePrivacy.RedactErrorForResponse(result.Error);
-                    McpLogger.Log(request.CommandName, request.ParamsJson, result.Success,
-                                  sw.ElapsedMilliseconds, resultError, codeSnippet, resultJson);
-
-                    SendCodeJournalGate.OnSendCodeLogged(request.CommandName, request.ParamsJson, codeSnippet, result.Success, sw.ElapsedMilliseconds, resultError, resultJson);
-
-                    _sessionLog?.Add(new McpCallEntry
-                    {
-                        ToolName = request.CommandName,
-                        ParamsJson = request.ParamsJson,
-                        Success = result.Success,
-                        DurationMs = sw.ElapsedMilliseconds,
-                        ErrorMessage = resultError,
-                        CodeSnippet = codeSnippet,
-                        ResultJson = sessionResult,
-                        ToolDescription = command.Description,
-                        Summary = SummaryGenerator.Generate(request.CommandName, request.ParamsJson,
-                                                             sessionResult, result.Success, resultError)
-                    });
 
                     var response = JsonConvert.SerializeObject(new
                     {
@@ -227,6 +211,7 @@ namespace RvtMcp.Plugin
                     if (size.Warning != null)
                         Console.Error.WriteLine(size.Warning);
 
+                    string rejectError = null;
                     if (size.Reject)
                     {
                         var mutationCompleted = result.Success
@@ -273,11 +258,12 @@ namespace RvtMcp.Plugin
                         }
                         else
                         {
+                            rejectError = size.RejectError;
                             response = JsonConvert.SerializeObject(new
                             {
                                 id = request.Id,
                                 success = false,
-                                error = size.RejectError
+                                error = rejectError
                             });
                         }
                     }
@@ -290,6 +276,30 @@ namespace RvtMcp.Plugin
                             response = candidate;
                     }
 
+                    // Toast, History and mcp-calls.jsonl report one outcome, judged after the
+                    // size guard so a rejected response is not recorded as a success.
+                    var outcome = CommandOutcome.Normalize(
+                        request.CommandName, result.Success, handlerData, resultError, rejectError);
+
+                    McpLogger.Log(request.CommandName, request.ParamsJson, outcome.Success,
+                                  sw.ElapsedMilliseconds, outcome.Error, codeSnippet, resultJson);
+
+                    SendCodeJournalGate.OnSendCodeLogged(request.CommandName, request.ParamsJson, codeSnippet, outcome.Success, sw.ElapsedMilliseconds, outcome.Error, resultJson);
+
+                    _sessionLog?.Add(new McpCallEntry
+                    {
+                        ToolName = request.CommandName,
+                        ParamsJson = request.ParamsJson,
+                        Success = outcome.Success,
+                        DurationMs = sw.ElapsedMilliseconds,
+                        ErrorMessage = outcome.Error,
+                        CodeSnippet = codeSnippet,
+                        ResultJson = sessionResult,
+                        ToolDescription = command.Description,
+                        Summary = SummaryGenerator.Generate(request.CommandName, request.ParamsJson,
+                                                             sessionResult, outcome.Success, outcome.Error)
+                    });
+
                     request.Tcs.TrySetResult(response);
                     try
                     {
@@ -298,8 +308,8 @@ namespace RvtMcp.Plugin
                             request.CommandName,
                             request.ParamsJson,
                             responseResultJson,
-                            result.Success,
-                            resultError,
+                            outcome.Success,
+                            outcome.Error,
                             sw.ElapsedMilliseconds,
                             command.Description);
                     }
