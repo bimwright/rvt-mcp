@@ -143,6 +143,10 @@ namespace RvtMcp.Plugin
         public static BitmapSource History16 { get; } = CreateHistoryIcon(16);
         public static BitmapSource Info32 { get; } = CreateInfoIcon(32);
         public static BitmapSource Info16 { get; } = CreateInfoIcon(16);
+        public static BitmapSource Settings32 { get; } = CreateHistoryIcon(32);
+        public static BitmapSource Settings16 { get; } = CreateHistoryIcon(16);
+        public static BitmapSource Language32 { get; } = CreateChatIcon(32);
+        public static BitmapSource Language16 { get; } = CreateChatIcon(16);
         public static BitmapSource Chat32 { get; } = CreateChatIcon(32);
         public static BitmapSource Chat16 { get; } = CreateChatIcon(16);
         // Toast toggle shows state as a plain dot: yellow = on, gray = off.

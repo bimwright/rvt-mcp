@@ -41,7 +41,7 @@ namespace RvtMcp.Plugin
 
             var count = sessionLog?.Count ?? 0;
 
-            // Language change (combo switch or override-file hot reload) forces a
+            // Language change (Settings command or override-file hot reload) forces a
             // full text refresh even when running/count/toast flags are unchanged.
             var locVersion = L.Version;
             var locChanged = locVersion != _lastLocVersion;
@@ -91,14 +91,15 @@ namespace RvtMcp.Plugin
                     _ribbon.BakeInboxButton.ItemText = L.T("ribbon.bakeInbox.text");
                     _ribbon.BakeInboxButton.ToolTip = L.T("ribbon.bakeInbox.tooltip");
                 }
-                if (_ribbon.LanguageCombo != null)
+                if (_ribbon.SettingsButton != null)
                 {
-                    _ribbon.LanguageCombo.ToolTip = L.T("ribbon.language.tooltip");
-                    var autoItem = FindComboMember(_ribbon.LanguageCombo, LocaleResolver.Auto);
-                    if (autoItem != null)
-                        autoItem.ItemText = L.T("ribbon.language.auto");
-                    _ribbon.LanguageCombo.ItemText = L.T("ribbon.language.current",
-                        ("name", _ribbon.LanguageCombo.Current?.ItemText ?? ""));
+                    _ribbon.SettingsButton.ItemText = L.T("ribbon.settings.text");
+                    _ribbon.SettingsButton.ToolTip = L.T("ribbon.settings.tooltip");
+                }
+                if (_ribbon.LanguageButton != null)
+                {
+                    _ribbon.LanguageButton.ItemText = L.T("ribbon.language.text");
+                    _ribbon.LanguageButton.ToolTip = L.T("ribbon.language.tooltip");
                 }
                 // Baked-tool button labels are user-authored — verbatim, not localized.
             }
@@ -136,16 +137,5 @@ namespace RvtMcp.Plugin
                 ("lastCmd", lastCmd));
         }
 
-        private static ComboBoxMember FindComboMember(ComboBox combo, string name)
-        {
-            try
-            {
-                foreach (var item in combo.GetItems())
-                    if (string.Equals(item.Name, name, StringComparison.Ordinal))
-                        return item;
-            }
-            catch { }
-            return null;
-        }
     }
 }

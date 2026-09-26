@@ -13,7 +13,8 @@ namespace RvtMcp.Plugin
         public PushButton HistoryButton { get; set; }
         public PushButton ToastButton { get; set; }
         public PushButton BakeInboxButton { get; set; }
-        public ComboBox LanguageCombo { get; set; }
+        public PushButton SettingsButton { get; set; }
+        public PushButton LanguageButton { get; set; }
     }
 
     public static class RibbonSetup
@@ -23,9 +24,8 @@ namespace RvtMcp.Plugin
         /// <summary>
         /// Revit routes every item added after <c>AddSlideOut()</c> into the
         /// slide-out — so ordering is contractual: all main-panel items first,
-        /// then AddSlideOut, then the Language combo; baked-tool buttons added
-        /// later (startup or mid-session via RefreshBakedRibbonButtons) land in
-        /// the slide-out below Language. Spec §5.2 + owner decision.
+        /// then AddSlideOut, then Settings and Language commands; baked-tool
+        /// buttons added later land below those commands in the slide-out.
         /// </summary>
         public static RibbonResult Create(UIControlledApplication application, RvtMcpConfig config = null, BakedToolRuntimeCache runtimeCache = null)
         {
@@ -71,10 +71,11 @@ namespace RvtMcp.Plugin
                 bakeInboxButton = AddBakeInboxButton(panel, assemblyPath);
 
             panel.AddSlideOut();
-            var languageCombo = AddLanguageCombo(panel, config);
+            var settingsButton = AddSettingsButton(panel, assemblyPath);
+            var languageButton = AddLanguageButton(panel, assemblyPath);
 
             // Baked-tool buttons must come AFTER the slide-out — they intentionally
-            // appear below the Language combo (owner decision; there is no API slot
+            // appear below the Settings/Language commands (there is no API slot
             // that puts them back in the main panel once a slide-out exists).
             if (config?.EnableAdaptiveBakeOrDefault == true)
                 AddOrUpdateBakedToolButtons(application, runtimeCache);
@@ -85,7 +86,8 @@ namespace RvtMcp.Plugin
                 HistoryButton = stack[1] as PushButton,
                 ToastButton = stack[2] as PushButton,
                 BakeInboxButton = bakeInboxButton,
-                LanguageCombo = languageCombo
+                SettingsButton = settingsButton,
+                LanguageButton = languageButton
             };
         }
 
@@ -128,67 +130,55 @@ namespace RvtMcp.Plugin
             }
         }
 
-        /// <summary>
-        /// Slide-out language picker: "Auto" + the 15 shipped locales shown under
-        /// their native names. Selection applies immediately via <see cref="L.SetLanguage"/>
-        /// and persists to <c>uiLanguage</c> unless BIMWRIGHT_UI_LANGUAGE is set
-        /// (env wins again at next startup). <c>CurrentChanged</c> is suppressed while
-        /// populating so startup cannot overwrite the persisted value.
-        /// </summary>
-        private static ComboBox AddLanguageCombo(RibbonPanel panel, RvtMcpConfig config)
+        private static PushButton AddSettingsButton(RibbonPanel panel, string assemblyPath)
         {
-            var comboData = new ComboBoxData("LanguageCombo")
+            const string buttonName = "ShowSettings";
+            if (CreatedButtons.Contains(buttonName)) return null;
+            var data = new PushButtonData(
+                buttonName,
+                L.T("ribbon.settings.text"),
+                assemblyPath,
+                "RvtMcp.Plugin.Commands.ShowSettingsCommand")
             {
-                ToolTip = L.T("ribbon.language.tooltip")
+                LargeImage = IconGenerator.Settings32,
+                Image = IconGenerator.Settings16,
+                ToolTip = L.T("ribbon.settings.tooltip"),
+                LongDescription = L.T("ribbon.settings.tooltip")
             };
+            return AddPushButton(panel, data, buttonName);
+        }
 
-            ComboBox combo;
+        private static PushButton AddLanguageButton(RibbonPanel panel, string assemblyPath)
+        {
+            const string buttonName = "ShowSettingsLanguage";
+            if (CreatedButtons.Contains(buttonName)) return null;
+            var data = new PushButtonData(
+                buttonName,
+                L.T("ribbon.language.text"),
+                assemblyPath,
+                "RvtMcp.Plugin.Commands.ShowSettingsLanguageCommand")
+            {
+                LargeImage = IconGenerator.Language32,
+                Image = IconGenerator.Language16,
+                ToolTip = L.T("ribbon.language.tooltip"),
+                LongDescription = L.T("ribbon.language.tooltip")
+            };
+            return AddPushButton(panel, data, buttonName);
+        }
+
+        private static PushButton AddPushButton(RibbonPanel panel, PushButtonData data, string buttonName)
+        {
             try
             {
-                combo = panel.AddItem(comboData) as ComboBox;
+                var button = panel.AddItem(data) as PushButton;
+                CreatedButtons.Add(buttonName);
+                return button;
             }
             catch
             {
+                CreatedButtons.Add(buttonName);
                 return null;
             }
-            if (combo == null) return null;
-
-            var mergedCode = LocaleResolver.NormalizeCode(config?.UiLanguage);
-            var autoDisplay = L.T("ribbon.language.auto");
-
-            // Populate before wiring CurrentChanged — no handler can fire during setup.
-            ComboBoxMember selected = null;
-            var autoItem = combo.AddItem(new ComboBoxMemberData(LocaleResolver.Auto, autoDisplay));
-            if (mergedCode == LocaleResolver.Auto) selected = autoItem;
-            foreach (var locale in LocaleResolver.SupportedLocales)
-            {
-                var item = combo.AddItem(new ComboBoxMemberData(locale, LocaleResolver.NativeName(locale)));
-                if (mergedCode == locale) selected = item;
-            }
-            if (selected != null) combo.Current = selected;
-            // The collapsed box must be self-describing — a bare "Auto"/"Deutsch"
-            // reads as a mystery control. Keep it labeled: "Language: Auto".
-            // Assign after Current so the member's own text can't overwrite it.
-            combo.ItemText = L.T("ribbon.language.current",
-                ("name", selected?.ItemText ?? autoDisplay));
-
-            combo.CurrentChanged += (s, e) =>
-            {
-                var current = combo.Current;
-                if (current == null) return;
-                var code = current.Name;
-                combo.ItemText = L.T("ribbon.language.current", ("name", current.ItemText));
-                L.SetLanguage(code);
-                // Persist only when the env var is absent — env wins at next startup anyway.
-                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(RvtMcpConfig.EnvUiLanguage)))
-                {
-                    string saveError;
-                    if (!RvtMcpConfig.TrySaveUiLanguage(code, out saveError))
-                        App.DebugLog("UI language preference could not be saved: " + saveError);
-                }
-            };
-
-            return combo;
         }
 
         private static PushButton AddBakeInboxButton(RibbonPanel panel, string assemblyPath)
