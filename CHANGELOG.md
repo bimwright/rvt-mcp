@@ -24,9 +24,17 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
+### Added
+
+- **`revit_open_model`** (`meta` toolset) — opens a `.rvt`, `.rte` or `.rfa` and makes it active, or opens it in the background. A workshared `.rvt` is never opened directly: a new local copy is always created from its central model (same as Revit's Open → "Create New Local") under the Revit.ini `ProjectPath` folder as `<central>_<username>.rvt`. An existing local at that path is renamed with a timestamp — never deleted or overwritten — and a local with changes not yet saved to central stops the call and asks the user. `worksets` (all|none|lastViewed) applies to workshared models; `audit` is opt-in because it is slow; there is no `detach` option — detaching or opening a central directly goes through `revit_send_code_to_revit`. A model Revit already has open is reported back (and activated when `activate=true`) instead of reopened. `saved_in_version` shows when an older file is being upgraded in memory.
+- **Long-run `timeout_seconds`** on `revit_open_model`, `revit_link_revit_model`, `revit_reload_link` and `revit_load_family_from_path` — the request envelope carries the caller's plugin wait (1–900 s, default 600 s; out-of-range values are refused rather than clamped) because opening a model that pulls in many links commonly exceeds the 60 s default. Other tools keep the fixed 60 s wait.
+- Tool counts: default **41**, `--toolsets all` **230**, adaptive bake **233**.
+
+Thanks [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) — the `send_code`/`switch_target` fixes come from [#15](https://github.com/bimwright/rvt-mcp/pull/15) (cherry-picked), and `revit_open_model` was reworked from that PR's proposal to follow the workshared-model policy.
+
 ### Fixed
 
-- **`revit_send_code_to_revit` with no document open** — the wrapper read `app.ActiveUIDocument.Document` before the snippet ran, so every call threw a bare null reference when Revit had no document, including a snippet calling `app.OpenAndActivateDocument`. `doc` and `uidoc` are now `null` in that case and the snippet decides what to do.
+- **`revit_send_code_to_revit` with no document open** — the wrapper read `app.ActiveUIDocument.Document` before the snippet ran, so every call threw a bare null reference when Revit had no document, including a snippet calling `app.OpenAndActivateDocument`. `doc` and `uidoc` are now `null` in that case and the snippet decides what to do. The same null reference in the `run_baked_tool` wrapper (`ToolCompiler.cs`) is fixed as well.
 - **`revit_list_available_targets` hint** — it told callers to pass a `year` to `revit_switch_target`, whose parameter is named `version`; following it produced an invocation error that read as a dead server.
 
 ## v0.6.4 - Installer client wiring and MCP prompts

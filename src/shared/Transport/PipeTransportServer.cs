@@ -173,6 +173,7 @@ namespace RvtMcp.Plugin
                     string id = request.Value<string>("id");
                     string command = request.Value<string>("command");
                     string paramsJson = request["params"]?.ToString() ?? "{}";
+                    int? timeoutSeconds = request.Value<int?>("timeout_seconds");
 
                     // Create TCS and invoke callback
                     var tcs = new TaskCompletionSource<string>();
@@ -200,7 +201,8 @@ namespace RvtMcp.Plugin
                     LastCommandTime = DateTime.Now;
                     _onRequest(line, tcs);
 
-                    var response = RequestWait.WaitOrTimeout(tcs, id);
+                    var response = RequestWait.WaitOrTimeout(tcs, id,
+                        timeoutSeconds.HasValue ? TimeSpan.FromSeconds(timeoutSeconds.Value) : (TimeSpan?)null);
 
                     try
                     {

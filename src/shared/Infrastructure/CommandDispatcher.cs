@@ -51,6 +51,7 @@ namespace RvtMcp.Plugin
             Register(new Handlers.TagAllRoomsHandler());
             // Phase 6: Dynamic Code
             Register(new Handlers.SendCodeToRevitHandler());
+            Register(new Handlers.OpenModelHandler());
             // Phase 7: Views & Sheets
             Register(new Handlers.CreateViewHandler());
             Register(new Handlers.PlaceViewOnSheetHandler());

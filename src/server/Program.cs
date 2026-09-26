@@ -295,7 +295,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - workflows: workflow_clash_review, workflow_model_audit
 - structural: create_structural_column, create_rebar_set
 - kei: query_kei_database, import_project_equipment
-- meta: send_code_to_revit, batch_execute, list_available_targets, switch_target
+- meta: open_model, send_code_to_revit, batch_execute, list_available_targets, switch_target
 - lint: find_untagged_elements, get_model_warnings_summary
 - toolbaker: list_baked_tools, run_baked_tool";
 
@@ -527,12 +527,16 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             }
         }
 
-        public static async Task<JObject> SendToRevit(string command, object parameters = null)
+        // Plugin-side wait is the primary timeout authority; the server adds a
+        // short grace so the plugin's structured timeout response wins the race.
+        private static readonly TimeSpan TransportGrace = TimeSpan.FromSeconds(5);
+
+        public static async Task<JObject> SendToRevit(string command, object parameters = null, int? timeoutSeconds = null)
         {
             EnsureConnected();
 
             var id = $"req-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
-            var request = JsonConvert.SerializeObject(new { id, command, @params = parameters ?? new { }, token = _token }, RequestJsonSettings);
+            var request = JsonConvert.SerializeObject(new { id, command, @params = parameters ?? new { }, token = _token, timeout_seconds = timeoutSeconds }, RequestJsonSettings);
 
             var tcs = new TaskCompletionSource<string>();
             _pending[id] = tcs;
@@ -540,7 +544,8 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             var sw = System.Diagnostics.Stopwatch.StartNew();
             _writer.WriteLine(request);
 
-            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(60));
+            int budgetSeconds = timeoutSeconds ?? 60;
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(budgetSeconds) + TransportGrace);
             var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
 
             if (completedTask == timeoutTask)
@@ -548,9 +553,9 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 _pending.TryRemove(id, out _);
                 sw.Stop();
                 var paramsStr = parameters != null ? JsonConvert.SerializeObject(parameters, RequestJsonSettings) : null;
-                Session?.RecordCall(command, paramsStr, false, sw.ElapsedMilliseconds, "Timeout (60s)");
+                Session?.RecordCall(command, paramsStr, false, sw.ElapsedMilliseconds, $"Timeout ({budgetSeconds}s)");
                 UsageLogger?.RecordToolCall(command, paramsStr, false);
-                throw new TimeoutException("Request timed out (60s). Revit may be in a modal dialog.");
+                throw new TimeoutException($"Request timed out ({budgetSeconds}s). Revit may be in a modal dialog.");
             }
 
             sw.Stop();
@@ -576,6 +581,18 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 UsageLogger?.RecordToolCall(command, paramsJson, false);
                 throw new InvalidOperationException(error);
             }
+        }
+
+        /// <summary>
+        /// Long-run tools accept a per-call plugin wait of 1-900 seconds (default 600).
+        /// Out-of-range values are rejected rather than clamped so a wrong unit
+        /// (e.g. 600000 milliseconds) surfaces as an error instead of a silent cap.
+        /// </summary>
+        internal static string ValidateTimeoutSeconds(int timeoutSeconds)
+        {
+            if (timeoutSeconds < 1 || timeoutSeconds > 900)
+                return $"Error: timeout_seconds must be between 1 and 900 seconds (got {timeoutSeconds}). The default is 600 and the unit is seconds, not milliseconds.";
+            return null;
         }
     }
 
@@ -903,12 +920,15 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_load_family_from_path", Destructive = false), System.ComponentModel.Description("Load an .rfa family. Response is compact by default; set includeSymbols=true for a bounded symbol preview (maxSymbolResults hard max 1000).")]
-        public static async Task<string> LoadFamilyFromPath(string path, bool overwriteExisting = true, bool overwriteParameterValues = false, bool includeSymbols = false, int maxSymbolResults = 200)
+        [McpServerTool(Name = "revit_load_family_from_path", Destructive = false), System.ComponentModel.Description("Load an .rfa family. Response is compact by default; set includeSymbols=true for a bounded symbol preview (maxSymbolResults hard max 1000). timeout_seconds: plugin wait 1-900s, default 600 - a large family load can exceed 60s.")]
+        public static async Task<string> LoadFamilyFromPath(string path, bool overwriteExisting = true, bool overwriteParameterValues = false, bool includeSymbols = false, int maxSymbolResults = 200, int timeout_seconds = 600)
         {
+            var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
+            if (timeoutError != null) return timeoutError;
+
             try
             {
-                var result = await ToolGateway.SendToRevit("load_family_from_path", new { path, overwrite_existing = overwriteExisting, overwrite_parameter_values = overwriteParameterValues, include_symbols = includeSymbols, max_symbol_results = maxSymbolResults });
+                var result = await ToolGateway.SendToRevit("load_family_from_path", new { path, overwrite_existing = overwriteExisting, overwrite_parameter_values = overwriteParameterValues, include_symbols = includeSymbols, max_symbol_results = maxSymbolResults }, timeout_seconds);
                 return JsonConvert.SerializeObject(result, Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
@@ -1993,7 +2013,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
     [McpServerToolType, Toolset("meta")]
     public class SendCodeTools
     {
-        [McpServerTool(Name = "revit_send_code_to_revit"), System.ComponentModel.Description("Compile + run C# inside Revit for workflows not covered by typed tools. Variables: doc (Document), uidoc (UIDocument), app (UIApplication) - doc and uidoc are null when no model is open, which is legal: use app.OpenAndActivateDocument(path) to open one. Write a C# body ending in return; helper type declarations may accompany the body. Or provide a complete public McpDynamicScript with public static object Run(UIApplication app). For transactions/StairsEditScope.Commit, RvtMcp.Plugin.SafeFailuresPreprocessor records/deletes warnings and rolls back errors; report HadWarnings/Messages as committed_with_warnings; inspect HadErrors and commit status before reporting success. Output above 700 KiB auto-spills to a local same-machine file with schema and preview; there is no output parameter. Remote clients receive preview but cannot read the local file. Namespaces: System, System.Linq, System.Collections.Generic, Autodesk.Revit.DB, Autodesk.Revit.UI.")]
+        [McpServerTool(Name = "revit_send_code_to_revit"), System.ComponentModel.Description("Compile + run C# inside Revit for workflows not covered by typed tools. Variables: doc (Document), uidoc (UIDocument), app (UIApplication) - doc and uidoc are null when no model is open, which is legal: use app.OpenAndActivateDocument(path) to open one, or prefer the typed revit_open_model tool. Write a C# body ending in return; helper type declarations may accompany the body. Or provide a complete public McpDynamicScript with public static object Run(UIApplication app). For transactions/StairsEditScope.Commit, RvtMcp.Plugin.SafeFailuresPreprocessor records/deletes warnings and rolls back errors; report HadWarnings/Messages as committed_with_warnings; inspect HadErrors and commit status before reporting success. Output above 700 KiB auto-spills to a local same-machine file with schema and preview; there is no output parameter. Remote clients receive preview but cannot read the local file. Namespaces: System, System.Linq, System.Collections.Generic, Autodesk.Revit.DB, Autodesk.Revit.UI.")]
         public static async Task<string> SendCodeToRevit(string code)
         {
             try
@@ -2157,6 +2177,38 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
     [McpServerToolType, Toolset("meta")]
     public class MetaTools
     {
+        [McpServerTool(Name = "revit_open_model", Destructive = false), System.ComponentModel.Description(
+            "Open a Revit model, template or family from disk and make it the active document. " +
+            "THIS IS THE TOOL TO CALL WHEN NO DOCUMENT IS OPEN - every other tool reports 'No document is open' until one is. " +
+            "path: an absolute path on the machine Revit runs on, NOT on the MCP client's machine. " +
+            "A workshared .rvt is never opened directly: a new local copy is always created from its central model " +
+            "(same as Revit's Open > 'Create New Local') under the Revit.ini ProjectPath folder as <central>_<username>.rvt. " +
+            "If a local with that name already exists it is renamed with a timestamp - never deleted or overwritten - " +
+            "unless it has changes not yet saved to central, in which case the call stops and asks the user. " +
+            "There is no detach option - detaching from central or opening a central directly must go through revit_send_code_to_revit. " +
+            "activate=true (default) opens it in the UI and makes it active; false opens it in the background with no view, where tools reading the active document will not see it. " +
+            "worksets (all|none|lastViewed) applies to workshared models only. audit=true is slow - use it on a suspect file. " +
+            "A model Revit already has open is reported back (and activated when activate=true) rather than reopened. " +
+            "timeout_seconds: 1-900, default 600 - opening a model that pulls in many links commonly exceeds 60s (measured: a 20 MB model with 5 links took 64s). " +
+            "Returns: {opened, was_already_open, title, path, saved_in_version, is_workshared, is_family, header_worksharing, central_path, local_path, local_file_created, renamed_existing_local, activated, active_view}. " +
+            "NOTE: opening a model saved in an older Revit upgrades it in memory - that only reaches disk if something saves it.")]
+        public static async Task<string> OpenModel(string path, bool activate = true, bool audit = false, string worksets = null, int timeout_seconds = 600)
+        {
+            var blocked = ServerState.BlockIfReadOnly("open_model");
+            if (blocked != null) return blocked;
+
+            var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
+            if (timeoutError != null) return timeoutError;
+
+            try
+            {
+                var parameters = new { path, activate, audit, worksets };
+                var result = await ToolGateway.SendToRevit("open_model", parameters, timeout_seconds);
+                return JsonConvert.SerializeObject(result, Formatting.Indented);
+            }
+            catch (Exception ex) { return $"Error: {ex.Message}"; }
+        }
+
         [McpServerTool(Name = "revit_show_message", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("Show a Revit TaskDialog. Message echo is off by default; opt in with echoMessage and cap it with maxEchoChars.")]
         public static async Task<string> ShowMessage(string message = null, string title = null, bool echoMessage = false, int maxEchoChars = 1024)
         {
@@ -3632,12 +3684,15 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_link_revit_model", Destructive = false), System.ComponentModel.Description("Link a Revit model (.rvt) into the project.")]
-        public static async Task<string> LinkRevitModel(string path, string placement = "origin", bool relative = false, bool reuseExistingType = false)
+        [McpServerTool(Name = "revit_link_revit_model", Destructive = false), System.ComponentModel.Description("Link a Revit model (.rvt) into the project. timeout_seconds: plugin wait 1-900s, default 600 - linking a large model can exceed 60s.")]
+        public static async Task<string> LinkRevitModel(string path, string placement = "origin", bool relative = false, bool reuseExistingType = false, int timeout_seconds = 600)
         {
+            var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
+            if (timeoutError != null) return timeoutError;
+
             try
             {
-                var result = await ToolGateway.SendToRevit("link_revit_model", new { path, placement, relative, reuse_existing_type = reuseExistingType });
+                var result = await ToolGateway.SendToRevit("link_revit_model", new { path, placement, relative, reuse_existing_type = reuseExistingType }, timeout_seconds);
                 return JsonConvert.SerializeObject(result, Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
@@ -3654,12 +3709,15 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_reload_link", Destructive = false), System.ComponentModel.Description("Reload a Revit link type by type or instance ID.")]
-        public static async Task<string> ReloadLink(long? linkTypeId = null, long? linkInstanceId = null)
+        [McpServerTool(Name = "revit_reload_link", Destructive = false), System.ComponentModel.Description("Reload a Revit link type by type or instance ID. timeout_seconds: plugin wait 1-900s, default 600 - reloading a large link can exceed 60s.")]
+        public static async Task<string> ReloadLink(long? linkTypeId = null, long? linkInstanceId = null, int timeout_seconds = 600)
         {
+            var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
+            if (timeoutError != null) return timeoutError;
+
             try
             {
-                var result = await ToolGateway.SendToRevit("reload_link", new { link_type_id = linkTypeId, link_instance_id = linkInstanceId });
+                var result = await ToolGateway.SendToRevit("reload_link", new { link_type_id = linkTypeId, link_instance_id = linkInstanceId }, timeout_seconds);
                 return JsonConvert.SerializeObject(result, Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
