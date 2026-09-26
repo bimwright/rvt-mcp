@@ -320,5 +320,27 @@ namespace RvtMcp.Tests
                 if (File.Exists(path)) File.Delete(path);
             }
         }
+
+        [Fact]
+        public void TrySaveEnableToast_reports_malformed_config_without_overwriting_it()
+        {
+            var path = Path.Combine(Path.GetTempPath(), "rvtmcp-toast-save-invalid-" + Path.GetRandomFileName() + ".json");
+            const string original = "{ invalid json";
+            try
+            {
+                File.WriteAllText(path, original);
+
+                string error;
+                var ok = RvtMcpConfig.TrySaveEnableToast(true, out error, path);
+
+                Assert.False(ok);
+                Assert.False(string.IsNullOrWhiteSpace(error));
+                Assert.Equal(original, File.ReadAllText(path));
+            }
+            finally
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+        }
     }
 }

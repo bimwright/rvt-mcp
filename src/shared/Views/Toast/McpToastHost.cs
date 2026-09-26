@@ -14,9 +14,11 @@ namespace RvtMcp.Plugin.Views.Toast
         /// </summary>
         internal ActivityAggregator Aggregator { get; }
 
-        public McpToastHost()
+        public McpToastHost(Func<int> idleSeconds = null)
         {
-            Aggregator = new ActivityAggregator();
+            // The provider is read when an activity card re-arms, so a Settings apply
+            // takes effect on the next tool result without rebuilding the host.
+            Aggregator = new ActivityAggregator(idleSeconds ?? (() => ActivityAggregator.DefaultIdleSeconds));
         }
 
         private readonly object _lock = new object();

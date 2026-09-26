@@ -109,13 +109,13 @@ namespace RvtMcp.Tests
         public void CLI_Args_ApplyCorrectly()
         {
             var config = new RvtMcpConfig();
-            RvtMcpConfig.ApplyCliArgs(config, new[] { "--persist-send-code-bodies" });
+            RvtMcpConfig.ApplyCliArgs(config, new[] { "--persist-send-code-bodies" }, _tempConfigPath);
             Assert.True(config.PersistSendCodeBodies);
             Assert.NotNull(config.PersistSendCodeBodiesUntil); // Default 4h set when helper evaluates or ApplyCliArgs sets it.
             
             // Let's verify custom TTL
             config = new RvtMcpConfig();
-            RvtMcpConfig.ApplyCliArgs(config, new[] { "--persist-send-code-bodies-for", "90m" });
+            RvtMcpConfig.ApplyCliArgs(config, new[] { "--persist-send-code-bodies-for", "90m" }, _tempConfigPath);
             Assert.True(config.PersistSendCodeBodies);
             
             DateTimeOffset parsedUntil = DateTimeOffset.Parse(config.PersistSendCodeBodiesUntil);
@@ -124,14 +124,14 @@ namespace RvtMcp.Tests
 
             // Let's verify clamp max
             config = new RvtMcpConfig();
-            RvtMcpConfig.ApplyCliArgs(config, new[] { "--persist-send-code-bodies-for", "5d" });
+            RvtMcpConfig.ApplyCliArgs(config, new[] { "--persist-send-code-bodies-for", "5d" }, _tempConfigPath);
             parsedUntil = DateTimeOffset.Parse(config.PersistSendCodeBodiesUntil);
             diff = parsedUntil - DateTimeOffset.UtcNow;
             Assert.True(diff.TotalDays > 1.9 && diff.TotalDays < 2.1); // Clamped to 2d
 
             // Disable
             config = new RvtMcpConfig();
-            RvtMcpConfig.ApplyCliArgs(config, new[] { "--no-persist-send-code-bodies" });
+            RvtMcpConfig.ApplyCliArgs(config, new[] { "--no-persist-send-code-bodies" }, _tempConfigPath);
             Assert.False(config.PersistSendCodeBodies);
             Assert.Null(config.PersistSendCodeBodiesUntil);
         }
@@ -145,7 +145,7 @@ namespace RvtMcp.Tests
                 if (k == RvtMcpConfig.EnvPersistSendCodeBodies) return "1";
                 if (k == RvtMcpConfig.EnvPersistSendCodeBodiesTtl) return "12h";
                 return null;
-            });
+            }, _tempConfigPath);
 
             Assert.True(config.PersistSendCodeBodies);
             Assert.NotNull(config.PersistSendCodeBodiesUntil);

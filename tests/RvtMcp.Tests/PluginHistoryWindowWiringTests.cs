@@ -72,6 +72,20 @@ namespace RvtMcp.Tests
             Assert.Contains("Config.UiLanguage, DebugLog", source);
         }
 
+        [Theory]
+        [InlineData("plugin-r22")]
+        [InlineData("plugin-r23")]
+        [InlineData("plugin-r24")]
+        [InlineData("plugin-r25")]
+        [InlineData("plugin-r26")]
+        [InlineData("plugin-r27")]
+        public void Toast_host_reads_the_configured_idle_duration(string pluginFolder)
+        {
+            var source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", pluginFolder, "App.cs"));
+
+            Assert.Contains("new McpToastHost(() => Config?.ToastIdleSecondsOrDefault ?? RvtMcpConfig.DefaultToastIdleSeconds)", source);
+        }
+
         [Fact]
         public void LocalizationHost_init_is_nonfatal_and_logs_missing_keys()
         {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -38,6 +39,8 @@ namespace RvtMcp.Plugin
         public const bool DefaultCacheSendCodeBodies       = false;
         public const bool DefaultEnableToast               = true;
         public const bool DefaultPersistSendCodeBodies     = false;
+        public const int DefaultToastIdleSeconds           = 20;
+        public const int DefaultPersistSendCodeBodiesHours = 4;
 
         [JsonProperty("target")]
         public string Target { get; set; }
@@ -63,11 +66,19 @@ namespace RvtMcp.Plugin
         [JsonProperty("enableToast")]
         public bool? EnableToast { get; set; }
 
+        /// <summary>Idle duration for the single activity toast. Settings accepts 10, 20, 30, or 60 seconds.</summary>
+        [JsonProperty("toastIdleSeconds")]
+        public int? ToastIdleSeconds { get; set; }
+
         [JsonProperty("persistSendCodeBodies")]
         public bool? PersistSendCodeBodies { get; set; }
 
         [JsonProperty("persistSendCodeBodiesUntil")]
         public string PersistSendCodeBodiesUntil { get; set; }
+
+        /// <summary>Journal retention duration in hours. Settings accepts 1 through 48 hours.</summary>
+        [JsonProperty("persistSendCodeBodiesHours")]
+        public int? PersistSendCodeBodiesHours { get; set; }
 
         /// <summary>
         /// Set when TTL auto-expires. Sticky env=1 must not re-enable until CLI
@@ -89,6 +100,27 @@ namespace RvtMcp.Plugin
         public bool EnableAdaptiveBakeOrDefault    => EnableAdaptiveBake ?? DefaultEnableAdaptiveBake;
         public bool CacheSendCodeBodiesOrDefault  => CacheSendCodeBodies ?? DefaultCacheSendCodeBodies;
         public bool EnableToastOrDefault          => EnableToast       ?? DefaultEnableToast;
+        public int ToastIdleSecondsOrDefault      => NormalizeToastIdleSeconds(ToastIdleSeconds);
+        public int PersistSendCodeBodiesHoursOrDefault => NormalizePersistSendCodeBodiesHours(PersistSendCodeBodiesHours);
+
+        public static int NormalizeToastIdleSeconds(int? seconds)
+        {
+            switch (seconds)
+            {
+                case 10:
+                case 20:
+                case 30:
+                case 60:
+                    return seconds.Value;
+                default:
+                    return DefaultToastIdleSeconds;
+            }
+        }
+
+        public static int NormalizePersistSendCodeBodiesHours(int? hours)
+        {
+            return hours >= 1 && hours <= 48 ? hours.Value : DefaultPersistSendCodeBodiesHours;
+        }
 
         public bool IsPersistSendCodeBodiesActive(DateTimeOffset? now = null)
         {
@@ -117,6 +149,25 @@ namespace RvtMcp.Plugin
             return Load(args, configFilePath, envLookup: null);
         }
 
+        /// <summary>
+        /// Read the settings snapshot without expiry cleanup, CLI processing, or any
+        /// write-back. Environment variables are an in-memory overlay only. Settings
+        /// uses this method while a dialog is open so merely opening the dialog cannot
+        /// mutate the user's config or journal TTL.
+        /// </summary>
+        public static RvtMcpConfig LoadReadOnly(string configFilePath = null)
+        {
+            return LoadReadOnly(configFilePath, envLookup: null);
+        }
+
+        internal static RvtMcpConfig LoadReadOnly(string configFilePath, Func<string, string> envLookup)
+        {
+            var path = configFilePath ?? ConfigFilePathOverride ?? DefaultConfigFilePath;
+            var config = LoadFromJsonFile(path) ?? new RvtMcpConfig();
+            ApplyEnvVars(config, envLookup, configFilePath: null, allowPersistenceWriteBack: false);
+            return config;
+        }
+
         internal static RvtMcpConfig Load(string[] args, string configFilePath, Func<string, string> envLookup)
         {
             var path = configFilePath ?? ConfigFilePathOverride ?? DefaultConfigFilePath;
@@ -134,7 +185,8 @@ namespace RvtMcp.Plugin
                     config.PersistSendCodeBodies = null;
                     config.PersistSendCodeBodiesUntil = null;
                     config.PersistSendCodeBodiesRequiresExplicitEnable = true;
-                    ClearPersistSendCodeBodies(path, requireExplicitEnable: true);
+                    string cleanupError;
+                    TryClearPersistSendCodeBodies(out cleanupError, path, requireExplicitEnable: true);
                 }
             }
 
@@ -163,10 +215,19 @@ namespace RvtMcp.Plugin
 
         internal static void ApplyEnvVars(RvtMcpConfig config, Func<string, string> lookup = null)
         {
-            ApplyEnvVars(config, lookup, null);
+            ApplyEnvVars(config, lookup, null, allowPersistenceWriteBack: true);
         }
 
         internal static void ApplyEnvVars(RvtMcpConfig config, Func<string, string> lookup, string configFilePath)
+        {
+            ApplyEnvVars(config, lookup, configFilePath, allowPersistenceWriteBack: true);
+        }
+
+        internal static void ApplyEnvVars(
+            RvtMcpConfig config,
+            Func<string, string> lookup,
+            string configFilePath,
+            bool allowPersistenceWriteBack)
         {
             lookup = lookup ?? Environment.GetEnvironmentVariable;
 
@@ -211,7 +272,7 @@ namespace RvtMcp.Plugin
                         && config.PersistSendCodeBodiesRequiresExplicitEnable != true)
                     {
                         var ttlStr = lookup(EnvPersistSendCodeBodiesTtl);
-                        var ttl = PersistSendCodeTtl.Default;
+                        var ttl = TimeSpan.FromHours(config.PersistSendCodeBodiesHoursOrDefault);
                         if (!string.IsNullOrWhiteSpace(ttlStr) && PersistSendCodeTtl.TryParse(ttlStr, out var parsedTtl))
                         {
                             var clamped = PersistSendCodeTtl.Clamp(parsedTtl);
@@ -223,7 +284,11 @@ namespace RvtMcp.Plugin
                         config.PersistSendCodeBodies = true;
                         config.PersistSendCodeBodiesUntil = PersistSendCodeTtl.FormatIsoUntil(until);
                         config.PersistSendCodeBodiesRequiresExplicitEnable = false;
-                        SavePersistSendCodeBodies(true, until, configFilePath);
+                        if (allowPersistenceWriteBack)
+                        {
+                            string saveError;
+                            TrySavePersistSendCodeBodies(true, until, out saveError, configFilePath);
+                        }
                     }
                 }
                 else if (val == false)
@@ -231,7 +296,11 @@ namespace RvtMcp.Plugin
                     config.PersistSendCodeBodies = false;
                     config.PersistSendCodeBodiesUntil = null;
                     config.PersistSendCodeBodiesRequiresExplicitEnable = null;
-                    ClearPersistSendCodeBodies(configFilePath, requireExplicitEnable: false);
+                    if (allowPersistenceWriteBack)
+                    {
+                        string clearError;
+                        TryClearPersistSendCodeBodies(out clearError, configFilePath, requireExplicitEnable: false);
+                    }
                 }
             }
         }
@@ -281,19 +350,20 @@ namespace RvtMcp.Plugin
                         break;
                     case "--persist-send-code-bodies":
                         {
-                            var ttl = PersistSendCodeTtl.Default;
+                            var ttl = TimeSpan.FromHours(config.PersistSendCodeBodiesHoursOrDefault);
                             var until = DateTimeOffset.UtcNow.Add(ttl);
                             config.PersistSendCodeBodies = true;
                             config.PersistSendCodeBodiesUntil = PersistSendCodeTtl.FormatIsoUntil(until);
                             config.PersistSendCodeBodiesRequiresExplicitEnable = false;
-                            SavePersistSendCodeBodies(true, until, configFilePath);
+                            string saveError;
+                            TrySavePersistSendCodeBodies(true, until, out saveError, configFilePath);
                         }
                         break;
                     case "--persist-send-code-bodies-for":
                         if (i + 1 < args.Length)
                         {
                             var ttlStr = args[++i];
-                            var ttl = PersistSendCodeTtl.Default;
+                            var ttl = TimeSpan.FromHours(config.PersistSendCodeBodiesHoursOrDefault);
                             if (PersistSendCodeTtl.TryParse(ttlStr, out var parsedTtl))
                             {
                                 var clamped = PersistSendCodeTtl.Clamp(parsedTtl);
@@ -309,14 +379,16 @@ namespace RvtMcp.Plugin
                             config.PersistSendCodeBodies = true;
                             config.PersistSendCodeBodiesUntil = PersistSendCodeTtl.FormatIsoUntil(until);
                             config.PersistSendCodeBodiesRequiresExplicitEnable = false;
-                            SavePersistSendCodeBodies(true, until, configFilePath);
+                            string saveError;
+                            TrySavePersistSendCodeBodies(true, until, out saveError, configFilePath);
                         }
                         break;
                     case "--no-persist-send-code-bodies":
                         config.PersistSendCodeBodies = false;
                         config.PersistSendCodeBodiesUntil = null;
                         config.PersistSendCodeBodiesRequiresExplicitEnable = null;
-                        ClearPersistSendCodeBodies(configFilePath, requireExplicitEnable: false);
+                        string clearError;
+                        TryClearPersistSendCodeBodies(out clearError, configFilePath, requireExplicitEnable: false);
                         break;
                 }
             }
@@ -352,113 +424,256 @@ namespace RvtMcp.Plugin
             return result;
         }
 
-        /// <summary>
-        /// Persist only <c>enableToast</c> into the JSON config file, preserving other keys.
-        /// Used by the ribbon toggle so the preference survives Revit restarts.
-        /// </summary>
-        public static void SaveEnableToast(bool enabled, string configFilePath = null)
+        /// <summary>Persisted settings that can be staged by the Settings dialog.</summary>
+        public sealed class SettingsPatch
         {
-            var path = string.IsNullOrWhiteSpace(configFilePath) ? DefaultConfigFilePath : configFilePath;
-            try
-            {
-                var dir = Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(dir))
-                    Directory.CreateDirectory(dir);
+            public int? ToastIdleSeconds { get; set; }
+            public int? PersistSendCodeBodiesHours { get; set; }
+            public bool? PersistSendCodeBodies { get; set; }
+        }
 
-                JObject root;
-                if (!TryReadConfigRoot(path, out root)) return;
-
-                root["enableToast"] = enabled;
-                File.WriteAllText(path, root.ToString(Formatting.Indented));
-            }
-            catch
+        public sealed class ApplyFailure
+        {
+            public ApplyFailure(string key, string error)
             {
-                // Best-effort — toggle still works in-memory for this session.
+                Key = key;
+                Error = error;
             }
+
+            public string Key { get; }
+            public string Error { get; }
+        }
+
+        /// <summary>Per-key result returned by <see cref="TryApplySettings"/>.</summary>
+        public sealed class ApplyResult
+        {
+            public IList<string> Applied { get; } = new List<string>();
+            public IList<ApplyFailure> Failed { get; } = new List<ApplyFailure>();
+            public bool JournalWasExpired { get; internal set; }
         }
 
         /// <summary>
-        /// Persist only <c>uiLanguage</c> into the JSON config file, preserving other keys.
-        /// Used by the ribbon Language combo so the preference survives Revit restarts.
+        /// Persist only <c>enableToast</c> into the JSON config file, preserving other keys.
+        /// The void wrapper remains for old ribbon callers; new callers should inspect the
+        /// boolean and error returned by <see cref="TrySaveEnableToast"/>.
+        /// </summary>
+        public static void SaveEnableToast(bool enabled, string configFilePath = null)
+        {
+            string ignoredError;
+            TrySaveEnableToast(enabled, out ignoredError, configFilePath);
+        }
+
+        public static bool TrySaveEnableToast(bool enabled, out string error, string configFilePath = null)
+        {
+            return TryUpdateConfig(configFilePath, root => root["enableToast"] = enabled, out error);
+        }
+
+        public static bool TrySaveToastIdleSeconds(int seconds, out string error, string configFilePath = null)
+        {
+            var normalized = NormalizeToastIdleSeconds(seconds);
+            return TryUpdateConfig(configFilePath, root => root["toastIdleSeconds"] = normalized, out error);
+        }
+
+        /// <summary>
+        /// Persist only <c>uiLanguage</c>. The legacy void wrapper is retained for the
+        /// ribbon's best-effort behavior; Settings can surface the returned error.
         /// </summary>
         public static void SaveUiLanguage(string code, string configFilePath = null)
         {
-            var path = string.IsNullOrWhiteSpace(configFilePath) ? DefaultConfigFilePath : configFilePath;
-            try
-            {
-                var dir = Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(dir))
-                    Directory.CreateDirectory(dir);
+            string ignoredError;
+            TrySaveUiLanguage(code, out ignoredError, configFilePath);
+        }
 
-                JObject root;
-                if (!TryReadConfigRoot(path, out root)) return;
+        public static bool TrySaveUiLanguage(string code, out string error, string configFilePath = null)
+        {
+            return TryUpdateConfig(configFilePath, root => root["uiLanguage"] = code, out error);
+        }
 
-                root["uiLanguage"] = code;
-                File.WriteAllText(path, root.ToString(Formatting.Indented));
-            }
-            catch
+        public static bool TrySavePersistSendCodeBodiesHours(int hours, out string error, string configFilePath = null)
+        {
+            var normalized = NormalizePersistSendCodeBodiesHours(hours);
+            return TryUpdateConfig(configFilePath, root =>
             {
-                // Best-effort — language still changes in-memory for this session.
-            }
+                root["persistSendCodeBodiesHours"] = normalized;
+                var now = DateTimeOffset.UtcNow;
+                var active = root.Value<bool?>("persistSendCodeBodies") == true
+                    && DateTimeOffset.TryParse(root.Value<string>("persistSendCodeBodiesUntil"), out var until)
+                    && now < until.ToUniversalTime();
+                if (active)
+                    root["persistSendCodeBodiesUntil"] = PersistSendCodeTtl.FormatIsoUntil(now.AddHours(normalized));
+            }, out error);
         }
 
         public static void SavePersistSendCodeBodies(bool enabled, DateTimeOffset? untilUtc, string configFilePath = null)
         {
-            var path = string.IsNullOrWhiteSpace(configFilePath) ? DefaultConfigFilePath : configFilePath;
-            try
+            string ignoredError;
+            TrySavePersistSendCodeBodies(enabled, untilUtc, out ignoredError, configFilePath);
+        }
+
+        public static bool TrySavePersistSendCodeBodies(
+            bool enabled,
+            DateTimeOffset? untilUtc,
+            out string error,
+            string configFilePath = null)
+        {
+            return TryUpdateConfig(configFilePath, root =>
             {
-                var dir = Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(dir))
-                    Directory.CreateDirectory(dir);
-
-                JObject root;
-                if (!TryReadConfigRoot(path, out root)) return;
-
                 root["persistSendCodeBodies"] = enabled;
                 if (enabled && untilUtc.HasValue)
                 {
                     root["persistSendCodeBodiesUntil"] = PersistSendCodeTtl.FormatIsoUntil(untilUtc.Value);
+                    root["persistSendCodeBodiesHours"] = NormalizePersistSendCodeBodiesHours(
+                        root.Value<int?>("persistSendCodeBodiesHours"));
                     root.Remove("persistSendCodeBodiesRequiresExplicitEnable");
                 }
                 else
                 {
+                    // Turning Off clears only the active Until. The selected duration is
+                    // deliberately retained for the next explicit enable.
                     root.Remove("persistSendCodeBodiesUntil");
                 }
-                File.WriteAllText(path, root.ToString(Formatting.Indented));
-            }
-            catch
-            {
-                // Best-effort
-            }
+            }, out error);
         }
 
         public static void ClearPersistSendCodeBodies(string configFilePath = null, bool requireExplicitEnable = false)
         {
-            var path = string.IsNullOrWhiteSpace(configFilePath) ? DefaultConfigFilePath : configFilePath;
+            string ignoredError;
+            TryClearPersistSendCodeBodies(out ignoredError, configFilePath, requireExplicitEnable);
+        }
+
+        public static bool TryClearPersistSendCodeBodies(
+            out string error,
+            string configFilePath = null,
+            bool requireExplicitEnable = false)
+        {
+            string path;
+            bool explicitPath;
             try
             {
-                if (!File.Exists(path) && !requireExplicitEnable) return;
+                path = ResolveConfigPath(configFilePath, out explicitPath);
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
+            }
 
-                var dir = Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(dir))
-                    Directory.CreateDirectory(dir);
+            var directory = Path.GetDirectoryName(path);
+            if (string.IsNullOrEmpty(directory) || !IsAllowedConfigDirectory(directory, explicitPath))
+            {
+                error = "The configuration path is outside the current profile.";
+                return false;
+            }
 
-                JObject root;
-                if (!TryReadConfigRoot(path, out root)) return;
+            if (!File.Exists(path) && !requireExplicitEnable)
+            {
+                error = null;
+                return true;
+            }
 
+            return TryUpdateConfig(configFilePath, root =>
+            {
                 root.Remove("persistSendCodeBodies");
                 root.Remove("persistSendCodeBodiesUntil");
                 if (requireExplicitEnable)
                     root["persistSendCodeBodiesRequiresExplicitEnable"] = true;
                 else
                     root.Remove("persistSendCodeBodiesRequiresExplicitEnable");
+            }, out error);
+        }
 
-                File.WriteAllText(path, root.ToString(Formatting.Indented));
-            }
-            catch
+        /// <summary>
+        /// Apply the Settings dialog's staged values one key at a time. Each operation
+        /// rereads the file immediately before writing, so an external edit made while
+        /// the dialog was open is merged and the staged key wins. A failed key does not
+        /// roll back a key that already succeeded.
+        /// </summary>
+        public static ApplyResult TryApplySettings(SettingsPatch patch, string configFilePath = null)
+        {
+            var result = new ApplyResult();
+            if (patch == null)
             {
-                // Best-effort
+                result.Failed.Add(new ApplyFailure("settings", "Settings patch is required."));
+                return result;
             }
+
+            var toastIdleApplied = false;
+            if (patch.ToastIdleSeconds.HasValue)
+            {
+                string error;
+                if (TrySaveToastIdleSeconds(patch.ToastIdleSeconds.Value, out error, configFilePath))
+                {
+                    result.Applied.Add("toastIdleSeconds");
+                    toastIdleApplied = true;
+                }
+                else
+                {
+                    result.Failed.Add(new ApplyFailure("toastIdleSeconds", error));
+                }
+            }
+
+            if (patch.PersistSendCodeBodiesHours.HasValue || patch.PersistSendCodeBodies.HasValue)
+            {
+                string error;
+                var ok = TryUpdateConfig(configFilePath, root =>
+                {
+                    // If another process edits the file between the per-key writes,
+                    // restage the first key so every staged value still wins.
+                    if (toastIdleApplied)
+                        root["toastIdleSeconds"] = NormalizeToastIdleSeconds(patch.ToastIdleSeconds);
+
+                    var now = DateTimeOffset.UtcNow;
+                    var currentHours = NormalizePersistSendCodeBodiesHours(root.Value<int?>("persistSendCodeBodiesHours"));
+                    var hours = patch.PersistSendCodeBodiesHours.HasValue
+                        ? NormalizePersistSendCodeBodiesHours(patch.PersistSendCodeBodiesHours.Value)
+                        : currentHours;
+                    var currentEnabled = root.Value<bool?>("persistSendCodeBodies") == true;
+                    var currentActive = currentEnabled
+                        && DateTimeOffset.TryParse(root.Value<string>("persistSendCodeBodiesUntil"), out var until)
+                        && now < until.ToUniversalTime();
+
+                    if (patch.PersistSendCodeBodiesHours.HasValue)
+                        root["persistSendCodeBodiesHours"] = hours;
+                    if (patch.PersistSendCodeBodies.HasValue)
+                    {
+                        var enabled = patch.PersistSendCodeBodies.Value;
+                        root["persistSendCodeBodies"] = enabled;
+                        if (enabled)
+                        {
+                            root["persistSendCodeBodiesUntil"] = PersistSendCodeTtl.FormatIsoUntil(now.AddHours(hours));
+                            root.Remove("persistSendCodeBodiesRequiresExplicitEnable");
+                        }
+                        else
+                        {
+                            root.Remove("persistSendCodeBodiesUntil");
+                            root.Remove("persistSendCodeBodiesRequiresExplicitEnable");
+                        }
+                    }
+                    else if (patch.PersistSendCodeBodiesHours.HasValue && currentActive)
+                    {
+                        // A duration edit re-arms an active journal from Apply time. An
+                        // already expired journal is left expired and is never revived by
+                        // changing an unrelated staged value.
+                        root["persistSendCodeBodiesUntil"] = PersistSendCodeTtl.FormatIsoUntil(now.AddHours(hours));
+                    }
+                    else if (patch.PersistSendCodeBodiesHours.HasValue && currentEnabled)
+                    {
+                        result.JournalWasExpired = true;
+                    }
+                }, out error);
+
+                if (ok && patch.PersistSendCodeBodiesHours.HasValue)
+                    result.Applied.Add("persistSendCodeBodiesHours");
+                else if (!ok && patch.PersistSendCodeBodiesHours.HasValue)
+                    result.Failed.Add(new ApplyFailure("persistSendCodeBodiesHours", error));
+
+                if (patch.PersistSendCodeBodies.HasValue && ok)
+                    result.Applied.Add("persistSendCodeBodies");
+                else if (patch.PersistSendCodeBodies.HasValue && !ok)
+                    result.Failed.Add(new ApplyFailure("persistSendCodeBodies", error));
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -473,7 +688,22 @@ namespace RvtMcp.Plugin
             if (!File.Exists(path)) return true;
             try
             {
-                root = JObject.Parse(File.ReadAllText(path)) ?? new JObject();
+                using (var textReader = new StringReader(File.ReadAllText(path)))
+                using (var jsonReader = new JsonTextReader(textReader)
+                {
+                    // Until is a persisted string. Do not let Newtonsoft turn it into
+                    // a local DateTime and then rewrite it with a different offset.
+                    DateParseHandling = DateParseHandling.None,
+                })
+                {
+                    var token = JToken.ReadFrom(jsonReader);
+                    root = token as JObject;
+                    if (root == null)
+                    {
+                        root = null;
+                        return false;
+                    }
+                }
                 return true;
             }
             catch
@@ -481,6 +711,100 @@ namespace RvtMcp.Plugin
                 root = null;
                 return false;
             }
+        }
+
+        private static bool TryUpdateConfig(string configFilePath, Action<JObject> update, out string error)
+        {
+            error = null;
+            string tempPath = null;
+            try
+            {
+                var path = ResolveConfigPath(configFilePath, out var explicitPath);
+                var directory = Path.GetDirectoryName(path);
+                if (string.IsNullOrEmpty(directory) || !IsAllowedConfigDirectory(directory, explicitPath))
+                {
+                    error = "The configuration path is outside the current profile.";
+                    return false;
+                }
+
+                JObject root;
+                if (!TryReadConfigRoot(path, out root))
+                {
+                    error = "The configuration file is not valid JSON.";
+                    return false;
+                }
+
+                update(root);
+                Directory.CreateDirectory(directory);
+                var json = root.ToString(Formatting.Indented) + Environment.NewLine;
+                tempPath = Path.Combine(directory, Path.GetFileName(path) + "." + Guid.NewGuid().ToString("N") + ".tmp");
+                var bytes = Encoding.UTF8.GetBytes(json);
+                using (var stream = new FileStream(
+                    tempPath,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    4096,
+                    FileOptions.WriteThrough))
+                {
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.Flush(true);
+                }
+
+                if (File.Exists(path))
+                    File.Replace(tempPath, path, destinationBackupFileName: null);
+                else
+                    File.Move(tempPath, path);
+                tempPath = null;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // The caller logs the diagnostic; UI surfaces a localized generic error.
+                error = ex.Message;
+                return false;
+            }
+            finally
+            {
+                if (tempPath != null)
+                {
+                    try { if (File.Exists(tempPath)) File.Delete(tempPath); }
+                    catch { }
+                }
+            }
+        }
+
+        private static string ResolveConfigPath(string configFilePath, out bool explicitPath)
+        {
+            explicitPath = !string.IsNullOrWhiteSpace(configFilePath) || !string.IsNullOrWhiteSpace(ConfigFilePathOverride);
+            var selected = string.IsNullOrWhiteSpace(configFilePath)
+                ? (ConfigFilePathOverride ?? DefaultConfigFilePath)
+                : configFilePath;
+            return Path.GetFullPath(selected);
+        }
+
+        private static bool IsAllowedConfigDirectory(string directory, bool explicitPath)
+        {
+            var profileRoot = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RvtMcp");
+            if (IsPathWithin(directory, profileRoot))
+                return true;
+
+            // Explicit temp paths are the supported test seam. Production calls use the
+            // default profile path; no arbitrary current-working-directory writes.
+            return explicitPath && IsPathWithin(directory, Path.GetTempPath());
+        }
+
+        private static bool IsPathWithin(string candidate, string root)
+        {
+            if (string.IsNullOrWhiteSpace(candidate) || string.IsNullOrWhiteSpace(root))
+                return false;
+            var fullCandidate = Path.GetFullPath(candidate).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase))
+                return true;
+            return fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                || fullCandidate.StartsWith(fullRoot + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
         }
 
         private static string FormatTtl(TimeSpan ttl)

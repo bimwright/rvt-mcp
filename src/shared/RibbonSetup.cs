@@ -181,7 +181,11 @@ namespace RvtMcp.Plugin
                 L.SetLanguage(code);
                 // Persist only when the env var is absent — env wins at next startup anyway.
                 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(RvtMcpConfig.EnvUiLanguage)))
-                    RvtMcpConfig.SaveUiLanguage(code);
+                {
+                    string saveError;
+                    if (!RvtMcpConfig.TrySaveUiLanguage(code, out saveError))
+                        App.DebugLog("UI language preference could not be saved: " + saveError);
+                }
             };
 
             return combo;
