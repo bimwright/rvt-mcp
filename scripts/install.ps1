@@ -691,7 +691,9 @@ function Set-McpConfigEntry {
     $full = [IO.Path]::GetFullPath($Path)
     $escapedExe = if ($Exe) { $Exe.Replace('\', '\\') } else { $null }
     $entryText = if ($Exe) { Get-McpEntryText $EntryKind $Exe } else { $null }
-    $legacyRx = '(?i)rvt(?:\\{2}|\\)+server(?:\\{2}|\\)+(?!current(?:\\{2}|\\)+)[^"\\]+(?:\\{2}|\\)+rvt-mcp\.exe'
+    # Spans the whole JSON string value (quote to quote), so a repoint replaces
+    # the full path rather than splicing the new one after the old prefix.
+    $legacyRx = '(?i)(?<=")[^"]*?rvt(?:\\{2}|\\)+server(?:\\{2}|\\)+(?!current(?:\\{2}|\\)+)[^"\\]+(?:\\{2}|\\)+rvt-mcp\.exe(?=")'
 
     if (-not (Test-Path -LiteralPath $full)) {
         if ($Remove) { return 'absent' }

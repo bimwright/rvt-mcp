@@ -449,12 +449,23 @@ try {
         $exe = "$($fixture.Root)\server\current\rvt-mcp.exe"
         New-Item -ItemType Directory -Path "$sandboxUserProfile\.cursor" -Force | Out-Null
         $cursor = "$sandboxUserProfile\.cursor\mcp.json"
-        Set-Content -LiteralPath $cursor -Value '{ "mcpServers": { "rvt-mcp": { "command": "C:\\old\\rvt\\server\\0.6.2\\rvt-mcp.exe", "args": ["--read-only"] } } }'
+        # The whole command value is replaced, not just its rvt\server\<ver> tail
+        # (a pre-0.6.3 path carries the same RvtMcp prefix as the new one).
+        $legacy = 'C:\\Users\\Someone\\AppData\\Local\\RvtMcp\\rvt\\server\\0.6.2\\rvt-mcp.exe'
+        Set-Content -LiteralPath $cursor -Value ('{ "mcpServers": { "rvt-mcp": { "command": "' + $legacy + '", "args": ["--read-only"] } } }')
         $res = Invoke-McpClientWiring -Clients 'cursor' -Exe $exe -Mode Add
         Assert ($res -match 'repointed') "expected repoint, got: $res"
         $c = Get-Content -LiteralPath $cursor -Raw | ConvertFrom-Json
-        Assert ($c.mcpServers.'rvt-mcp'.command -match 'server[\\/]+current[\\/]+rvt-mcp\.exe$') 'not repointed to current'
+        Assert ($c.mcpServers.'rvt-mcp'.command -eq $exe) "not repointed to exactly $exe, got: $($c.mcpServers.'rvt-mcp'.command)"
         Assert ($c.mcpServers.'rvt-mcp'.args[0] -eq '--read-only') 'existing args lost'
+        # Same for the array-shaped command of opencode/kilo.
+        New-Item -ItemType Directory -Path "$sandboxUserProfile\.config\kilo" -Force | Out-Null
+        $kilo = "$sandboxUserProfile\.config\kilo\kilo.jsonc"
+        Set-Content -LiteralPath $kilo -Value ('{ "mcp": { "rvt-mcp": { "type": "local", "command": ["' + $legacy + '"], "enabled": true } } }')
+        $res = Invoke-McpClientWiring -Clients 'kilo' -Exe $exe -Mode Add
+        Assert ($res -match 'repointed') "expected kilo repoint, got: $res"
+        $k = Get-Content -LiteralPath $kilo -Raw | ConvertFrom-Json
+        Assert ($k.mcp.'rvt-mcp'.command[0] -eq $exe) "kilo not repointed to exactly $exe, got: $($k.mcp.'rvt-mcp'.command[0])"
         # A custom launcher is reported and left alone.
         Set-Content -LiteralPath $cursor -Value '{ "mcpServers": { "rvt-mcp": { "command": "C:\\tools\\my-wrapper.cmd" } } }'
         $res = Invoke-McpClientWiring -Clients 'cursor' -Exe $exe -Mode Add
