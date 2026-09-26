@@ -2192,6 +2192,8 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             "activate=true (default) opens it in the UI and makes it active; false opens it in the background with no view, where tools reading the active document will not see it. " +
             "worksets (all|none|lastViewed) applies to workshared models only. audit=true is slow - use it on a suspect file. " +
             "A model Revit already has open is reported back (and activated when activate=true) rather than reopened. " +
+            "Two known refusals: a file already loaded as a link in an open document cannot be opened standalone (close the host document or unload the link first), " +
+            "and a central saved in an older Revit version cannot create a local - if that fails after an existing local was renamed aside, the error names the timestamped path it was kept as; nothing is lost. " +
             "timeout_seconds: 1-900, default 600 - opening a model that pulls in many links commonly exceeds 60s (measured: a 20 MB model with 5 links took 64s). " +
             "Returns: {opened, was_already_open, title, path, saved_in_version, is_workshared, is_family, header_worksharing, central_path, local_path, local_file_created, renamed_existing_local, activated, active_view}. " +
             "NOTE: opening a model saved in an older Revit upgrades it in memory - that only reaches disk if something saves it.")]
