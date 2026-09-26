@@ -56,11 +56,14 @@ Desktop.ini
 # Research archives (local reference only, not repo artifact)
 docs/research-archive/
 
-# Internal process docs — drafts, plans, specs, brainstorms, reviews, dev-roadmaps.
-# Convention: these belong in .private/. NOT for public release.
-# (docs/roadmap.md and docs/testing/ stay PUBLIC — the READMEs link to them.)
+# Internal process docs — keep maintainer notes in a separate private repository.
+# These legacy locations are ignored to prevent accidental re-addition.
+# Public user/contributor guides and docs/roadmap.md remain tracked.
+docs/analysis/
+docs/design/
+docs/testing/
+docs/*-roadmap.md
 docs/superpowers/
-docs/design/brainstorm/
 docs/reviews/
 docs/benchmarks/
 docs/221-tools/

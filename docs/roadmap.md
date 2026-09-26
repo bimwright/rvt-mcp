@@ -47,9 +47,7 @@ Compile gate is 6/6; unit coverage is pure .NET; runtime smoke still needs per-R
 - **No non-MCP transports** (stdio + HTTP+SSE is it for this project). gRPC, Thrift, etc. won't be added.
 - **No Python (or IronPython) `send_code` host (2026-07-15).** Escape hatch stays **C#** via `revit_send_code_to_revit`. Out-of-surface workflows use that tool, not a second language runtime.
 - **No Autodesk Revit Viewer host (2026-07-15).** Full Revit desktop only; no Viewer discovery or tool profile.
-- **No Family Editor authoring toolset this cycle (2026-07-15).** Project-level `families` management remains. Definition/session authoring (`revit_family_*` / issue #7) deferred to limit agent context size; use `send_code` instead. Design retained under `docs/superpowers/specs/2026-06-18-family-authoring-phased-plan-design.md`.
-
-Close-out note: `docs/analysis/2026-07-15-product-decisions-closeout.md`.
+- **No Family Editor authoring toolset this cycle (2026-07-15).** Project-level `families` management remains. Definition/session authoring (`revit_family_*` / issue #7) deferred to limit agent context size; use `send_code` instead.
 
 ## Security notes
 

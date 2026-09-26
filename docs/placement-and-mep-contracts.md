@@ -50,4 +50,4 @@ Connection verification accepts a direct connection or two distinct physical por
 
 ## Evidence and limits
 
-The [acceptance index](testing/2026-09-22-issue-handoff.md) links the local commits, response drafts and evidence. Revit 2022/2024/2027 builds pass; live acceptance was on Revit 2027. The reporters' Revit 2025/2026 environments remain untested. These changes do not add tools or announce a release.
+Revit 2022/2024/2027 builds passed at the v0.6.2 acceptance checkpoint; live acceptance was on Revit 2027. The reporters' Revit 2025/2026 environments were not tested. Build coverage does not establish runtime acceptance on those versions. See the [automated test guide](../tests/RvtMcp.Tests/README.md) for reproducible unit coverage.

@@ -142,7 +142,7 @@ Not published on its own — this surface first shipped in v0.6.1.
 ### Docs
 
 - English README rewritten (human tone); vi / zh-CN / ja ports aligned. Tool counts: default **40** (`query,create,view,meta`), `--toolsets all` **227**, adaptive **230**.
-- Product close-out notes under `docs/analysis/` (send_code for out-of-scope work; no Python host / Viewer / Family Editor suite this cycle).
+- Clarified product scope: send_code for out-of-scope work; no Python host / Viewer / Family Editor suite this cycle.
 - `docs/roadmap.md` non-goals updated.
 
 ### Product posture

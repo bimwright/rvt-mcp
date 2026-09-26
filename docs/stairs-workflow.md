@@ -2,23 +2,16 @@
 
 Use this guide when a user wants to create or adapt stairs through `revit_send_code_to_revit`. The current approach is a conversation about design intent followed by an adapted C# payload. A dedicated `create_stairs` tool is deferred. These are instructions for agents and users, not constraints enforced by the MCP server.
 
-There are two separate resources:
+There are two parts to this workflow:
 
-1. **Tested examples** provide working API patterns and evidence with explicit limits.
-2. **Design questions** establish which geometry and railing choices the user wants before adapting an example.
+1. **Execution safeguards** in [send-code.md](send-code.md) cover source forms, transactions, and failure handling.
+2. **Design questions** establish which geometry and railing choices the user wants before writing a payload.
 
 A working sample is not a default design. Ask only for missing decisions that affect the result; reuse answers, drawings, selected elements, and authority already given in the conversation.
 
-## 1. Choose an example and understand its limits
+## 1. Understand the execution pattern and its limits
 
-| Example | Dependencies and behavior | Recorded verification |
-|---|---|---|
-| [Straight stair](testing/issue-14/create-stair-snowdon-2027.cs) | Revit 2027 Snowdon fixture IDs and title; updated plugin helper; creates one run and an isolated view | Created, retained, exported, and saved in the separate demo model |
-| [U stair with landing](testing/issue-14/create-u-stair-snowdon-2027.cs) | Saved Snowdon-based demo, existing level/type IDs; updated plugin helper; two opposite runs and one landing | Created and retained; initial default railing emitted a continuity warning |
-| [U-stair presentation](testing/issue-14/present-u-stair-2027.cs) | Requires that U stair's IDs; changes its railing instances, camera, crop, and exports an image | Final railing change committed without warnings; this was an authorized demo choice, not an automatic repair rule |
-| [Portable reporter example](testing/issue-14/reporter-u-stair.cs) / [JSON tool arguments](testing/issue-14/reporter-u-stair.tool-arguments.json) | Full source with its own preprocessor; architectural test project; creates two levels, one U stair, and a view at the project origin using project defaults; does not save | Tested on the updated Revit 2027 plugin with `KeepResult=false`; outer group rolled back. The default retained branch and Revit 2025/v0.6.1 runtime were not tested for this exact payload |
-
-See the [verification record and images](testing/issue-14/README.md) and [source forms/failure handling](send-code.md). The built-in `RvtMcp.Plugin.SafeFailuresPreprocessor` and mixed body/helper support are available since v0.6.2. The portable example uses the existing full-class entrypoint and includes its own helper; do not strip its class or imports when submitting it.
+Start with the [source forms and failure-handling template](send-code.md). It is a control-flow template, not a complete stair generator: supply geometry and types resolved from the active document. The built-in `RvtMcp.Plugin.SafeFailuresPreprocessor` and mixed body/helper support are available since v0.6.2. When using a complete compilation unit, preserve its imports, helper types, and required entrypoint.
 
 When adapting a script, distinguish these parts:
 
@@ -73,7 +66,7 @@ Adapt the payload to that description. In particular:
 
 - Do not select the first available stair/railing type, infer wall-side requirements from proximity alone, or substitute a different railing to eliminate a warning.
 - Do not edit shared stair, railing, handrail, or top-rail types without authorization covering their other instances. A requested local variant may require separate types and dependencies; duplicating only the parent type does not prove isolation.
-- Preserve existing model elements and railings outside the requested scope. The demo's successful Cable Railing-to-Pipe change is not a production fallback.
+- Preserve existing model elements and railings outside the requested scope. A railing substitution that worked in a test is not a production fallback.
 - Verify that the chosen API path supports the requested arrangement. Host-based railing creation applies to all sides and expects a host without associated railings; it does not express different types on selected edges. Do not present unsupported per-edge behavior as implemented.
 - Keep scope cancellation after the inner transaction is disposed, retain the failure helper instance, and check both commit results and element existence as described in [send-code.md](send-code.md).
 

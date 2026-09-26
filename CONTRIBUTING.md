@@ -78,6 +78,12 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the conceptual model. Quick reference
 - Comments explain *why*, not *what*. Identifiers explain *what*.
 - `#if REVIT2024_OR_GREATER` / `REVIT2027_OR_GREATER` are the only version-sniffing allowed. Prefer `RevitCompat` helpers for shared call sites.
 
+## Documentation privacy
+
+This repository is public. Keep maintainer research, development plans, session handoffs, draft issue replies, and raw live-test evidence in a separate private repository, not in product documentation. Review logs and screenshots for local paths, model data, and identifiers before sharing them.
+
+Public documentation should describe shipped behavior and reproducible contributor workflows. Tests must use self-contained, non-sensitive fixtures committed here, never depend on private notes or a sibling checkout. Do not force-add ignored internal-document paths.
+
 ## Commit + PR
 
 - One logical change per commit. Commit messages start with the task ID if the work is part of a tracked checklist, otherwise a short scope prefix (e.g. `handlers:`, `transport:`, `ci:`).
