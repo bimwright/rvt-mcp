@@ -6,7 +6,7 @@ xUnit test project. Covers unit-test scope + schema/tool-surface drift snapshot.
 
 - `*Tests.cs` at the top level — xUnit fact/theory files.
 - `Helpers/` — test-only utilities (e.g. `SnapshotSerializer`).
-- `Golden/` — committed snapshot files. See below.
+- `Golden/` — committed snapshot files. See below. `response-size-scoped-commands.txt` is the 97-command baseline for recovery-hint coverage; it contains only wire command names, not research notes. Review changes alongside `ResponseSizePolicyCatalog.cs`.
 
 ## Running
 
@@ -16,9 +16,9 @@ dotnet test tests/RvtMcp.Tests/RvtMcp.Tests.csproj -c Release
 
 The cross-platform xUnit tests live in this project. The server reference builds without an app host into `tests/server-staging/`, avoiding the executable held by running MCP sessions.
 
-`PointBasedPlacementTests` compiles the production handler against API doubles to exercise placement-type selection, host/coordinate validation, overload choice and rollback. These tests do not replace live Revit acceptance; see [issue #13 evidence](../../docs/testing/issue-13/HANDOFF.md).
+`PointBasedPlacementTests` compiles the production handler against API doubles to exercise placement-type selection, host/coordinate validation, overload choice and rollback. These tests do not replace live Revit acceptance; see the public [placement/MEP contracts and verification limits](../../docs/placement-and-mep-contracts.md).
 
-`MepConnectionHandlerTests` executes the complete production connection handler with API doubles, covering direct and fitting-mediated connections, repeat calls, false connectivity and rollback after partial API mutation. The [Revit 2027 review follow-up](../../docs/testing/issue-12/REVIEW-FOLLOWUP.md) separately verifies real fitting connectors and public typed-tool arguments.
+`MepConnectionHandlerTests` executes the complete production connection handler with API doubles, covering direct and fitting-mediated connections, repeat calls, false connectivity and rollback after partial API mutation. API doubles do not establish live fitting-insertion behavior; the [public contract](../../docs/placement-and-mep-contracts.md#extend-a-pipe-from-an-open-connector) describes connection verification and typed-tool arguments.
 
 Real WPF positioning/animation tests run separately on Windows via [RvtMcp.Toast.Tests](../RvtMcp.Toast.Tests/README.md).
 

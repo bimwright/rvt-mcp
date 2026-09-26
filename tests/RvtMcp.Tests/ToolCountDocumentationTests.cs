@@ -28,9 +28,6 @@ namespace RvtMcp.Tests
 
             var changelog = File.ReadAllText(Path.Combine(root, "CHANGELOG.md"));
             Assert.Contains("`--toolsets all` **" + standard + "**, adaptive bake **" + adaptive + "**", changelog);
-
-            var survey = File.ReadAllText(Path.Combine(root, "docs", "design", "oversized-response-survey.md"));
-            Assert.Contains("**Inventory:** " + adaptive + " `[McpServerTool]` (" + standard + " surface", survey);
         }
 
         private static int ReadToolCount(string path)

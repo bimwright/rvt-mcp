@@ -60,14 +60,14 @@ namespace RvtMcp.Tests
         public void Every_approved_group2_tool_has_a_command_specific_recovery_hint()
         {
             var root = GetRepoRoot();
-            var survey = File.ReadAllLines(Path.Combine(root, "docs", "design", "oversized-response-survey.md"));
+            // Keep the approved command baseline independent of maintainer research notes.
+            var group2Tools = File.ReadAllLines(Path.Combine(
+                root, "tests", "RvtMcp.Tests", "Golden", "response-size-scoped-commands.txt"));
             var catalog = File.ReadAllText(Path.Combine(root, "src", "shared", "Infrastructure", "ResponseSizePolicyCatalog.cs"));
-            var group2Tools = survey
-                .Where(line => line.StartsWith("| `revit_", StringComparison.Ordinal) && line.Contains("| **2** |"))
-                .Select(line => line.Split('`')[1].Substring("revit_".Length))
-                .ToArray();
 
             Assert.Equal(97, group2Tools.Length);
+            Assert.Equal(group2Tools.Length, group2Tools.Distinct(StringComparer.Ordinal).Count());
+            Assert.All(group2Tools, command => Assert.False(string.IsNullOrWhiteSpace(command)));
             foreach (var command in group2Tools)
                 Assert.Contains("[\"" + command + "\"]", catalog);
         }
