@@ -9,10 +9,10 @@ This file is machine-readable install instructions for AI coding agents (Claude 
 
 - Install the client setup ZIP from GitHub Releases (`RvtMcp.Setup-*-win-x64.zip`).
 - Deploy the bundled add-in into `%APPDATA%\Autodesk\Revit\Addins\<year>\` for every installed Revit year, and the bundled server to a fixed per-user path.
-- Connect the MCP client(s) the user asks for, using each client's own method. The installer never edits client configs.
+- Connect the MCP client(s) the user asks for, with `install.ps1 -Client <names>` or each client's own method. The installer leaves client configs untouched unless `-Client` is passed.
 - Verify the handshake and roll back on failure.
 
-**Current status — 2026-09-25:** latest published release is **v0.6.3**. Use `/repos/bimwright/rvt-mcp/releases/latest`. Do not install `v0.5.0` or earlier tags.
+**Current status — 2026-09-26:** latest published release is **v0.6.4**. Use `/repos/bimwright/rvt-mcp/releases/latest`. Do not install `v0.5.0` or earlier tags.
 
 **What you cannot do:**
 
