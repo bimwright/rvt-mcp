@@ -36,6 +36,8 @@ Thanks [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) — the `send_code`/`s
 
 - **`revit_send_code_to_revit` with no document open** — the wrapper read `app.ActiveUIDocument.Document` before the snippet ran, so every call threw a bare null reference when Revit had no document, including a snippet calling `app.OpenAndActivateDocument`. `doc` and `uidoc` are now `null` in that case and the snippet decides what to do. The same null reference in the `run_baked_tool` wrapper (`ToolCompiler.cs`) is fixed as well.
 - **`revit_list_available_targets` hint** — it told callers to pass a `year` to `revit_switch_target`, whose parameter is named `version`; following it produced an invocation error that read as a dead server.
+- **`revit_open_model` reports the preserved local on `CreateNewLocal` failure** — when the existing local was already renamed aside and `CreateNewLocal` then refuses (e.g. central saved in an older Revit version), the error now names the timestamped file it was kept as.
+- **`revit_open_model` refuses a file loaded as a link cleanly** — opening a file that is currently a link in an open document cannot produce a standalone document (`OpenDocumentFile` returns the link object, `OpenAndActivateDocument` throws a null reference). The call now stops with an explanatory message telling the user to close the host or unload the link first.
 
 ## v0.6.4 - Installer client wiring and MCP prompts
 

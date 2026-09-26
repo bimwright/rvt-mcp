@@ -86,16 +86,28 @@ namespace RvtMcp.Plugin.Handlers
             // For workshared input, match any open doc on the same central —
             // an open local copy's PathName is the local file, not the path given.
             Document alreadyOpen = null;
+            Document linkedMatch = null;
             foreach (Document d in app.Application.Documents)
             {
-                if (d.IsLinked) continue;
-                if (PathsEqual(d.PathName, path)) { alreadyOpen = d; break; }
+                var samePath = PathsEqual(d.PathName, path);
+                if (d.IsLinked)
+                {
+                    // Loaded as a link: not "open", but Revit cannot open the same
+                    // file standalone either — OpenDocumentFile returns the link
+                    // Document and OpenAndActivateDocument throws. Report it.
+                    if (samePath) linkedMatch = d;
+                    continue;
+                }
+                if (samePath) { alreadyOpen = d; break; }
                 if (isWorkshared && !string.IsNullOrWhiteSpace(centralPath)
                     && CentralPathEquals(d, centralPath)) { alreadyOpen = d; break; }
             }
 
             if (alreadyOpen != null)
                 return FinishAlreadyOpen(app, alreadyOpen, activate, savedInVersion);
+
+            if (linkedMatch != null)
+                return CommandResult.Fail("'" + Path.GetFileName(path) + "' is currently loaded as a link inside an open document, and Revit cannot open it as a standalone document while it is linked. Close the host document or unload the link first, then retry.");
 
             var options = new OpenOptions { Audit = audit };
             if (!string.IsNullOrWhiteSpace(worksets))
@@ -171,6 +183,9 @@ namespace RvtMcp.Plugin.Handlers
                     }
                 }
 
+                var renameNote = renamedTo != null
+                    ? " The existing local was moved aside to '" + renamedTo + "' and is untouched."
+                    : "";
                 try
                 {
                     var centralModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(centralPath);
@@ -180,11 +195,11 @@ namespace RvtMcp.Plugin.Handlers
                 }
                 catch (Autodesk.Revit.Exceptions.ApplicationException ex)
                 {
-                    return CommandResult.Fail("Revit refused to create a local copy of '" + Path.GetFileName(centralPath) + "': " + ex.Message);
+                    return CommandResult.Fail("Revit refused to create a local copy of '" + Path.GetFileName(centralPath) + "': " + ex.Message + renameNote);
                 }
                 catch (Exception ex)
                 {
-                    return CommandResult.Fail("Could not create a local copy of '" + Path.GetFileName(centralPath) + "': " + ex.Message);
+                    return CommandResult.Fail("Could not create a local copy of '" + Path.GetFileName(centralPath) + "': " + ex.Message + renameNote);
                 }
             }
 
