@@ -342,6 +342,23 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void Result_after_frame_becomes_unusable_is_parked_before_the_next_tick()
+        {
+            var a = Make();
+            Ok(a);
+            Assert.Equal(ActivityCardPhase.Visible, a.TakeRender().Phase);
+
+            _clock.At(1);
+            Assert.True(a.RecordResult("tool", "second", true, false, frameUsable: false));
+            Assert.Equal(ActivityCardPhase.Hidden, a.TakeRender().Phase);
+
+            Assert.True(a.FlushIfUsable(frameUsable: true));
+            var restored = Visible(a);
+            Assert.Equal(2, restored.Succeeded);
+            Assert.Equal("second", restored.Body);
+        }
+
+        [Fact]
         public void Result_after_restore_shows_before_idling_flushes()
         {
             var a = Make();
@@ -367,6 +384,19 @@ namespace RvtMcp.Tests
             _clock.At(2.9);
             Assert.False(a.Tick(true));
             _clock.At(3);
+            Assert.True(a.Tick(true));
+        }
+
+        [Fact]
+        public void Invalid_status_duration_falls_back_to_the_default()
+        {
+            var a = Make();
+            Assert.True(a.ShowStatus("Toast on", "Notifications are on.", 0));
+            Visible(a);
+
+            _clock.At(ActivityAggregator.DefaultIdleSeconds - 0.1);
+            Assert.False(a.Tick(true));
+            _clock.At(ActivityAggregator.DefaultIdleSeconds);
             Assert.True(a.Tick(true));
         }
 

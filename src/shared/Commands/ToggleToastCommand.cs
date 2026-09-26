@@ -17,9 +17,8 @@ namespace RvtMcp.Plugin.Commands
                 App.Instance.Config.EnableToast = App.Instance.ToastEnabled;
 
             RvtMcpConfig.SaveEnableToast(App.Instance.ToastEnabled);
-
-            if (!App.Instance.ToastEnabled)
-                App.Instance.ToastNotifier?.DismissAll();
+            App.Instance.ToastNotifier?.OnToastEnabledChanged(
+                App.Instance.ToastEnabled, true);
 
             return Result.Succeeded;
         }

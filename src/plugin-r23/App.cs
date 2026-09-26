@@ -30,6 +30,7 @@ namespace RvtMcp.Plugin
         private BakeInboxWindow _bakeInboxWindow;
         private UIControlledApplication _ribbonApplication;
         private bool _mainWindowCaptured;
+        private System.Windows.Threading.Dispatcher _revitDispatcher;
 
         public Result OnStartup(UIControlledApplication application)
         {
@@ -167,11 +168,27 @@ namespace RvtMcp.Plugin
             ToastNotifier?.SetOwnerHandle(hwnd);
             try
             {
-                var dispatcher = System.Windows.Application.Current?.Dispatcher
-                    ?? System.Windows.Threading.Dispatcher.CurrentDispatcher;
-                ToastNotifier?.SetHostDispatcher(dispatcher);
+                _revitDispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+                ToastNotifier?.SetHostDispatcher(_revitDispatcher);
             }
             catch { }
+        }
+
+        /// <summary>Open History on Revit's UI dispatcher when called by the toast window.</summary>
+        public void ShowOrFocusHistoryWindowFromToast()
+        {
+            var dispatcher = _revitDispatcher;
+            if (dispatcher == null)
+            {
+                DebugLog("Toast history click ignored: Revit dispatcher is not captured.");
+                return;
+            }
+
+            if (dispatcher.CheckAccess())
+                ShowOrFocusHistoryWindow();
+            else
+                dispatcher.BeginInvoke(new Action(ShowOrFocusHistoryWindow),
+                    System.Windows.Threading.DispatcherPriority.Normal);
         }
 
         public void RefreshBakedRibbonButtons()

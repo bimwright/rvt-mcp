@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
@@ -8,18 +6,45 @@ using System.Windows.Threading;
 
 namespace RvtMcp.Plugin.Views.Toast
 {
+    /// <summary>
+    /// Reconciles the WPF toast surface with the pure <see cref="ActivityAggregator"/>
+    /// state machine. There is deliberately one window slot: the aggregator owns the
+    /// card lifetime and the manager owns only WPF objects and their dispatcher timer.
+    /// </summary>
     internal sealed class McpToastManager
     {
-        private const int MaxToasts = 4;
-        private const double Gap = 8;
         private const double EdgeMargin = 16;
+        private const int TickMilliseconds = 100;
+
         private readonly Dispatcher _dispatcher;
-        private readonly List<McpToastWindow> _active = new List<McpToastWindow>();
+        private readonly ActivityAggregator _aggregator;
+        private readonly Func<bool> _isFrameUsable;
+        private readonly Action<long> _onClick;
+        private readonly DispatcherTimer _timer;
+        private McpToastWindow _window;
         private IntPtr _ownerHandle;
 
-        public McpToastManager(Dispatcher dispatcher)
+        /// <param name="isFrameUsable">
+        /// Returns whether the owner frame can display an activity card. The callback is
+        /// evaluated on the toast dispatcher by the timer; it must be cheap and must not
+        /// call back into this manager. A missing callback means that the frame is usable.
+        /// </param>
+        public McpToastManager(
+            Dispatcher dispatcher,
+            ActivityAggregator aggregator,
+            Func<bool> isFrameUsable = null,
+            Action<long> onClick = null)
         {
-            _dispatcher = dispatcher;
+            _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+            _aggregator = aggregator ?? throw new ArgumentNullException(nameof(aggregator));
+            _isFrameUsable = isFrameUsable ?? (() => true);
+            _onClick = onClick;
+
+            _timer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(TickMilliseconds)
+            };
+            _timer.Tick += OnTimerTick;
         }
 
         public void SetOwnerHandle(IntPtr hwnd)
@@ -28,47 +53,230 @@ namespace RvtMcp.Plugin.Views.Toast
                 _ownerHandle = hwnd;
         }
 
-        public void Complete(McpToastViewModel vm)
+        /// <summary>
+        /// Reconciles the single WPF window to the aggregator's current render state.
+        /// Call this after a mutator returns true. Calling it more often is safe because
+        /// <see cref="ActivityAggregator.TakeRender"/> always reads current state.
+        /// </summary>
+        public void Render()
         {
             EnsureDispatcher();
 
-            EnforceCapBeforeAdd();
-            var window = new McpToastWindow(vm, OnToastClosed);
-            AttachOwner(window);
-            _active.Insert(0, window);
-            // Show may pump close callbacks that animate the active stack.
-            // Give the new window finite coordinates before that can happen.
-            ReflowAll(animate: false);
-            window.Show();
-            window.PlayEnterAnimation();
-            window.StartAutoDismiss();
-            ReflowAll(animate: false);
+            var render = _aggregator.TakeRender();
+            switch (render.Phase)
+            {
+                case ActivityCardPhase.Visible:
+                    ReconcileVisible(render.Card);
+                    return;
+
+                case ActivityCardPhase.Closing:
+                    ReconcileClosing(render.Card);
+                    return;
+
+                default:
+                    ForceCloseWindow();
+                    StopTimerIfNoWindow();
+                    return;
+            }
         }
 
+        /// <summary>
+        /// Allows the host/Idling path to supply an explicit frame usability result.
+        /// The timer uses the configured callback and calls this overload internally.
+        /// </summary>
+        internal void Tick(bool frameUsable)
+        {
+            EnsureDispatcher();
+            if (_window == null)
+                return;
+
+            if (_aggregator.Tick(frameUsable))
+                Render();
+        }
+
+        /// <summary>
+        /// Closes the current window synchronously. This is used during Revit shutdown,
+        /// before the dispatcher is torn down, and is also safe for a normal dismiss-all.
+        /// </summary>
         public void DismissAllImmediate()
         {
             EnsureDispatcher();
 
-            var toasts = _active.ToList();
-            _active.Clear();
-            foreach (var toast in toasts)
-                toast.CloseImmediate();
-        }
+            _timer.Stop();
+            var window = _window;
+            _window = null; // Ignore the close callback from this forced close.
 
-        private void EnforceCapBeforeAdd()
-        {
-            while (_active.Count >= MaxToasts)
+            if (window != null)
             {
-                var oldest = _active[_active.Count - 1];
-                _active.RemoveAt(_active.Count - 1);
-                oldest.CloseImmediate();
+                try { window.CloseImmediate(); }
+                catch { }
             }
+
+            // A dismissed card must not be resurrected by a render that was posted
+            // before DismissAllImmediate ran. Reset is idempotent and clears Pending too.
+            _aggregator.Reset();
+            // Reset claims a render request so a concurrent/late notifier cannot leave
+            // the coalescing flag stuck with no posted render left to drain it.
+            _aggregator.TakeRender();
         }
 
-        private void OnToastClosed(McpToastWindow toast)
+        private void ReconcileVisible(ActivitySnapshot card)
         {
-            if (_active.Remove(toast))
-                ReflowAll(animate: true);
+            if (card == null)
+            {
+                ForceCloseWindow();
+                StopTimerIfNoWindow();
+                return;
+            }
+
+            if (_window != null && _window.CardId == card.CardId)
+            {
+                // Updating an existing card must not replay its enter/brand animation or
+                // alter its measured height.
+                _window.Update(card);
+                EnsureTimer();
+                return;
+            }
+
+            // A result arriving while the old card fades starts a new CardId. Force-close
+            // the old HWND first so there can never be two topmost windows.
+            ForceCloseWindow();
+            CreateWindow(card);
+        }
+
+        private void ReconcileClosing(ActivitySnapshot card)
+        {
+            if (card == null)
+            {
+                StopTimerIfNoWindow();
+                return;
+            }
+
+            if (_window != null && _window.CardId == card.CardId)
+            {
+                // BeginClose is idempotent in the window. Repeated stale renders cannot
+                // restart or reverse the fade.
+                _window.BeginClose();
+                EnsureTimer();
+                return;
+            }
+
+            // Pending render for a card whose window was already closed (or replaced).
+            // Complete the aggregator transition immediately; a late callback from an
+            // older window is ignored by OnWindowClosed's identity + CardId fence.
+            ForceCloseWindow();
+            _aggregator.CardClosed(card.CardId);
+            StopTimerIfNoWindow();
+        }
+
+        private void CreateWindow(ActivitySnapshot card)
+        {
+            var window = new McpToastWindow(
+                card,
+                OnWindowClosed,
+                OnDismissRequested,
+                OnCardClicked,
+                OnPointerEntered,
+                OnPointerLeft);
+
+            _window = window;
+            AttachOwner(window);
+
+            // WPF initializes Window.Top/Left to NaN. Set finite coordinates before Show
+            // so an early Loaded/close callback cannot animate from an invalid value.
+            PositionWindow(window);
+            window.CapturePointerBaseline();
+            window.Show();
+            window.PlayEnterAnimation();
+            EnsureTimer();
+        }
+
+        private void OnTimerTick(object sender, EventArgs e)
+        {
+            if (_window == null)
+            {
+                _timer.Stop();
+                return;
+            }
+
+            bool frameUsable;
+            try { frameUsable = _isFrameUsable(); }
+            catch { frameUsable = true; }
+            Tick(frameUsable);
+        }
+
+        private void OnWindowClosed(McpToastWindow window, long cardId)
+        {
+            EnsureDispatcher();
+            if (!ReferenceEquals(_window, window) || window.CardId != cardId)
+                return;
+
+            _window = null;
+            _aggregator.CardClosed(cardId);
+            StopTimerIfNoWindow();
+        }
+
+        private void OnDismissRequested(long cardId)
+        {
+            EnsureDispatcher();
+            if (_window == null || _window.CardId != cardId)
+                return;
+
+            if (_aggregator.Dismiss(cardId))
+                Render();
+        }
+
+        private void OnPointerEntered(long cardId)
+        {
+            EnsureDispatcher();
+            if (_window != null && _window.CardId == cardId)
+                _aggregator.PointerEntered(cardId);
+        }
+
+        private void OnPointerLeft(long cardId)
+        {
+            EnsureDispatcher();
+            if (_window != null && _window.CardId == cardId)
+                _aggregator.PointerLeft(cardId);
+        }
+
+        private void ForceCloseWindow()
+        {
+            var window = _window;
+            if (window == null)
+                return;
+
+            _window = null;
+            try { window.CloseImmediate(); }
+            catch { }
+            StopTimerIfNoWindow();
+        }
+
+        private void OnCardClicked(long cardId)
+        {
+            EnsureDispatcher();
+            if (_window == null || _window.CardId != cardId)
+                return;
+
+            // Opening History is intentionally supplied by the host, because App.Instance
+            // lives in each Revit-year shell and is absent from the WPF harness.
+            try { _onClick?.Invoke(cardId); }
+            catch { }
+
+            if (_aggregator.Dismiss(cardId))
+                Render();
+        }
+
+        private void EnsureTimer()
+        {
+            if (!_timer.IsEnabled && _window != null)
+                _timer.Start();
+        }
+
+        private void StopTimerIfNoWindow()
+        {
+            if (_window == null)
+                _timer.Stop();
         }
 
         private void AttachOwner(McpToastWindow window)
@@ -87,31 +295,24 @@ namespace RvtMcp.Plugin.Views.Toast
             }
         }
 
-        private void ReflowAll(bool animate)
+        private void PositionWindow(McpToastWindow window)
         {
             var owner = GetValidOwnerHandle();
-            double startTop = EdgeMargin;
-            double startLeft = EdgeMargin;
+            double left = EdgeMargin;
+            double top = EdgeMargin;
 
             if (owner != IntPtr.Zero && GetWindowRect(owner, out var rect))
             {
                 GetOwnerDpiScale(owner, out var dpiX, out var dpiY);
-                startLeft = rect.Left * dpiX + EdgeMargin;
-                startTop = rect.Top * dpiY + EdgeMargin;
+                left = rect.Left * dpiX + EdgeMargin;
+                top = rect.Top * dpiY + EdgeMargin;
             }
 
-            var currentTop = startTop;
-            foreach (var toast in _active)
-            {
-                var height = toast.ActualHeight > 0 ? toast.ActualHeight : 72;
-
-                if (animate)
-                    toast.AnimateToPosition(currentTop, startLeft);
-                else
-                    toast.SetPosition(currentTop, startLeft);
-
-                currentTop += height + Gap;
-            }
+            // Guard both the native and fallback paths. Invalid DPI/rect data must never
+            // leak NaN or infinity into WPF dependency properties.
+            if (!IsFinite(left)) left = EdgeMargin;
+            if (!IsFinite(top)) top = EdgeMargin;
+            window.SetPosition(top, left);
         }
 
         private IntPtr GetValidOwnerHandle()
@@ -119,8 +320,8 @@ namespace RvtMcp.Plugin.Views.Toast
             if (_ownerHandle != IntPtr.Zero && IsWindow(_ownerHandle))
                 return _ownerHandle;
 
-            // Prefer keeping last known good owner over Process.MainWindowHandle
-            // (which can point at a splash/dialog). Clear only when truly invalid.
+            // Keep the last known good owner rather than guessing a process main window;
+            // clear only when the native handle is truly invalid.
             if (_ownerHandle != IntPtr.Zero && !IsWindow(_ownerHandle))
                 _ownerHandle = IntPtr.Zero;
 
@@ -129,40 +330,25 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private void GetOwnerDpiScale(IntPtr hwnd, out double dpiX, out double dpiY)
         {
-            // Default: 96 DPI → 1 DIP per physical pixel.
             dpiX = 1.0;
             dpiY = 1.0;
 
             try
             {
-                // Windows 10 1607+: per-monitor DPI for the owner HWND.
                 var dpi = GetDpiForWindow(hwnd);
                 if (dpi > 0)
                 {
                     dpiX = 96.0 / dpi;
                     dpiY = dpiX;
-                    return;
                 }
             }
             catch (EntryPointNotFoundException)
             {
-                // Older OS — fall through to PresentationSource / default.
+                // Older Windows — retain the 96 DPI default.
             }
             catch
             {
-                // Ignore and fall through.
-            }
-
-            var first = _active.FirstOrDefault();
-            if (first == null)
-                return;
-
-            var source = PresentationSource.FromVisual(first);
-            if (source?.CompositionTarget != null)
-            {
-                var transform = source.CompositionTarget.TransformFromDevice;
-                dpiX = transform.M11;
-                dpiY = transform.M22;
+                // DPI is a positioning hint; retain the safe default on failure.
             }
         }
 
@@ -171,6 +357,8 @@ namespace RvtMcp.Plugin.Views.Toast
             if (!_dispatcher.CheckAccess())
                 throw new InvalidOperationException("McpToastManager must run on the toast dispatcher thread.");
         }
+
+        private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
 
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);

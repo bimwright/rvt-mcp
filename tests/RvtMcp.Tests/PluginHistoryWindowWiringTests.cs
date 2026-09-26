@@ -29,6 +29,33 @@ namespace RvtMcp.Tests
         [InlineData("plugin-r25")]
         [InlineData("plugin-r26")]
         [InlineData("plugin-r27")]
+        public void Toast_history_click_is_marshaled_to_the_Revit_dispatcher(string pluginFolder)
+        {
+            var source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", pluginFolder, "App.cs"));
+
+            Assert.Contains("_revitDispatcher", source);
+            Assert.Contains("ShowOrFocusHistoryWindowFromToast", source);
+            Assert.Contains("ToastNotifier?.SetHostDispatcher(_revitDispatcher)", source);
+            Assert.Contains("dispatcher.BeginInvoke(new Action(ShowOrFocusHistoryWindow)", source);
+        }
+
+        [Fact]
+        public void Toast_notifier_does_not_open_History_on_the_toast_dispatcher()
+        {
+            var source = File.ReadAllText(Path.Combine(GetRepoRoot(),
+                "src", "shared", "Views", "Toast", "McpToastNotifier.cs"));
+
+            Assert.Contains("ShowOrFocusHistoryWindowFromToast", source);
+            Assert.DoesNotContain("ShowOrFocusHistoryWindow();", source);
+        }
+
+        [Theory]
+        [InlineData("plugin-r22")]
+        [InlineData("plugin-r23")]
+        [InlineData("plugin-r24")]
+        [InlineData("plugin-r25")]
+        [InlineData("plugin-r26")]
+        [InlineData("plugin-r27")]
         public void LocalizationHost_init_sits_between_config_load_and_ribbon(string pluginFolder)
         {
             var source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", pluginFolder, "App.cs"));

@@ -80,8 +80,7 @@ namespace RvtMcp.Tests
                 Assert.Equal("MCP · Snapshot", vm.CategoryLabel);
                 Assert.Contains("toast-test-thumb.png", vm.Summary);
                 Assert.Contains("800px PNG", vm.Summary);
-                if (vm.ThumbnailPath != null)
-                    Assert.Contains("Click to open", vm.Detail);
+                Assert.DoesNotContain("Click to open", vm.Detail);
                 Assert.Equal(path, vm.ThumbnailPath);
             }
             finally

@@ -1,6 +1,4 @@
 using System;
-using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,8 +8,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
-using System.Windows.Media.Imaging;
-using System.Windows.Threading;
+using RvtMcp.Plugin.Localization;
 
 namespace RvtMcp.Plugin.Views.Toast
 {
@@ -24,32 +21,65 @@ namespace RvtMcp.Plugin.Views.Toast
         private const long WsExNoActivate = 0x08000000L;
         private const long WsExToolWindow = 0x00000080L;
 
-        private readonly Action<McpToastWindow> _onClosed;
         private readonly TextBlock _iconText;
         private readonly TextBlock _titleText;
         private readonly TextBlock _categoryText;
-        private readonly TextBlock _summaryText;
-        private readonly TextBlock _detailText;
-        private readonly TextBlock _durationText;
+        private readonly TextBlock _bodyText;
         private readonly TextBlock _brandText;
         private readonly TextBlock _brandShine;
         private readonly TranslateTransform _brandSweep = new TranslateTransform(-0.75, 0);
         private readonly TranslateTransform _shineSweep = new TranslateTransform(-0.75, 0);
-        private readonly Border _thumbnailHost;
-        private readonly Image _thumbnailImage;
+        private readonly Func<Point> _cursorPosition;
         private readonly Border _root;
         private readonly TranslateTransform _slideTransform;
         private readonly ScaleTransform _scaleTransform;
-        private readonly DispatcherTimer _autoDismissTimer;
-        private bool _isMouseOver;
+        private Border _closeHost;
+        private MouseEventHandler _closeHostMouseEnterHandler;
+        private MouseEventHandler _closeHostMouseLeaveHandler;
+        private MouseButtonEventHandler _closeHostMouseUpHandler;
+        private MouseEventHandler _mouseEnterHandler;
+        private MouseEventHandler _mouseLeaveHandler;
+        private MouseButtonEventHandler _mouseUpHandler;
+        private EventHandler _sourceInitializedHandler;
+        private EventHandler _closedHandler;
         private bool _isClosing;
+        private long _cardId;
+        private Action<McpToastWindow, long> _activityClosed;
+        private Action<long> _activityDismissed;
+        private Action<long> _activityClicked;
+        private Action<long> _activityPointerEntered;
+        private Action<long> _activityPointerLeft;
+        private bool _hasPointerPosition;
+        private int _lastPointerX;
+        private int _lastPointerY;
+        private bool _closedCallbackRaised;
+        private bool _handlersDetached;
 
         public McpToastViewModel ViewModel { get; private set; }
+        public long CardId => _cardId;
 
-        public McpToastWindow(McpToastViewModel viewModel, Action<McpToastWindow> onClosed)
+        /// <summary>
+        /// Activity-card constructor. The manager owns timing and lifecycle; this
+        /// window only renders the snapshot and reports user/window events.
+        /// </summary>
+        public McpToastWindow(
+            ActivitySnapshot snapshot,
+            Action<McpToastWindow, long> onClosed,
+            Action<long> onDismiss,
+            Action<long> onClick,
+            Action<long> onPointerEntered,
+            Action<long> onPointerLeft,
+            Func<Point> cursorPosition = null)
         {
-            ViewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-            _onClosed = onClosed;
+            if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
+            ViewModel = ToViewModel(snapshot);
+            _cardId = snapshot.CardId;
+            _activityClosed = onClosed;
+            _activityDismissed = onDismiss;
+            _activityClicked = onClick;
+            _activityPointerEntered = onPointerEntered;
+            _activityPointerLeft = onPointerLeft;
+            _cursorPosition = cursorPosition ?? ReadCursorPosition;
 
             FontFamily = McpToastTheme.UiFont;
 
@@ -76,7 +106,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 Margin = new Thickness(8),
                 CornerRadius = new CornerRadius(8),
                 Background = McpToastTheme.Background,
-                BorderBrush = McpToastTheme.BuildAccentBrush(viewModel),
+                BorderBrush = McpToastTheme.BuildAccentBrush(ViewModel),
                 BorderThickness = new Thickness(6, 0, 0, 0),
                 RenderTransformOrigin = new Point(0, 0.5),
                 RenderTransform = transformGroup,
@@ -90,24 +120,27 @@ namespace RvtMcp.Plugin.Views.Toast
             };
 
             var content = new Grid { Margin = new Thickness(10, 12, 14, 12) };
-            for (var i = 0; i < 6; i++)
-                content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            // Reserve the single latest-result line even when a tool returns no body.
+            content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(18) });
+            content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var header = new DockPanel { LastChildFill = true };
 
             _iconText = new TextBlock
             {
-                Text = McpToastTheme.GetIconGlyph(viewModel),
+                Text = McpToastTheme.GetIconGlyph(ViewModel),
                 FontFamily = McpToastTheme.IconFont,
                 FontSize = 16,
-                Foreground = McpToastTheme.BuildIconBrush(viewModel),
+                Foreground = McpToastTheme.BuildIconBrush(ViewModel),
                 Margin = new Thickness(0, 1, 8, 0),
                 VerticalAlignment = VerticalAlignment.Top
             };
             DockPanel.SetDock(_iconText, Dock.Left);
             header.Children.Add(_iconText);
 
-            var closeHost = new Border
+            var closeHost = _closeHost = new Border
             {
                 Width = 22,
                 Height = 22,
@@ -126,19 +159,22 @@ namespace RvtMcp.Plugin.Views.Toast
                 VerticalAlignment = VerticalAlignment.Center
             };
             closeHost.Child = closeGlyph;
-            closeHost.MouseEnter += (_, __) => closeHost.Background = McpToastTheme.CloseHover;
-            closeHost.MouseLeave += (_, __) => closeHost.Background = Brushes.Transparent;
-            closeHost.MouseLeftButtonUp += (_, e) =>
+            _closeHostMouseEnterHandler = (_, __) => closeHost.Background = McpToastTheme.CloseHover;
+            _closeHostMouseLeaveHandler = (_, __) => closeHost.Background = Brushes.Transparent;
+            _closeHostMouseUpHandler = (_, e) =>
             {
                 e.Handled = true;
-                BeginClose();
+                _activityDismissed?.Invoke(_cardId);
             };
+            closeHost.MouseEnter += _closeHostMouseEnterHandler;
+            closeHost.MouseLeave += _closeHostMouseLeaveHandler;
+            closeHost.MouseLeftButtonUp += _closeHostMouseUpHandler;
             DockPanel.SetDock(closeHost, Dock.Right);
             header.Children.Add(closeHost);
 
             _titleText = new TextBlock
             {
-                Text = viewModel.Title ?? string.Empty,
+                Text = ViewModel.Title ?? string.Empty,
                 FontWeight = FontWeights.SemiBold,
                 FontSize = 13,
                 Foreground = McpToastTheme.Text,
@@ -152,7 +188,7 @@ namespace RvtMcp.Plugin.Views.Toast
 
             _categoryText = new TextBlock
             {
-                Text = viewModel.CategoryLabel ?? string.Empty,
+                Text = ViewModel.CategoryLabel ?? string.Empty,
                 FontSize = 10.5,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = McpToastTheme.Primary,
@@ -161,51 +197,20 @@ namespace RvtMcp.Plugin.Views.Toast
             Grid.SetRow(_categoryText, 1);
             content.Children.Add(_categoryText);
 
-            _summaryText = new TextBlock
+            _bodyText = new TextBlock
             {
-                Text = viewModel.Summary ?? string.Empty,
+                Text = ViewModel.Body,
                 FontSize = 12.5,
                 FontWeight = FontWeights.Medium,
                 Foreground = McpToastTheme.Text,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(24, 4, 0, 0),
                 MaxHeight = 64,
-                TextTrimming = TextTrimming.CharacterEllipsis
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Top
             };
-            Grid.SetRow(_summaryText, 2);
-            content.Children.Add(_summaryText);
-
-            _detailText = new TextBlock
-            {
-                FontSize = 11.5,
-                Foreground = McpToastTheme.TextSecondary,
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(24, 2, 0, 0),
-                MaxHeight = 40,
-                TextTrimming = TextTrimming.CharacterEllipsis
-            };
-            Grid.SetRow(_detailText, 3);
-            content.Children.Add(_detailText);
-
-            _thumbnailImage = new Image
-            {
-                Stretch = Stretch.Uniform,
-                MaxWidth = 300,
-                MaxHeight = 120,
-                HorizontalAlignment = HorizontalAlignment.Left
-            };
-            _thumbnailHost = new Border
-            {
-                Margin = new Thickness(24, 8, 0, 0),
-                CornerRadius = new CornerRadius(4),
-                BorderBrush = McpToastTheme.MutedAccent,
-                BorderThickness = new Thickness(1),
-                Background = Brushes.White,
-                Child = _thumbnailImage,
-                Visibility = Visibility.Collapsed
-            };
-            Grid.SetRow(_thumbnailHost, 4);
-            content.Children.Add(_thumbnailHost);
+            Grid.SetRow(_bodyText, 2);
+            content.Children.Add(_bodyText);
 
             var footer = new DockPanel { Margin = new Thickness(24, 6, 0, 0) };
 
@@ -248,58 +253,52 @@ namespace RvtMcp.Plugin.Views.Toast
             DockPanel.SetDock(brandCell, Dock.Right);
             footer.Children.Add(brandCell);
 
-            _durationText = new TextBlock
-            {
-                Text = FormatDuration(viewModel),
-                FontSize = 11,
-                Foreground = McpToastTheme.TextSecondary,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            footer.Children.Add(_durationText);
-            Grid.SetRow(footer, 5);
+            Grid.SetRow(footer, 3);
             content.Children.Add(footer);
 
-            ApplyViewModelText(viewModel);
-            ApplyThumbnail(viewModel.ThumbnailPath);
+            ApplyActivitySnapshot(snapshot);
 
             _root.Child = content;
             _root.Cursor = Cursors.Hand;
             Content = _root;
 
-            MouseEnter += (_, __) =>
+            _mouseEnterHandler = (_, __) =>
             {
-                _isMouseOver = true;
-                _autoDismissTimer.Stop();
+                if (PointerPositionChanged())
+                    _activityPointerEntered?.Invoke(_cardId);
                 WipeBrand(150);
             };
-            MouseLeave += (_, __) =>
+            _mouseLeaveHandler = (_, __) =>
             {
-                _isMouseOver = false;
-                if (!_isClosing)
-                    _autoDismissTimer.Start();
+                if (PointerPositionChanged())
+                    _activityPointerLeft?.Invoke(_cardId);
             };
-            MouseLeftButtonUp += (_, e) =>
+            _mouseUpHandler = (_, e) =>
             {
-                if (e.OriginalSource is Border border && border == closeHost)
+                if (e.OriginalSource is Border activityCloseBorder && activityCloseBorder == closeHost)
                     return;
-                HandleToastClick();
+                if (_isClosing)
+                {
+                    e.Handled = true;
+                    return;
+                }
+                _activityClicked?.Invoke(_cardId);
+                e.Handled = true;
             };
+            MouseEnter += _mouseEnterHandler;
+            MouseLeave += _mouseLeaveHandler;
+            MouseLeftButtonUp += _mouseUpHandler;
 
-            _autoDismissTimer = new DispatcherTimer();
-            _autoDismissTimer.Tick += (_, __) =>
-            {
-                _autoDismissTimer.Stop();
-                BeginClose();
-            };
-
-            Loaded += (_, __) =>
-            {
-                StartAutoDismiss();
-            };
+            // Also reconcile unexpected native/owner closes. Normal fade and force-close
+            // paths call NotifyClosed explicitly, while this event covers a window closed
+            // by WPF or the owner before those paths reach their finally block.
+            _closedHandler = (_, __) => NotifyClosed();
+            Closed += _closedHandler;
 
             // Without WS_EX_NOACTIVATE each shown toast can steal keyboard focus
             // from Revit mid-typing. Clicks are still delivered; only activation is blocked.
-            SourceInitialized += (_, __) => MakeNoActivate();
+            _sourceInitializedHandler = (_, __) => MakeNoActivate();
+            SourceInitialized += _sourceInitializedHandler;
         }
 
         public void PlayEnterAnimation()
@@ -317,21 +316,6 @@ namespace RvtMcp.Plugin.Views.Toast
             WipeBrand();
         }
 
-        public void AnimateToPosition(double top, double left)
-        {
-            var fromTop = Top;
-            var fromLeft = Left;
-            SetPosition(top, left);
-            // An unshown WPF Window defaults to NaN. It has no position to animate from.
-            if (double.IsNaN(fromTop) || double.IsNaN(fromLeft))
-                return;
-
-            var duration = TimeSpan.FromMilliseconds(200);
-            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-            BeginAnimation(TopProperty, new DoubleAnimation(fromTop, top, duration) { EasingFunction = ease });
-            BeginAnimation(LeftProperty, new DoubleAnimation(fromLeft, left, duration) { EasingFunction = ease });
-        }
-
         public void SetPosition(double top, double left)
         {
             // A previous animation's held value must not override a direct reflow.
@@ -341,107 +325,21 @@ namespace RvtMcp.Plugin.Views.Toast
             Left = left;
         }
 
-        public void StartAutoDismiss()
+        /// <summary>Reconcile the visible activity card without replaying enter animation.</summary>
+        public void Update(ActivitySnapshot snapshot)
         {
-            _autoDismissTimer.Interval = TimeSpan.FromSeconds(GetAutoDismissSeconds(ViewModel));
-            if (!_isMouseOver)
-                _autoDismissTimer.Start();
+            if (snapshot == null || snapshot.CardId != _cardId)
+                return;
+            ApplyActivitySnapshot(snapshot);
         }
 
         public void CloseImmediate()
         {
-            if (_isClosing)
+            if (_closedCallbackRaised)
                 return;
             _isClosing = true;
-            _autoDismissTimer.Stop();
-            Close();
-            _onClosed?.Invoke(this);
-        }
-
-        private void ApplyViewModelText(McpToastViewModel vm)
-        {
-            _titleText.Text = vm.Title ?? string.Empty;
-            _categoryText.Text = vm.CategoryLabel ?? string.Empty;
-            _categoryText.Visibility = string.IsNullOrWhiteSpace(vm.CategoryLabel)
-                ? Visibility.Collapsed
-                : Visibility.Visible;
-            _summaryText.Text = vm.Summary ?? string.Empty;
-            _detailText.Text = vm.Detail ?? string.Empty;
-            _detailText.Visibility = string.IsNullOrWhiteSpace(vm.Detail)
-                ? Visibility.Collapsed
-                : Visibility.Visible;
-            _durationText.Text = FormatDuration(vm);
-        }
-
-        private void ApplyThumbnail(string path)
-        {
-            if (!ToastContentBuilder.IsSafeImagePath(path))
-            {
-                _thumbnailHost.Visibility = Visibility.Collapsed;
-                _thumbnailImage.Source = null;
-                return;
-            }
-
-            var bytes = ToastThumbnailLoader.TryLoadBytes(path, 8 * 1024 * 1024);
-            if (bytes == null)
-            {
-                _thumbnailHost.Visibility = Visibility.Collapsed;
-                _thumbnailImage.Source = null;
-                return;
-            }
-
-            try
-            {
-                using (var stream = new MemoryStream(bytes))
-                {
-                    var bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.DecodePixelWidth = 300;
-                    bitmap.StreamSource = stream;
-                    bitmap.EndInit();
-                    bitmap.Freeze();
-                    _thumbnailImage.Source = bitmap;
-                }
-                _thumbnailHost.Visibility = Visibility.Visible;
-            }
-            catch
-            {
-                _thumbnailHost.Visibility = Visibility.Collapsed;
-                _thumbnailImage.Source = null;
-            }
-        }
-
-        private void HandleToastClick()
-        {
-            if (_isClosing)
-            {
-                BeginClose();
-                return;
-            }
-
-            if (ViewModel.Success
-                && string.Equals(ViewModel.CommandName, "capture_view_image", StringComparison.OrdinalIgnoreCase))
-            {
-                TryOpenCapturedImage(ViewModel.ThumbnailPath);
-            }
-
-            BeginClose();
-        }
-
-        private static void TryOpenCapturedImage(string path)
-        {
-            if (!ToastContentBuilder.IsSafeImagePath(path))
-                return;
-
-            try
-            {
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-            }
-            catch
-            {
-                // Best-effort — dismiss still proceeds.
-            }
+            try { Close(); }
+            finally { NotifyClosed(); }
         }
 
         /// <summary>Brand reveal: a lit front wipes left→right once while a narrow band of
@@ -505,39 +403,174 @@ namespace RvtMcp.Plugin.Views.Toast
             return Color.FromArgb((byte)Math.Round(alpha * 255), 0, 0, 0);
         }
 
-        private void BeginClose()
+        public void BeginClose()
         {
+            if (_closedCallbackRaised)
+                return;
             if (_isClosing)
                 return;
             _isClosing = true;
-            _autoDismissTimer.Stop();
-
             var duration = TimeSpan.FromMilliseconds(220);
             var ease = new QuadraticEase { EasingMode = EasingMode.EaseIn };
             var fade = new DoubleAnimation(Opacity, 0, duration) { EasingFunction = ease };
             fade.Completed += (_, __) =>
             {
-                Close();
-                _onClosed?.Invoke(this);
+                try { Close(); }
+                finally { NotifyClosed(); }
             };
             BeginAnimation(OpacityProperty, fade);
         }
 
-        private static string FormatDuration(McpToastViewModel vm)
+        private void ApplyActivitySnapshot(ActivitySnapshot snapshot)
         {
-            return vm.DurationMs > 0 ? $"{vm.DurationMs}ms" : string.Empty;
+            ViewModel = ToViewModel(snapshot);
+
+            _root.BorderBrush = snapshot.HasFailure
+                ? McpToastTheme.BuildAccentBrush(new McpToastViewModel { Success = false })
+                : McpToastTheme.BuildAccentBrush(new McpToastViewModel { Success = true });
+            _iconText.Text = snapshot.LatestSuccess ? "\uE73E" : "\uE783";
+            _iconText.Foreground = snapshot.HasFailure ? McpToastTheme.Error : McpToastTheme.Primary;
+
+            if (snapshot.IsStatus)
+            {
+                _titleText.Text = snapshot.Title ?? string.Empty;
+                _categoryText.Visibility = Visibility.Collapsed;
+                _bodyText.Text = snapshot.Body ?? string.Empty;
+            }
+            else
+            {
+                _titleText.Text = LocalizedOrFallback("toast.activity.header", "MCP · Activity");
+                _categoryText.Visibility = Visibility.Visible;
+                _categoryText.Text = $"✓ {snapshot.Succeeded}   ! {snapshot.Failed}   ▧ {snapshot.Images}";
+                _categoryText.ToolTip = LocalizedOrFallback(
+                    "toast.activity.counts.tooltip",
+                    "Success / failed / images");
+                var latest = LocalizedOrFallback("toast.activity.latest", "Latest");
+                var latestBody = string.IsNullOrWhiteSpace(snapshot.Title)
+                    ? snapshot.Body ?? string.Empty
+                    : string.IsNullOrWhiteSpace(snapshot.Body)
+                        ? snapshot.Title
+                        : snapshot.Title + " · " + snapshot.Body;
+                _bodyText.Text = string.IsNullOrWhiteSpace(latestBody)
+                    ? string.Empty
+                    : latest + ": " + latestBody;
+            }
+
+            _bodyText.ToolTip = string.IsNullOrEmpty(_bodyText.Text) ? null : _bodyText.Text;
+            _bodyText.Visibility = string.IsNullOrEmpty(_bodyText.Text)
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+            _titleText.TextWrapping = TextWrapping.NoWrap;
+            _titleText.TextTrimming = TextTrimming.CharacterEllipsis;
+            _bodyText.TextWrapping = TextWrapping.NoWrap;
+            _bodyText.MaxHeight = 18;
+            _bodyText.TextTrimming = TextTrimming.CharacterEllipsis;
         }
 
-        private static double GetAutoDismissSeconds(McpToastViewModel vm)
+        /// <summary>
+        /// Captures the pointer location immediately before <see cref="Window.Show"/>.
+        /// WPF may raise MouseEnter for a stationary cursor when the HWND appears; that
+        /// synthetic event must not pause the aggregator's idle deadline.
+        /// </summary>
+        public void CapturePointerBaseline()
         {
-            if (vm.AutoDismissSeconds.HasValue)
-                return vm.AutoDismissSeconds.Value;
-            if (!vm.Success)
-                return 8;
-            if (!string.IsNullOrEmpty(vm.ThumbnailPath))
-                return 9;
-            return vm.Kind == ToolActivityKind.Write ? 6 : 3;
+            var point = _cursorPosition();
+            if (IsCursorPointValid(point))
+            {
+                _hasPointerPosition = true;
+                _lastPointerX = (int)point.X;
+                _lastPointerY = (int)point.Y;
+            }
         }
+
+        private static McpToastViewModel ToViewModel(ActivitySnapshot snapshot)
+        {
+            if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
+            return new McpToastViewModel
+            {
+                Title = snapshot.Title,
+                Summary = snapshot.Body,
+                Detail = null,
+                Success = snapshot.LatestSuccess && !snapshot.HasFailure,
+                Kind = ToolActivityKind.Read
+            };
+        }
+
+        private void NotifyClosed()
+        {
+            if (_closedCallbackRaised)
+                return;
+            _closedCallbackRaised = true;
+            var activityClosed = _activityClosed;
+            DetachHandlers();
+            activityClosed?.Invoke(this, _cardId);
+        }
+
+        private static string LocalizedOrFallback(string key, string fallback)
+        {
+            var value = L.T(key);
+            return string.IsNullOrWhiteSpace(value) || string.Equals(value, key, StringComparison.Ordinal)
+                ? fallback
+                : value;
+        }
+
+        private void DetachHandlers()
+        {
+            if (_handlersDetached)
+                return;
+            _handlersDetached = true;
+
+            if (_closeHost != null)
+            {
+                _closeHost.MouseEnter -= _closeHostMouseEnterHandler;
+                _closeHost.MouseLeave -= _closeHostMouseLeaveHandler;
+                _closeHost.MouseLeftButtonUp -= _closeHostMouseUpHandler;
+            }
+
+            MouseEnter -= _mouseEnterHandler;
+            MouseLeave -= _mouseLeaveHandler;
+            MouseLeftButtonUp -= _mouseUpHandler;
+            SourceInitialized -= _sourceInitializedHandler;
+            Closed -= _closedHandler;
+
+            // Stop any pending visual clocks before releasing callbacks. This prevents a
+            // late animation completion from retaining a closed window or re-entering the
+            // manager after a force-close.
+            BeginAnimation(OpacityProperty, null);
+            _brandSweep.BeginAnimation(TranslateTransform.XProperty, null);
+            _shineSweep.BeginAnimation(TranslateTransform.XProperty, null);
+            _activityClosed = null;
+            _activityDismissed = null;
+            _activityClicked = null;
+            _activityPointerEntered = null;
+            _activityPointerLeft = null;
+        }
+
+        private bool PointerPositionChanged()
+        {
+            var point = _cursorPosition();
+            if (!IsCursorPointValid(point))
+                return true;
+            var x = (int)point.X;
+            var y = (int)point.Y;
+            if (_hasPointerPosition && x == _lastPointerX && y == _lastPointerY)
+                return false;
+            _hasPointerPosition = true;
+            _lastPointerX = x;
+            _lastPointerY = y;
+            return true;
+        }
+
+        private static Point ReadCursorPosition()
+        {
+            return GetCursorPos(out var point)
+                ? new Point(point.X, point.Y)
+                : new Point(double.NaN, double.NaN);
+        }
+
+        private static bool IsCursorPointValid(Point point) =>
+            !double.IsNaN(point.X) && !double.IsInfinity(point.X)
+            && !double.IsNaN(point.Y) && !double.IsInfinity(point.Y);
 
         private void MakeNoActivate()
         {
@@ -561,5 +594,15 @@ namespace RvtMcp.Plugin.Views.Toast
 
         [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
         private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int index, IntPtr value);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetCursorPos(out POINT point);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int X;
+            public int Y;
+        }
     }
 }

@@ -100,8 +100,6 @@ namespace RvtMcp.Plugin.Views.Toast
             var detailParts = new System.Collections.Generic.List<string>();
             if (viewId.HasValue)
                 detailParts.Add(L.T("toast.capture.viewId", ("viewId", viewId.Value)));
-            if (thumb != null)
-                detailParts.Add(L.T("toast.capture.clickToOpen"));
             var detail = string.Join(" · ", detailParts);
             return new ToastContent(category, summary, detail, thumb);
         }

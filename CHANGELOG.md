@@ -40,6 +40,12 @@ Thanks [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) — the `send_code`/`s
 - **Toast and History showed some failures as successes** — a `revit_batch_execute` that rolled back or had failed sub-commands, and a response rejected as too large (which the agent already received as `success=false`), showed green in the toast and History and were logged as successes in `mcp-calls.jsonl`. They now show as failures with the reason. The response to the agent is unchanged.
 - **`revit_open_model` refuses a file loaded as a link cleanly** — opening a file that is currently a link in an open document cannot produce a standalone document (`OpenDocumentFile` returns the link object, `OpenAndActivateDocument` throws a null reference). The call now stops with an explanatory message telling the user to close the host or unload the link first.
 
+### Changed
+
+- **Activity toasts use one shared card** — successive results update a single card (maximum 20-second idle lifetime, paused while hovered) instead of stacking per-result windows. The card shows success, failure and image counts; capture thumbnails are no longer embedded.
+- **Activity card clicks open History** — clicking the card routes to the host History window, while the close button dismisses the card. Capture paths are never opened from the toast.
+- **Settings config persistence** — Settings reads a side-effect-free snapshot, applies staged keys with per-key results, and writes through a flushed same-directory temp file replacement. Toast idle duration accepts 10/20/30/60 seconds; send-code journal retention accepts 1–48 hours and preserves the selected duration when Off.
+
 ## v0.6.4 - Installer client wiring and MCP prompts
 
 ### Added

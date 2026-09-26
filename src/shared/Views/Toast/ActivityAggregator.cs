@@ -131,6 +131,12 @@ namespace RvtMcp.Plugin.Views.Toast
                 _body = body;
                 _latestSuccess = success;
 
+                // A result can arrive after the owner became minimized/disabled but
+                // before the manager's next timer tick. Park the visible card now so
+                // the queued render cannot update or expose a window over a modal frame.
+                if (!_isStatus && !frameUsable && _phase == Phase.Visible)
+                    _phase = Phase.Pending;
+
                 if (_phase == Phase.Visible)
                     Rearm();
                 return RequestRender();
@@ -146,7 +152,7 @@ namespace RvtMcp.Plugin.Views.Toast
                     return false;
 
                 StartCard(isStatus: true, Phase.Visible);
-                _statusSeconds = seconds;
+                _statusSeconds = seconds > 0 ? seconds : DefaultIdleSeconds;
                 _title = title;
                 _body = body;
                 _latestSuccess = true;
@@ -208,8 +214,19 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             lock (_gate)
             {
-                if (IsLive(cardId))
-                    _hovering = true;
+                if (!IsLive(cardId))
+                    return;
+
+                // A late MouseEnter can arrive after the deadline but before the
+                // timer tick. Do not pause an already expired card indefinitely.
+                if (Expired())
+                {
+                    _phase = Phase.Closing;
+                    RequestRender();
+                    return;
+                }
+
+                _hovering = true;
             }
         }
 

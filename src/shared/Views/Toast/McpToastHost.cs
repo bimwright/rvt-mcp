@@ -7,6 +7,18 @@ namespace RvtMcp.Plugin.Views.Toast
 {
     public sealed class McpToastHost
     {
+        /// <summary>
+        /// The state machine is owned by the host so the notifier and the WPF manager
+        /// always reconcile the same card, even when a render is posted from another
+        /// thread.  It is deliberately independent of WPF and uses its monotonic clock.
+        /// </summary>
+        internal ActivityAggregator Aggregator { get; }
+
+        public McpToastHost()
+        {
+            Aggregator = new ActivityAggregator();
+        }
+
         private readonly object _lock = new object();
         private Thread _thread;
         private volatile Dispatcher _dispatcher;
@@ -16,6 +28,18 @@ namespace RvtMcp.Plugin.Views.Toast
         private bool _shutdownRequested;
         private bool _usesDedicatedThread;
         private Application _toastApplication;
+        private Func<bool> _frameUsable = () => true;
+        private Action<long> _activityClick = _ => { };
+
+        internal void SetFrameUsableProvider(Func<bool> provider)
+        {
+            _frameUsable = provider ?? (() => true);
+        }
+
+        internal void SetActivityClickHandler(Action<long> handler)
+        {
+            _activityClick = handler ?? (_ => { });
+        }
 
         public void SetHostDispatcher(Dispatcher dispatcher)
         {
@@ -45,7 +69,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 if (hostDispatcher != null)
                 {
                     _dispatcher = hostDispatcher;
-                    _manager = new McpToastManager(_dispatcher);
+                    _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id));
                     if (_ownerHandle != IntPtr.Zero)
                         _manager.SetOwnerHandle(_ownerHandle);
                     _usesDedicatedThread = false;
@@ -69,7 +93,7 @@ namespace RvtMcp.Plugin.Views.Toast
                         }
 
                         _dispatcher = Dispatcher.CurrentDispatcher;
-                        _manager = new McpToastManager(_dispatcher);
+                        _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id));
                         if (_ownerHandle != IntPtr.Zero)
                             _manager.SetOwnerHandle(_ownerHandle);
                     }
@@ -147,7 +171,6 @@ namespace RvtMcp.Plugin.Views.Toast
             if (_shutdownRequested && !synchronous)
                 return;
 
-            EnsureStarted();
             var dispatcher = _dispatcher;
             var manager = _manager;
             if (dispatcher == null || manager == null || dispatcher.HasShutdownStarted)
