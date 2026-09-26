@@ -51,6 +51,11 @@ namespace RvtMcp.Plugin.Views.Settings
         private TextBlock _toastHelp;
         private TextBlock _aboutDescription;
         private TextBlock _aboutHint;
+        private AboutInfo _aboutInfo;
+        private Button _aboutLicense;
+        private Button _aboutRepository;
+        private Button _aboutDocumentation;
+        private Button _aboutIssues;
         private Button _copyPort;
         private DataGrid _toolsGrid;
         private TextBlock _toolsStatus;
@@ -274,7 +279,34 @@ namespace RvtMcp.Plugin.Views.Settings
             panel.Children.Add(_aboutDescription);
             _aboutHint = new TextBlock { Text = "Version and license information are available in this tab.", Foreground = Brushes.DimGray, Margin = new Thickness(0, 8, 0, 12), TextWrapping = TextWrapping.Wrap };
             panel.Children.Add(_aboutHint);
+            _aboutInfo = AboutInfoProvider.Create(Assembly.GetExecutingAssembly(), _viewModel.RevitYear);
+            panel.Children.Add(ReadOnlyRow("settings.about.product", "Product", () => _aboutInfo.ProductName, _ => { }));
+            panel.Children.Add(ReadOnlyRow("settings.about.version", "Version", () => _aboutInfo.PluginInformationalVersion, _ => { }));
+            panel.Children.Add(ReadOnlyRow("settings.about.revit", "Revit", () => _viewModel.RevitYear, _ => { }));
+            panel.Children.Add(ReadOnlyRow("settings.about.author", "Author", () => _aboutInfo.Author, _ => { }));
+            panel.Children.Add(ReadOnlyRow("settings.about.license", "License", () => _aboutInfo.LicenseId, _ => { }));
+            panel.Children.Add(ReadOnlyRow("settings.about.copyright", "Copyright", () => _aboutInfo.Copyright, _ => { }));
+            var links = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
+            _aboutLicense = AboutLinkButton("settings.about.viewLicense", "View license", () => new LicenseWindow(_aboutInfo, this).ShowDialog());
+            _aboutRepository = AboutLinkButton("settings.about.github", "GitHub", () => OpenUrl(_aboutInfo.RepositoryUrl));
+            _aboutDocumentation = AboutLinkButton("settings.about.docs", "Documentation", () => OpenUrl(_aboutInfo.DocumentationUrl));
+            _aboutIssues = AboutLinkButton("settings.about.issues", "Report a bug", () => OpenUrl(_aboutInfo.IssuesUrl));
+            links.Children.Add(_aboutLicense); links.Children.Add(_aboutRepository); links.Children.Add(_aboutDocumentation); links.Children.Add(_aboutIssues);
+            panel.Children.Add(links);
             return panel;
+        }
+
+        private Button AboutLinkButton(string key, string fallback, Action action)
+        {
+            var button = new Button { Content = Text(key, fallback), Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(10, 3, 10, 3) };
+            button.Click += (_, __) => action();
+            return button;
+        }
+
+        private static void OpenUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return;
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
         }
 
         private StackPanel BuildFooter()
@@ -389,6 +421,10 @@ namespace RvtMcp.Plugin.Views.Settings
             if (_toastHelp != null) _toastHelp.Text = Text("settings.toast.help", "Toast On/Off is immediate. Apply saves the duration and privacy settings.");
             if (_aboutDescription != null) _aboutDescription.Text = Text("settings.about.description", "MCP connectivity and activity tools for Autodesk Revit.");
             if (_aboutHint != null) _aboutHint.Text = Text("settings.about.hint", "Version and license information are available in this tab.");
+            if (_aboutLicense != null) _aboutLicense.Content = Text("settings.about.viewLicense", "View license");
+            if (_aboutRepository != null) _aboutRepository.Content = Text("settings.about.github", "GitHub");
+            if (_aboutDocumentation != null) _aboutDocumentation.Content = Text("settings.about.docs", "Documentation");
+            if (_aboutIssues != null) _aboutIssues.Content = Text("settings.about.issues", "Report a bug");
             if (_toolsRefresh != null) _toolsRefresh.Content = Text("settings.tools.refresh", "Refresh");
             if (_toolsGrid != null && _toolsGrid.Columns.Count >= 5)
             {

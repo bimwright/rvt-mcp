@@ -21,6 +21,9 @@
     <EmbeddedResource Include="..\shared\Localization\ToolSummaries\summary.*.json" WithCulture="false">
       <LogicalName>RvtMcp.ToolSummaries.%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="..\..\LICENSE">
+      <LogicalName>RvtMcp.LICENSE</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <!-- Revit 2025 API via Nice3point NuGet packages -->

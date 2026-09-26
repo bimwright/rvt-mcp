@@ -67,6 +67,7 @@
     <Compile Include="..\..\src\shared\Localization\EmbeddedCatalog.cs" Link="Shared\Localization\EmbeddedCatalog.cs" />
     <Compile Include="..\..\src\shared\Localization\ToolSummaryCatalog.cs" Link="Shared\Localization\ToolSummaryCatalog.cs" />
     <Compile Include="..\..\src\shared\Localization\LocalizationHost.cs" Link="Shared\Localization\LocalizationHost.cs" />
+    <Compile Include="..\..\src\shared\Views\Settings\AboutInfo.cs" Link="Shared\Settings\AboutInfo.cs" />
   </ItemGroup>
 
   <!-- Real catalogs + test fixture embedded under the plugin's LogicalName convention -->
