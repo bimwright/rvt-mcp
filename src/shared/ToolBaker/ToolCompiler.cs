@@ -48,8 +48,8 @@ public class BakedTool_{safeName} : IRevitCommand
     {{
         try
         {{
-            var doc = app.ActiveUIDocument.Document;
             var uidoc = app.ActiveUIDocument;
+            var doc = uidoc?.Document;
             var request = JObject.Parse(paramsJson ?? ""{{}}"");
 
             {codeBody}
