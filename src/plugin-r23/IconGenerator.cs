@@ -134,6 +134,59 @@ namespace RvtMcp.Plugin
             }
         }
 
+        public static BitmapSource CreateSettingsIcon(int size)
+        {
+            using (var bmp = new Bitmap(size, size))
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.Clear(Color.Transparent);
+                var cx = size / 2f;
+                var cy = size / 2f;
+                var ring = size * 0.27f;
+                var tip = size * 0.44f;
+                var hub = size * 0.11f;
+                using (var pen = new Pen(Color.FromArgb(60, 60, 60), Math.Max(size / 12f, 1.5f)))
+                {
+                    for (var i = 0; i < 8; i++)
+                    {
+                        var angle = i * Math.PI / 4;
+                        var dx = (float)Math.Cos(angle);
+                        var dy = (float)Math.Sin(angle);
+                        g.DrawLine(pen, cx + dx * ring, cy + dy * ring, cx + dx * tip, cy + dy * tip);
+                    }
+                    g.DrawEllipse(pen, cx - ring, cy - ring, ring * 2, ring * 2);
+                    g.DrawEllipse(pen, cx - hub, cy - hub, hub * 2, hub * 2);
+                }
+                return BitmapToBitmapSource(bmp);
+            }
+        }
+
+        public static BitmapSource CreateLanguageIcon(int size)
+        {
+            using (var bmp = new Bitmap(size, size))
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.Clear(Color.Transparent);
+                var m = size / 8;
+                var d = size - 2 * m;
+                var cx = size / 2f;
+                var cy = size / 2f;
+                var r = d / 2f;
+                using (var pen = new Pen(Color.FromArgb(70, 130, 180), Math.Max(size / 12f, 1.5f)))
+                {
+                    g.DrawEllipse(pen, m, m, d, d);
+                    g.DrawEllipse(pen, cx - r * 0.45f, m, r * 0.9f, d);
+                    g.DrawLine(pen, m, cy, size - m, cy);
+                    var chord = r * 0.85f;
+                    g.DrawLine(pen, cx - chord, cy - r * 0.5f, cx + chord, cy - r * 0.5f);
+                    g.DrawLine(pen, cx - chord, cy + r * 0.5f, cx + chord, cy + r * 0.5f);
+                }
+                return BitmapToBitmapSource(bmp);
+            }
+        }
+
         // Pre-generated icons cached for Ribbon use
         public static BitmapSource McpOn32 { get; } = CreateCircleIcon(32, Color.FromArgb(76, 175, 80));
         public static BitmapSource McpOn16 { get; } = CreateCircleIcon(16, Color.FromArgb(76, 175, 80));
@@ -143,10 +196,10 @@ namespace RvtMcp.Plugin
         public static BitmapSource History16 { get; } = CreateHistoryIcon(16);
         public static BitmapSource Info32 { get; } = CreateInfoIcon(32);
         public static BitmapSource Info16 { get; } = CreateInfoIcon(16);
-        public static BitmapSource Settings32 { get; } = CreateHistoryIcon(32);
-        public static BitmapSource Settings16 { get; } = CreateHistoryIcon(16);
-        public static BitmapSource Language32 { get; } = CreateChatIcon(32);
-        public static BitmapSource Language16 { get; } = CreateChatIcon(16);
+        public static BitmapSource Settings32 { get; } = CreateSettingsIcon(32);
+        public static BitmapSource Settings16 { get; } = CreateSettingsIcon(16);
+        public static BitmapSource Language32 { get; } = CreateLanguageIcon(32);
+        public static BitmapSource Language16 { get; } = CreateLanguageIcon(16);
         public static BitmapSource Chat32 { get; } = CreateChatIcon(32);
         public static BitmapSource Chat16 { get; } = CreateChatIcon(16);
         // Toast toggle shows state as a plain dot: yellow = on, gray = off.

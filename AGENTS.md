@@ -213,7 +213,7 @@ For anything not in this table, open an issue at <https://github.com/bimwright/r
 
 ## Fixing UI translations
 
-The plugin UI (ribbon, toasts, History, dialogs) follows the Revit UI language, or the user's pick in the ribbon slide-out Language combo, or `BIMWRIGHT_UI_LANGUAGE` if that env var is set (it beats the user's pick at every launch). If the user reports a wrong or awkward string, you can fix it live on their machine — no reinstall, no restart:
+The plugin UI (ribbon, toasts, History, dialogs) follows the Revit UI language, or the user's pick in Settings → Language (ribbon slide-out → **Language** button), or `BIMWRIGHT_UI_LANGUAGE` if that env var is set (it beats the user's pick at every launch). If the user reports a wrong or awkward string, you can fix it live on their machine — no reinstall, no restart:
 
 1. **Read** `%LOCALAPPDATA%\RvtMcp\locales\_active.<locale>.json` — every key's currently displayed value, plus the `locked` list.
 2. **Write** the corrected `"key": "text"` pairs into `%LOCALAPPDATA%\RvtMcp\locales\strings.<locale>.json` (create the file/folder if absent). Keep `{placeholder}` tokens identical to the English value.
@@ -222,7 +222,7 @@ The plugin UI (ribbon, toasts, History, dialogs) follows the Revit UI language, 
 
 **Precondition:** `<locale>` must be the *active* locale — the watcher ignores override files for inactive locales, so those edits apply only when the user next switches to that language. (`en` is the fallback layer and is always live: an `en` override applies under every locale.)
 
-To find the active locale, check `locales\` for `_active.<locale>.json` files — one exists per locale ever used and old files are **never deleted**, so existence proves nothing. The current one is the most recently written (sidecars refresh on every table swap). When in doubt, ask the user which language the ribbon Language combo shows.
+To find the active locale, check `locales\` for `_active.<locale>.json` files — one exists per locale ever used and old files are **never deleted**, so existence proves nothing. The current one is the most recently written (sidecars refresh on every table swap). When in doubt, ask the user which language Settings → Language shows.
 
 Rules: `security.*` keys are locked and can never be overridden. Keys not in `_active` don't exist — don't invent new ones. Never edit files inside the plugin's install directory; only `locales\`. Full details: [docs/localization.md](docs/localization.md).
 

@@ -480,10 +480,15 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             }
         }
 
+        internal static bool ShouldSendToolCatalog(RvtMcp.ToolCatalog.ToolCatalog catalog, IReadOnlyList<string> capabilities)
+        {
+            return catalog != null && capabilities != null
+                && capabilities.Any(value => string.Equals(value, "tool_catalog", StringComparison.OrdinalIgnoreCase));
+        }
+
         private static void SendToolCatalogIfAdvertised(IReadOnlyList<string> capabilities)
         {
-            if (ServerState.ToolCatalog == null || capabilities == null
-                || !capabilities.Any(value => string.Equals(value, "tool_catalog", StringComparison.OrdinalIgnoreCase)))
+            if (!ShouldSendToolCatalog(ServerState.ToolCatalog, capabilities))
                 return;
 
             var id = $"catalog-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";

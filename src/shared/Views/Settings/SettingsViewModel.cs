@@ -81,11 +81,24 @@ namespace RvtMcp.Plugin.Views.Settings
 
         public string RevitYear => Snapshot?.RevitYear ?? "—";
         public string TransportKind => Snapshot?.TransportKind ?? "—";
-        public string ConnectionState => Snapshot?.ConnectionState ?? "Not connected";
+        public string ConnectionState
+        {
+            get
+            {
+                var transport = _app.Transport;
+                if (transport == null || !_app.IsTransportRunning)
+                    return SettingsText.Text("settings.general.state.listenerStopped", "Listener stopped");
+                return transport.IsClientConnected
+                    ? SettingsText.Text("settings.general.state.connected", "Connected")
+                    : SettingsText.Text("settings.general.state.waiting", "Waiting for MCP client");
+            }
+        }
         public bool CanCopyPort => Snapshot != null &&
             string.Equals(Snapshot.TransportKind, "TCP", StringComparison.OrdinalIgnoreCase) &&
             _app.Transport is TcpTransportServer && _app.IsTransportRunning;
-        public string PortText => CanCopyPort ? ((TcpTransportServer)_app.Transport).Port.ToString() : "Not applicable";
+        public string PortText => CanCopyPort
+            ? ((TcpTransportServer)_app.Transport).Port.ToString()
+            : SettingsText.Text("settings.general.notApplicable", "Not applicable");
 
         public void ReloadReadOnly()
         {
@@ -114,13 +127,10 @@ namespace RvtMcp.Plugin.Views.Settings
                 LocaleRequested = _selectedLanguage,
                 LocaleEffective = L.Locale,
                 LocaleSource = HasEnvironmentLanguageOverride
-                    ? "Environment override"
-                    : (_snapshot.UiLanguage == null ? "Auto — follow Revit" : "Saved setting"),
+                    ? InvariantLanguageText.SourceEnvironmentOverride
+                    : (_snapshot.UiLanguage == null ? InvariantLanguageText.AutoOption : InvariantLanguageText.SourceSavedSetting),
                 RevitYear = AuthToken.RevitVersion ?? "—",
                 TransportKind = isTcp ? "TCP" : (info.StartsWith("Pipe:", StringComparison.OrdinalIgnoreCase) ? "Named Pipe" : "—"),
-                ConnectionState = transport == null || !_app.IsTransportRunning
-                    ? "Listener stopped"
-                    : (!_app.IsTransportRunning ? "Listener stopped" : (transport.IsClientConnected ? "Connected" : "Waiting for MCP client")),
                 IsDirty = false,
                 ReadAtUtc = DateTimeOffset.UtcNow,
             };
@@ -147,7 +157,11 @@ namespace RvtMcp.Plugin.Views.Settings
             };
             var applied = RvtMcpConfig.TryApplySettings(patch);
             foreach (var key in applied.Applied) result.Applied.Add(key);
-            foreach (var failure in applied.Failed) result.Failed.Add(failure.Key + ": " + SafeError(failure.Error));
+            foreach (var failure in applied.Failed)
+            {
+                result.Failed.Add(SaveFailed(failure.Key));
+                App.DebugLog("Settings apply failed for " + failure.Key + ": " + failure.Error);
+            }
             result.JournalWasExpired = applied.JournalWasExpired;
             if (journalExpiredWhileOpen)
             {
@@ -155,7 +169,8 @@ namespace RvtMcp.Plugin.Views.Settings
             }
             if (result.JournalWasExpired)
             {
-                ImmediateWarning = "The send_code journal expired while Settings was open; it was not re-enabled.";
+                ImmediateWarning = SettingsText.Text("settings.footer.journalExpired",
+                    "The send_code journal expired while Settings was open; it was not re-enabled.");
                 OnPropertyChanged(nameof(ImmediateWarning));
             }
             RefreshEffectiveConfigAfterApply();
@@ -220,7 +235,8 @@ namespace RvtMcp.Plugin.Views.Settings
             if (_app.Config != null) _app.Config.EnableToast = enabled;
             string error;
             var persisted = RvtMcpConfig.TrySaveEnableToast(enabled, out error);
-            ImmediateWarning = persisted ? null : SafeError(error);
+            if (!persisted) App.DebugLog("Settings save enableToast failed: " + error);
+            ImmediateWarning = persisted ? null : SaveFailed("enableToast");
             _app.ToastNotifier?.OnToastEnabledChanged(enabled, persisted);
             OnPropertyChanged(nameof(ToastEnabled));
             OnPropertyChanged(nameof(ImmediateWarning));
@@ -234,11 +250,12 @@ namespace RvtMcp.Plugin.Views.Settings
             {
                 string error;
                 var persisted = RvtMcpConfig.TrySaveUiLanguage(code, out error);
-                ImmediateWarning = persisted ? null : SafeError(error);
+                if (!persisted) App.DebugLog("Settings save uiLanguage failed: " + error);
+                ImmediateWarning = persisted ? null : SaveFailed("uiLanguage");
             }
             else
             {
-                ImmediateWarning = "Environment override is active; this choice is session-only.";
+                ImmediateWarning = InvariantLanguageText.SessionOnlyWarning;
             }
             L.SetLanguage(code);
             OnPropertyChanged(nameof(SelectedLanguage));
@@ -256,12 +273,10 @@ namespace RvtMcp.Plugin.Views.Settings
             try { System.Windows.Clipboard.SetText(PortText); } catch { }
         }
 
-        private static string SafeError(string error)
+        private static string SaveFailed(string key)
         {
-            if (string.IsNullOrWhiteSpace(error)) return "Unable to save this setting.";
-            return error.IndexOf("\\", StringComparison.Ordinal) >= 0 || error.IndexOf("/", StringComparison.Ordinal) >= 0
-                ? "Unable to save this setting. See the diagnostic log for details."
-                : error;
+            return SettingsText.Text("settings.footer.saveFailed",
+                key + ": could not be saved", ("key", key));
         }
 
         private void OnLanguageChanged(object sender, EventArgs e)

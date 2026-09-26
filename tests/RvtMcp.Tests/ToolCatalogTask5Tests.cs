@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -175,6 +176,92 @@ namespace RvtMcp.Tests
             ToolCatalogStore.Clear();
             Assert.Equal(ToolCatalogStatus.NotConnected, ToolCatalogStore.Status);
             Assert.Null(ToolCatalogStore.Current);
+        }
+
+        [Fact]
+        public void Builder_marks_every_server_local_tool()
+        {
+            var config = new RvtMcpConfig
+            {
+                Toolsets = new List<string> { "meta", "toolbaker" },
+                EnableToolbaker = true,
+                EnableAdaptiveBake = true
+            };
+
+            var catalog = ServerToolCatalogBuilder.Build(ToolsetFilter.Resolve(config), config);
+
+            foreach (var name in new[]
+            {
+                "revit_list_available_targets",
+                "revit_get_current_target",
+                "revit_switch_target",
+                "revit_list_bake_suggestions",
+                "revit_dismiss_bake_suggestion",
+                "revit_analyze_usage_patterns"
+            })
+            {
+                var entry = Assert.Single(catalog.Tools.Where(t => t.McpName == name));
+                Assert.Equal("server_local", entry.Timeout.PolicyKind);
+                Assert.Null(entry.Timeout.DefaultSeconds);
+                Assert.Null(entry.Timeout.ParameterDefaultSeconds);
+            }
+        }
+
+        [Fact]
+        public void Handshake_sends_catalog_only_when_plugin_advertises_it()
+        {
+            var catalog = new ToolCatalogDto(
+                ToolCatalogDto.SupportedSchemaVersion, "0.6.4+test", 0, Array.Empty<ToolCatalogEntry>());
+
+            Assert.False(ToolGateway.ShouldSendToolCatalog(null, new[] { "tool_catalog" }));
+            Assert.False(ToolGateway.ShouldSendToolCatalog(catalog, null));
+            Assert.False(ToolGateway.ShouldSendToolCatalog(catalog, Array.Empty<string>()));
+            Assert.False(ToolGateway.ShouldSendToolCatalog(catalog, new[] { "other_capability" }));
+            Assert.True(ToolGateway.ShouldSendToolCatalog(catalog, new[] { "TOOL_CATALOG" }));
+            Assert.True(ToolGateway.ShouldSendToolCatalog(catalog, new[] { "x", "tool_catalog" }));
+        }
+
+        [Fact]
+        public void Discovery_parser_reads_capabilities_and_tolerates_old_files()
+        {
+            var dir = Path.Combine(Path.GetTempPath(), "rvtmcp-discovery-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                var modern = Path.Combine(dir, "revit-2026.json");
+                File.WriteAllText(modern,
+                    "{ \"schema_version\": 2, \"revit_year\": \"2026\", \"transport\": \"pipe\", " +
+                    "\"port\": null, \"pipe_name\": \"pipe-1\", \"auth_token\": \"t\", \"pid\": 0, " +
+                    "\"capabilities\": [\"tool_catalog\", \"TOOL_CATALOG\", \"\", \"  \"] }");
+                Assert.True(RvtMcp.Server.AuthToken.TryParseDiscovery(modern, out var discovered));
+                Assert.Equal(new[] { "tool_catalog" }, discovered.Capabilities);
+
+                var legacy = Path.Combine(dir, "revit-2024.json");
+                File.WriteAllText(legacy,
+                    "{ \"schema_version\": 1, \"revit_year\": \"2024\", \"transport\": \"tcp\", " +
+                    "\"port\": 49891, \"pipe_name\": null, \"auth_token\": \"t\", \"pid\": 0 }");
+                Assert.True(RvtMcp.Server.AuthToken.TryParseDiscovery(legacy, out var old));
+                Assert.Empty(old.Capabilities);
+            }
+            finally
+            {
+                try { Directory.Delete(dir, true); } catch { }
+            }
+        }
+
+        [Fact]
+        public void TruncateScalars_bounds_scalars_and_never_splits_surrogates()
+        {
+            var astral = string.Concat(Enumerable.Repeat("😀", 161));
+            var truncated = ToolCatalogCodec.TruncateScalars(astral, 160);
+            Assert.Equal(160, ToolCatalogCodec.ScalarLength(truncated));
+            Assert.EndsWith("…", truncated);
+
+            var exact = string.Concat(Enumerable.Repeat("😀", 160));
+            Assert.Equal(exact, ToolCatalogCodec.TruncateScalars(exact, 160));
+
+            Assert.Equal(new string('x', 160), ToolCatalogCodec.TruncateScalars(new string('x', 160), 160));
+            Assert.Equal(new string('x', 159) + "…", ToolCatalogCodec.TruncateScalars(new string('x', 161), 160));
         }
     }
 }

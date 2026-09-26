@@ -308,6 +308,30 @@ namespace RvtMcp.ToolCatalog
             return count;
         }
 
+        internal static string TakeScalars(string value, int maxScalars)
+        {
+            if (string.IsNullOrEmpty(value) || maxScalars <= 0) return string.Empty;
+            var end = 0;
+            var scalars = 0;
+            for (var i = 0; i < value.Length && scalars < maxScalars; i++, scalars++)
+            {
+                end = i + 1;
+                if (char.IsHighSurrogate(value[i]) && i + 1 < value.Length && char.IsLowSurrogate(value[i + 1])) end = ++i + 1;
+            }
+            return value.Substring(0, end);
+        }
+
+        /// <summary>
+        /// Truncates to at most <paramref name="maxScalars"/> Unicode scalar values,
+        /// appending "…" only when truncation happened. Never splits a surrogate pair.
+        /// </summary>
+        public static string TruncateScalars(string value, int maxScalars)
+        {
+            if (string.IsNullOrEmpty(value) || maxScalars <= 0) return string.Empty;
+            if (ScalarLength(value) <= maxScalars) return value;
+            return TakeScalars(value, maxScalars - 1).TrimEnd() + "…";
+        }
+
         private sealed class TimeoutValidationResult
         {
             private TimeoutValidationResult(bool valid, TimeoutPolicy timeout, string error)

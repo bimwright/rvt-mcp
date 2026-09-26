@@ -154,7 +154,7 @@ namespace RvtMcp.Plugin
             if (CreatedButtons.Contains(buttonName)) return null;
             var data = new PushButtonData(
                 buttonName,
-                L.T("ribbon.language.text"),
+                Views.Settings.InvariantLanguageText.RibbonCaption,
                 assemblyPath,
                 "RvtMcp.Plugin.Commands.ShowSettingsLanguageCommand")
             {

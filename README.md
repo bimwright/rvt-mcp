@@ -135,7 +135,7 @@ Counts exclude your personal baked tools. The installer writes the seeded defaul
 - **`revit_send_code_to_revit`** (on by default) compiles and runs a C# body inside Revit when no typed tool fits; `--read-only` or `--disable-toolbaker` removes it. See [docs/send-code.md](docs/send-code.md), and [docs/stairs-workflow.md](docs/stairs-workflow.md) for stairs.
 - **ToolBaker:** `revit_list_baked_tools` / `revit_run_baked_tool` need `--toolsets toolbaker`. Adaptive bake (`--enable-adaptive-bake`, off by default) suggests tools from repeated calls; nothing is added until you accept one. Bake compiles inside Revit — no Visual Studio needed. See [docs/bake.md](docs/bake.md).
 - **Ribbon:** start or stop the connection, open **History** to search and re-run past calls, and switch completion **Toasts** (on by default).
-- **UI languages:** the add-in UI comes in 15 languages and follows Revit's UI language; change it with the **Language** combo in the ribbon slide-out. Tool names and payloads stay English. See [docs/localization.md](docs/localization.md).
+- **UI languages:** the add-in UI comes in 15 languages and follows Revit's UI language; change it with the **Language** button in the ribbon slide-out — it opens **Settings → General → Language** (`BIMWRIGHT_UI_LANGUAGE` still wins). Tool names and payloads stay English. See [docs/localization.md](docs/localization.md).
 
 ### Prompts
 

@@ -154,7 +154,7 @@ namespace RvtMcp.Server
             return TryParseDiscovery(path, out var d) ? d : null;
         }
 
-        private static bool TryParseDiscovery(string path, out DiscoveredRevit result)
+        internal static bool TryParseDiscovery(string path, out DiscoveredRevit result)
         {
             result = null;
             try

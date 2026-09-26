@@ -18,7 +18,6 @@ namespace RvtMcp.Plugin.Views.Settings
         public string LocaleSource { get; set; }
         public string RevitYear { get; set; }
         public string TransportKind { get; set; }
-        public string ConnectionState { get; set; }
         public bool IsDirty { get; set; }
         public DateTimeOffset ReadAtUtc { get; set; }
     }

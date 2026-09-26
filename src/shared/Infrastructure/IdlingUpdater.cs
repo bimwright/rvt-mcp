@@ -98,7 +98,7 @@ namespace RvtMcp.Plugin
                 }
                 if (_ribbon.LanguageButton != null)
                 {
-                    _ribbon.LanguageButton.ItemText = L.T("ribbon.language.text");
+                    _ribbon.LanguageButton.ItemText = Views.Settings.InvariantLanguageText.RibbonCaption;
                     _ribbon.LanguageButton.ToolTip = L.T("ribbon.language.tooltip");
                 }
                 // Baked-tool button labels are user-authored — verbatim, not localized.

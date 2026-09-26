@@ -17,6 +17,8 @@ namespace RvtMcp.Tests
             Assert.DoesNotContain("LanguageCombo", source);
             Assert.DoesNotContain("ComboBoxData", source);
             Assert.DoesNotContain("AddLanguageCombo", source);
+            // The Language button caption is invariant ("Language") by contract — no L.T key.
+            Assert.DoesNotContain("ribbon.language.text", source);
         }
 
         [Fact]
@@ -26,6 +28,7 @@ namespace RvtMcp.Tests
             Assert.Contains("_ribbon.SettingsButton.ItemText", source);
             Assert.Contains("_ribbon.LanguageButton.ItemText", source);
             Assert.DoesNotContain("LanguageCombo", source);
+            Assert.DoesNotContain("ribbon.language.text", source);
         }
 
         [Theory]
@@ -42,6 +45,8 @@ namespace RvtMcp.Tests
             Assert.Contains("Settings16", source);
             Assert.Contains("Language32", source);
             Assert.Contains("Language16", source);
+            Assert.Contains("CreateSettingsIcon", source);
+            Assert.Contains("CreateLanguageIcon", source);
         }
 
         private static string GetRepoRoot([CallerFilePath] string testFile = "")

@@ -128,7 +128,7 @@ Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp
 - **`revit_send_code_to_revit`** (bật mặc định) compile và chạy body C# trong Revit khi không có typed tool phù hợp; `--read-only` hoặc `--disable-toolbaker` sẽ gỡ nó. Xem [docs/send-code.md](docs/send-code.md), và [docs/stairs-workflow.md](docs/stairs-workflow.md) cho cầu thang.
 - **ToolBaker:** `revit_list_baked_tools` / `revit_run_baked_tool` cần `--toolsets toolbaker`. Adaptive bake (`--enable-adaptive-bake`, mặc định tắt) gợi ý tool từ các lời gọi lặp lại; không có gì được thêm cho tới khi bạn accept. Bake compile ngay trong Revit — không cần Visual Studio. Xem [docs/bake.md](docs/bake.md).
 - **Ribbon:** bật/tắt kết nối, mở **History** để tìm và chạy lại các lời gọi trước, và bật/tắt **Toast** hoàn thành (mặc định bật).
-- **Ngôn ngữ giao diện:** UI của add-in có 15 ngôn ngữ và theo ngôn ngữ giao diện của Revit; đổi bằng combo **Language** trong slide-out của ribbon. Tên tool và payload vẫn là tiếng Anh. Xem [docs/localization.md](docs/localization.md).
+- **Ngôn ngữ giao diện:** UI của add-in có 15 ngôn ngữ và theo ngôn ngữ giao diện của Revit; đổi bằng nút **Language** trong slide-out của ribbon — nút mở **Settings → tab General → nhóm Language** (`BIMWRIGHT_UI_LANGUAGE` vẫn thắng). Tên tool và payload vẫn là tiếng Anh. Xem [docs/localization.md](docs/localization.md).
 
 ---
 

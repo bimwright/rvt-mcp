@@ -35,7 +35,10 @@ namespace RvtMcp.Server
         {
             "list_available_targets",
             "get_current_target",
-            "switch_target"
+            "switch_target",
+            "list_bake_suggestions",
+            "dismiss_bake_suggestion",
+            "analyze_usage_patterns"
         };
 
         internal static RvtMcp.ToolCatalog.ToolCatalog Build(HashSet<string> enabled, RvtMcpConfig config)
@@ -164,20 +167,7 @@ namespace RvtMcp.Server
                 return "Revit MCP tool.";
 
             var normalized = string.Join(" ", value.Split((char[])null, StringSplitOptions.RemoveEmptyEntries));
-            if (ToolCatalogCodec.ScalarLength(normalized) <= 160)
-                return normalized;
-
-            var chars = new List<char>(normalized.Length);
-            var scalarCount = 0;
-            // Reserve one scalar for the truncation marker.
-            for (var i = 0; i < normalized.Length && scalarCount < 159; i++, scalarCount++)
-            {
-                chars.Add(normalized[i]);
-                if (char.IsHighSurrogate(normalized[i]) && i + 1 < normalized.Length && char.IsLowSurrogate(normalized[i + 1]))
-                    chars.Add(normalized[++i]);
-            }
-
-            return new string(chars.ToArray()).TrimEnd() + "…";
+            return ToolCatalogCodec.TruncateScalars(normalized, 160);
         }
 
         private static string GetServerVersion()

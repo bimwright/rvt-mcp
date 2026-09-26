@@ -9,10 +9,12 @@ namespace RvtMcp.Tests
     {
         private static readonly string[] RequiredKeys =
         {
-            "ribbon.settings.text", "ribbon.settings.tooltip", "ribbon.language.text",
+            "ribbon.settings.text", "ribbon.settings.tooltip", "ribbon.language.tooltip",
             "settings.window.title", "settings.tab.general", "settings.tab.toast", "settings.tab.about",
             "settings.general.connection", "settings.general.revit", "settings.general.transport",
             "settings.general.port", "settings.general.state", "settings.general.privacy", "settings.general.copy",
+            "settings.general.state.listenerStopped", "settings.general.state.connected",
+            "settings.general.state.waiting", "settings.general.notApplicable",
             "settings.general.cacheBodies", "settings.general.keepJournal", "settings.general.journalDuration",
             "settings.toast.heading", "settings.toast.enabled", "settings.toast.idle", "settings.toast.help",
             "settings.about.description", "settings.about.hint", "settings.about.product", "settings.about.version",
@@ -27,6 +29,7 @@ namespace RvtMcp.Tests
             "settings.tools.status.empty", "settings.tools.status.label", "settings.tools.timeout.unavailable",
             "settings.tools.timeout.serverLocal", "settings.tools.timeout.budget", "settings.apply", "settings.cancel", "settings.close",
             "settings.footer.copied", "settings.footer.portUnavailable", "settings.footer.applied",
+            "settings.footer.journalExpired", "settings.footer.saveFailed",
             "settings.footer.discardPrompt"
         };
 
