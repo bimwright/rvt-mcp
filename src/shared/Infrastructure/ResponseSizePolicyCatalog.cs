@@ -111,9 +111,6 @@ namespace RvtMcp.Plugin
             ["workflow_sheet_set"] = "Split `sheets` into smaller batches.",
             ["workflow_view_cleanup"] = "Disable unneeded include flags and lower `limit`.",
             ["workflow_naming_normalization"] = "Retry with narrower `target`/`pattern`, fewer `ids`, and a smaller `limit`.",
-            ["query_kei_database"] = "Retry with a narrower `preset`/`sql`, exact `database`, and a smaller `limit`.",
-            ["write_kei_database"] = "Split `statements` into smaller batches or use `dryRun=true`.",
-            ["import_project_equipment"] = "Split `items` into smaller batches or use `dryRun=true`.",
 
             // Survey group 3: scope added in oversized-response hardening step 1.
             ["get_selected_elements"] = "Retry with `startIndex` and a smaller `maxResults` (hard maximum 1000).",

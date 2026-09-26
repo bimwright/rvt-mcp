@@ -92,6 +92,3 @@ workflow_room_documentation
 workflow_sheet_set
 workflow_view_cleanup
 workflow_naming_normalization
-query_kei_database
-write_kei_database
-import_project_equipment

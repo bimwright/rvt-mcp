@@ -271,14 +271,6 @@ namespace RvtMcp.Plugin
             Register(new Handlers.ActivateViewHandler());
             Register(new Handlers.ShowElementInViewHandler());
 
-            // KEI project SQLite via Revit process (WAL-safe). Agents write
-            // project data here so BIM delivery can be AI-assisted without
-            // fighting Revit's exclusive SQLite handle from an external process.
-            Register(new Handlers.ImportProjectEquipmentHandler());
-            Register(new Handlers.QueryKeiDatabaseHandler());
-            Register(new Handlers.WriteKeiDatabaseHandler());
-            Register(new Handlers.GetActiveProjectDbHandler());
-
             // A6 batch execution — needs dispatcher ref to look up sub-commands
             Register(new Handlers.BatchExecuteHandler(this));
             // ToolBaker runtime access.

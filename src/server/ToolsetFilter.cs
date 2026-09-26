@@ -17,7 +17,7 @@ namespace RvtMcp.Server
             "query", "create", "modify", "delete", "view",
             "export", "annotation", "mep", "schedule", "families", "graphics", "toolbaker", "meta", "lint",
             "sheets", "materials", "geometry", "rooms", "links", "parameters", "organization", "workflows",
-            "structural", "kei"
+            "structural"
         };
 
         public static readonly string[] DefaultOn =
@@ -29,7 +29,7 @@ namespace RvtMcp.Server
         {
             "create", "modify", "delete", "schedule", "families", "mep", "graphics", "export", "toolbaker",
             "sheets", "materials", "annotation", "rooms", "links", "parameters", "organization", "workflows",
-            "structural", "kei"
+            "structural"
         };
 
         public static HashSet<string> Resolve(RvtMcpConfig config)

@@ -194,9 +194,9 @@ namespace RvtMcp.Tests
         // --- Invariants ---------------------------------------------------
 
         [Fact]
-        public void KnownToolsets_Contains24Entries()
+        public void KnownToolsets_Contains23Entries()
         {
-            Assert.Equal(24, ToolsetFilter.KnownToolsets.Length);
+            Assert.Equal(23, ToolsetFilter.KnownToolsets.Length);
         }
 
         [Fact]

@@ -297,7 +297,6 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - organization: apply_view_template, save_selection
 - workflows: workflow_clash_review, workflow_model_audit
 - structural: create_structural_column, create_rebar_set
-- kei: query_kei_database, import_project_equipment
 - meta: open_model, send_code_to_revit, batch_execute, list_available_targets, switch_target
 - lint: find_untagged_elements, get_model_warnings_summary
 - toolbaker: list_baked_tools, run_baked_tool";
@@ -338,7 +337,6 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             if (enabled.Contains("meta"))       mcp = mcp.WithTools<MetaTools>();
             if (enabled.Contains("lint"))       mcp = mcp.WithTools<LintTools>();
             if (enabled.Contains("structural")) mcp = mcp.WithTools<StructuralTools>();
-            if (enabled.Contains("kei"))        mcp = mcp.WithTools<KeiTools>();
             return mcp;
         }
 
@@ -371,7 +369,6 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             if (enabled.Contains("meta"))       types.Add(typeof(MetaTools));
             if (enabled.Contains("lint"))       types.Add(typeof(LintTools));
             if (enabled.Contains("structural")) types.Add(typeof(StructuralTools));
-            if (enabled.Contains("kei"))        types.Add(typeof(KeiTools));
             return types.ToArray();
         }
     }
@@ -4150,125 +4147,4 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         }
     }
 
-    /// <summary>
-    /// KEI project SQLite tools — always go through the Revit plugin process
-    /// (WAL + busy_timeout). Never replace .db files while Revit is open.
-    ///
-    /// Why: BIM is moving from human-only 3D/model work to AI agents helping
-    /// deliver projects faster and more accurately. Project data lives in a
-    /// SQLite DB that Revit holds; agents must read/write via these tools so
-    /// they share the same process lock instead of fighting the file from outside.
-    /// </summary>
-    [McpServerToolType, Toolset("kei")]
-    public class KeiTools
-    {
-        [McpServerTool(Name = "revit_get_active_project_db", ReadOnly = true, Idempotent = true),
-         System.ComponentModel.Description(
-             "Resolve the KEI project SQLite path for the active Revit document " +
-             "(%APPDATA%\\KEI\\Database\\Projects\\*_local.db). Reports WAL size. Use before import/query/write.")]
-        public static async Task<string> GetActiveProjectDb()
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("get_active_project_db");
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
-
-        [McpServerTool(Name = "revit_query_kei_database", ReadOnly = true, Idempotent = true),
-         System.ComponentModel.Description(
-             "Read-only SELECT/PRAGMA on the KEI project SQLite DB via Revit (WAL-safe). " +
-             "preset=overview|equipment|schema|categories; or sql=SELECT...; database=auto|list|filename-substring; limit=100.")]
-        public static async Task<string> QueryKeiDatabase(
-            string preset = "",
-            string sql = "",
-            string database = "auto",
-            int limit = 100)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("query_kei_database", new { preset, sql, database, limit });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
-
-        [McpServerTool(Name = "revit_write_kei_database", Destructive = false),
-         System.ComponentModel.Description(
-             "Write DML (INSERT/UPDATE/DELETE/REPLACE or WITH…DML) into the KEI project SQLite DB " +
-             "through the Revit process (journal_mode=WAL, busy_timeout). Broader than equipment-only import — " +
-             "any project table. AI agents use this so project data work can run while Revit holds the DB; " +
-             "do NOT kill Revit or replace .db/.db-wal. sql= one statement OR statements= JSON array of SQL strings. " +
-             "dryRun=true validates only; database=auto|filename-substring; busyTimeoutMs default 30000. " +
-             "DDL (CREATE/DROP/ALTER/PRAGMA/ATTACH) is blocked. Prefer revit_import_project_equipment for typed equipment bulk import.")]
-        public static async Task<string> WriteKeiDatabase(
-            string sql = "",
-            string statements = "",
-            bool dryRun = false,
-            string database = "auto",
-            int busyTimeoutMs = 30000)
-        {
-            try
-            {
-                object statementsPayload = null;
-                if (!string.IsNullOrWhiteSpace(statements))
-                    statementsPayload = JArray.Parse(statements);
-
-                if (string.IsNullOrWhiteSpace(sql) && statementsPayload == null)
-                    return JsonConvert.SerializeObject(new
-                    {
-                        error = "Provide sql (one DML statement) and/or statements (JSON array of DML strings)."
-                    });
-
-                var result = await ToolGateway.SendToRevit("write_kei_database", new
-                {
-                    sql = string.IsNullOrWhiteSpace(sql) ? null : sql,
-                    statements = statementsPayload,
-                    dryRun,
-                    database,
-                    busyTimeoutMs
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
-
-        [McpServerTool(Name = "revit_import_project_equipment", Destructive = false),
-         System.ComponentModel.Description(
-             "Bulk-import equipment types + instances + typed specs into KEI SQLite through the Revit process " +
-             "(journal_mode=WAL, busy_timeout). Do NOT kill Revit or replace .db files. " +
-             "items = JSON array of {projectTypeName, categoryCode, nameVN, nameEN, specsVN, specsEN, area, brand, unit, " +
-             "originalTag, specText, status, quantity, instanceTags[], specs:[{parameterCode,value}]}. " +
-             "dryRun=true validates only; replaceMatching=true upserts type and recreates its instances/specs; " +
-             "clearAiExtracted=true deletes all Status=AIExtracted types first; busyTimeoutMs default 30000. " +
-             "For arbitrary project-table DML use revit_write_kei_database.")]
-        public static async Task<string> ImportProjectEquipment(
-            string items,
-            bool dryRun = false,
-            bool replaceMatching = true,
-            bool clearAiExtracted = false,
-            string database = "auto",
-            int busyTimeoutMs = 30000)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(items))
-                    return JsonConvert.SerializeObject(new { error = "items JSON array string is required" });
-
-                var itemsArr = JArray.Parse(items);
-                var result = await ToolGateway.SendToRevit("import_project_equipment", new
-                {
-                    items = itemsArr,
-                    dryRun,
-                    replaceMatching,
-                    clearAiExtracted,
-                    database,
-                    busyTimeoutMs
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
-    }
 }

@@ -65,7 +65,7 @@ namespace RvtMcp.Tests
                 root, "tests", "RvtMcp.Tests", "Golden", "response-size-scoped-commands.txt"));
             var catalog = File.ReadAllText(Path.Combine(root, "src", "shared", "Infrastructure", "ResponseSizePolicyCatalog.cs"));
 
-            Assert.Equal(97, group2Tools.Length);
+            Assert.Equal(94, group2Tools.Length);
             Assert.Equal(group2Tools.Length, group2Tools.Distinct(StringComparer.Ordinal).Count());
             Assert.All(group2Tools, command => Assert.False(string.IsNullOrWhiteSpace(command)));
             foreach (var command in group2Tools)
@@ -81,7 +81,6 @@ namespace RvtMcp.Tests
         [InlineData("GetStructuralLoadsHandler.cs")]
         [InlineData("AnalyzeStructuralConnectionsHandler.cs")]
         [InlineData("GetModelWarningsSummaryHandler.cs")]
-        [InlineData("QueryKeiDatabaseHandler.cs")]
         public void Existing_limit_scope_declares_a_schema_hard_maximum(string handlerFile)
         {
             var source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "shared", "Handlers", handlerFile));

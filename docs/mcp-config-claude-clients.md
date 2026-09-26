@@ -228,7 +228,7 @@ To verify discovery is working after install:
 You: list every Revit-related MCP tool you have access to
 ```
 
-On a machine installed via `install.ps1` (which seeds `toolsets=all`), Claude should expose the full 230 tools prefixed `mcp__rvt-mcp__revit_*` (233 with adaptive bake); a bare server without that seeded config exposes 41. If the configured surface is smaller than expected, check Tool Search and the server's `--toolsets` / adaptive-bake settings.
+On a machine installed via `install.ps1` (which seeds `toolsets=all`), Claude should expose the full 226 tools prefixed `mcp__rvt-mcp__revit_*` (229 with adaptive bake); a bare server without that seeded config exposes 41. If the configured surface is smaller than expected, check Tool Search and the server's `--toolsets` / adaptive-bake settings.
 
 ### 5.4 Server `instructions` and tool `description` are truncated at 2 KB each
 

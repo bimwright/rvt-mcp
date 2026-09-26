@@ -6,7 +6,7 @@ xUnit test project. Covers unit-test scope + schema/tool-surface drift snapshot.
 
 - `*Tests.cs` at the top level — xUnit fact/theory files.
 - `Helpers/` — test-only utilities (e.g. `SnapshotSerializer`).
-- `Golden/` — committed snapshot files. See below. `response-size-scoped-commands.txt` is the 97-command baseline for recovery-hint coverage; it contains only wire command names, not research notes. Review changes alongside `ResponseSizePolicyCatalog.cs`.
+- `Golden/` — committed snapshot files. See below. `response-size-scoped-commands.txt` is the 94-command baseline for recovery-hint coverage; it contains only wire command names, not research notes. Review changes alongside `ResponseSizePolicyCatalog.cs`.
 
 ## Running
 

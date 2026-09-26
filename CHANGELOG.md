@@ -28,7 +28,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 - **`revit_open_model`** (`meta` toolset) — opens a `.rvt`, `.rte` or `.rfa` and makes it active, or opens it in the background. A file whose header cannot be read is never opened, because its worksharing state is unknown. A workshared `.rvt` is never opened directly: a new local copy is always created from its central model (same as Revit's Open → "Create New Local") under the Revit.ini `ProjectPath` folder as `<central>_<username>.rvt` — missing `ProjectPath` stops the call rather than picking a folder. An existing local at that path is renamed with a timestamp — never deleted or overwritten — unless it is open in the session, has changes not yet saved to central, or its header cannot be read, in which case the call stops and asks the user. `worksets` (all|none|lastViewed) applies to workshared models; `audit` is opt-in because it is slow; there is no `detach` option — detaching or opening a central directly goes through `revit_send_code_to_revit`. A model Revit already has open is reported back (and activated when `activate=true`) instead of reopened. `saved_in_version` shows when an older file is being upgraded in memory.
 - **Long-run `timeout_seconds`** on `revit_open_model`, `revit_link_revit_model`, `revit_reload_link` and `revit_load_family_from_path` — the request envelope carries the caller's plugin wait (1–900 s, default 600 s; out-of-range values are refused rather than clamped) because opening a model that pulls in many links commonly exceeds the 60 s default. Other tools keep the fixed 60 s wait.
-- Tool counts: default **41**, `--toolsets all` **230**, adaptive bake **233**.
+- Tool counts: default **41**, `--toolsets all` **226**, adaptive bake **229**.
 - **Settings window** — the ribbon slide-out gains **Settings** and **Language** buttons (replacing the language combo; Language opens Settings → General → Language). General shows the live connection state, Toast sets the card idle duration (10/20/30/60 s), Tools lists the connected server's tools with their timeout policy, and About carries version plus an offline license view. Each setting is one row (label and short explanation left, control right) inside flat tabs and white cards under a `BIMwright | RVT-MCP Settings` header. Connection fits two rows: a coloured state badge with listener restart (new port/pipe and token) and On/Off — the same actions as the ribbon MCP toggle — then `Transport type: TCP | Port: …` with Copy, disabled when there is no TCP port. Save errors appear under the setting they belong to; scrollbars match History. **Apply** and **Discard changes** (formerly Cancel) are enabled only while changes are unsaved; Toast On/Off and Language still apply immediately. Styles are scoped to the Settings window.
 
 Thanks [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) — the `send_code`/`switch_target` fixes come from [#15](https://github.com/bimwright/rvt-mcp/pull/15) (cherry-picked), and `revit_open_model` was reworked from that PR's proposal to follow the workshared-model policy.
@@ -139,7 +139,7 @@ First GitHub Release after v0.5.0 was unpublished. The client setup ZIP is `RvtM
 - **Coordinate workflow descriptions** now document Revit/CAD acquire support, publish preflight, confirmation requirements, and CAD publish limitations.
 - Tool counts: default **40**, `--toolsets all` **229**, adaptive bake **232**.
 
-## v0.6.0 - Agent guardrails, oversized-response spill, toast/privacy, and KEI tools
+## v0.6.0 - Agent guardrails, oversized-response spill, and toast/privacy
 
 Not published on its own — this surface first shipped in v0.6.1.
 
@@ -149,7 +149,6 @@ Not published on its own — this surface first shipped in v0.6.1.
 - **Opt-in `send_code` body journal (TTL)** — `persistSendCodeBodies` + `persistSendCodeBodiesUntil` (CLI/env/JSON); plugin writes redacted journal under `%LOCALAPPDATA%\RvtMcp\`.
 - **Capture path UX** — clearer allowlist errors; optional default output under captures.
 - **Status dialog privacy/bake flags** — ribbon **Status** lists toast, ToolBaker, adaptive bake, body cache, and persist journal (read-only snapshot for operators). Unit-tested via `StatusPrivacySection`.
-- **Toolset `kei`** — `revit_get_active_project_db`, `revit_query_kei_database`, `revit_write_kei_database`, `revit_import_project_equipment` for WAL-safe KEI project SQLite through the Revit process. Enable with `--toolsets kei` (or `--toolsets all`). See `docs/kei-equipment-import.md`.
 - **Local oversized-response spill** — eight approved bulk tools accept `output=inline|file` and write SQLite, NDJSON, JSON, or text artifacts under `%LOCALAPPDATA%\RvtMcp\spill\`. Responses include an absolute local path, format/schema, true byte count, and a bounded preview. `revit_send_code_to_revit` and oversized `revit_run_baked_tool` output auto-spill. Files older than 24 hours are removed and the directory is capped at 50 artifacts.
 
 ### Changed

@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-230%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-226%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -96,12 +96,12 @@ Removes the add-ins and the server but keeps settings, translations, ToolBaker d
 
 | Mode | Tools | Notes |
 |------|------:|-------|
-| Fresh install | **230** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
+| Fresh install | **226** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
 | Bare `rvt-mcp.exe` | **41** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **230** | Full catalog |
-| `all` + adaptive bake | **233** | Adds 3 suggestion-lifecycle tools |
+| `--toolsets all` | **226** | Full catalog |
+| `all` + adaptive bake | **229** | Adds 3 suggestion-lifecycle tools |
 
-Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 40-tool surface. `--read-only` drops every write-capable toolset (including `create`) regardless of source.
+Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 41-tool surface. `--read-only` drops every write-capable toolset (including `create`) regardless of source.
 
 | Toolset | What it covers |
 |---------|----------------|
@@ -128,7 +128,6 @@ Counts exclude your personal baked tools. The installer writes the seeded defaul
 | `organization` | Saved selections, view templates |
 | `workflows` | Composite clash/audit/sheet/takeoff-style flows |
 | `structural` | Columns, beams, foundations, rebar, loads, … |
-| `kei` | Active KEI project DB path, query/write SQLite (WAL-safe), equipment import |
 
 ### send_code, ToolBaker, ribbon and languages
 
@@ -207,7 +206,6 @@ More: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).
 | [docs/bake.md](docs/bake.md) | Adaptive bake and body privacy |
 | [docs/localization.md](docs/localization.md) | UI languages, overrides, hot reload |
 | [docs/roadmap.md](docs/roadmap.md) | Near-term hardening and non-goals |
-| [docs/kei-equipment-import.md](docs/kei-equipment-import.md) | KEI SQLite tools (`--toolsets kei`) |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Build, test, add a tool |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 

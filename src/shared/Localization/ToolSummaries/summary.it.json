@@ -230,9 +230,5 @@
   "revit_workflow_data_roundtrip": "Export/import category parameter data with validation. output=file writes the response report as NDJSON to a local same-machine absolute path with bounded prev…",
   "revit_workflow_view_cleanup": "Analyze unused views, empty schedules, and naming outliers, with guarded optional deletion of safe candidates.",
   "revit_workflow_naming_normalization": "Analyze and optionally rename views, sheets, levels, and grids using deterministic normalization or a token pattern.",
-  "revit_workflow_takeoff_report": "Generate category, quantity, material, and optional cost takeoff reports. output=file writes relational SQLite to a local same-machine absolute path with schem…",
-  "revit_get_active_project_db": "Resolve the KEI project SQLite path for the active Revit document",
-  "revit_query_kei_database": "Read-only SELECT/PRAGMA on the KEI project SQLite DB via Revit (WAL-safe).",
-  "revit_write_kei_database": "Write DML (INSERT/UPDATE/DELETE/REPLACE or WITH…DML) into the KEI project SQLite DB",
-  "revit_import_project_equipment": "Bulk-import equipment types + instances + typed specs into KEI SQLite through the Revit process"
+  "revit_workflow_takeoff_report": "Generate category, quantity, material, and optional cost takeoff reports. output=file writes relational SQLite to a local same-machine absolute path with schem…"
 }

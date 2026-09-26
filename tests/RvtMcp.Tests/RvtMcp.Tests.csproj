@@ -46,7 +46,6 @@
     <Compile Include="..\..\src\shared\Infrastructure\ResponseSpillPolicy.cs" Link="Shared\ResponseSpillPolicy.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\ResponseSpillProcessor.cs" Link="Shared\ResponseSpillProcessor.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\RequestWait.cs" Link="Shared\RequestWait.cs" />
-    <Compile Include="..\..\src\shared\Database\KeiSqlGuard.cs" Link="Shared\KeiSqlGuard.cs" />
     <Compile Include="..\..\src\shared\Config\StatusPrivacySection.cs" Link="Shared\StatusPrivacySection.cs" />
     <Compile Include="..\..\src\shared\Handlers\BatchExecutor.cs" Link="Shared\BatchExecutor.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\CommandOutcome.cs" Link="Shared\CommandOutcome.cs" />
