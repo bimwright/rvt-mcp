@@ -2182,9 +2182,12 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             "THIS IS THE TOOL TO CALL WHEN NO DOCUMENT IS OPEN - every other tool reports 'No document is open' until one is. " +
             "path: an absolute path on the machine Revit runs on, NOT on the MCP client's machine. " +
             "A workshared .rvt is never opened directly: a new local copy is always created from its central model " +
-            "(same as Revit's Open > 'Create New Local') under the Revit.ini ProjectPath folder as <central>_<username>.rvt. " +
+            "(same as Revit's Open > 'Create New Local') under the Revit.ini ProjectPath folder as <central>_<username>.rvt - " +
+            "no ProjectPath means the call stops and reports it. " +
+            "A file whose header cannot be read is never opened because its worksharing state is unknown. " +
             "If a local with that name already exists it is renamed with a timestamp - never deleted or overwritten - " +
-            "unless it has changes not yet saved to central, in which case the call stops and asks the user. " +
+            "unless it is open in the session, has changes not yet saved to central, or its header cannot be read, " +
+            "in which case the call stops and asks the user. " +
             "There is no detach option - detaching from central or opening a central directly must go through revit_send_code_to_revit. " +
             "activate=true (default) opens it in the UI and makes it active; false opens it in the background with no view, where tools reading the active document will not see it. " +
             "worksets (all|none|lastViewed) applies to workshared models only. audit=true is slow - use it on a suspect file. " +

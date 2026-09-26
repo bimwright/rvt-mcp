@@ -4677,7 +4677,7 @@
     },
     {
       "name": "revit_open_model",
-      "description_hash": "sha256:0d69df32a82b60ff0f2512dede8881118d752ebe4a2f58021e2104809acb0a5f",
+      "description_hash": "sha256:caaf736617193997bd109d2031f1765648909acd9a3c34ded674012379f2c70e",
       "inputSchema": {
         "properties": {
           "activate": {

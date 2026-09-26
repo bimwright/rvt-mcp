@@ -43,11 +43,14 @@ namespace RvtMcp.Plugin.Handlers
             var audit = request.Value<bool?>("audit") ?? false;
             var worksets = request.Value<string>("worksets");
 
-            // Classify the file from its header before opening anything.
-            string savedInVersion = null;
-            string headerWorksharing = null;
+            // Classify the file from its header before opening anything. An
+            // unreadable header means worksharing is unknown, and opening an
+            // unclassified file risks opening a central directly - the one
+            // thing this tool must never do (design doc §2.1).
+            string savedInVersion;
+            string headerWorksharing;
             string centralPath = null;
-            var isWorkshared = false;
+            bool isWorkshared;
             try
             {
                 var info = BasicFileInfo.Extract(path);
@@ -60,9 +63,9 @@ namespace RvtMcp.Plugin.Handlers
                 if (info.IsWorkshared)
                     centralPath = info.CentralPath;
             }
-            catch
+            catch (Exception ex)
             {
-                // Let the open below produce the real diagnosis.
+                return CommandResult.Fail("Could not read the header of '" + Path.GetFileName(path) + "' (" + ex.Message + "), so its worksharing state is unknown. The file is left closed and untouched - a possibly-workshared file is never opened directly. If the file is healthy, open it once in Revit; otherwise handle it via revit_send_code_to_revit.");
             }
 
             if (!string.IsNullOrWhiteSpace(worksets))
@@ -112,9 +115,9 @@ namespace RvtMcp.Plugin.Handlers
                 if (!File.Exists(centralPath))
                     return CommandResult.Fail("This file is workshared and its central model is not reachable at '" + centralPath + "' (offline share, missing drive map or VPN down). Ask the user to check connectivity; do not retry until the path resolves.");
 
-                var localDir = GetLocalProjectsDir(app);
+                var localDir = GetLocalProjectsDir(app, out var revitIniPath);
                 if (localDir == null)
-                    return CommandResult.Fail("Could not determine the local-projects folder: no ProjectPath key in this Revit's Revit.ini and the Documents folder is missing. Ask the user where local copies should live.");
+                    return CommandResult.Fail("No ProjectPath entry in this Revit's Revit.ini ('" + revitIniPath + "'), so there is no configured local-projects folder. The user can set one under File > Options > File Locations, or manage local copies by hand via revit_send_code_to_revit.");
                 try { Directory.CreateDirectory(localDir); }
                 catch (Exception ex) { return CommandResult.Fail("Could not create the local-projects folder '" + localDir + "': " + ex.Message); }
 
@@ -123,15 +126,35 @@ namespace RvtMcp.Plugin.Handlers
 
                 if (File.Exists(target))
                 {
-                    // The earlier scan already reports a doc that is open on this
-                    // central; reaching here means the old local is not in this session.
+                    // The name only encodes the central's file name, so a local
+                    // for a DIFFERENT central can sit (or be open) at this path.
+                    // Rule §2.5: a file open in this session - as a document or
+                    // only as a loaded link - is never touched.
+                    var targetOpenInSession = false;
+                    foreach (Document d in app.Application.Documents)
+                    {
+                        if (OpenModelLocalPolicy.PathsEqual(d.PathName, target)) { targetOpenInSession = true; break; }
+                    }
+
+                    bool headerRead = false, oldWorkshared = false, oldSynced = true;
                     try
                     {
                         var oldInfo = BasicFileInfo.Extract(target);
-                        if (oldInfo.IsWorkshared && !oldInfo.AllLocalChangesSavedToCentral)
-                            return CommandResult.Fail("'" + target + "' already exists and has local changes not yet saved to central. It is left untouched - ask the user whether to sync or discard it before retrying.");
+                        headerRead = true;
+                        oldWorkshared = oldInfo.IsWorkshared;
+                        oldSynced = oldInfo.AllLocalChangesSavedToCentral;
                     }
-                    catch { /* header unreadable - the rename below still never deletes it */ }
+                    catch { /* unreadable - Decide below treats it as unverifiable */ }
+
+                    switch (OpenModelLocalPolicy.Decide(true, targetOpenInSession, headerRead, oldWorkshared, oldSynced))
+                    {
+                        case OpenModelLocalPolicy.CollisionDecision.StopOpenInSession:
+                            return CommandResult.Fail("'" + target + "' is open in this Revit session (as a document or a loaded link) and is left untouched. Close it first - note it may belong to a different central model with the same file name.");
+                        case OpenModelLocalPolicy.CollisionDecision.StopUnsynced:
+                            return CommandResult.Fail("'" + target + "' already exists and has local changes not yet saved to central. It is left untouched - ask the user whether to sync or discard it before retrying.");
+                        case OpenModelLocalPolicy.CollisionDecision.StopUnverifiable:
+                            return CommandResult.Fail("Could not read the header of the existing local '" + target + "', so whether it still holds unsynced work is unknown. It is left untouched - ask the user to inspect or move it manually before retrying.");
+                    }
 
                     renamedTo = Path.Combine(localDir,
                         Path.GetFileNameWithoutExtension(target) + "_" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".rvt");
@@ -270,14 +293,20 @@ namespace RvtMcp.Plugin.Handlers
             catch { return false; }
         }
 
-        private static string GetLocalProjectsDir(UIApplication app)
+        /// <summary>
+        /// The local-projects folder is the ProjectPath key in this Revit
+        /// version's own Revit.ini (design doc §4.2). There is deliberately no
+        /// fallback - silently choosing a folder the user never configured
+        /// could move or create locals somewhere unexpected.
+        /// </summary>
+        private static string GetLocalProjectsDir(UIApplication app, out string revitIniPath)
         {
+            revitIniPath = Path.Combine(app.Application.CurrentUsersDataFolderPath, "Revit.ini");
             try
             {
-                var iniPath = Path.Combine(app.Application.CurrentUsersDataFolderPath, "Revit.ini");
-                if (File.Exists(iniPath))
+                if (File.Exists(revitIniPath))
                 {
-                    foreach (var line in File.ReadAllLines(iniPath))
+                    foreach (var line in File.ReadAllLines(revitIniPath))
                     {
                         var t = line.Trim();
                         if (!t.StartsWith("ProjectPath", StringComparison.OrdinalIgnoreCase)) continue;
@@ -293,17 +322,12 @@ namespace RvtMcp.Plugin.Handlers
             }
             catch { }
 
-            var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            return string.IsNullOrWhiteSpace(docs) ? null : docs;
+            return null;
         }
 
         private static bool PathsEqual(string a, string b)
         {
-            if (string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b)) return false;
-            return string.Equals(
-                a.Trim().Replace('/', '\\').TrimEnd('\\'),
-                b.Trim().Replace('/', '\\').TrimEnd('\\'),
-                StringComparison.OrdinalIgnoreCase);
+            return OpenModelLocalPolicy.PathsEqual(a, b);
         }
 
         private static bool IsRevitFile(string extension)

@@ -15,13 +15,24 @@ namespace RvtMcp.Plugin
         public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(60);
         public static readonly TimeSpan MaxTimeout = TimeSpan.FromSeconds(900);
 
+        /// <summary>
+        /// The wait actually applied for a request: the caller's value when it
+        /// is usable, the 60s default when absent or non-positive, and a
+        /// defensive cap at MaxTimeout regardless of what the envelope carried.
+        /// </summary>
+        internal static TimeSpan EffectiveTimeout(TimeSpan? timeout)
+        {
+            var wait = timeout ?? DefaultTimeout;
+            if (wait <= TimeSpan.Zero) wait = DefaultTimeout;
+            if (wait > MaxTimeout) wait = MaxTimeout;
+            return wait;
+        }
+
         public static string WaitOrTimeout(TaskCompletionSource<string> tcs, string id, TimeSpan? timeout = null)
         {
             if (tcs == null) throw new ArgumentNullException(nameof(tcs));
 
-            var wait = timeout ?? DefaultTimeout;
-            if (wait <= TimeSpan.Zero) wait = DefaultTimeout;
-            if (wait > MaxTimeout) wait = MaxTimeout;
+            var wait = EffectiveTimeout(timeout);
             if (tcs.Task.Wait(wait))
                 return tcs.Task.Result;
 
