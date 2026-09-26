@@ -680,6 +680,17 @@ function Save-McpConfigText([string]$Path, [string]$NewText, [string]$OldText) {
     [IO.File]::WriteAllText($Path, $NewText)
 }
 
+# True when the config's top-level <RootKey> object has an rvt-mcp member.
+# Text scan only, so a file ConvertFrom-Json rejects is still inspected.
+function Test-McpConfigHasEntry([string]$Path, [string]$RootKey) {
+    $text = [IO.File]::ReadAllText($Path)
+    $rootOpen = Skip-JsonSpace $text 0
+    if ($rootOpen -ge $text.Length -or $text[$rootOpen] -ne '{') { return $false }
+    $keySpan = Get-JsonMemberSpan $text $rootOpen $RootKey
+    if ($null -eq $keySpan -or $text[$keySpan.ValueStart] -ne '{') { return $false }
+    return $null -ne (Get-JsonMemberSpan $text $keySpan.ValueStart 'rvt-mcp')
+}
+
 # Minimal-edit add/remove of the rvt-mcp entry in a file config.
 # Returns a status word: created|added|repointed|already|custom|removed|absent|previewed.
 function Set-McpConfigEntry {
@@ -901,11 +912,14 @@ function Invoke-McpClientWiring {
             switch ($spec.Kind) {
                 'cli' {
                     $cli = Get-Command $spec.Cli -ErrorAction SilentlyContinue
-                    if (-not $cli -and $spec.Name -eq 'claude' -and $spec.Paths -and (Test-Path $spec.Paths[0])) {
-                        # Claude Code without the CLI on PATH: ~/.claude.json
-                        # carries the user-scope mcpServers key - same shape.
+                    if ($spec.Name -eq 'claude' -and $spec.Paths -and (Test-Path $spec.Paths[0]) -and
+                        (-not $cli -or ($Mode -eq 'Add' -and (Test-McpConfigHasEntry $spec.Paths[0] $spec.RootKey)))) {
+                        # ~/.claude.json carries the user-scope mcpServers key -
+                        # same shape as file clients. Used without the CLI on
+                        # PATH, and for an existing entry: `claude mcp add`
+                        # refuses to replace one, so it could never be repointed.
                         $st = Set-McpConfigEntry -Path (Resolve-McpConfigPath $spec) -RootKey $spec.RootKey -EntryKind $spec.EntryKind -Exe $Exe -Remove:($Mode -eq 'Remove')
-                        $report.Add("claude: $st (file fallback ~/.claude.json)")
+                        $report.Add("claude: $st (~/.claude.json)")
                         continue
                     }
                     if (-not $cli) { $report.Add("$($spec.Name): $($spec.Cli) CLI not on PATH"); continue }
@@ -927,6 +941,12 @@ function Invoke-McpClientWiring {
                                 $out = & grok mcp add rvt-mcp $Exe --transport stdio 2>&1
                                 $verify = & grok mcp list 2>&1
                             }
+                        }
+                        # A refused add leaves the old entry in place; `get`
+                        # still finds rvt-mcp, so it must not read as wired.
+                        if (($out | Out-String) -match 'already exists') {
+                            $report.Add("$($spec.Name): existing rvt-mcp entry left unchanged - inspect it with $($spec.Cli) mcp list")
+                            continue
                         }
                         $verified = ($verify | Out-String) -match 'rvt-mcp'
                         $report.Add("$($spec.Name): " + $(if ($verified) { 'wired' } else { 'wired (verify inconclusive - check the client)' }))

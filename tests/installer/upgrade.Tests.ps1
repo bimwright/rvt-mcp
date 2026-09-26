@@ -106,7 +106,12 @@ function Invoke-FixtureSetup {
         Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
     if ($Fixture.PSObject.Properties['FakeCli'] -and $Fixture.FakeCli) {
-        function claude { $Fixture.CliCalls.Add('claude ' + ($args -join ' ')) }
+        # Optional CliOutput @{ 'mcp add' = '...' } replays the real CLI's text.
+        function claude {
+            $Fixture.CliCalls.Add('claude ' + ($args -join ' '))
+            $key = "$($args[0]) $($args[1])"
+            if ($Fixture.PSObject.Properties['CliOutput'] -and $Fixture.CliOutput.ContainsKey($key)) { $Fixture.CliOutput[$key] }
+        }
         function codex { $Fixture.CliCalls.Add('codex ' + ($args -join ' ')) }
         function grok { $Fixture.CliCalls.Add('grok ' + ($args -join ' ')) }
     }
@@ -576,6 +581,31 @@ try {
         Assert (-not (Test-Path -LiteralPath "$cursor.bak")) 'backup created on no-op'
         Assert ($output -match 'wire with -Client') 'detection hint missing'
     }
+    Test 'Client wiring: claude repoints an existing versioned user entry that mcp add would refuse' {
+        $fixture = New-SetupFixture
+        $fixture | Add-Member -NotePropertyName FakeCli -NotePropertyValue $true
+        # Real `claude mcp add` refuses to replace an entry and leaves the old command.
+        $fixture | Add-Member -NotePropertyName CliOutput -NotePropertyValue @{ 'mcp add' = 'MCP server rvt-mcp already exists in user config'; 'mcp get' = 'rvt-mcp:' }
+        $claudeJson = "$sandboxUserProfile\.claude.json"
+        Set-Content -LiteralPath $claudeJson -Value '{ "numStartups": 3, "mcpServers": { "rvt-mcp": { "type": "stdio", "command": "C:\\Users\\Someone\\AppData\\Local\\RvtMcp\\rvt\\server\\0.6.2\\rvt-mcp.exe", "args": ["--read-only"], "env": {} } }, "projects": { "D:/x": { "mcpServers": {} } } }'
+        $output = Invoke-FixtureSetup $fixture -Client 'claude' 6>&1 | Out-String -Width 4096
+        $j = Get-Content -LiteralPath $claudeJson -Raw | ConvertFrom-Json
+        Remove-Item -LiteralPath $claudeJson, "$claudeJson.bak" -Force -ErrorAction SilentlyContinue
+        Assert ($j.mcpServers.'rvt-mcp'.command -eq "$($fixture.Root)\server\current\rvt-mcp.exe") "user entry not repointed, got: $($j.mcpServers.'rvt-mcp'.command)"
+        Assert ($j.mcpServers.'rvt-mcp'.args[0] -eq '--read-only') 'existing args lost'
+        Assert ($j.numStartups -eq 3) 'unrelated claude state lost'
+        Assert ($output -match 'Client\s*:\s*claude: repointed') "repoint not reported: $output"
+    }
+    Test 'Client wiring: a refused claude mcp add is not reported as wired' {
+        $fixture = New-SetupFixture
+        $fixture | Add-Member -NotePropertyName FakeCli -NotePropertyValue $true
+        # The entry lives where ~/.claude.json cannot show it (CLAUDE_CONFIG_DIR).
+        Remove-Item -LiteralPath "$sandboxUserProfile\.claude.json" -Force -ErrorAction SilentlyContinue
+        $fixture | Add-Member -NotePropertyName CliOutput -NotePropertyValue @{ 'mcp add' = 'MCP server rvt-mcp already exists in user config'; 'mcp get' = "rvt-mcp:`n  Command: C:\old\rvt\server\0.6.2\rvt-mcp.exe" }
+        $output = Invoke-FixtureSetup $fixture -Client 'claude' 6>&1 | Out-String -Width 4096
+        Assert (-not ($output -match 'claude: wired')) "refused add reported as wired: $output"
+        Assert ($output -match 'claude: existing rvt-mcp entry left unchanged') "refusal not reported: $output"
+    }
     Test 'Shipped scripts parse as Windows PowerShell 5.1 reads them on an ANSI code page' {
         # powershell.exe decodes a BOM-less script with the system ANSI code page
         # (1252 en-US, 1258 vi-VN); UTF-8 punctuation such as an em dash then
@@ -604,4 +634,3 @@ try {
     Remove-Item -LiteralPath $resolved -Recurse -Force
 }
 if (@($results | Where-Object { -not $_.passed }).Count) { throw 'Installer regression tests failed' }
-
