@@ -105,7 +105,8 @@ namespace RvtMcp.Plugin
             else
                 sb.Append("  \"pipe_name\": null,\n");
             sb.Append("  \"auth_token\": \"").Append(JsonEscape(authToken)).Append("\",\n");
-            sb.Append("  \"pid\": ").Append(pid).Append("\n");
+            sb.Append("  \"pid\": ").Append(pid).Append(",\n");
+            sb.Append("  \"capabilities\": [\"tool_catalog\"]\n");
             sb.Append("}\n");
             return sb.ToString();
         }

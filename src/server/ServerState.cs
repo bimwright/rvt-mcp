@@ -1,4 +1,5 @@
 using RvtMcp.Plugin;
+using RvtMcp.ToolCatalog;
 using Newtonsoft.Json;
 
 namespace RvtMcp.Server
@@ -6,6 +7,8 @@ namespace RvtMcp.Server
     internal static class ServerState
     {
         public static RvtMcpConfig Config { get; set; }
+
+        public static RvtMcp.ToolCatalog.ToolCatalog ToolCatalog { get; set; }
 
         public static bool IsReadOnly => Config?.ReadOnlyOrDefault ?? false;
 

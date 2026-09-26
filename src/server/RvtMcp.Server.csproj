@@ -40,6 +40,7 @@
     <Compile Include="..\shared\ToolBaker\BakedToolRecord.cs" Link="Shared\BakedToolRecord.cs" />
     <Compile Include="..\shared\ToolBaker\BakedToolRuntimeSource.cs" Link="Shared\BakedToolRuntimeSource.cs" />
     <Compile Include="..\shared\Infrastructure\LegacyDataMigration.cs" Link="Shared\LegacyDataMigration.cs" />
+    <Compile Include="..\shared\ToolCatalog\ToolCatalogModels.cs" Link="Shared\ToolCatalogModels.cs" />
   </ItemGroup>
 
   <!-- Prompt bodies (D1): embedded markdown, stable LogicalName like the localization catalogs -->

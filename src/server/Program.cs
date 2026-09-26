@@ -17,6 +17,7 @@ using RvtMcp.Plugin; // RvtMcpConfig
 using RvtMcp.Server.Bake;
 using RvtMcp.Server.Handlers;
 using RvtMcp.Server.Prompts;
+using RvtMcp.ToolCatalog;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -46,6 +47,8 @@ namespace RvtMcp.Server
             AuthToken.CleanupLegacyDiscoveryFiles();
             var config = RvtMcpConfig.Load(args);
             ServerState.Config = config;
+            ServerState.ToolCatalog = ServerToolCatalogBuilder.Build(
+                ToolsetFilter.Resolve(config), config);
             if (!string.IsNullOrWhiteSpace(config.Target))
             {
                 var target = config.Target.Trim();
@@ -339,7 +342,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             return mcp;
         }
 
-        private static Type[] ResolveRegisteredToolTypes(HashSet<string> enabled, RvtMcpConfig config)
+        internal static Type[] ResolveRegisteredToolTypes(HashSet<string> enabled, RvtMcpConfig config)
         {
             var types = new List<Type>();
             if (enabled.Contains("query"))      types.Add(typeof(QueryTools));
@@ -421,7 +424,8 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 // If the discovery file exists but the connect itself fails (plugin unloaded
                 // while Revit stayed alive, or some transient state), fall through to TCP
                 // rather than giving up the whole connection attempt.
-                if (AuthToken.TryReadPipe(out var pipeName, out var pipeToken, out var pipeVer))
+                IReadOnlyList<string> capabilities = Array.Empty<string>();
+                if (AuthToken.TryReadPipe(out var pipeName, out var pipeToken, out var pipeVer, out var pipeCapabilities))
                 {
                     try
                     {
@@ -430,6 +434,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                         pipe.Connect(5000);
                         _token = pipeToken;
                         CurrentRevitVersion = pipeVer;
+                        capabilities = pipeCapabilities ?? Array.Empty<string>();
                         _pipeStream = pipe;
                         stream = pipe;
                         Console.Error.WriteLine($"[RvtMcp] Connected to Revit {pipeVer} via Named Pipe: {pipeName}");
@@ -443,10 +448,11 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 }
 
                 // Fall back to TCP (R22-R24) if pipe did not connect.
-                if (stream == null && AuthToken.TryReadTcp(out var port, out var tcpToken, out var tcpVer))
+                if (stream == null && AuthToken.TryReadTcp(out var port, out var tcpToken, out var tcpVer, out var tcpCapabilities))
                 {
                     _token = tcpToken;
                     CurrentRevitVersion = tcpVer;
+                    capabilities = tcpCapabilities ?? Array.Empty<string>();
                     _client = new TcpClient();
                     _client.Connect("127.0.0.1", port);
                     stream = _client.GetStream();
@@ -466,6 +472,52 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 
                 var readThread = new Thread(ReadLoop) { IsBackground = true, Name = "RvtMcp.ResponseReader" };
                 readThread.Start();
+
+                // Catalog delivery is a connection handshake extension. It is sent once
+                // per newly opened connection and never blocks the first real tool call
+                // for longer than the fixed five-second handshake budget.
+                SendToolCatalogIfAdvertised(capabilities);
+            }
+        }
+
+        private static void SendToolCatalogIfAdvertised(IReadOnlyList<string> capabilities)
+        {
+            if (ServerState.ToolCatalog == null || capabilities == null
+                || !capabilities.Any(value => string.Equals(value, "tool_catalog", StringComparison.OrdinalIgnoreCase)))
+                return;
+
+            var id = $"catalog-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
+            var request = new JObject
+            {
+                ["id"] = id,
+                ["command"] = "set_tool_catalog",
+                ["params"] = JObject.FromObject(ServerState.ToolCatalog),
+                ["token"] = _token
+            };
+            var tcs = new TaskCompletionSource<string>();
+            _pending[id] = tcs;
+
+            try
+            {
+                _writer.WriteLine(request.ToString(Formatting.None));
+                if (!tcs.Task.Wait(TimeSpan.FromSeconds(5)))
+                {
+                    _pending.TryRemove(id, out _);
+                    Console.Error.WriteLine("[RvtMcp] Tool catalog handshake timed out; continuing without catalog.");
+                    return;
+                }
+
+                var response = JObject.Parse(tcs.Task.GetAwaiter().GetResult());
+                if (!response.Value<bool>("success"))
+                {
+                    var error = response.Value<string>("error") ?? "plugin rejected catalog";
+                    Console.Error.WriteLine($"[RvtMcp] Tool catalog rejected: {error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _pending.TryRemove(id, out _);
+                Console.Error.WriteLine($"[RvtMcp] Tool catalog handshake failed: {ex.Message}");
             }
         }
 

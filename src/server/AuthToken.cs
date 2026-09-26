@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 
 namespace RvtMcp.Server
@@ -18,6 +19,7 @@ namespace RvtMcp.Server
         public string PipeName { get; set; }           // populated when Transport == "pipe"
         public string AuthToken { get; set; }
         public int Pid { get; set; }
+        public List<string> Capabilities { get; set; }
         public string DiscoveryFilePath { get; set; }
     }
 
@@ -70,9 +72,15 @@ namespace RvtMcp.Server
 
         public static bool TryReadTcp(out int port, out string token, out string version)
         {
+            return TryReadTcp(out port, out token, out version, out _);
+        }
+
+        public static bool TryReadTcp(out int port, out string token, out string version, out IReadOnlyList<string> capabilities)
+        {
             port = 0;
             token = null;
             version = null;
+            capabilities = Array.Empty<string>();
 
             var preferred = Target != null ? new[] { Target } : TcpPriority;
             foreach (var year in preferred)
@@ -83,6 +91,7 @@ namespace RvtMcp.Server
                 port = d.Port;
                 token = d.AuthToken;
                 version = d.Year;
+                capabilities = d.Capabilities ?? new List<string>();
                 return true;
             }
             return false;
@@ -90,9 +99,15 @@ namespace RvtMcp.Server
 
         public static bool TryReadPipe(out string pipeName, out string token, out string version)
         {
+            return TryReadPipe(out pipeName, out token, out version, out _);
+        }
+
+        public static bool TryReadPipe(out string pipeName, out string token, out string version, out IReadOnlyList<string> capabilities)
+        {
             pipeName = null;
             token = null;
             version = null;
+            capabilities = Array.Empty<string>();
 
             var preferred = Target != null ? new[] { Target } : PipePriority;
             foreach (var year in preferred)
@@ -103,6 +118,7 @@ namespace RvtMcp.Server
                 pipeName = d.PipeName;
                 token = d.AuthToken;
                 version = d.Year;
+                capabilities = d.Capabilities ?? new List<string>();
                 return true;
             }
             return false;
@@ -155,6 +171,12 @@ namespace RvtMcp.Server
                     PipeName  = obj.Value<string>("pipe_name"),
                     AuthToken = obj.Value<string>("auth_token"),
                     Pid       = obj.Value<int?>("pid") ?? 0,
+                    Capabilities = obj["capabilities"] is JArray capabilityArray
+                        ? capabilityArray.Values<string>()
+                            .Where(value => !string.IsNullOrWhiteSpace(value))
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList()
+                        : new List<string>(),
                     DiscoveryFilePath = path
                 };
 

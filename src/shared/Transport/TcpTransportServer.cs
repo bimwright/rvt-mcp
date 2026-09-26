@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using RvtMcp.ToolCatalog;
 
 namespace RvtMcp.Plugin
 {
@@ -108,6 +109,7 @@ namespace RvtMcp.Plugin
         {
             client.ReceiveTimeout = 120000;
             _clientConnected = true;
+            ToolCatalogStore.BeginConnection();
             try
             {
                 var stream = client.GetStream();
@@ -182,6 +184,23 @@ namespace RvtMcp.Plugin
                     string paramsJson = request["params"]?.ToString() ?? "{}";
                     int? timeoutSeconds = request.Value<int?>("timeout_seconds");
 
+                    // Internal server -> plugin handshake messages are consumed here,
+                    // after token auth and before rate limiting or the Revit callback.
+                    // They must never enter history, usage, toast, or ExternalEvent.
+                    if (string.Equals(command, "set_tool_catalog", StringComparison.Ordinal))
+                    {
+                        var catalogResult = ToolCatalogStore.AcceptJson(paramsJson);
+                        var catalogResponse = new Newtonsoft.Json.Linq.JObject
+                        {
+                            ["id"] = id,
+                            ["success"] = catalogResult.IsValid
+                        };
+                        if (!catalogResult.IsValid)
+                            catalogResponse["error"] = catalogResult.Error;
+                        try { writer.WriteLine(catalogResponse.ToString(Newtonsoft.Json.Formatting.None)); } catch { break; }
+                        continue;
+                    }
+
                     // Create TCS and invoke callback
                     var tcs = new TaskCompletionSource<string>();
 
@@ -224,6 +243,7 @@ namespace RvtMcp.Plugin
             finally
             {
                 _clientConnected = false;
+                ToolCatalogStore.Clear();
             }
         }
 
