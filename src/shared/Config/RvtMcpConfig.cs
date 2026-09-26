@@ -430,6 +430,7 @@ namespace RvtMcp.Plugin
             public int? ToastIdleSeconds { get; set; }
             public int? PersistSendCodeBodiesHours { get; set; }
             public bool? PersistSendCodeBodies { get; set; }
+            public bool? CacheSendCodeBodies { get; set; }
         }
 
         public sealed class ApplyFailure
@@ -612,7 +613,9 @@ namespace RvtMcp.Plugin
                 }
             }
 
-            if (patch.PersistSendCodeBodiesHours.HasValue || patch.PersistSendCodeBodies.HasValue)
+            if (patch.PersistSendCodeBodiesHours.HasValue
+                || patch.PersistSendCodeBodies.HasValue
+                || patch.CacheSendCodeBodies.HasValue)
             {
                 string error;
                 var ok = TryUpdateConfig(configFilePath, root =>
@@ -621,6 +624,9 @@ namespace RvtMcp.Plugin
                     // restage the first key so every staged value still wins.
                     if (toastIdleApplied)
                         root["toastIdleSeconds"] = NormalizeToastIdleSeconds(patch.ToastIdleSeconds);
+
+                    if (patch.CacheSendCodeBodies.HasValue)
+                        root["cacheSendCodeBodies"] = patch.CacheSendCodeBodies.Value;
 
                     var now = DateTimeOffset.UtcNow;
                     var currentHours = NormalizePersistSendCodeBodiesHours(root.Value<int?>("persistSendCodeBodiesHours"));
@@ -671,6 +677,11 @@ namespace RvtMcp.Plugin
                     result.Applied.Add("persistSendCodeBodies");
                 else if (patch.PersistSendCodeBodies.HasValue && !ok)
                     result.Failed.Add(new ApplyFailure("persistSendCodeBodies", error));
+
+                if (patch.CacheSendCodeBodies.HasValue && ok)
+                    result.Applied.Add("cacheSendCodeBodies");
+                else if (patch.CacheSendCodeBodies.HasValue && !ok)
+                    result.Failed.Add(new ApplyFailure("cacheSendCodeBodies", error));
             }
 
             return result;
