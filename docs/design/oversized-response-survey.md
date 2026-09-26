@@ -2,7 +2,7 @@
 
 > **Trạng thái:** GIAI ĐOẠN 1 — khảo sát tĩnh, chưa sửa code.
 > **Phạm vi:** `rvt-mcp/src/server/Program.cs` và các handler tương ứng trong `src/shared/Handlers/`.
-> **Inventory:** 232 `[McpServerTool]` (229 surface chuẩn + 3 adaptive-bake), 227 tool gọi plugin handler và 5 tool server-local. Hai tool tọa độ read-only thêm sau khảo sát gốc được phân loại bổ sung bên dưới.
+> **Inventory:** 233 `[McpServerTool]` (230 surface chuẩn + 3 adaptive-bake), 228 tool gọi plugin handler và 5 tool server-local. Hai tool tọa độ read-only và `revit_open_model` thêm sau khảo sát gốc được phân loại bổ sung bên dưới.
 
 ## 1. Quy ước đo và ngưỡng
 
@@ -204,6 +204,7 @@
 | `revit_batch_execute` | `BatchExecuteHandler.cs` | **Critical >1 MiB / bulk** — Tối đa 20 sub-result khác schema; detail mutation có thể cộng dồn khó đoán. | Có một phần — `commands`, `continueOnError` | **4** | High | B1: mutation trả compact summary, giữ `success=true`. B2: opt-in `output=file` (NDJSON/JSON); trả schema + preview + lifecycle metadata. |
 | `revit_set_project_info` | `SetProjectInfoHandler.cs` | **Low <64 KiB** — DTO fixed/single-target hoặc aggregate compact; không trả model-wide detail list. | N/A — output compact | **1** | High | Không đụng; giữ inline. |
 | `revit_purge_unused` | `PurgeUnusedHandler.cs` | **Critical >1 MiB khả dĩ** — Caller cap cao, row nested giàu dữ liệu hoặc explicit ID list lớn có thể vượt 1 MiB. | Có — `targets`, `limit` | **2** | Medium | B1: compact mutation response/detail, giữ `success=true`; reject/warning hint trỏ đúng `targets`, `limit`; kiểm tra hard maximum. |
+| `revit_open_model` | `OpenModelHandler.cs` | **Low <64 KiB** — Một DTO cố định về model vừa mở (title, path, version, trạng thái workshared); không quét model elements. | N/A — output compact | **1** | High | Không đụng; giữ inline. |
 | `revit_analyze_usage_patterns` | `Program.cs (server-local)` | **Low <64 KiB** — DTO fixed/single-target hoặc aggregate compact; không trả model-wide detail list. | N/A — output compact | **1** | High | Không đụng; giữ inline. |
 
 ### Toolset `toolbaker`
@@ -379,18 +380,18 @@
 
 | Nhóm | Số tool |
 |---|---:|
-| 1 — An toàn/compact | 103 |
+| 1 — An toàn/compact | 104 |
 | 2 — Rủi ro, đã có scope | 97 |
 | 3 — Rủi ro, thiếu scope | 23 |
 | 4 — Bulk/bất định | 8 |
 | Riêng — `send_code` | 1 |
-| **Tổng** | **232** |
+| **Tổng** | **233** |
 
 ### Theo dải ước lượng
 
 | Dải | Số tool |
 |---|---:|
-| Low `<64 KiB` | 103 |
+| Low `<64 KiB` | 104 |
 | Medium `64–256 KiB` | 16 |
 | High `>256 KiB–1 MiB` | 13 |
 | Critical `>1 MiB`/unbounded/bulk | 100 |

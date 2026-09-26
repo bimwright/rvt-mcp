@@ -23,6 +23,11 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
+### Added
+
+- **`revit_open_model`** (`meta` toolset) — opens a `.rvt`, `.rte` or `.rfa` and makes it active, or opens it in the background; can detach a workshared model, audit it, and pick a workset configuration. A model Revit already has open is reported back instead of reopened, and `saved_in_version` shows when an older file is being upgraded in memory.
+- Tool counts: default **41**, `--toolsets all` **230**, adaptive bake **233**.
+
 ### Fixed
 
 - **`revit_send_code_to_revit` with no document open** — the wrapper read `app.ActiveUIDocument.Document` before the snippet ran, so every call threw a bare null reference when Revit had no document, including a snippet calling `app.OpenAndActivateDocument`. `doc` and `uidoc` are now `null` in that case and the snippet decides what to do.
