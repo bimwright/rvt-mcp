@@ -5,7 +5,7 @@
 | Version | Date | Available as |
 |---|---|---|
 | Unreleased | — | Source on `master` only |
-| v0.6.4 | 2026-09-26 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.4) (latest) |
+| v0.8.1 | 2026-09-27 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.8.1) (latest) |
 | v0.6.3 | 2026-09-25 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.3) |
 | v0.6.2 | 2026-09-22 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.2); NuGet `RvtMcp.Server` 0.6.2 |
 | v0.6.1 | 2026-08-28 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.1); NuGet `RvtMcp.Server` 0.6.1 |
@@ -24,45 +24,43 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
+No changes on `master` since v0.8.1 yet.
+
+## v0.8.1 - Two-sided installer, revit_open_model, and a Settings window
+
+Follows v0.6.3; there are no v0.6.4–v0.8.0 releases.
+
+- **One installer run sets up both sides** — the add-in for every installed Revit 2022–2027 and, with `-Client`, the `rvt-mcp` entry in your MCP clients.
+- **New tool `revit_open_model`** and four **MCP prompts**.
+- **Part of community PR [#15](https://github.com/bimwright/rvt-mcp/pull/15) merged** — its `send_code` and `switch_target` fixes are cherry-picked, and its `revit_open_model` proposal was reworked to follow the workshared-model policy. Thanks [@PhanCongVuDuc](https://github.com/PhanCongVuDuc).
+- Tool counts: default **41**, `--toolsets all` **226**, adaptive bake **229**.
+
+### Installer
+
+- **`-Client` installer wiring** — `install.ps1 -Client <names>` (or `-Client auto` for every detected client) applies the `docs/mcp-client-wiring.md` procedure for 19 supported clients: Claude Code/Desktop, Codex, Grok CLIs, and file-config clients (Cursor, VS Code, Cline/Roo, Zed, Gemini, Antigravity, Devin, LM Studio, kun, Kiro, Qwen, Windsurf, OpenCode, Kilo). File edits are minimal text surgery — JSONC comments and sibling entries survive, a `.bak` backup is written first, and a failed write restores it. Versioned-path entries are repointed to `current` with args/env kept; custom launchers and legacy `bimwright-rvt*` entries are reported, never replaced. Cherry Studio gets a `cherrystudio://` deeplink. `-Uninstall -Client <names>` removes just the `rvt-mcp` entry, and `-WireClient` remains as a deprecated alias.
+- **Full tool surface on install** — the installer seeds `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json` with `"toolsets": ["all"]` when the file doesn't already set `toolsets`, so fresh installs expose all 226 tools. An explicit `toolsets` choice is preserved on upgrade; `--toolsets`, `BIMWRIGHT_TOOLSETS` and `--read-only` still outrank the file, and a bare `rvt-mcp.exe` without it still defaults to `query,create,view,meta`.
+- **Claude Desktop on MSIX installs** — `-Client` probes `Packages\*\LocalCache\Roaming\Claude` for any package family name (not just `Claude_*`) and prefers a package that actually contains the Claude cache over a stray `%APPDATA%\Claude` dir, which an MSIX install never reads. Wiring while `claude.exe` is running emits a warning that the app rewrites the config from memory on quit; `cowork*` keys and other app state are preserved.
+- **Self-wiring guidance** — `docs/mcp-client-wiring.md` now covers the agent that configures the client it runs inside: wire last (restart ends the session), the running app can overwrite the config on exit, and `tools/list` verification happens in the next session.
+
 ### Added
 
-- **`revit_open_model`** (`meta` toolset) — opens a `.rvt`, `.rte` or `.rfa` and makes it active, or opens it in the background. A file whose header cannot be read is never opened, because its worksharing state is unknown. A workshared `.rvt` is never opened directly: a new local copy is always created from its central model (same as Revit's Open → "Create New Local") under the Revit.ini `ProjectPath` folder as `<central>_<username>.rvt` — missing `ProjectPath` stops the call rather than picking a folder. An existing local at that path is renamed with a timestamp — never deleted or overwritten — unless it is open in the session, has changes not yet saved to central, or its header cannot be read, in which case the call stops and asks the user. `worksets` (all|none|lastViewed) applies to workshared models; `audit` is opt-in because it is slow; there is no `detach` option — detaching or opening a central directly goes through `revit_send_code_to_revit`. A model Revit already has open is reported back (and activated when `activate=true`) instead of reopened. `saved_in_version` shows when an older file is being upgraded in memory.
+- **`revit_open_model`** (`meta` toolset) — opens a `.rvt`, `.rte` or `.rfa` and makes it active, or opens it in the background. A file whose header cannot be read is never opened, because its worksharing state is unknown. A workshared `.rvt` is never opened directly: a new local copy is always created from its central model (same as Revit's Open → "Create New Local") under the Revit.ini `ProjectPath` folder as `<central>_<username>.rvt` — missing `ProjectPath` stops the call rather than picking a folder. An existing local at that path is renamed with a timestamp — never deleted or overwritten — unless it is open in the session, has changes not yet saved to central, or its header cannot be read, in which case the call stops and asks the user. `worksets` (all|none|lastViewed) applies to workshared models; `audit` is opt-in because it is slow; there is no `detach` option — detaching or opening a central directly goes through `revit_send_code_to_revit`. A model Revit already has open is reported back (and activated when `activate=true`) instead of reopened. `saved_in_version` shows when an older file is being upgraded in memory. If `CreateNewLocal` refuses after the existing local was renamed aside (e.g. a central saved in an older Revit version), the error names the timestamped file it was kept as. A file currently loaded as a link in an open document is refused with a message to close the host or unload the link first.
 - **Long-run `timeout_seconds`** on `revit_open_model`, `revit_link_revit_model`, `revit_reload_link` and `revit_load_family_from_path` — the request envelope carries the caller's plugin wait (1–900 s, default 600 s; out-of-range values are refused rather than clamped) because opening a model that pulls in many links commonly exceeds the 60 s default. Other tools keep the fixed 60 s wait.
-- Tool counts: default **41**, `--toolsets all` **226**, adaptive bake **229**.
+- **MCP prompts** — `revit_getting_started`, `revit_model_audit`, `revit_pre_issue_check`, `revit_stairs`: user-invoked markdown workflows, always listed; a prompt whose toolsets aren't enabled returns the exact `--toolsets` line instead of its steps. `revit_stairs` is the one write-capable prompt (via `send_code`) and asks for confirmation before writing. Prompts never advise turning off `--read-only`; `revit_pre_issue_check` needs explicit member sheets for a named sheet set and reports unresolved or incomplete checks as `NOT VERIFIED`; `revit_stairs` carries its own transaction, failure-reporting and scope-cleanup template.
 - **Settings window** — the ribbon slide-out gains **Settings** and **Language** buttons (replacing the language combo; Language opens Settings → General → Language). General shows the live connection state, Toast sets the card idle duration (10/20/30/60 s), Tools lists the connected server's tools with their timeout policy, and About carries version plus an offline license view. Each setting is one row (label and short explanation left, control right) inside flat tabs and white cards under a `BIMwright | RVT-MCP Settings` header. Connection fits two rows: a coloured state badge with listener restart (new port/pipe and token) and On/Off — the same actions as the ribbon MCP toggle — then `Transport type: TCP | Port: …` with Copy, disabled when there is no TCP port. Save errors appear under the setting they belong to; scrollbars match History. **Apply** and **Discard changes** (formerly Cancel) are enabled only while changes are unsaved; Toast On/Off and Language still apply immediately. Styles are scoped to the Settings window.
-
-Thanks [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) — the `send_code`/`switch_target` fixes come from [#15](https://github.com/bimwright/rvt-mcp/pull/15) (cherry-picked), and `revit_open_model` was reworked from that PR's proposal to follow the workshared-model policy.
 
 ### Fixed
 
 - **`revit_send_code_to_revit` with no document open** — the wrapper read `app.ActiveUIDocument.Document` before the snippet ran, so every call threw a bare null reference when Revit had no document, including a snippet calling `app.OpenAndActivateDocument`. `doc` and `uidoc` are now `null` in that case and the snippet decides what to do. The same null reference in the `run_baked_tool` wrapper (`ToolCompiler.cs`) is fixed as well.
 - **`revit_list_available_targets` hint** — it told callers to pass a `year` to `revit_switch_target`, whose parameter is named `version`; following it produced an invocation error that read as a dead server.
-- **`revit_open_model` reports the preserved local on `CreateNewLocal` failure** — when the existing local was already renamed aside and `CreateNewLocal` then refuses (e.g. central saved in an older Revit version), the error now names the timestamped file it was kept as.
 - **Toast and History showed some failures as successes** — a `revit_batch_execute` that rolled back or had failed sub-commands, and a response rejected as too large (which the agent already received as `success=false`), showed green in the toast and History and were logged as successes in `mcp-calls.jsonl`. They now show as failures with the reason. The response to the agent is unchanged.
-- **`revit_open_model` refuses a file loaded as a link cleanly** — opening a file that is currently a link in an open document cannot produce a standalone document (`OpenDocumentFile` returns the link object, `OpenAndActivateDocument` throws a null reference). The call now stops with an explanatory message telling the user to close the host or unload the link first.
+- **`dotnet build src/RvtMcp.sln` on a clean tree** — the test project's server reference now compiles into its own `obj`, so parallel builds no longer collide with the solution's server build (`MSB3371`/`CS2012`).
 
 ### Changed
 
 - **Activity toasts use one shared card** — successive results update a single card (20-second default idle lifetime, configurable in Settings and paused while hovered) instead of stacking per-result windows. Its three rows show `RVT-MCP - {tool name}`, vertically rolling Success / Failed / Capture counts, and the right-aligned BIMwright wordmark. Success keeps the light-blue gradient, errors keep red; capture thumbnails are no longer embedded. The × button stays transparent on hover, and the brand's two letter layers crossfade within a moving highlight without dimming the whole logo. Animations respect Windows reduced-motion preferences.
 - **Activity card clicks open History** — clicking the card routes to the host History window, while the close button dismisses the card. Capture paths are never opened from the toast.
 - **Settings config persistence** — Settings reads a side-effect-free snapshot, applies staged keys with per-key results, and writes through a flushed same-directory temp file replacement. Toast idle duration accepts 10/20/30/60 seconds; send-code journal retention accepts 1–48 hours and preserves the selected duration when Off.
-
-## v0.6.4 - Installer client wiring and MCP prompts
-
-### Added
-
-- **MCP prompts** — `revit_getting_started`, `revit_model_audit`, `revit_pre_issue_check`, `revit_stairs`: user-invoked markdown workflows, always listed; a prompt whose toolsets aren't enabled returns the exact `--toolsets` line instead of its steps. `revit_stairs` is the one write-capable prompt (via `send_code`) and asks for confirmation before writing.
-- **Full tool surface on install** — the installer seeds `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json` with `"toolsets": ["all"]` when the file doesn't already set `toolsets`, so fresh installs expose all 229 tools. An explicit `toolsets` choice is preserved on upgrade; `--toolsets`, `BIMWRIGHT_TOOLSETS` and `--read-only` still outrank the file, and a bare `rvt-mcp.exe` without it still defaults to `query,create,view,meta`.
-- **Self-wiring guidance** — `docs/mcp-client-wiring.md` now covers the agent that configures the client it runs inside: wire last (restart ends the session), the running app can overwrite the config on exit, and `tools/list` verification happens in the next session.
-- **`-Client` installer wiring** — `install.ps1 -Client <names>` (or `-Client auto` for every detected client) applies the `docs/mcp-client-wiring.md` procedure for 19 supported clients: Claude Code/Desktop, Codex, Grok CLIs, and file-config clients (Cursor, VS Code, Cline/Roo, Zed, Gemini, Antigravity, Devin, LM Studio, kun, Kiro, Qwen, Windsurf, OpenCode, Kilo). File edits are minimal text surgery — JSONC comments and sibling entries survive, a `.bak` backup is written first, and a failed write restores it. Versioned-path entries are repointed to `current` with args/env kept; custom launchers and legacy `bimwright-rvt*` entries are reported, never replaced. Cherry Studio gets a `cherrystudio://` deeplink. `-Uninstall -Client <names>` removes just the `rvt-mcp` entry, and `-WireClient` remains as a deprecated alias.
-
-### Fixed
-
-- **Claude Desktop wiring on MSIX installs** — the resolver now probes `Packages\*\LocalCache\Roaming\Claude` for any package family name (not just `Claude_*`) and prefers a package that actually contains the Claude cache over a stray `%APPDATA%\Claude` dir, which an MSIX install never reads. Wiring while `claude.exe` is running emits a warning that the app rewrites the config from memory on quit; `cowork*` keys and other app state are preserved.
-- **Prompt configuration notices** — missing read-only toolsets no longer trigger advice to disable `--read-only`; enabling required write-capable toolsets remains an explicit user decision.
-- **Pre-issue scope and coverage** — named sheet sets require explicit member sheets rather than being mistaken for sheet-name filters. Bounded model warnings do not certify individual sheets; unresolved or incomplete checks report `NOT VERIFIED`.
-- **Standalone stair guidance** — the embedded prompt includes its transaction, failure-reporting and scope-cleanup template instead of depending on documents from a source checkout.
-- **`dotnet build src/RvtMcp.sln` on a clean tree** — the test project's server reference now compiles into its own `obj`, so parallel builds no longer collide with the solution's server build (`MSB3371`/`CS2012`).
 
 ## v0.6.3 - Localized UI and a Revit-only installer
 

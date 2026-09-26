@@ -35,53 +35,27 @@ Agent có **bộ tool typed** cho việc Revit thường gặp, escape hatch C# 
 
 ## Cài đặt
 
-Dùng setup ZIP từ [GitHub Releases](https://github.com/bimwright/rvt-mcp/releases/latest): server self-contained cùng add-in Revit 2022–2027, không cần .NET SDK hay clone source. **AI agent:** làm theo [AGENTS.md](AGENTS.md), không clone hay build trừ khi user yêu cầu bản developer.
+**Người dùng: để AI agent cài giúp.** Bạn không cần tự chạy gì. Copy dòng dưới, dán vào AI agent của bạn (Claude Code, Codex, Cursor, …) rồi đi pha cà phê trong lúc agent làm việc. Agent làm theo [AGENTS.md](AGENTS.md) và hỏi bạn trước khi cài hay sửa config client.
+
+```text
+Cài rvt-mcp giúp tôi: https://github.com/bimwright/rvt-mcp
+```
+
+**Hoặc tự chạy installer.** Đóng Revit, rồi trong PowerShell:
 
 ```powershell
 $tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/releases/latest).tag_name
-$zip = "$env:TEMP\RvtMcp.Setup-$tag-win-x64.zip"
 $dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
-Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile $zip
-Expand-Archive $zip -DestinationPath $dir -Force
-
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
+Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile "$dir.zip"
+Expand-Archive "$dir.zip" -DestinationPath $dir -Force
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto
 ```
 
-Đóng Revit trước. Installer tìm các bản Revit 2022–2027 có `Revit.exe`, cài add-in khớp năm và server vào `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`, kiểm tra cả hai và rollback nếu lỗi. Installer không đụng config MCP client. Chi tiết và các cách cài khác (developer, chỉ server NuGet): [docs/install.md](docs/install.md).
+Một lần chạy cài cả hai phía: add-in cho mọi bản Revit 2022–2027 trên máy, và entry `rvt-mcp` trong mọi MCP client tìm thấy (mỗi config được backup trước). Thêm `-WhatIf` để xem trước, chọn client bằng `-Client claude,cursor`, hoặc bỏ `-Client` và tự đăng ký server — nằm ở `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` ([các bước cho từng client](docs/mcp-client-wiring.md)).
 
-### Kết nối MCP client
+**Kiểm tra:** khởi động lại AI client, mở một model trong Revit, bật MCP trên ribbon (**Add-Ins** → **RvtMcp**) rồi nhờ agent gọi `revit_get_current_view_info`. Kết quả phải là tên và loại của view đang mở.
 
-Đăng ký một stdio server tên `rvt-mcp` với command là đường dẫn server ở trên (viết thành đường dẫn tuyệt đối), bằng lệnh `mcp add`, giao diện cài đặt hoặc file config của chính client. Mọi MCP client stdio đều dùng được (Claude Code, Claude Desktop, Codex, Cursor, VS Code, Gemini CLI, OpenCode, Kilo, …). Các bước đã kiểm chứng cho từng client: [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md).
-
-### Kiểm tra đã chạy
-
-1. Mở Revit với một model.
-2. Bật kết nối MCP trên ribbon (tab **Add-Ins** → panel **RvtMcp**).
-3. Từ MCP client: list tools, gọi `revit_get_current_view_info`.
-
-Kỳ vọng dạng:
-
-```json
-{ "viewName": "Level 1", "viewType": "FloorPlan", "levelName": "Level 1", "scale": 100 }
-```
-
-Lỗi thì coi như chưa cài xong — sửa config client hoặc việc load add-in trước.
-
-### Cập nhật
-
-Đóng Revit và MCP client, giải nén ZIP bản mới vào một thư mục mới, rồi chạy `install.ps1 -WhatIf` của nó, sau đó `install.ps1` — không gỡ cài trước. Đường dẫn server không đổi nên client chỉ cần khởi động lại. Nâng cấp từ v0.6.2 trở về trước? Trỏ client sang đường dẫn `current` ở trên, rồi xóa các thư mục server cũ bằng `install.ps1 -PruneOldServers`. Thêm: [docs/install.md](docs/install.md#upgrade).
-
-### Gỡ cài
-
-Từ thư mục setup ZIP:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -WhatIf
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -Yes
-```
-
-Gỡ add-in và server nhưng giữ cài đặt, bản dịch, dữ liệu ToolBaker và log, trừ khi thêm `-Purge`. Tự xóa entry `rvt-mcp` trong MCP client. Thêm: [docs/install.md](docs/install.md#uninstall).
+**Cập nhật:** chạy installer của bản mới theo cùng cách — không cần gỡ trước; client chỉ cần khởi động lại. **Gỡ cài:** `uninstall.ps1 -Yes` trong cùng thư mục gỡ add-in và server (cài đặt được giữ, trừ khi thêm `-Purge`); chạy `install.ps1 -Uninstall -Client auto` trước nếu muốn xóa luôn entry trong client. Thêm, gồm cài developer và NuGet: [docs/install.md](docs/install.md).
 
 ---
 

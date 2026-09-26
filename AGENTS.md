@@ -12,7 +12,7 @@ This file is machine-readable install instructions for AI coding agents (Claude 
 - Connect the MCP client(s) the user asks for, with `install.ps1 -Client <names>` or each client's own method. The installer leaves client configs untouched unless `-Client` is passed.
 - Verify the handshake and roll back on failure.
 
-**Current status — 2026-09-26:** latest published release is **v0.6.4**. Use `/repos/bimwright/rvt-mcp/releases/latest`. Do not install `v0.5.0` or earlier tags.
+**Current status — 2026-09-27:** latest published release is **v0.8.1**. Use `/repos/bimwright/rvt-mcp/releases/latest`. Do not install `v0.5.0` or earlier tags.
 
 **What you cannot do:**
 

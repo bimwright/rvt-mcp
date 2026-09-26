@@ -35,53 +35,27 @@
 
 ## インストール
 
-[GitHub Releases](https://github.com/bimwright/rvt-mcp/releases/latest) の setup ZIP を使ってください。自己完結サーバと Revit 2022–2027 のアドインが入っており、.NET SDK もソースの clone も不要です。**AI エージェント:** [AGENTS.md](AGENTS.md) に従い、開発者セットアップを求められない限り clone や build はしないでください。
+**ユーザーの方へ：AI エージェントに任せてください。** 自分で何かを実行する必要はありません。下の 1 行をコピーして AI エージェント（Claude Code、Codex、Cursor など）に貼り付け、作業が終わるまでコーヒーでも飲んで待つだけです。エージェントは [AGENTS.md](AGENTS.md) に従い、インストールやクライアント設定の変更の前に必ず確認を求めます。
+
+```text
+rvt-mcp をインストールして: https://github.com/bimwright/rvt-mcp
+```
+
+**自分でインストーラを実行する場合。** Revit を閉じてから PowerShell で：
 
 ```powershell
 $tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/releases/latest).tag_name
-$zip = "$env:TEMP\RvtMcp.Setup-$tag-win-x64.zip"
 $dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
-Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile $zip
-Expand-Archive $zip -DestinationPath $dir -Force
-
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
+Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile "$dir.zip"
+Expand-Archive "$dir.zip" -DestinationPath $dir -Force
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto
 ```
 
-先に Revit を閉じてください。インストーラは `Revit.exe` がある Revit 2022–2027 を検出し、該当アドインとサーバを `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` に入れ、両方を検証し、エラー時はロールバックします。MCP クライアントの設定には触れません。詳細と他のインストール方法（開発者、NuGet サーバのみ）：[docs/install.md](docs/install.md)。
+1 回の実行で両側をセットアップします：マシン上のすべての Revit 2022–2027 へのアドインと、検出したすべての MCP クライアントへの `rvt-mcp` エントリです（各設定は先にバックアップされます）。`-WhatIf` でプレビュー、`-Client claude,cursor` でクライアントを指定、または `-Client` を外してサーバを自分で登録できます。サーバの場所は `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` です（[クライアント別手順](docs/mcp-client-wiring.md)）。
 
-### MCP クライアントを接続
+**動作確認：** AI クライアントを再起動し、Revit でモデルを開き、リボン（**アドイン**（Add-Ins）→ **RvtMcp**）で MCP を開始して、エージェントに `revit_get_current_view_info` を呼ばせます。アクティブビューの名前と種類が返れば成功です。
 
-名前 `rvt-mcp` の stdio サーバを 1 つ登録し、コマンドには上記のサーバパスを絶対パスで指定します。クライアント自身の `mcp add` コマンド、設定画面、設定ファイルのいずれかを使ってください。stdio 対応の MCP クライアントならどれでも使えます（Claude Code、Claude Desktop、Codex、Cursor、VS Code、Gemini CLI、OpenCode、Kilo など）。検証済みのクライアント別手順：[docs/mcp-client-wiring.md](docs/mcp-client-wiring.md)。
-
-### 動作確認
-
-1. モデル付きで Revit を開く。
-2. リボン（**アドイン**（Add-Ins）タブ → **RvtMcp** パネル）から MCP 接続を開始。
-3. MCP クライアントで tools を列挙し、`revit_get_current_view_info` を呼ぶ。
-
-だいたい次のような形：
-
-```json
-{ "viewName": "Level 1", "viewType": "FloorPlan", "levelName": "Level 1", "scale": 100 }
-```
-
-失敗なら未完了です — クライアント設定かアドインの読み込みを先に直してください。
-
-### 更新
-
-Revit と MCP クライアントを閉じ、新しいリリース ZIP を新しいフォルダに展開して、その `install.ps1 -WhatIf`、続いて `install.ps1` を実行します。先にアンインストールはしないでください。サーバのパスは変わらないため、クライアントは再起動だけで済みます。v0.6.2 以前から更新する場合は、クライアントを上記の `current` パスに向け直し、`install.ps1 -PruneOldServers` で古いサーバフォルダを削除してください。詳細：[docs/install.md](docs/install.md#upgrade)。
-
-### アンインストール
-
-setup ZIP のフォルダから：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -WhatIf
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -Yes
-```
-
-アドインとサーバを削除しますが、`-Purge` を付けない限り設定、翻訳、ToolBaker データ、ログは残ります。MCP クライアントの `rvt-mcp` エントリは各自で削除してください。詳細：[docs/install.md](docs/install.md#uninstall)。
+**更新：** 新しいリリースのインストーラを同じ手順で実行します。先にアンインストールは不要で、クライアントは再起動だけで済みます。**アンインストール：** 同じフォルダで `uninstall.ps1 -Yes` を実行するとアドインとサーバが削除されます（`-Purge` を付けない限り設定は残ります）。クライアントのエントリも消すには、先に `install.ps1 -Uninstall -Client auto` を実行してください。開発者向け・NuGet を含む詳細：[docs/install.md](docs/install.md)。
 
 ---
 

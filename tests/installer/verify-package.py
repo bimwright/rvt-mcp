@@ -69,11 +69,18 @@ class Client:
         self.log.close()
 
 
+REPO = Path(__file__).resolve().parents[2]
+
+
+def repo_json(relative):
+    return json.loads((REPO / relative).read_text(encoding="utf-8-sig"))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("zip", type=Path)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--version", default="0.6.2")
+    parser.add_argument("--version", default=repo_json("server.json")["version"])
     parser.add_argument("--live-2027", action="store_true")
     args = parser.parse_args()
     package = args.zip.resolve()
@@ -113,7 +120,11 @@ def main():
     exe = extraction / manifest["server"]["command"]
     report["serverExeSha256"] = digest(exe.read_bytes())
     report["smoke"] = []
-    for mode, flags, expected in (("default", [], 40), ("all", ["--toolsets", "all"], 229)):
+    # The server reads the machine's real rvtmcp.config.json, which an install
+    # seeds with toolsets=all, so the default surface is requested explicitly.
+    all_count = repo_json("tests/RvtMcp.Tests/Golden/tools-list.json")["tool_count"]
+    for mode, flags, expected in (("default", ["--toolsets", "query,create,view,meta"], 41),
+                                  ("all", ["--toolsets", "all"], all_count)):
         client = Client(exe, package.parent / f"smoke-{mode}-stderr.log", flags + ["--target", "2027"])
         try:
             init = client.request("initialize", {"protocolVersion": "2025-03-26", "capabilities": {},

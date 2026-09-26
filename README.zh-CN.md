@@ -35,53 +35,27 @@ Agent 可以使用覆盖常见 Revit 工作的 **typed 工具面**、应对其�
 
 ## 安装
 
-使用 [GitHub Releases](https://github.com/bimwright/rvt-mcp/releases/latest) 中的 setup ZIP：内含自包含 server 与 Revit 2022–2027 插件，不需要 .NET SDK 或克隆源码。**AI agent：** 按 [AGENTS.md](AGENTS.md) 操作；除非用户要求开发者安装，否则不要 clone 或 build。
+**普通用户：交给 AI agent。** 你不需要自己运行任何命令。复制下面这一行，粘贴给你的 AI agent（Claude Code、Codex、Cursor 等），然后去泡杯咖啡，等它完成即可。agent 会按照 [AGENTS.md](AGENTS.md) 操作，在安装或修改客户端配置之前先征求你的同意。
+
+```text
+帮我安装 rvt-mcp：https://github.com/bimwright/rvt-mcp
+```
+
+**或者自己运行安装程序。** 先关闭 Revit，然后在 PowerShell 中：
 
 ```powershell
 $tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/releases/latest).tag_name
-$zip = "$env:TEMP\RvtMcp.Setup-$tag-win-x64.zip"
 $dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
-Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile $zip
-Expand-Archive $zip -DestinationPath $dir -Force
-
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
+Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile "$dir.zip"
+Expand-Archive "$dir.zip" -DestinationPath $dir -Force
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto
 ```
 
-请先关闭 Revit。安装程序会检测存在 `Revit.exe` 的 Revit 2022–2027，把对应插件和 server 安装到 `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`，校验两者，出错时回滚。安装程序不会改动 MCP 客户端配置。细节与其他安装方式（开发者、仅 NuGet server）：[docs/install.md](docs/install.md)。
+一次运行即可配置两端：为本机所有 Revit 2022–2027 安装插件，并在检测到的每个 MCP 客户端中写入 `rvt-mcp` 条目（每个配置都会先备份）。加 `-WhatIf` 可预览，用 `-Client claude,cursor` 指定客户端，或去掉 `-Client` 自己注册 server——路径为 `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`（[各客户端步骤](docs/mcp-client-wiring.md)）。
 
-### 连接 MCP 客户端
+**验证：** 重启 AI 客户端，在 Revit 中打开模型，在 ribbon（**附加模块**（Add-Ins）→ **RvtMcp**）上启动 MCP，然后让 agent 调用 `revit_get_current_view_info`。返回当前视图的名称和类型即表示成功。
 
-注册一个名为 `rvt-mcp` 的 stdio server，命令为上述 server 路径（写成绝对路径），可用客户端自己的 `mcp add` 命令、设置界面或配置文件。任何 stdio MCP 客户端都可以使用（Claude Code、Claude Desktop、Codex、Cursor、VS Code、Gemini CLI、OpenCode、Kilo 等）。已验证的各客户端步骤：[docs/mcp-client-wiring.md](docs/mcp-client-wiring.md)。
-
-### 验证是否可用
-
-1. 打开带模型的 Revit。
-2. 在 ribbon（**附加模块**（Add-Ins）选项卡 → **RvtMcp** 面板）上启动 MCP 连接。
-3. 在 MCP 客户端中 list tools，再调用 `revit_get_current_view_info`。
-
-大致应得到：
-
-```json
-{ "viewName": "Level 1", "viewType": "FloorPlan", "levelName": "Level 1", "scale": 100 }
-```
-
-失败则安装未完成 — 先修客户端配置或插件加载。
-
-### 升级
-
-关闭 Revit 和 MCP 客户端，把新版本 ZIP 解压到新文件夹，运行其中的 `install.ps1 -WhatIf`，再运行 `install.ps1` — 不要先卸载。server 路径保持不变，客户端只需重启。从 v0.6.2 或更早版本升级？请把客户端改指向上面的 `current` 路径，再用 `install.ps1 -PruneOldServers` 删除旧 server 文件夹。更多：[docs/install.md](docs/install.md#upgrade)。
-
-### 卸载
-
-在 setup ZIP 文件夹中：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -WhatIf
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -Yes
-```
-
-移除插件和 server，但保留设置、翻译、ToolBaker 数据和日志，除非加上 `-Purge`。请自行在 MCP 客户端中删除 `rvt-mcp` 条目。更多：[docs/install.md](docs/install.md#uninstall)。
+**升级：** 用同样方式运行新版本的安装程序——无需先卸载，客户端只需重启。**卸载：** 在同一文件夹运行 `uninstall.ps1 -Yes` 会移除插件和 server（除非加 `-Purge`，设置会保留）；如需同时删除客户端条目，请先运行 `install.ps1 -Uninstall -Client auto`。更多内容（包括开发者安装和 NuGet）：[docs/install.md](docs/install.md)。
 
 ---
 

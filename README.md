@@ -35,60 +35,27 @@ Agents get a **typed tool surface** for common Revit work, a C# escape hatch for
 
 ## Install
 
-Use the setup ZIP from [GitHub Releases](https://github.com/bimwright/rvt-mcp/releases/latest): a self-contained server plus the Revit 2022–2027 add-ins, no .NET SDK or source clone needed. **AI agents:** follow [AGENTS.md](AGENTS.md) and do not clone or build unless the user asked for a developer setup.
+**For users: let your AI agent do it.** You don't need to run anything yourself. Copy the line below, paste it into your AI agent (Claude Code, Codex, Cursor, …) and go get a coffee while it does the job. The agent follows [AGENTS.md](AGENTS.md) and asks you before it installs anything or edits your client config.
+
+```text
+Install rvt-mcp for me: https://github.com/bimwright/rvt-mcp
+```
+
+**Or run the installer yourself.** Close Revit, then in PowerShell:
 
 ```powershell
 $tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/releases/latest).tag_name
-$zip = "$env:TEMP\RvtMcp.Setup-$tag-win-x64.zip"
 $dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
-Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile $zip
-Expand-Archive $zip -DestinationPath $dir -Force
-
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
+Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile "$dir.zip"
+Expand-Archive "$dir.zip" -DestinationPath $dir -Force
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto
 ```
 
-Close Revit first. The installer finds each Revit 2022–2027 that has a `Revit.exe`, installs the matching add-ins and the server at `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`, verifies both and rolls back on error. MCP client configs stay untouched unless you pass `-Client` (below). Details and other install paths (developer, NuGet server only): [docs/install.md](docs/install.md).
+One run sets up both sides: the add-in for every Revit 2022–2027 on the machine, and the `rvt-mcp` entry in every MCP client it finds (each config is backed up first). Add `-WhatIf` to preview, pick clients with `-Client claude,cursor`, or leave out `-Client` and register the server yourself — it lives at `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` ([per-client steps](docs/mcp-client-wiring.md)).
 
-### Connect your MCP client
+**Check it works:** restart your AI client, open a model in Revit, start MCP from the ribbon (**Add-Ins** → **RvtMcp**) and ask the agent to call `revit_get_current_view_info`. It should return the active view's name and type.
 
-Easiest: re-run the installer with `-Client` — it detects installed clients and wires them per [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md) (backup first, minimal text edits, JSONC comments survive, custom launchers reported not replaced):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto            # every detected client
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client cursor,claude   # named clients
-```
-
-Or do it by hand: register one stdio server named `rvt-mcp` whose command is the server path above, written out as an absolute path, using the client's own `mcp add` command, settings UI or config file. Any stdio MCP client works (Claude Code, Claude Desktop, Codex, Cursor, VS Code, Gemini CLI, OpenCode, Kilo, …).
-
-### Check that it works
-
-1. Open Revit with a model.
-2. Start the MCP connection from the ribbon (**Add-Ins** tab → **RvtMcp** panel).
-3. From the MCP client, list tools, then call `revit_get_current_view_info`.
-
-You should get something like:
-
-```json
-{ "viewName": "Level 1", "viewType": "FloorPlan", "levelName": "Level 1", "scale": 100 }
-```
-
-If that fails, the install is not done yet — fix the client config or add-in load first.
-
-### Upgrade
-
-Close Revit and the MCP client, extract the new release ZIP to a new folder, then run its `install.ps1 -WhatIf` followed by `install.ps1` — do not uninstall first. The server path stays the same, so clients only need a restart. Coming from v0.6.2 or earlier? Point your clients at the `current` path above, then remove old server folders with `install.ps1 -PruneOldServers`. More: [docs/install.md](docs/install.md#upgrade).
-
-### Uninstall
-
-From the setup ZIP folder:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -WhatIf
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -Yes
-```
-
-Removes the add-ins and the server but keeps settings, translations, ToolBaker data and logs unless you add `-Purge`. Remove the `rvt-mcp` entry from your MCP clients yourself. More: [docs/install.md](docs/install.md#uninstall).
+**Upgrade:** run the new release's installer the same way — no uninstall first; clients only need a restart. **Uninstall:** `uninstall.ps1 -Yes` in the same folder removes the add-ins and the server (settings stay unless you add `-Purge`); run `install.ps1 -Uninstall -Client auto` first to also remove the client entries. More, including developer and NuGet installs: [docs/install.md](docs/install.md).
 
 ---
 
