@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -28,6 +29,74 @@ namespace RvtMcp.Plugin.Handlers
             /// Header unreadable - sync state cannot be proven, so the file is
             /// left untouched and reported rather than moved on a guess.
             StopUnverifiable
+        }
+
+        public enum InputDecision
+        {
+            /// Header classified and any worksets argument is consistent - safe to proceed.
+            Proceed,
+            /// Header unreadable: worksharing is unknown and "unknown" is not
+            /// "not workshared" - never open an unclassified file (rule §2.1).
+            RefuseUnclassified,
+            /// worksets was something other than all|none|lastViewed.
+            RefuseBadWorksets,
+            /// worksets was set on a file that is not workshared.
+            RefuseWorksetsOnPlainFile
+        }
+
+        /// <summary>
+        /// Whether the input file may be opened at all, and whether a worksets
+        /// argument is legal for it. The handler routes the Extract-failure
+        /// path through this decision too, so refusing an unclassified file is
+        /// part of the tested contract rather than a lone catch block.
+        /// </summary>
+        public static InputDecision DecideInput(bool headerRead, bool isWorkshared, string worksets)
+        {
+            if (!headerRead) return InputDecision.RefuseUnclassified;
+            if (string.IsNullOrWhiteSpace(worksets)) return InputDecision.Proceed;
+            var w = worksets.Trim().ToLowerInvariant();
+            if (w != "all" && w != "none" && w != "lastviewed") return InputDecision.RefuseBadWorksets;
+            return isWorkshared ? InputDecision.Proceed : InputDecision.RefuseWorksetsOnPlainFile;
+        }
+
+        public enum LocalDirDecision
+        {
+            /// A ProjectPath was configured - create locals there.
+            UseConfigured,
+            /// No ProjectPath in this Revit's Revit.ini - stop and report. There
+            /// is deliberately no fallback folder: silently picking a directory
+            /// the user never chose could move or create locals in the wrong place.
+            StopMissing
+        }
+
+        /// <summary>Rule §4.2: the configured ProjectPath, or nothing.</summary>
+        public static LocalDirDecision DecideLocalDir(string configuredProjectPath)
+        {
+            return string.IsNullOrWhiteSpace(configuredProjectPath)
+                ? LocalDirDecision.StopMissing
+                : LocalDirDecision.UseConfigured;
+        }
+
+        /// <summary>
+        /// First usable "ProjectPath=" entry in a Revit.ini's lines, or null.
+        /// Accepts optional quoting and the ";"-separated form Revit writes.
+        /// </summary>
+        public static string ParseProjectPath(IEnumerable<string> iniLines)
+        {
+            if (iniLines == null) return null;
+            foreach (var rawLine in iniLines)
+            {
+                var t = (rawLine ?? "").Trim();
+                if (!t.StartsWith("ProjectPath", StringComparison.OrdinalIgnoreCase)) continue;
+                var eq = t.IndexOf('=');
+                if (eq < 0) continue;
+                var dir = t.Substring(eq + 1);
+                var semi = dir.IndexOf(';');
+                if (semi >= 0) dir = dir.Substring(0, semi);
+                dir = dir.Trim().Trim('"').Trim();
+                if (!string.IsNullOrWhiteSpace(dir)) return dir;
+            }
+            return null;
         }
 
         /// <summary>
