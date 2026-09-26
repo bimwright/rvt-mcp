@@ -48,14 +48,24 @@ $tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/release
 $dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
 Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile "$dir.zip"
 Expand-Archive "$dir.zip" -DestinationPath $dir -Force
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-1 回の実行で両側をセットアップします：マシン上のすべての Revit 2022–2027 へのアドインと、検出したすべての MCP クライアントへの `rvt-mcp` エントリです（各設定は先にバックアップされます）。`-WhatIf` でプレビュー、`-Client claude,cursor` でクライアントを指定、または `-Client` を外してサーバを自分で登録できます。サーバの場所は `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` です（[クライアント別手順](docs/mcp-client-wiring.md)）。
+1 回の実行で両側をセットアップします：マシン上のすべての Revit 2022–2027 へのアドインと、検出したすべての MCP クライアントへの `rvt-mcp` エントリです（各設定は先にバックアップされます）。`-WhatIf` でプレビュー、`-Client claude,cursor` で指定したクライアントだけを接続、`-Client none` でクライアント設定に触れずにサーバを自分で登録できます。サーバの場所は `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` です（[クライアント別手順](docs/mcp-client-wiring.md)）。
 
 **動作確認：** AI クライアントを再起動し、Revit でモデルを開き、リボン（**アドイン**（Add-Ins）→ **RvtMcp**）で MCP を開始して、エージェントに `revit_get_current_view_info` を呼ばせます。アクティブビューの名前と種類が返れば成功です。
 
 **更新：** 新しいリリースのインストーラを同じ手順で実行します。先にアンインストールは不要で、クライアントは再起動だけで済みます。**アンインストール：** 同じフォルダで `uninstall.ps1 -Yes` を実行するとアドインとサーバが削除されます（`-Purge` を付けない限り設定は残ります）。クライアントのエントリも消すには、先に `install.ps1 -Uninstall -Client auto` を実行してください。開発者向け・NuGet を含む詳細：[docs/install.md](docs/install.md)。
+
+---
+
+## 動画
+
+rvt-mcp を使ったコミュニティ動画です。動画内のインストール手順はこの README より古い場合があります。上記の手順に従ってください。
+
+- [Connecting ChatGPT Astra to Revit | Testing AI Changes in a Real Project](https://www.youtube.com/watch?v=J-i057B-3dI) — Revit Mentor
+- [Exploring Revit + GPT 6 Astra](https://www.youtube.com/watch?v=2_W1uLn6s_I) — BIM Pure
+- [GPT-6 Astra Built a Revit House in 14 Minutes](https://www.youtube.com/watch?v=pkFnSQ9Bapg) — Archi Vlogs
 
 ---
 

@@ -12,12 +12,12 @@
     - a default %LOCALAPPDATA%\RvtMcp\rvtmcp.config.json with toolsets=["all"]
       (skipped when the file already sets toolsets)
 
-  Client configs stay untouched unless -Client asks for wiring: it then
-  applies the procedures in docs/mcp-client-wiring.md - minimal text edits
-  (JSONC comments survive), a <config>.bak backup first, client-native
-  verification where available, custom launchers and legacy bimwright-rvt*
-  entries reported but never replaced. Updating keeps the server path, so
-  wired clients only need a restart.
+  It then wires every detected MCP client (-Client <names> limits this,
+  -Client none skips it) with the procedures in docs/mcp-client-wiring.md -
+  minimal text edits (JSONC comments survive), a <config>.bak backup first,
+  client-native verification where available, custom launchers and legacy
+  bimwright-rvt* entries reported but never replaced. Updating keeps the
+  server path, so wired clients only need a restart.
 
   Every replacement is recorded and rolled back on error. Other add-in
   manifests carrying RvtMcp's AddInId (Bimwright-era copies) are removed; a
@@ -38,11 +38,12 @@
   stay; use uninstall-all.ps1 for a full removal.
 
 .PARAMETER Client
-  Wire MCP clients after installing: a comma list of client names
-  (claude, codex, cursor, vscode, ...), 'auto'/'all' for every detected
-  client, or 'none' (default) to leave client configs untouched. Every
-  edit is previewed under -WhatIf and backed up to <config>.bak first.
-  With -Uninstall, removes the rvt-mcp entry instead.
+  MCP clients to wire after installing. Omitted: every detected client
+  (same as 'auto'/'all'). A comma list of client names (claude, codex,
+  cursor, vscode, ...) wires only those; 'none' leaves client configs
+  untouched. Every edit is previewed under -WhatIf and backed up to
+  <config>.bak first. With -Uninstall, removes the rvt-mcp entry from the
+  named clients; without -Client, uninstall leaves client configs alone.
 
 .PARAMETER WireClient
   Deprecated alias of -Client; merged into the client list if passed.
@@ -54,9 +55,9 @@
 
 .EXAMPLE
   pwsh .\install.ps1 -WhatIf
-  pwsh .\install.ps1
-  pwsh .\install.ps1 -Client auto           # wire every detected MCP client
-  pwsh .\install.ps1 -Client cursor,claude  # wire specific clients
+  pwsh .\install.ps1                        # add-ins, server, every detected MCP client
+  pwsh .\install.ps1 -Client cursor,claude  # wire specific clients only
+  pwsh .\install.ps1 -Client none           # leave client configs untouched
   pwsh .\install.ps1 -Years 2024
   pwsh .\install.ps1 -Uninstall -Client cursor
 #>
@@ -70,7 +71,7 @@ param(
         'cursor', 'cline', 'gemini', 'antigravity', 'devin', 'lmstudio',
         'kiro', 'qwen', 'windsurf', 'opencode', 'kilo', 'vscode', 'kun',
         'zed', 'cherry-studio')]
-    [string[]]$Client = @('none'),
+    [string[]]$Client = @(),
     [ValidateSet('opencode', 'codex', 'kilo')]
     [string]$WireClient,
     [string]$ServerInstallRoot,
@@ -664,7 +665,18 @@ function ConvertFrom-JsoncText([string]$Text) {
         }
         [void]$out.Append($c); $i++
     }
-    return ($out.ToString() | ConvertFrom-Json)
+    $json = $out.ToString()
+    try { return ($json | ConvertFrom-Json) }
+    catch {
+        # Keys that differ only in case (Claude Code's per-project Windows
+        # paths) are valid JSON that ConvertFrom-Json rejects; parse
+        # case-sensitively before calling the file broken.
+        if ($PSVersionTable.PSVersion.Major -ge 6) { return ($json | ConvertFrom-Json -AsHashtable) }
+        Add-Type -AssemblyName System.Web.Extensions
+        $serializer = New-Object System.Web.Script.Serialization.JavaScriptSerializer
+        $serializer.MaxJsonLength = [int]::MaxValue
+        return $serializer.DeserializeObject($json)
+    }
 }
 
 # Back up, write, and parse-verify a config edit; a failed parse restores
@@ -1016,6 +1028,10 @@ if ($WireClient) {
     Write-Warning 'install.ps1 -WireClient is deprecated; merged into -Client.'
     $Client = @($Client | Where-Object { $_ -ne 'none' }) + @($WireClient)
 }
+# No -Client: an install wires every detected client; an uninstall leaves
+# client configs alone (the server stays, so their entries still work).
+$clientRequested = @($Client).Count -gt 0
+if (-not $clientRequested -and -not $Uninstall) { $Client = @('auto') }
 
 $handled = @()
 $skipped = @()
@@ -1145,7 +1161,7 @@ try {
         if (@($Client | Where-Object { $_ -ne 'none' }).Count) {
             if ($serverCommand) {
                 $wiredClients = @(Invoke-McpClientWiring -Clients $Client -Exe $serverCommand -Mode Add)
-            } else {
+            } elseif ($clientRequested) {
                 $wiredClients = @('-Client requested but this package has no server to point at')
             }
         } elseif (-not $WhatIfPreference) {
@@ -1221,4 +1237,4 @@ if ($Uninstall -and -not @($Client | Where-Object { $_ -ne 'none' }).Count) {
 }
 if ($inUse.Count) { Write-Host ("In use  : {0} - restart MCP clients; removed at next install" -f ($inUse -join ', ')) }
 if ($legacyServers.Count) { Write-Host ("Legacy  : {0} - repoint clients to the Server path, then run install.ps1 -PruneOldServers" -f (($legacyServers | ForEach-Object { $_.Name }) -join ', ')) }
-if (-not $Uninstall) { Write-Host ("Next    : connect MCP clients - see {0}" -f $agentsGuide) }
+if (-not $Uninstall) { Write-Host ("Next    : restart wired MCP clients to load rvt-mcp; manual wiring: {0}" -f $agentsGuide) }

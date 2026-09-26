@@ -83,7 +83,7 @@ function New-SetupFixture([string]$Parent = $testRoot) {
 }
 function Invoke-FixtureSetup {
     [CmdletBinding(SupportsShouldProcess=$true)]
-    param($Fixture, [string[]]$Client='none', [string]$WireClient, [switch]$PruneOldServers, [switch]$Uninstall, [int[]]$Years=@(2026,2027))
+    param($Fixture, [string[]]$Client=@(), [string]$WireClient, [switch]$PruneOldServers, [switch]$Uninstall, [int[]]$Years=@(2026,2027))
     # Only OS boundaries are redirected. Main control flow, ZIP extraction,
     # directory replacement and rollback are production code.
     function Get-AddinsRoot([int]$year) { Join-Path $Fixture.Root "addins/$year" }
@@ -570,16 +570,32 @@ try {
         Assert ($out2 -match 'claude-desktop: not detected') 'not-detected report missing on a clean machine'
         Assert (-not (Test-Path "$sandboxAppData\Claude\claude_desktop_config.json")) 'created a config for an undetected client'
     }
-    Test 'Client wiring: none default leaves configs untouched even when present' {
-        $fixture = New-SetupFixture
+    Test 'Client wiring: default wires detected clients; -Client none and a plain uninstall leave configs alone' {
         Remove-Item -LiteralPath "$sandboxUserProfile\.cursor" -Recurse -Force -ErrorAction SilentlyContinue
         New-Item -ItemType Directory -Path "$sandboxUserProfile\.cursor" -Force | Out-Null
         $cursor = "$sandboxUserProfile\.cursor\mcp.json"
         Set-Content -LiteralPath $cursor -Value '{ "mcpServers": {} }'
-        $output = Invoke-FixtureSetup $fixture 6>&1 | Out-String -Width 4096
-        Assert ((Get-Content -LiteralPath $cursor -Raw).Trim() -eq '{ "mcpServers": {} }') 'default install touched client config'
+        $output = Invoke-FixtureSetup (New-SetupFixture) -Client 'none' 6>&1 | Out-String -Width 4096
+        Assert ((Get-Content -LiteralPath $cursor -Raw).Trim() -eq '{ "mcpServers": {} }') '-Client none touched client config'
         Assert (-not (Test-Path -LiteralPath "$cursor.bak")) 'backup created on no-op'
         Assert ($output -match 'wire with -Client') 'detection hint missing'
+        $fixture = New-SetupFixture
+        $output = Invoke-FixtureSetup $fixture 6>&1 | Out-String -Width 4096
+        $c = Get-Content -LiteralPath $cursor -Raw | ConvertFrom-Json
+        Assert ($c.mcpServers.'rvt-mcp'.command -match 'server[\\/]+current[\\/]+rvt-mcp\.exe$') "default install did not wire cursor: $output"
+        Invoke-FixtureSetup $fixture -Uninstall 6>&1 | Out-Null
+        Assert ((Get-Content -LiteralPath $cursor -Raw | ConvertFrom-Json).mcpServers.'rvt-mcp') 'plain uninstall removed the client entry'
+    }
+    Test 'Client wiring: keys that differ only in case do not make a config look broken' {
+        # Claude Code keeps per-project keys such as C:/a/Desktop and C:/a/desktop.
+        New-Item -ItemType Directory -Path "$sandboxUserProfile\.cursor" -Force | Out-Null
+        $cursor = "$sandboxUserProfile\.cursor\mcp.json"
+        Set-Content -LiteralPath $cursor -Value '{ "projects": { "C:/a/Desktop": {}, "C:/a/desktop": {} }, "mcpServers": {} }'
+        $res = Invoke-McpClientWiring -Clients 'cursor' -Exe 'C:\x\rvt-mcp.exe' -Mode Add 3>&1 | Out-String
+        Assert ($res -match 'added') "expected added, got: $res"
+        $raw = Get-Content -LiteralPath $cursor -Raw
+        Assert ($raw.Contains('"rvt-mcp"')) 'entry not written'
+        Assert ($raw.Contains('C:/a/Desktop') -and $raw.Contains('C:/a/desktop')) 'case-variant key lost'
     }
     Test 'Client wiring: claude repoints an existing versioned user entry that mcp add would refuse' {
         $fixture = New-SetupFixture

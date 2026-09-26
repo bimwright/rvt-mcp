@@ -48,14 +48,24 @@ $tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/release
 $dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
 Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile "$dir.zip"
 Expand-Archive "$dir.zip" -DestinationPath $dir -Force
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-一次运行即可配置两端：为本机所有 Revit 2022–2027 安装插件，并在检测到的每个 MCP 客户端中写入 `rvt-mcp` 条目（每个配置都会先备份）。加 `-WhatIf` 可预览，用 `-Client claude,cursor` 指定客户端，或去掉 `-Client` 自己注册 server——路径为 `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`（[各客户端步骤](docs/mcp-client-wiring.md)）。
+一次运行即可配置两端：为本机所有 Revit 2022–2027 安装插件，并在检测到的每个 MCP 客户端中写入 `rvt-mcp` 条目（每个配置都会先备份）。加 `-WhatIf` 可预览，用 `-Client claude,cursor` 只连接这些客户端，或用 `-Client none` 不改动客户端配置、自己注册 server——路径为 `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`（[各客户端步骤](docs/mcp-client-wiring.md)）。
 
 **验证：** 重启 AI 客户端，在 Revit 中打开模型，在 ribbon（**附加模块**（Add-Ins）→ **RvtMcp**）上启动 MCP，然后让 agent 调用 `revit_get_current_view_info`。返回当前视图的名称和类型即表示成功。
 
 **升级：** 用同样方式运行新版本的安装程序——无需先卸载，客户端只需重启。**卸载：** 在同一文件夹运行 `uninstall.ps1 -Yes` 会移除插件和 server（除非加 `-Purge`，设置会保留）；如需同时删除客户端条目，请先运行 `install.ps1 -Uninstall -Client auto`。更多内容（包括开发者安装和 NuGet）：[docs/install.md](docs/install.md)。
+
+---
+
+## 视频
+
+社区制作的 rvt-mcp 使用视频。视频中的安装步骤可能比本 README 旧，请以上面的步骤为准。
+
+- [Connecting ChatGPT Astra to Revit | Testing AI Changes in a Real Project](https://www.youtube.com/watch?v=J-i057B-3dI) — Revit Mentor
+- [Exploring Revit + GPT 6 Astra](https://www.youtube.com/watch?v=2_W1uLn6s_I) — BIM Pure
+- [GPT-6 Astra Built a Revit House in 14 Minutes](https://www.youtube.com/watch?v=pkFnSQ9Bapg) — Archi Vlogs
 
 ---
 

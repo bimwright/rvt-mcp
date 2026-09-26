@@ -1,9 +1,9 @@
 # Wiring rvt-mcp into MCP clients
 
 Procedure for connecting `rvt-mcp` to a user's MCP client. Since v0.8.1 the
-installer implements this same procedure via `install.ps1 -Client <names>`
-(`-Client auto` wires every detected client; `-WhatIf` previews; `-Uninstall
--Client <names>` unwires) — this document remains the reference for the
+installer implements this same procedure: every run wires each detected client
+(`-Client <names>` limits it; `-Client none` skips it; `-WhatIf` previews;
+`-Uninstall -Client <names>` unwires) — this document remains the reference for the
 manual path, for clients the installer does not know, and for understanding
 what `-Client` does under the hood. Last verified on a live machine:
 2026-09-25.

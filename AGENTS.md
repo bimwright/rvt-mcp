@@ -9,7 +9,7 @@ This file is machine-readable install instructions for AI coding agents (Claude 
 
 - Install the client setup ZIP from GitHub Releases (`RvtMcp.Setup-*-win-x64.zip`).
 - Deploy the bundled add-in into `%APPDATA%\Autodesk\Revit\Addins\<year>\` for every installed Revit year, and the bundled server to a fixed per-user path.
-- Connect the MCP client(s) the user asks for, with `install.ps1 -Client <names>` or each client's own method. The installer leaves client configs untouched unless `-Client` is passed.
+- Connect MCP clients: the installer wires every detected client by default (`-Client <names>` limits it, `-Client none` skips it). Your own client — the one this session runs in — must end up wired.
 - Verify the handshake and roll back on failure.
 
 **Current status — 2026-09-27:** latest published release is **v0.8.1**. Use `/repos/bimwright/rvt-mcp/releases/latest`. Do not install `v0.5.0` or earlier tags.
@@ -30,8 +30,8 @@ This file is machine-readable install instructions for AI coding agents (Claude 
 1. **Preview every change.** Use `-WhatIf`, `--dry-run`, or a printed diff before any write. Tell the user the exact file path and the exact change.
 2. **Install from the latest GitHub Release ZIP only** for a Revit client machine. Do not fall back to `dotnet tool install`, v0.5.0 or earlier tags, source build, or repo clone unless the user explicitly asks for developer installation. If they explicitly asked for the NuGet global tool: `RvtMcp.Server` 0.6.1+, never `Bimwright.Rvt.Server`, and they still need the ZIP for plugins.
 3. **Two explicit approval gates — do not collapse without the user saying so:**
-   - Before running `install.ps1` without `-WhatIf`.
-   - Before editing any MCP client config (show the exact command or diff first).
+   - Before running `install.ps1` without `-WhatIf`. The `-WhatIf` preview lists every client config the run will edit (its `Client :` lines) — show those to the user as part of this approval.
+   - Before editing any MCP client config by hand (show the exact command or diff first).
 4. **Never bypass the Revit undo stack at runtime.** rvt-mcp's design guarantee is that every edit is reviewable and reversible. Don't advise users to work around transaction wrapping or disable `batch_execute` safety.
 5. **On any failure, verify rollback.** The installer restores the previous add-ins and server on any caught error and reports retained `.rvtmcp-rollback-*` backups if recovery fails. Client-config edits made by `-Client` are backed up to `<config>.bak` and verified by reparse — a failed write restores the backup on the spot. For hand edits, back up the client config yourself first. Do not use full uninstall as an upgrade rollback: upgrades replace add-ins and server in place. Personal data is only removed with `-Purge`.
 6. **Verify before claiming done.** After connecting a client, run `tools/list` in it and confirm the single `rvt-mcp` entry responds, then call `revit_get_current_view_info` with no args.
@@ -87,7 +87,7 @@ The installer:
 - seeds `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json` with `"toolsets": ["all"]` so a fresh install exposes the full tool surface — a `toolsets` key the user already set is kept, and the file stays user data (uninstall keeps it, `-Purge` removes it);
 - verifies the installed add-ins against the package.
 
-Any error restores the previous add-ins and server. A machine-wide copy under `%ProgramData%` stops the install before anything changes (removing it needs admin rights). Client configs stay untouched unless `-Client` is passed — that is Step 3.
+Any error restores the previous add-ins and server. A machine-wide copy under `%ProgramData%` stops the install before anything changes (removing it needs admin rights). The same run then wires every detected MCP client — that is Step 3.
 
 Read the summary:
 
@@ -97,21 +97,22 @@ Read the summary:
 
 **Updates.** Close Revit, then run the new ZIP's installer the same way, without uninstalling first. The server path stays the same, so MCP clients only need a restart.
 
-`-Client <names>` wires MCP clients as part of the install — see Step 3. `-WireClient` is a deprecated alias.
+`-Client <names>` wires only the named clients and `-Client none` leaves client configs alone — see Step 3. `-WireClient` is a deprecated alias.
 
 ---
 
 ## Step 3 — Connect the MCP client
 
-Preferred path: re-run the installer with `-Client`. It applies the wiring guide itself — detection, `.bak` backup, minimal text edits (JSONC comments survive), repointing old versioned paths, reporting custom launchers and legacy `bimwright-rvt*` entries, and never duplicating an existing `rvt-mcp` entry:
+The Step 2 run already did this: by default the installer wires every detected client with the wiring guide — detection, `.bak` backup, minimal text edits (JSONC comments survive), repointing old versioned paths, reporting custom launchers and legacy `bimwright-rvt*` entries, and never duplicating an existing `rvt-mcp` entry. To limit or skip it:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto            # every detected client
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client cursor,claude   # named clients
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto -WhatIf    # preview only
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client cursor,claude   # only these clients
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client none            # leave client configs alone
 ```
 
 `Client  :` lines in the summary report what happened per client (wired / already / repointed / custom launcher kept / not detected). Cherry Studio has no safe file path — the installer prints a `cherrystudio://` deeplink for the user to open instead.
+
+**Your own client comes first.** The client this session runs in is the one the user is talking to, so it must end up with the `rvt-mcp` entry. Find its `Client :` line in the summary. If it reads `not detected`, `skipped`, `custom` or is missing, wire it yourself now (`-Client <your client>`, or your client's own `mcp add`) before you report anything. Its tools only appear after a restart, which ends this session — so make that the last step: tell the user to restart you and verify `tools/list` in the new session.
 
 Manual path (clients the installer does not know, or when the user wants hand control): use that client's own `mcp add` command, settings UI or config file. **Verified per-client procedures (paths, config keys, native commands, gotchas): [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md).** The contract:
 
@@ -137,7 +138,7 @@ JSON-style clients usually take:
 
 **Rules:**
 
-- **Which clients:** ask the user; do not assume all. Prefer the client's own CLI over hand-editing, and show the exact command or diff before applying it (gate 2). Register the server where every project sees it — for example the user scope, not one project folder — unless the user asks otherwise.
+- **Which clients:** by default the installer wires every client it detects; if the user wants only some, pass `-Client <names>` (or `-Client none`). For hand wiring, prefer the client's own CLI over editing files, and show the exact command or diff before applying it (gate 2). Register the server where every project sees it — for example the user scope, not one project folder — unless the user asks otherwise.
 - **Existing `rvt-mcp` entry:** change only that entry. Keep its args and env and update only the command. If it runs a custom launcher or wrapper, ask before changing it.
 - **Old paths and entries:**
   - An entry pointing at `...\RvtMcp\rvt\server\<version>\rvt-mcp.exe` (older installers) should be repointed to the `current` path. Afterwards `install.ps1 -PruneOldServers` removes the old copies.

@@ -48,14 +48,24 @@ $tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/release
 $dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
 Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile "$dir.zip"
 Expand-Archive "$dir.zip" -DestinationPath $dir -Force
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client auto
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-One run sets up both sides: the add-in for every Revit 2022–2027 on the machine, and the `rvt-mcp` entry in every MCP client it finds (each config is backed up first). Add `-WhatIf` to preview, pick clients with `-Client claude,cursor`, or leave out `-Client` and register the server yourself — it lives at `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` ([per-client steps](docs/mcp-client-wiring.md)).
+One run sets up both sides: the add-in for every Revit 2022–2027 on the machine, and the `rvt-mcp` entry in every MCP client it finds (each config is backed up first). Add `-WhatIf` to preview, `-Client claude,cursor` to wire only those clients, or `-Client none` to skip client configs and register the server yourself — it lives at `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` ([per-client steps](docs/mcp-client-wiring.md)).
 
 **Check it works:** restart your AI client, open a model in Revit, start MCP from the ribbon (**Add-Ins** → **RvtMcp**) and ask the agent to call `revit_get_current_view_info`. It should return the active view's name and type.
 
 **Upgrade:** run the new release's installer the same way — no uninstall first; clients only need a restart. **Uninstall:** `uninstall.ps1 -Yes` in the same folder removes the add-ins and the server (settings stay unless you add `-Purge`); run `install.ps1 -Uninstall -Client auto` first to also remove the client entries. More, including developer and NuGet installs: [docs/install.md](docs/install.md).
+
+---
+
+## Videos
+
+Community videos of rvt-mcp at work. Install steps shown in a video can be older than this README — follow the steps above.
+
+- [Connecting ChatGPT Astra to Revit | Testing AI Changes in a Real Project](https://www.youtube.com/watch?v=J-i057B-3dI) — Revit Mentor
+- [Exploring Revit + GPT 6 Astra](https://www.youtube.com/watch?v=2_W1uLn6s_I) — BIM Pure
+- [GPT-6 Astra Built a Revit House in 14 Minutes](https://www.youtube.com/watch?v=pkFnSQ9Bapg) — Archi Vlogs
 
 ---
 
