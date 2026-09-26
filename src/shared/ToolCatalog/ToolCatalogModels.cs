@@ -337,6 +337,8 @@ namespace RvtMcp.ToolCatalog
         private static ToolCatalogStatus _status = ToolCatalogStatus.NotConnected;
         private static string _error;
 
+        public static event EventHandler Changed;
+
         public static ToolCatalogStatus Status
         {
             get { lock (Gate) return _status; }
@@ -360,6 +362,7 @@ namespace RvtMcp.ToolCatalog
                 _error = null;
                 _status = ToolCatalogStatus.ConnectedNoCatalog;
             }
+            NotifyChanged();
         }
 
         public static ToolCatalogValidationResult AcceptJson(string json)
@@ -380,6 +383,7 @@ namespace RvtMcp.ToolCatalog
                     _status = ToolCatalogStatus.Invalid;
                 }
             }
+            NotifyChanged();
             return result;
         }
 
@@ -390,6 +394,17 @@ namespace RvtMcp.ToolCatalog
                 _current = null;
                 _error = null;
                 _status = ToolCatalogStatus.NotConnected;
+            }
+            NotifyChanged();
+        }
+
+        private static void NotifyChanged()
+        {
+            var handler = Changed;
+            if (handler == null) return;
+            foreach (EventHandler subscriber in handler.GetInvocationList())
+            {
+                try { subscriber(null, EventArgs.Empty); } catch { }
             }
         }
     }

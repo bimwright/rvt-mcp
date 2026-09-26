@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using RvtMcp.Plugin.Localization;
 
@@ -16,6 +18,7 @@ namespace RvtMcp.Plugin.Views.Settings
     public sealed class SettingsWindow : Window
     {
         private readonly SettingsViewModel _viewModel;
+        private readonly ToolsViewModel _toolsViewModel;
         private readonly TabControl _tabs;
         private readonly Dictionary<SettingsTab, TabItem> _tabItems = new Dictionary<SettingsTab, TabItem>();
         private readonly List<Action> _dynamicUpdates = new List<Action>();
@@ -49,11 +52,16 @@ namespace RvtMcp.Plugin.Views.Settings
         private TextBlock _aboutDescription;
         private TextBlock _aboutHint;
         private Button _copyPort;
+        private DataGrid _toolsGrid;
+        private TextBlock _toolsStatus;
+        private TextBlock _toolsCounts;
+        private Button _toolsRefresh;
 
         public SettingsWindow(App app, SettingsTab initialTab = SettingsTab.General)
         {
             if (app == null) throw new ArgumentNullException(nameof(app));
             _viewModel = new SettingsViewModel(app);
+            _toolsViewModel = new ToolsViewModel(app.BakedToolRegistry, Assembly.GetExecutingAssembly());
             DataContext = _viewModel;
             Title = "rvt-mcp · Settings";
             Width = 760;
@@ -72,14 +80,7 @@ namespace RvtMcp.Plugin.Views.Settings
             _tabs = new TabControl { TabStripPlacement = Dock.Top };
             AddTab(SettingsTab.General, "General", BuildGeneral());
             AddTab(SettingsTab.Toast, "Toast", BuildToast());
-            // Tools is deliberately a read-only placeholder until Task 7 supplies the
-            // catalog view model. Keeping the tab in the shell preserves the contract.
-            AddTab(SettingsTab.Tools, "Tools", new TextBlock
-            {
-                Text = "Tool catalog will appear after the MCP server connects.",
-                Margin = new Thickness(14),
-                TextWrapping = TextWrapping.Wrap
-            });
+            AddTab(SettingsTab.Tools, "Tools", BuildTools());
             AddTab(SettingsTab.About, "About", BuildAbout());
             root.Children.Add(_tabs);
             Content = root;
@@ -90,6 +91,7 @@ namespace RvtMcp.Plugin.Views.Settings
             PreviewKeyDown += OnPreviewKeyDown;
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
             _viewModel.LanguageChanged += OnViewModelLanguageChanged;
+            _toolsViewModel.PropertyChanged += OnToolsPropertyChanged;
             SelectTab(initialTab);
             UpdateDynamicText();
             UpdateLocalizedChrome();
@@ -219,6 +221,51 @@ namespace RvtMcp.Plugin.Views.Settings
             return panel;
         }
 
+        private UIElement BuildTools()
+        {
+            var panel = new DockPanel { Margin = new Thickness(14) };
+            var toolbar = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
+            var statusStack = new StackPanel { Orientation = Orientation.Vertical };
+            _toolsCounts = new TextBlock { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
+            _toolsStatus = new TextBlock { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
+            statusStack.Children.Add(_toolsCounts);
+            statusStack.Children.Add(_toolsStatus);
+            toolbar.Children.Add(statusStack);
+            _toolsRefresh = new Button { Content = "Refresh", Margin = new Thickness(12, 0, 0, 0), Padding = new Thickness(10, 3, 10, 3), TabIndex = 7 };
+            AutomationProperties.SetName(_toolsRefresh, "Refresh tool catalog");
+            _toolsRefresh.Click += (_, __) => _toolsViewModel.Refresh();
+            DockPanel.SetDock(_toolsRefresh, Dock.Right);
+            toolbar.Children.Add(_toolsRefresh);
+            DockPanel.SetDock(toolbar, Dock.Top);
+            panel.Children.Add(toolbar);
+
+            _toolsGrid = new DataGrid
+            {
+                AutoGenerateColumns = false,
+                IsReadOnly = true,
+                CanUserAddRows = false,
+                CanUserDeleteRows = false,
+                CanUserReorderColumns = false,
+                CanUserResizeRows = false,
+                HeadersVisibility = DataGridHeadersVisibility.Column,
+                GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
+                ItemsSource = _toolsViewModel.Rows,
+                SelectionMode = DataGridSelectionMode.Single,
+                SelectionUnit = DataGridSelectionUnit.FullRow,
+                MinColumnWidth = 50,
+            };
+            AutomationProperties.SetName(_toolsGrid, "Read-only MCP tool catalog");
+            AutomationProperties.SetHelpText(_toolsGrid, "Built-in and permitted baked tools exposed by the connected server.");
+            _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "No.", Binding = new Binding(nameof(ToolRow.No)), Width = 52 });
+            _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "Tool Name", Binding = new Binding(nameof(ToolRow.Name)), Width = 220 });
+            _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "Description", Binding = new Binding(nameof(ToolRow.DescriptionDisplay)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+            _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "Source", Binding = new Binding(nameof(ToolRow.Source)), Width = 90 });
+            _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "Time-out", Binding = new Binding(nameof(ToolRow.TimeoutDisplay)), Width = 120 });
+            panel.Children.Add(_toolsGrid);
+            UpdateToolsText();
+            return panel;
+        }
+
         private UIElement BuildAbout()
         {
             var panel = new StackPanel { Margin = new Thickness(14) };
@@ -313,6 +360,7 @@ namespace RvtMcp.Plugin.Views.Settings
             if (_persistSendCodeBodies != null) _persistSendCodeBodies.IsChecked = _viewModel.PersistSendCodeBodies;
             if (_journalHours != null) _journalHours.SelectedItem = _viewModel.PersistSendCodeBodiesHours;
             if (_status != null && !string.IsNullOrWhiteSpace(_viewModel.ImmediateWarning)) _status.Text = _viewModel.ImmediateWarning;
+            UpdateToolsText();
         }
 
         private void UpdateLocalizedChrome()
@@ -341,6 +389,15 @@ namespace RvtMcp.Plugin.Views.Settings
             if (_toastHelp != null) _toastHelp.Text = Text("settings.toast.help", "Toast On/Off is immediate. Apply saves the duration and privacy settings.");
             if (_aboutDescription != null) _aboutDescription.Text = Text("settings.about.description", "MCP connectivity and activity tools for Autodesk Revit.");
             if (_aboutHint != null) _aboutHint.Text = Text("settings.about.hint", "Version and license information are available in this tab.");
+            if (_toolsRefresh != null) _toolsRefresh.Content = Text("settings.tools.refresh", "Refresh");
+            if (_toolsGrid != null && _toolsGrid.Columns.Count >= 5)
+            {
+                _toolsGrid.Columns[0].Header = Text("settings.tools.no", "No.");
+                _toolsGrid.Columns[1].Header = Text("settings.tools.name", "Tool Name");
+                _toolsGrid.Columns[2].Header = Text("settings.tools.description", "Description");
+                _toolsGrid.Columns[3].Header = Text("settings.tools.source", "Source");
+                _toolsGrid.Columns[4].Header = Text("settings.tools.timeout", "Time-out");
+            }
             if (_apply != null) _apply.Content = Text("settings.apply", "Apply");
             if (_cancel != null) _cancel.Content = Text("settings.cancel", "Cancel");
             if (_close != null) _close.Content = Text("settings.close", "Close");
@@ -361,6 +418,26 @@ namespace RvtMcp.Plugin.Views.Settings
         {
             UpdateDynamicText();
             UpdateLocalizedChrome();
+        }
+
+        private void OnToolsPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            UpdateToolsText();
+        }
+
+        private void UpdateToolsText()
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(UpdateToolsText));
+                return;
+            }
+            if (_toolsStatus == null || _toolsViewModel == null) return;
+            if (_toolsCounts != null) _toolsCounts.Text = _toolsViewModel.CountsText;
+            _toolsStatus.Text = _toolsViewModel.StatusText;
+            _toolsStatus.ToolTip = _toolsViewModel.StatusHelpText;
+            if (_toolsViewModel.StatusHelpText != null)
+                AutomationProperties.SetHelpText(_toolsStatus, _toolsViewModel.StatusHelpText);
         }
 
         private void OnClosing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -384,8 +461,10 @@ namespace RvtMcp.Plugin.Views.Settings
         {
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _viewModel.LanguageChanged -= OnViewModelLanguageChanged;
+            _toolsViewModel.PropertyChanged -= OnToolsPropertyChanged;
             PreviewKeyDown -= OnPreviewKeyDown;
             _viewModel.Dispose();
+            _toolsViewModel.Dispose();
         }
     }
 }

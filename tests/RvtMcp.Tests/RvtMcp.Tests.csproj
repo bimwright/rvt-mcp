@@ -65,6 +65,7 @@
     <Compile Include="..\..\src\shared\Localization\LocalizationReport.cs" Link="Shared\Localization\LocalizationReport.cs" />
     <Compile Include="..\..\src\shared\Localization\OverrideFolderWatcher.cs" Link="Shared\Localization\OverrideFolderWatcher.cs" />
     <Compile Include="..\..\src\shared\Localization\EmbeddedCatalog.cs" Link="Shared\Localization\EmbeddedCatalog.cs" />
+    <Compile Include="..\..\src\shared\Localization\ToolSummaryCatalog.cs" Link="Shared\Localization\ToolSummaryCatalog.cs" />
     <Compile Include="..\..\src\shared\Localization\LocalizationHost.cs" Link="Shared\Localization\LocalizationHost.cs" />
   </ItemGroup>
 
@@ -74,6 +75,9 @@
          into satellite *.resources.dll assemblies instead of the main manifest. -->
     <EmbeddedResource Include="..\..\src\shared\Localization\Catalog\strings.*.json" WithCulture="false">
       <LogicalName>RvtMcp.Localization.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\src\shared\Localization\ToolSummaries\summary.*.json" WithCulture="false">
+      <LogicalName>RvtMcp.ToolSummaries.%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="Catalog\strings.tt.json" WithCulture="false">
       <LogicalName>RvtMcp.Localization.strings.tt.json</LogicalName>
