@@ -208,6 +208,22 @@ namespace RvtMcp.Plugin.Views.Toast
             // Close windows before flipping the shutdown flag so DismissAll can still run.
             DismissAll(synchronous: true);
 
+            var manager = _manager;
+            if (manager != null)
+            {
+                try
+                {
+                    // Unsubscribing is thread-safe and must still happen if the
+                    // dispatcher has already started shutting down. Dispose stops
+                    // the timer only when called on its owning dispatcher.
+                    manager.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    App.DebugLog("McpToastHost localization cleanup failed: " + ex.Message);
+                }
+            }
+
             lock (_lock)
             {
                 _shutdownRequested = true;
@@ -216,13 +232,13 @@ namespace RvtMcp.Plugin.Views.Toast
             if (!_usesDedicatedThread)
                 return;
 
-            var dispatcher = _dispatcher;
-            if (dispatcher == null || dispatcher.HasShutdownStarted)
+            var dedicatedDispatcher = _dispatcher;
+            if (dedicatedDispatcher == null || dedicatedDispatcher.HasShutdownStarted)
                 return;
 
             try
             {
-                dispatcher.InvokeShutdown();
+                dedicatedDispatcher.InvokeShutdown();
             }
             catch
             {

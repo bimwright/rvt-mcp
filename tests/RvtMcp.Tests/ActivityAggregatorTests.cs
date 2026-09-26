@@ -453,6 +453,30 @@ namespace RvtMcp.Tests
             Assert.Equal("Toast off", card.Title);
         }
 
+        [Fact]
+        public void Status_localizer_can_change_copy_without_replacing_card_or_deadline()
+        {
+            var now = TimeSpan.Zero;
+            var locale = "en";
+            var a = new ActivityAggregator(() => 3, () => now);
+            Func<ActivityStatusText> localize = () => new ActivityStatusText(
+                locale == "en" ? "Enabled" : "Activé",
+                locale == "en" ? "New activity will appear here." : "Les nouvelles activités apparaîtront ici.");
+
+            Assert.True(a.ShowStatus("Enabled", "New activity will appear here.", 3, localize));
+            var first = Visible(a);
+            Assert.Equal("Enabled", first.StatusTextProvider().Title);
+
+            locale = "fr";
+            now = TimeSpan.FromSeconds(2);
+            var refreshed = Visible(a);
+            Assert.Equal(first.CardId, refreshed.CardId);
+            Assert.Equal("Activé", refreshed.StatusTextProvider().Title);
+
+            now = TimeSpan.FromSeconds(3);
+            Assert.True(a.Tick(true));
+        }
+
         // --- on / off -------------------------------------------------------
 
         [Fact]

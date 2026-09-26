@@ -54,6 +54,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private int _lastPointerY;
         private bool _closedCallbackRaised;
         private bool _handlersDetached;
+        private ActivitySnapshot _lastSnapshot;
 
         public McpToastViewModel ViewModel { get; private set; }
         public long CardId => _cardId;
@@ -333,6 +334,20 @@ namespace RvtMcp.Plugin.Views.Toast
             ApplyActivitySnapshot(snapshot);
         }
 
+        /// <summary>
+        /// Re-applies localized chrome to the visible card after an L.Changed swap.
+        /// This deliberately does not go through the aggregator: counts, CardId,
+        /// deadline and hover state remain untouched. Status cards may provide a
+        /// late-bound title/body resolver so their localized copy changes as well.
+        /// </summary>
+        public void RefreshLocalization()
+        {
+            if (_closedCallbackRaised || _lastSnapshot == null)
+                return;
+
+            ApplyActivitySnapshot(_lastSnapshot, preserveSnapshot: true);
+        }
+
         public void CloseImmediate()
         {
             if (_closedCallbackRaised)
@@ -421,8 +436,11 @@ namespace RvtMcp.Plugin.Views.Toast
             BeginAnimation(OpacityProperty, fade);
         }
 
-        private void ApplyActivitySnapshot(ActivitySnapshot snapshot)
+        private void ApplyActivitySnapshot(ActivitySnapshot snapshot, bool preserveSnapshot = false)
         {
+            if (!preserveSnapshot)
+                _lastSnapshot = snapshot;
+
             ViewModel = ToViewModel(snapshot);
 
             _root.BorderBrush = snapshot.HasFailure
@@ -433,9 +451,10 @@ namespace RvtMcp.Plugin.Views.Toast
 
             if (snapshot.IsStatus)
             {
-                _titleText.Text = snapshot.Title ?? string.Empty;
+                var status = ResolveStatusText(snapshot);
+                _titleText.Text = status.Title;
                 _categoryText.Visibility = Visibility.Collapsed;
-                _bodyText.Text = snapshot.Body ?? string.Empty;
+                _bodyText.Text = status.Body;
             }
             else
             {
@@ -465,6 +484,26 @@ namespace RvtMcp.Plugin.Views.Toast
             _bodyText.TextWrapping = TextWrapping.NoWrap;
             _bodyText.MaxHeight = 18;
             _bodyText.TextTrimming = TextTrimming.CharacterEllipsis;
+        }
+
+        private static ActivityStatusText ResolveStatusText(ActivitySnapshot snapshot)
+        {
+            if (snapshot?.StatusTextProvider != null)
+            {
+                try
+                {
+                    var localized = snapshot.StatusTextProvider();
+                    if (localized != null)
+                        return new ActivityStatusText(localized.Title ?? string.Empty, localized.Body ?? string.Empty);
+                }
+                catch
+                {
+                    // A status resolver is a localization convenience. Keep the
+                    // already-rendered copy if a reload fails or is interrupted.
+                }
+            }
+
+            return new ActivityStatusText(snapshot?.Title ?? string.Empty, snapshot?.Body ?? string.Empty);
         }
 
         /// <summary>

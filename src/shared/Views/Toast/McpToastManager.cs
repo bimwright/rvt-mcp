@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using RvtMcp.Plugin.Localization;
 
 namespace RvtMcp.Plugin.Views.Toast
 {
@@ -45,6 +46,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 Interval = TimeSpan.FromMilliseconds(TickMilliseconds)
             };
             _timer.Tick += OnTimerTick;
+            L.Changed += OnLanguageChanged;
         }
 
         public void SetOwnerHandle(IntPtr hwnd)
@@ -118,6 +120,14 @@ namespace RvtMcp.Plugin.Views.Toast
             // Reset claims a render request so a concurrent/late notifier cannot leave
             // the coalescing flag stuck with no posted render left to drain it.
             _aggregator.TakeRender();
+        }
+
+        /// <summary>Detach the global localization subscription before the host dies.</summary>
+        public void Dispose()
+        {
+            L.Changed -= OnLanguageChanged;
+            if (_dispatcher.CheckAccess())
+                _timer.Stop();
         }
 
         private void ReconcileVisible(ActivitySnapshot card)
@@ -203,6 +213,31 @@ namespace RvtMcp.Plugin.Views.Toast
             try { frameUsable = _isFrameUsable(); }
             catch { frameUsable = true; }
             Tick(frameUsable);
+        }
+
+        private void OnLanguageChanged(object sender, EventArgs e)
+        {
+            if (_dispatcher.HasShutdownStarted || _dispatcher.HasShutdownFinished)
+                return;
+
+            void Refresh()
+            {
+                if (_window != null)
+                    _window.RefreshLocalization();
+            }
+
+            try
+            {
+                if (_dispatcher.CheckAccess())
+                    Refresh();
+                else
+                    _dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(Refresh));
+            }
+            catch
+            {
+                // The watcher can race Revit/WPF shutdown. A stale toast is safer
+                // than surfacing an exception from a best-effort localization refresh.
+            }
         }
 
         private void OnWindowClosed(McpToastWindow window, long cardId)

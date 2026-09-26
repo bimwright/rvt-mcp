@@ -7,7 +7,8 @@ namespace RvtMcp.Plugin.Views.Toast
     public sealed class ActivitySnapshot
     {
         public ActivitySnapshot(long cardId, bool isStatus, int succeeded, int failed, int images,
-            string title, string body, bool latestSuccess, bool hasFailure)
+            string title, string body, bool latestSuccess, bool hasFailure,
+            Func<ActivityStatusText> statusTextProvider = null)
         {
             CardId = cardId;
             IsStatus = isStatus;
@@ -18,6 +19,7 @@ namespace RvtMcp.Plugin.Views.Toast
             Body = body;
             LatestSuccess = latestSuccess;
             HasFailure = hasFailure;
+            StatusTextProvider = statusTextProvider;
         }
 
         /// <summary>Never reused — a window callback carrying an old id is ignored.</summary>
@@ -34,6 +36,25 @@ namespace RvtMcp.Plugin.Views.Toast
         public bool LatestSuccess { get; }
         /// <summary>Set by the card's first failure and kept until the card closes.</summary>
         public bool HasFailure { get; }
+        /// <summary>
+        /// Optional late-bound status copy. The toast can re-resolve localized status
+        /// text after L.Changed without creating a new card or touching its deadline.
+        /// Activity cards leave this null and keep their captured result text.
+        /// </summary>
+        public Func<ActivityStatusText> StatusTextProvider { get; }
+    }
+
+    /// <summary>Localized title/body for a status card, resolved at render time.</summary>
+    public sealed class ActivityStatusText
+    {
+        public ActivityStatusText(string title, string body)
+        {
+            Title = title;
+            Body = body;
+        }
+
+        public string Title { get; }
+        public string Body { get; }
     }
 
     public enum ActivityCardPhase { Hidden, Visible, Closing }
@@ -83,6 +104,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private string _body;
         private bool _latestSuccess;
         private bool _hasFailure;
+        private Func<ActivityStatusText> _statusTextProvider;
         private bool _hovering;
         private TimeSpan _deadline;
         private bool _renderPending;
@@ -144,7 +166,8 @@ namespace RvtMcp.Plugin.Views.Toast
         }
 
         /// <summary>A status card never covers an activity card that is open.</summary>
-        public bool ShowStatus(string title, string body, int seconds)
+        public bool ShowStatus(string title, string body, int seconds,
+            Func<ActivityStatusText> statusTextProvider = null)
         {
             lock (_gate)
             {
@@ -155,6 +178,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 _statusSeconds = seconds > 0 ? seconds : DefaultIdleSeconds;
                 _title = title;
                 _body = body;
+                _statusTextProvider = statusTextProvider;
                 _latestSuccess = true;
                 Rearm();
                 return RequestRender();
@@ -299,6 +323,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _body = null;
             _latestSuccess = false;
             _hasFailure = false;
+            _statusTextProvider = null;
             _hovering = false;
         }
 
@@ -331,6 +356,7 @@ namespace RvtMcp.Plugin.Views.Toast
         }
 
         private ActivitySnapshot Snapshot() => new ActivitySnapshot(
-            _cardId, _isStatus, _succeeded, _failed, _images, _title, _body, _latestSuccess, _hasFailure);
+            _cardId, _isStatus, _succeeded, _failed, _images, _title, _body, _latestSuccess, _hasFailure,
+            _statusTextProvider);
     }
 }

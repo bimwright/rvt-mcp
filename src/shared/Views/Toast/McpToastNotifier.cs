@@ -71,12 +71,13 @@ namespace RvtMcp.Plugin.Views.Toast
             if (!_isEnabled())
                 return;
 
-            ShowStatus(
+            Func<ActivityStatusText> localize = () => new ActivityStatusText(
                 L.T("toast.connected.title"),
                 string.IsNullOrWhiteSpace(connectionInfo)
                     ? L.T("toast.connected.summary")
-                    : L.T("toast.connected.summary") + " · " + connectionInfo,
-                6);
+                    : L.T("toast.connected.summary") + " · " + connectionInfo);
+            var initial = localize();
+            ShowStatus(initial.Title, initial.Body, 6, statusTextProvider: localize);
         }
 
         /// <summary>
@@ -88,15 +89,19 @@ namespace RvtMcp.Plugin.Views.Toast
             var resetRequestedRender = _activity.Reset();
             if (enabled)
             {
-                ShowStatus(StatusText("toast.status.enabled", "Toast notifications enabled"),
-                    StatusSummary("toast.status.enabled.summary", "New activity will appear here.", persisted), 3,
-                    allowWhenDisabled: true);
+                Func<ActivityStatusText> localize = () => new ActivityStatusText(
+                    StatusText("toast.status.enabled", "Toast notifications enabled"),
+                    StatusSummary("toast.status.enabled.summary", "New activity will appear here.", persisted));
+                var initial = localize();
+                ShowStatus(initial.Title, initial.Body, 3, allowWhenDisabled: true, statusTextProvider: localize);
             }
             else
             {
-                ShowStatus(StatusText("toast.status.disabled", "Toast notifications disabled"),
-                    StatusSummary("toast.status.disabled.summary", "New activity is hidden until toast notifications are enabled.", persisted), 3,
-                    allowWhenDisabled: true);
+                Func<ActivityStatusText> localize = () => new ActivityStatusText(
+                    StatusText("toast.status.disabled", "Toast notifications disabled"),
+                    StatusSummary("toast.status.disabled.summary", "New activity is hidden until toast notifications are enabled.", persisted));
+                var initial = localize();
+                ShowStatus(initial.Title, initial.Body, 3, allowWhenDisabled: true, statusTextProvider: localize);
             }
             // Reset may have claimed the coalescing slot before ShowStatus ran. A
             // single posted render still reads the post-toggle state via TakeRender.
@@ -126,11 +131,12 @@ namespace RvtMcp.Plugin.Views.Toast
                 _host.Post(manager => manager.Render());
         }
 
-        private void ShowStatus(string title, string body, int seconds, bool allowWhenDisabled = false)
+        private void ShowStatus(string title, string body, int seconds, bool allowWhenDisabled = false,
+            Func<ActivityStatusText> statusTextProvider = null)
         {
             if (!allowWhenDisabled && !_isEnabled())
                 return;
-            if (_activity.ShowStatus(title, body, seconds))
+            if (_activity.ShowStatus(title, body, seconds, statusTextProvider))
                 _host.Post(manager => manager.Render());
         }
 

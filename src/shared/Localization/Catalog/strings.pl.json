@@ -209,5 +209,9 @@
   "settings.footer.copied": "Copied",
   "settings.footer.portUnavailable": "Port is not available",
   "settings.footer.applied": "Applied",
-  "settings.footer.discardPrompt": "You have unapplied changes. Close without applying them?"
+  "settings.footer.discardPrompt": "You have unapplied changes. Close without applying them?",
+  "settings.tools.status.label": "Catalog status",
+  "settings.tools.timeout.unavailable": "Timeout policy is unavailable.",
+  "settings.tools.timeout.serverLocal": "Runs in the server; does not go through Revit.",
+  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s."
 }

@@ -211,10 +211,13 @@ namespace RvtMcp.Plugin.Views.Settings
 
         public static string TimeoutHelp(RvtMcp.ToolCatalog.TimeoutPolicy timeout)
         {
-            if (timeout == null) return "Timeout policy is unavailable.";
-            if (timeout.PolicyKind == "server_local") return "Runs in the server; does not go through Revit.";
+            if (timeout == null) return Text("settings.tools.timeout.unavailable", "Timeout policy is unavailable.");
+            if (timeout.PolicyKind == "server_local") return Text("settings.tools.timeout.serverLocal", "Runs in the server; does not go through Revit.");
             var budget = TimeoutDisplay(timeout);
-            return "Server budget " + budget + "; transport grace " + timeout.TransportGraceSeconds + " s.";
+            var value = L.T("settings.tools.timeout.budget", ("budget", budget), ("grace", timeout.TransportGraceSeconds));
+            return string.Equals(value, "settings.tools.timeout.budget", StringComparison.Ordinal)
+                ? "Server budget " + budget + "; transport grace " + timeout.TransportGraceSeconds + " s."
+                : value;
         }
 
         private static string Truncate(string value)

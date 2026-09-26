@@ -24,7 +24,8 @@ namespace RvtMcp.Tests
             "settings.tools.source", "settings.tools.timeout", "settings.tools.help", "settings.tools.counts",
             "settings.tools.fallback", "settings.tools.source.builtIn", "settings.tools.source.baked",
             "settings.tools.status.notConnected", "settings.tools.status.noCatalog", "settings.tools.status.invalid",
-            "settings.tools.status.empty", "settings.apply", "settings.cancel", "settings.close",
+            "settings.tools.status.empty", "settings.tools.status.label", "settings.tools.timeout.unavailable",
+            "settings.tools.timeout.serverLocal", "settings.tools.timeout.budget", "settings.apply", "settings.cancel", "settings.close",
             "settings.footer.copied", "settings.footer.portUnavailable", "settings.footer.applied",
             "settings.footer.discardPrompt"
         };

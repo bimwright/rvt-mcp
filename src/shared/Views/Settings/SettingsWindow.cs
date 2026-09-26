@@ -235,6 +235,8 @@ namespace RvtMcp.Plugin.Views.Settings
             var statusStack = new StackPanel { Orientation = Orientation.Vertical };
             _toolsCounts = new TextBlock { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
             _toolsStatus = new TextBlock { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
+            AutomationProperties.SetName(_toolsStatus, Text("settings.tools.status.label", "Catalog status"));
+            AutomationProperties.SetHelpText(_toolsStatus, Text("settings.tools.status.label", "Catalog status"));
             statusStack.Children.Add(_toolsCounts);
             statusStack.Children.Add(_toolsStatus);
             toolbar.Children.Add(statusStack);
@@ -267,7 +269,9 @@ namespace RvtMcp.Plugin.Views.Settings
             _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "Tool Name", Binding = new Binding(nameof(ToolRow.Name)), Width = 220 });
             _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "Description", Binding = new Binding(nameof(ToolRow.DescriptionDisplay)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
             _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "Source", Binding = new Binding(nameof(ToolRow.Source)), Width = 90 });
-            _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "Time-out", Binding = new Binding(nameof(ToolRow.TimeoutDisplay)), Width = 120 });
+            var timeoutStyle = new Style(typeof(TextBlock));
+            timeoutStyle.Setters.Add(new Setter(FrameworkElement.ToolTipProperty, new Binding(nameof(ToolRow.TimeoutHelpText))));
+            _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "Time-out", Binding = new Binding(nameof(ToolRow.TimeoutDisplay)), ElementStyle = timeoutStyle, Width = 120 });
             panel.Children.Add(_toolsGrid);
             UpdateToolsText();
             return panel;
@@ -301,6 +305,8 @@ namespace RvtMcp.Plugin.Views.Settings
         private Button AboutLinkButton(string key, string fallback, Action action)
         {
             var button = new Button { Content = Text(key, fallback), Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(10, 3, 10, 3) };
+            AutomationProperties.SetName(button, Text(key, fallback));
+            AutomationProperties.SetHelpText(button, Text(key, fallback));
             button.Click += (_, __) => action();
             return button;
         }
@@ -416,20 +422,41 @@ namespace RvtMcp.Plugin.Views.Settings
             if (_cacheSendCodeBodies != null) _cacheSendCodeBodies.Content = Text("settings.general.cacheBodies", "Cache send_code bodies");
             if (_persistSendCodeBodies != null) _persistSendCodeBodies.Content = Text("settings.general.keepJournal", "Keep send_code journal");
             if (_journalLabel != null) _journalLabel.Text = Text("settings.general.journalDuration", "Journal duration (hours)");
-            if (_copyPort != null) _copyPort.Content = Text("settings.general.copy", "Copy");
+            if (_copyPort != null)
+            {
+                var copyPortText = Text("settings.general.copy", "Copy");
+                _copyPort.Content = copyPortText;
+                AutomationProperties.SetName(_copyPort, copyPortText);
+                AutomationProperties.SetHelpText(_copyPort, copyPortText);
+            }
             if (_toastHeading != null) _toastHeading.Text = Text("settings.toast.heading", "Toast");
-            if (_toastEnabled != null) _toastEnabled.Content = Text("settings.toast.enabled", "Show activity notifications");
+            if (_toastEnabled != null)
+            {
+                var toastEnabledText = Text("settings.toast.enabled", "Show activity notifications");
+                _toastEnabled.Content = toastEnabledText;
+                AutomationProperties.SetName(_toastEnabled, toastEnabledText);
+                AutomationProperties.SetHelpText(_toastEnabled, toastEnabledText);
+            }
             if (_toastIdleLabel != null) _toastIdleLabel.Text = Text("settings.toast.idle", "Idle duration (applies on the next activity)");
             if (_toastHelp != null) _toastHelp.Text = Text("settings.toast.help", "Toast On/Off is immediate. Apply saves the duration and privacy settings.");
             if (_aboutDescription != null) _aboutDescription.Text = Text("settings.about.description", "MCP connectivity and activity tools for Autodesk Revit.");
             if (_aboutHint != null) _aboutHint.Text = Text("settings.about.hint", "Version and license information are available in this tab.");
-            if (_aboutLicense != null) _aboutLicense.Content = Text("settings.about.viewLicense", "View license");
-            if (_aboutRepository != null) _aboutRepository.Content = Text("settings.about.github", "GitHub");
-            if (_aboutDocumentation != null) _aboutDocumentation.Content = Text("settings.about.docs", "Documentation");
-            if (_aboutIssues != null) _aboutIssues.Content = Text("settings.about.issues", "Report a bug");
-            if (_toolsRefresh != null) _toolsRefresh.Content = Text("settings.tools.refresh", "Refresh");
-            if (_toolsRefresh != null) AutomationProperties.SetName(_toolsRefresh, Text("settings.tools.refresh", "Refresh"));
-            if (_toolsGrid != null) AutomationProperties.SetHelpText(_toolsGrid, Text("settings.tools.help", "Built-in and permitted baked tools exposed by the connected server."));
+            UpdateAboutLink(_aboutLicense, "settings.about.viewLicense", "View license");
+            UpdateAboutLink(_aboutRepository, "settings.about.github", "GitHub");
+            UpdateAboutLink(_aboutDocumentation, "settings.about.docs", "Documentation");
+            UpdateAboutLink(_aboutIssues, "settings.about.issues", "Report a bug");
+            if (_toolsRefresh != null)
+            {
+                var refreshText = Text("settings.tools.refresh", "Refresh");
+                _toolsRefresh.Content = refreshText;
+                AutomationProperties.SetName(_toolsRefresh, refreshText);
+                AutomationProperties.SetHelpText(_toolsRefresh, refreshText);
+            }
+            if (_toolsGrid != null)
+            {
+                AutomationProperties.SetName(_toolsGrid, Text("settings.tools.name", "Tool Name") + " (read-only)");
+                AutomationProperties.SetHelpText(_toolsGrid, Text("settings.tools.help", "Built-in and permitted baked tools exposed by the connected server."));
+            }
             if (_toolsGrid != null && _toolsGrid.Columns.Count >= 5)
             {
                 _toolsGrid.Columns[0].Header = Text("settings.tools.no", "No.");
@@ -447,6 +474,15 @@ namespace RvtMcp.Plugin.Views.Settings
         {
             var value = L.T(key);
             return string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
+        }
+
+        private static void UpdateAboutLink(Button button, string key, string fallback)
+        {
+            if (button == null) return;
+            var value = Text(key, fallback);
+            button.Content = value;
+            AutomationProperties.SetName(button, value);
+            AutomationProperties.SetHelpText(button, value);
         }
 
         private void OnViewModelPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -476,8 +512,14 @@ namespace RvtMcp.Plugin.Views.Settings
             if (_toolsCounts != null) _toolsCounts.Text = _toolsViewModel.CountsText;
             _toolsStatus.Text = _toolsViewModel.StatusText;
             _toolsStatus.ToolTip = _toolsViewModel.StatusHelpText;
-            if (_toolsViewModel.StatusHelpText != null)
+            if (!string.IsNullOrWhiteSpace(_toolsViewModel.StatusHelpText))
                 AutomationProperties.SetHelpText(_toolsStatus, _toolsViewModel.StatusHelpText);
+            else
+                AutomationProperties.SetHelpText(_toolsStatus,
+                    !string.IsNullOrWhiteSpace(_toolsViewModel.StatusText)
+                        ? _toolsViewModel.StatusText
+                        : Text("settings.tools.help", "Built-in and permitted baked tools exposed by the connected server."));
+            AutomationProperties.SetName(_toolsStatus, Text("settings.tools.status.label", "Catalog status"));
         }
 
         private void OnClosing(object sender, System.ComponentModel.CancelEventArgs e)
