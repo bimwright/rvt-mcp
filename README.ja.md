@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-229%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-230%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -89,9 +89,9 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -Yes
 
 | モード | Tools | 注記 |
 |--------|------:|------|
-| 既定 | **40** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **229** | フルカタログ |
-| `all` + adaptive bake | **232** | 提案ライフサイクル 3 ツールを追加 |
+| 既定 | **41** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **230** | フルカタログ |
+| `all` + adaptive bake | **233** | 提案ライフサイクル 3 ツールを追加 |
 
 件数に個人 baked ツールは含みません。その他の toolset は明示するまでオフです（例：`--toolsets query,view,meta,mep` または `--toolsets all`）。`--read-only` は書き込み可能な toolset をすべて落とします（`create` 含む）。
 

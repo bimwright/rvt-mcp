@@ -185,7 +185,7 @@ MCP config lives in leveldb; do not edit files. Either:
 
 1. Client-native check where available (`claude mcp get`, `codex mcp get
    --json`, `grok mcp doctor`, `kilo mcp list`).
-2. `tools/list` shows `rvt-mcp` tools — default surface is 40 tools
+2. `tools/list` shows `rvt-mcp` tools — default surface is 41 tools
    (`query,create,view,meta`), expecting `revit_get_current_view_info`.
 3. With Revit 2022–2027 open and a model loaded, call
    `revit_get_current_view_info` → `{ "view_name": ..., "view_type": ...,
