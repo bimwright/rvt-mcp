@@ -146,23 +146,25 @@ namespace RvtMcp.Plugin.Views.Settings
         private UIElement BuildGeneral()
         {
             var panel = new StackPanel { Margin = new Thickness(14) };
-            _connectionHeading = Heading("Connection");
+            _connectionHeading = Heading(Text("settings.general.connection", "Connection"));
             panel.Children.Add(_connectionHeading);
             panel.Children.Add(ReadOnlyRow("settings.general.revit", "Revit", () => _viewModel.RevitYear, value => _revitValue = value));
             panel.Children.Add(ReadOnlyRow("settings.general.transport", "Transport", () => _viewModel.TransportKind, value => _transportValue = value));
 
             var port = new DockPanel { Margin = new Thickness(0, 4, 0, 4) };
-            _portLabel = new TextBlock { Text = "Port", Width = 170, VerticalAlignment = VerticalAlignment.Center };
+            _portLabel = new TextBlock { Text = Text("settings.general.port", "Port"), Width = 170, VerticalAlignment = VerticalAlignment.Center };
             port.Children.Add(_portLabel);
             _portValue = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
             port.Children.Add(_portValue);
-            _copyPort = new Button { Content = "Copy", Margin = new Thickness(12, 0, 0, 0), Padding = new Thickness(10, 3, 10, 3), TabIndex = 0 };
+            _copyPort = new Button { Content = Text("settings.general.copy", "Copy"), Margin = new Thickness(12, 0, 0, 0), Padding = new Thickness(10, 3, 10, 3), TabIndex = 0 };
             AutomationProperties.SetName(_copyPort, "Copy TCP port");
             AutomationProperties.SetHelpText(_copyPort, "Copies the active TCP port when a TCP listener is running.");
             _copyPort.Click += (_, __) =>
             {
                 _viewModel.CopyPort();
-                _status.Text = _viewModel.CanCopyPort ? "Copied" : "Port is not available";
+                _status.Text = _viewModel.CanCopyPort
+                    ? Text("settings.footer.copied", "Copied")
+                    : Text("settings.footer.portUnavailable", "Port is not available");
             };
             DockPanel.SetDock(_copyPort, Dock.Right);
             port.Children.Add(_copyPort);
@@ -185,19 +187,19 @@ namespace RvtMcp.Plugin.Views.Settings
             panel.Children.Add(_languageEffective);
             panel.Children.Add(_languageSource);
 
-            _privacyHeading = Heading("Privacy");
+            _privacyHeading = Heading(Text("settings.general.privacy", "Privacy"));
             panel.Children.Add(_privacyHeading);
-            _cacheSendCodeBodies = new CheckBox { Content = "Cache send_code bodies", IsChecked = _viewModel.CacheSendCodeBodies, TabIndex = 2 };
+            _cacheSendCodeBodies = new CheckBox { Content = Text("settings.general.cacheBodies", "Cache send_code bodies"), IsChecked = _viewModel.CacheSendCodeBodies, TabIndex = 2 };
             _cacheSendCodeBodies.Checked += (_, __) => _viewModel.CacheSendCodeBodies = true;
             _cacheSendCodeBodies.Unchecked += (_, __) => _viewModel.CacheSendCodeBodies = false;
             panel.Children.Add(_cacheSendCodeBodies);
 
-            _persistSendCodeBodies = new CheckBox { Content = "Keep send_code journal", IsChecked = _viewModel.PersistSendCodeBodies, TabIndex = 3 };
+            _persistSendCodeBodies = new CheckBox { Content = Text("settings.general.keepJournal", "Keep send_code journal"), IsChecked = _viewModel.PersistSendCodeBodies, TabIndex = 3 };
             _persistSendCodeBodies.Checked += (_, __) => _viewModel.PersistSendCodeBodies = true;
             _persistSendCodeBodies.Unchecked += (_, __) => _viewModel.PersistSendCodeBodies = false;
             panel.Children.Add(_persistSendCodeBodies);
             var hoursRow = new DockPanel { Margin = new Thickness(0, 4, 0, 4) };
-            _journalLabel = new TextBlock { Text = "Journal duration (hours)", Width = 170, VerticalAlignment = VerticalAlignment.Center };
+            _journalLabel = new TextBlock { Text = Text("settings.general.journalDuration", "Journal duration (hours)"), Width = 170, VerticalAlignment = VerticalAlignment.Center };
             hoursRow.Children.Add(_journalLabel);
             _journalHours = new ComboBox { Width = 120, ItemsSource = Enumerable.Range(1, 48).ToArray(), SelectedItem = _viewModel.PersistSendCodeBodiesHours, TabIndex = 4 };
             _journalHours.SelectionChanged += (_, __) => { if (_journalHours.SelectedItem is int value) _viewModel.PersistSendCodeBodiesHours = value; };
@@ -209,19 +211,19 @@ namespace RvtMcp.Plugin.Views.Settings
         private UIElement BuildToast()
         {
             var panel = new StackPanel { Margin = new Thickness(14) };
-            _toastHeading = Heading("Toast");
+            _toastHeading = Heading(Text("settings.toast.heading", "Toast"));
             panel.Children.Add(_toastHeading);
-            _toastEnabled = new CheckBox { Content = "Show activity notifications", IsChecked = _viewModel.ToastEnabled, TabIndex = 5 };
+            _toastEnabled = new CheckBox { Content = Text("settings.toast.enabled", "Show activity notifications"), IsChecked = _viewModel.ToastEnabled, TabIndex = 5 };
             AutomationProperties.SetName(_toastEnabled, "Show activity notifications");
             _toastEnabled.Checked += (_, __) => { if (!_updatingToast) _viewModel.SetToastEnabled(true); };
             _toastEnabled.Unchecked += (_, __) => { if (!_updatingToast) _viewModel.SetToastEnabled(false); };
             panel.Children.Add(_toastEnabled);
-            _toastIdleLabel = new TextBlock { Text = "Idle duration (applies on the next activity)", Margin = new Thickness(0, 14, 0, 4) };
+            _toastIdleLabel = new TextBlock { Text = Text("settings.toast.idle", "Idle duration (applies on the next activity)"), Margin = new Thickness(0, 14, 0, 4) };
             panel.Children.Add(_toastIdleLabel);
             _toastIdle = new ComboBox { ItemsSource = new[] { 10, 20, 30, 60 }, SelectedItem = _viewModel.ToastIdleSeconds, Width = 120, TabIndex = 6 };
             _toastIdle.SelectionChanged += (_, __) => { if (_toastIdle.SelectedItem is int value) _viewModel.ToastIdleSeconds = value; };
             panel.Children.Add(_toastIdle);
-            _toastHelp = new TextBlock { Text = "Toast On/Off is immediate. Apply saves the duration and privacy settings.", Foreground = Brushes.DimGray, Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap };
+            _toastHelp = new TextBlock { Text = Text("settings.toast.help", "Toast On/Off is immediate. Apply saves the duration and privacy settings."), Foreground = Brushes.DimGray, Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap };
             panel.Children.Add(_toastHelp);
             return panel;
         }
@@ -260,7 +262,7 @@ namespace RvtMcp.Plugin.Views.Settings
                 MinColumnWidth = 50,
             };
             AutomationProperties.SetName(_toolsGrid, "Read-only MCP tool catalog");
-            AutomationProperties.SetHelpText(_toolsGrid, "Built-in and permitted baked tools exposed by the connected server.");
+            AutomationProperties.SetHelpText(_toolsGrid, Text("settings.tools.help", "Built-in and permitted baked tools exposed by the connected server."));
             _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "No.", Binding = new Binding(nameof(ToolRow.No)), Width = 52 });
             _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "Tool Name", Binding = new Binding(nameof(ToolRow.Name)), Width = 220 });
             _toolsGrid.Columns.Add(new DataGridTextColumn { Header = "Description", Binding = new Binding(nameof(ToolRow.DescriptionDisplay)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
@@ -314,16 +316,16 @@ namespace RvtMcp.Plugin.Views.Settings
             var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
             _status = new TextBlock { Width = 330, VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.DimGray, TextWrapping = TextWrapping.Wrap };
             footer.Children.Add(_status);
-            _apply = new Button { Content = "Apply", Style = (Style)Resources[BimwrightStyles.PrimaryButtonKey], TabIndex = 10 };
+            _apply = new Button { Content = Text("settings.apply", "Apply"), Style = (Style)Resources[BimwrightStyles.PrimaryButtonKey], TabIndex = 10 };
             _apply.Click += (_, __) =>
             {
                 var result = _viewModel.Apply();
-                _status.Text = result.Succeeded ? "Applied" : string.Join("; ", result.Failed);
+                _status.Text = result.Succeeded ? Text("settings.footer.applied", "Applied") : string.Join("; ", result.Failed);
                 UpdateDynamicText();
             };
-            _cancel = new Button { Content = "Cancel", Margin = new Thickness(8, 0, 0, 0), TabIndex = 11 };
+            _cancel = new Button { Content = Text("settings.cancel", "Cancel"), Margin = new Thickness(8, 0, 0, 0), TabIndex = 11 };
             _cancel.Click += (_, __) => { _viewModel.Cancel(); UpdateDynamicText(); };
-            _close = new Button { Content = "Close", Margin = new Thickness(8, 0, 0, 0), TabIndex = 12 };
+            _close = new Button { Content = Text("settings.close", "Close"), Margin = new Thickness(8, 0, 0, 0), TabIndex = 12 };
             _close.Click += (_, __) => Close();
             footer.Children.Add(_apply);
             footer.Children.Add(_cancel);
@@ -426,6 +428,8 @@ namespace RvtMcp.Plugin.Views.Settings
             if (_aboutDocumentation != null) _aboutDocumentation.Content = Text("settings.about.docs", "Documentation");
             if (_aboutIssues != null) _aboutIssues.Content = Text("settings.about.issues", "Report a bug");
             if (_toolsRefresh != null) _toolsRefresh.Content = Text("settings.tools.refresh", "Refresh");
+            if (_toolsRefresh != null) AutomationProperties.SetName(_toolsRefresh, Text("settings.tools.refresh", "Refresh"));
+            if (_toolsGrid != null) AutomationProperties.SetHelpText(_toolsGrid, Text("settings.tools.help", "Built-in and permitted baked tools exposed by the connected server."));
             if (_toolsGrid != null && _toolsGrid.Columns.Count >= 5)
             {
                 _toolsGrid.Columns[0].Header = Text("settings.tools.no", "No.");
@@ -480,8 +484,8 @@ namespace RvtMcp.Plugin.Views.Settings
         {
             if (_closing || !_viewModel.IsDirty) return;
             var answer = MessageBox.Show(this,
-                "You have unapplied changes. Close without applying them?",
-                "rvt-mcp Settings", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+                Text("settings.footer.discardPrompt", "You have unapplied changes. Close without applying them?"),
+                Text("settings.window.title", "rvt-mcp · Settings"), MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
             if (answer != MessageBoxResult.Yes) e.Cancel = true;
             else _closing = true;
         }
