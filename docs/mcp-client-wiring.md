@@ -226,3 +226,4 @@ MCP config lives in leveldb; do not edit files. Either:
 | `invalid transport` (Codex) | Orphan `[mcp_servers.<name>.env]` table | Remove the orphan table |
 | Client can't spawn server | Command path wrong or exe missing | Re-check the `current` path; run `rvt-mcp.exe --help` |
 | Two `rvt-mcp` entries | Procedure ran twice with different scope/shape | Remove the extra via the client's remove command or a minimal edit |
+| Long tool call (`revit_open_model`, `revit_link_revit_model`, …) still dies near the client's own timeout even with `timeout_seconds` raised | The client enforces its own tool-call limit before the plugin's wait ends (e.g. Claude Code's `MCP_TOOL_TIMEOUT`, milliseconds) | Raise the client-side timeout for long runs, e.g. `MCP_TOOL_TIMEOUT=900000`; if it still fires first, do not retry blindly — the Revit-side operation keeps running, so check state before repeating the call |
