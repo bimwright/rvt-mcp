@@ -5,7 +5,8 @@
 | Version | Date | Available as |
 |---|---|---|
 | Unreleased | — | Source on `master` only |
-| v0.6.3 | 2026-09-25 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.3) (latest) |
+| v0.6.4 | 2026-09-26 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.4) (latest) |
+| v0.6.3 | 2026-09-25 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.3) |
 | v0.6.2 | 2026-09-22 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.2); NuGet `RvtMcp.Server` 0.6.2 |
 | v0.6.1 | 2026-08-28 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.1); NuGet `RvtMcp.Server` 0.6.1 |
 | v0.6.0 | — | Not published on its own; shipped inside v0.6.1 |
@@ -22,6 +23,10 @@
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
 ## Unreleased
+
+No changes on `master` since v0.6.4 yet.
+
+## v0.6.4 - Installer client wiring and MCP prompts
 
 ### Added
 
