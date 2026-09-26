@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="../../src/shared/Views/Toast/ActivityAggregator.cs" Link="ActivityAggregator.cs" />
     <Compile Include="../../src/shared/Views/Toast/McpToastWindow.cs" Link="McpToastWindow.cs" />
+    <Compile Include="../../src/shared/Views/Toast/RollingToastNumber.cs" Link="RollingToastNumber.cs" />
     <Compile Include="../../src/shared/Views/Toast/McpToastManager.cs" Link="McpToastManager.cs" />
     <Compile Include="../../src/shared/Views/Toast/McpToastTheme.cs" Link="McpToastTheme.cs" />
     <Compile Include="../../src/shared/Views/Toast/McpToastViewModel.cs" Link="McpToastViewModel.cs" />

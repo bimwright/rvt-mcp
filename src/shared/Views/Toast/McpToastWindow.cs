@@ -23,19 +23,24 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private readonly TextBlock _iconText;
         private readonly TextBlock _titleText;
-        private readonly TextBlock _categoryText;
         private readonly TextBlock _bodyText;
+        private readonly Viewbox _counterRow;
+        private readonly RollingToastNumber _successCount = new RollingToastNumber();
+        private readonly RollingToastNumber _failedCount = new RollingToastNumber();
+        private readonly RollingToastNumber _captureCount = new RollingToastNumber();
+        private readonly TextBlock _successLabel;
+        private readonly TextBlock _failedLabel;
+        private readonly TextBlock _captureLabel;
         private readonly TextBlock _brandText;
         private readonly TextBlock _brandShine;
         private readonly TranslateTransform _brandSweep = new TranslateTransform(-0.75, 0);
         private readonly TranslateTransform _shineSweep = new TranslateTransform(-0.75, 0);
         private readonly Func<Point> _cursorPosition;
+        private readonly Func<bool> _motionEnabled;
         private readonly Border _root;
         private readonly TranslateTransform _slideTransform;
         private readonly ScaleTransform _scaleTransform;
         private Border _closeHost;
-        private MouseEventHandler _closeHostMouseEnterHandler;
-        private MouseEventHandler _closeHostMouseLeaveHandler;
         private MouseButtonEventHandler _closeHostMouseUpHandler;
         private MouseEventHandler _mouseEnterHandler;
         private MouseEventHandler _mouseLeaveHandler;
@@ -70,7 +75,8 @@ namespace RvtMcp.Plugin.Views.Toast
             Action<long> onClick,
             Action<long> onPointerEntered,
             Action<long> onPointerLeft,
-            Func<Point> cursorPosition = null)
+            Func<Point> cursorPosition = null,
+            Func<bool> motionEnabled = null)
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
             ViewModel = ToViewModel(snapshot);
@@ -81,6 +87,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _activityPointerEntered = onPointerEntered;
             _activityPointerLeft = onPointerLeft;
             _cursorPosition = cursorPosition ?? ReadCursorPosition;
+            _motionEnabled = motionEnabled ?? (() => SystemParameters.ClientAreaAnimation);
 
             FontFamily = McpToastTheme.UiFont;
 
@@ -88,6 +95,7 @@ namespace RvtMcp.Plugin.Views.Toast
             AllowsTransparency = true;
             Background = Brushes.Transparent;
             ShowInTaskbar = false;
+            ShowActivated = false;
             Topmost = true;
             ResizeMode = ResizeMode.NoResize;
             SizeToContent = SizeToContent.WidthAndHeight;
@@ -120,11 +128,10 @@ namespace RvtMcp.Plugin.Views.Toast
                 }
             };
 
-            var content = new Grid { Margin = new Thickness(10, 12, 14, 12) };
+            var content = new Grid { Margin = new Thickness(10, 10, 12, 10) };
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            // Reserve the single latest-result line even when a tool returns no body.
-            content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(18) });
+            // Status summary and activity counters share one fixed-height body row.
+            content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var header = new DockPanel { LastChildFill = true };
@@ -160,15 +167,11 @@ namespace RvtMcp.Plugin.Views.Toast
                 VerticalAlignment = VerticalAlignment.Center
             };
             closeHost.Child = closeGlyph;
-            _closeHostMouseEnterHandler = (_, __) => closeHost.Background = McpToastTheme.CloseHover;
-            _closeHostMouseLeaveHandler = (_, __) => closeHost.Background = Brushes.Transparent;
             _closeHostMouseUpHandler = (_, e) =>
             {
                 e.Handled = true;
                 _activityDismissed?.Invoke(_cardId);
             };
-            closeHost.MouseEnter += _closeHostMouseEnterHandler;
-            closeHost.MouseLeave += _closeHostMouseLeaveHandler;
             closeHost.MouseLeftButtonUp += _closeHostMouseUpHandler;
             DockPanel.SetDock(closeHost, Dock.Right);
             header.Children.Add(closeHost);
@@ -187,33 +190,35 @@ namespace RvtMcp.Plugin.Views.Toast
             Grid.SetRow(header, 0);
             content.Children.Add(header);
 
-            _categoryText = new TextBlock
+            var body = new Grid { Margin = new Thickness(24, 5, 0, 0) };
+            var counters = new StackPanel { Orientation = Orientation.Horizontal };
+            _successLabel = AddCounter(counters, _successCount);
+            AddCounterSeparator(counters);
+            _failedLabel = AddCounter(counters, _failedCount);
+            AddCounterSeparator(counters);
+            _captureLabel = AddCounter(counters, _captureCount);
+            // Long translations and large counts shrink within the same row; card size never changes.
+            _counterRow = new Viewbox
             {
-                Text = ViewModel.CategoryLabel ?? string.Empty,
-                FontSize = 10.5,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = McpToastTheme.Primary,
-                Margin = new Thickness(24, 2, 0, 0)
+                Child = counters,
+                Stretch = Stretch.Uniform,
+                StretchDirection = StretchDirection.DownOnly,
+                HorizontalAlignment = HorizontalAlignment.Left
             };
-            Grid.SetRow(_categoryText, 1);
-            content.Children.Add(_categoryText);
-
+            body.Children.Add(_counterRow);
             _bodyText = new TextBlock
             {
-                Text = ViewModel.Body,
-                FontSize = 12.5,
-                FontWeight = FontWeights.Medium,
+                FontSize = 12,
                 Foreground = McpToastTheme.Text,
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(24, 4, 0, 0),
-                MaxHeight = 64,
+                TextWrapping = TextWrapping.NoWrap,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                VerticalAlignment = VerticalAlignment.Top
+                VerticalAlignment = VerticalAlignment.Center
             };
-            Grid.SetRow(_bodyText, 2);
-            content.Children.Add(_bodyText);
+            body.Children.Add(_bodyText);
+            Grid.SetRow(body, 1);
+            content.Children.Add(body);
 
-            var footer = new DockPanel { Margin = new Thickness(24, 6, 0, 0) };
+            var footer = new Grid { Margin = new Thickness(24, 5, 0, 0) };
 
             _brandText = new TextBlock
             {
@@ -248,13 +253,16 @@ namespace RvtMcp.Plugin.Views.Toast
                 }
             };
 
-            var brandCell = new Grid { VerticalAlignment = VerticalAlignment.Center };
+            var brandCell = new Grid
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
             brandCell.Children.Add(_brandText);
             brandCell.Children.Add(_brandShine);
-            DockPanel.SetDock(brandCell, Dock.Right);
             footer.Children.Add(brandCell);
 
-            Grid.SetRow(footer, 3);
+            Grid.SetRow(footer, 2);
             content.Children.Add(footer);
 
             ApplyActivitySnapshot(snapshot);
@@ -267,7 +275,7 @@ namespace RvtMcp.Plugin.Views.Toast
             {
                 if (PointerPositionChanged())
                     _activityPointerEntered?.Invoke(_cardId);
-                WipeBrand(150);
+                WipeBrand(150, replay: true);
             };
             _mouseLeaveHandler = (_, __) =>
             {
@@ -304,6 +312,14 @@ namespace RvtMcp.Plugin.Views.Toast
 
         public void PlayEnterAnimation()
         {
+            if (!_motionEnabled())
+            {
+                _slideTransform.X = 0;
+                _scaleTransform.ScaleX = _scaleTransform.ScaleY = 1;
+                Opacity = 1;
+                WipeBrand();
+                return;
+            }
             var duration = TimeSpan.FromMilliseconds(280);
             var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
 
@@ -361,8 +377,23 @@ namespace RvtMcp.Plugin.Views.Toast
         /// lighter letters sweeps through the wordmark in sync, then the wordmark stays lit.
         /// The pass starts ~1.3 s after the card appears — the delay for a reader's eye to
         /// land on a fresh toast (delayMs=1300). Replayed quickly on hover.</summary>
-        private void WipeBrand(int delayMs = 1300)
+        private void WipeBrand(int delayMs = 1300, bool replay = false)
         {
+            if (_isClosing || _closedCallbackRaised)
+                return;
+            _brandSweep.BeginAnimation(TranslateTransform.XProperty, null);
+            _shineSweep.BeginAnimation(TranslateTransform.XProperty, null);
+            if (!_motionEnabled())
+            {
+                _brandText.OpacityMask = new SolidColorBrush(Dim(BrandSettleOpacity));
+                _brandShine.OpacityMask = Brushes.Transparent;
+                return;
+            }
+            // During a hover replay both ends stay settled. Only the travelling band
+            // exchanges the base letters for their bright twin; never dim the entire logo.
+            _brandText.OpacityMask = replay ? BuildBrandReplayMask(_brandSweep) : BuildBrandMask(_brandSweep);
+            _brandShine.OpacityMask = BuildShineMask(_shineSweep);
+            _brandSweep.X = _shineSweep.X = -0.75;
             var dur = TimeSpan.FromMilliseconds(800);
             var ease = new QuadraticEase { EasingMode = EasingMode.EaseInOut };
             var wipe = new DoubleAnimation(-0.75, 0.75, dur)
@@ -391,6 +422,50 @@ namespace RvtMcp.Plugin.Views.Toast
                     new GradientStop(Dim(BrandRestOpacity), 1.00),
                 }
             };
+        }
+
+        private static LinearGradientBrush BuildBrandReplayMask(TranslateTransform sweep)
+        {
+            return new LinearGradientBrush
+            {
+                StartPoint = new Point(0, 0.5),
+                EndPoint = new Point(1, 0.5),
+                RelativeTransform = sweep,
+                GradientStops =
+                {
+                    new GradientStop(Dim(BrandSettleOpacity), 0.00),
+                    new GradientStop(Dim(BrandSettleOpacity), 0.36),
+                    new GradientStop(Dim(0.0), 0.44),
+                    new GradientStop(Dim(BrandSettleOpacity), 0.52),
+                    new GradientStop(Dim(BrandSettleOpacity), 1.00),
+                }
+            };
+        }
+
+        private static TextBlock AddCounter(Panel row, RollingToastNumber number)
+        {
+            row.Children.Add(number);
+            var label = new TextBlock
+            {
+                FontSize = 12,
+                Foreground = McpToastTheme.Text,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(3, 0, 0, 0)
+            };
+            row.Children.Add(label);
+            return label;
+        }
+
+        private static void AddCounterSeparator(Panel row)
+        {
+            row.Children.Add(new TextBlock
+            {
+                Text = "|",
+                FontSize = 12,
+                Foreground = McpToastTheme.MutedAccent,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(8, 0, 6, 0)
+            });
         }
 
         /// <summary>Narrow alpha band peaking on the brand front's crest so the glint
@@ -424,6 +499,11 @@ namespace RvtMcp.Plugin.Views.Toast
                 return;
             if (_isClosing)
                 return;
+            if (!_motionEnabled())
+            {
+                CloseImmediate();
+                return;
+            }
             _isClosing = true;
             var duration = TimeSpan.FromMilliseconds(220);
             var ease = new QuadraticEase { EasingMode = EasingMode.EaseIn };
@@ -453,37 +533,34 @@ namespace RvtMcp.Plugin.Views.Toast
             {
                 var status = ResolveStatusText(snapshot);
                 _titleText.Text = status.Title;
-                _categoryText.Visibility = Visibility.Collapsed;
+                _counterRow.Visibility = Visibility.Collapsed;
+                _bodyText.Visibility = Visibility.Visible;
                 _bodyText.Text = status.Body;
+                _bodyText.ToolTip = status.Body;
             }
             else
             {
-                _titleText.Text = LocalizedOrFallback("toast.activity.header", "MCP · Activity");
-                _categoryText.Visibility = Visibility.Visible;
-                _categoryText.Text = $"✓ {snapshot.Succeeded}   ! {snapshot.Failed}   ▧ {snapshot.Images}";
-                _categoryText.ToolTip = LocalizedOrFallback(
-                    "toast.activity.counts.tooltip",
-                    "Success / failed / images");
-                var latest = LocalizedOrFallback("toast.activity.latest", "Latest");
-                var latestBody = string.IsNullOrWhiteSpace(snapshot.Title)
-                    ? snapshot.Body ?? string.Empty
-                    : string.IsNullOrWhiteSpace(snapshot.Body)
-                        ? snapshot.Title
-                        : snapshot.Title + " · " + snapshot.Body;
-                _bodyText.Text = string.IsNullOrWhiteSpace(latestBody)
-                    ? string.Empty
-                    : latest + ": " + latestBody;
+                _titleText.Text = string.IsNullOrWhiteSpace(snapshot.Title)
+                    ? "RVT-MCP" : "RVT-MCP - " + snapshot.Title;
+                _counterRow.Visibility = Visibility.Visible;
+                _bodyText.Visibility = Visibility.Collapsed;
+                _successLabel.Text = LocalizedOrFallback("toast.activity.success", "Success");
+                _failedLabel.Text = LocalizedOrFallback("toast.activity.failed", "Failed");
+                _captureLabel.Text = LocalizedOrFallback("toast.activity.capture", "Capture");
+                var animate = !preserveSnapshot && IsVisible && _motionEnabled();
+                _successCount.SetValue(snapshot.Succeeded, McpToastTheme.Primary, animate);
+                _failedCount.SetValue(snapshot.Failed,
+                    snapshot.Failed > 0 ? McpToastTheme.Error : McpToastTheme.TextSecondary, animate);
+                _captureCount.SetValue(snapshot.Images, McpToastTheme.Primary, animate);
+                // Keep the last result available without adding a fourth visible row.
+                _counterRow.ToolTip = snapshot.Body;
+                System.Windows.Automation.AutomationProperties.SetName(_counterRow,
+                    $"{snapshot.Succeeded} {_successLabel.Text} | {snapshot.Failed} {_failedLabel.Text} | {snapshot.Images} {_captureLabel.Text}");
             }
 
-            _bodyText.ToolTip = string.IsNullOrEmpty(_bodyText.Text) ? null : _bodyText.Text;
-            _bodyText.Visibility = string.IsNullOrEmpty(_bodyText.Text)
-                ? Visibility.Collapsed
-                : Visibility.Visible;
+            _titleText.ToolTip = _titleText.Text;
             _titleText.TextWrapping = TextWrapping.NoWrap;
             _titleText.TextTrimming = TextTrimming.CharacterEllipsis;
-            _bodyText.TextWrapping = TextWrapping.NoWrap;
-            _bodyText.MaxHeight = 18;
-            _bodyText.TextTrimming = TextTrimming.CharacterEllipsis;
         }
 
         private static ActivityStatusText ResolveStatusText(ActivitySnapshot snapshot)
@@ -561,8 +638,6 @@ namespace RvtMcp.Plugin.Views.Toast
 
             if (_closeHost != null)
             {
-                _closeHost.MouseEnter -= _closeHostMouseEnterHandler;
-                _closeHost.MouseLeave -= _closeHostMouseLeaveHandler;
                 _closeHost.MouseLeftButtonUp -= _closeHostMouseUpHandler;
             }
 
@@ -578,6 +653,9 @@ namespace RvtMcp.Plugin.Views.Toast
             BeginAnimation(OpacityProperty, null);
             _brandSweep.BeginAnimation(TranslateTransform.XProperty, null);
             _shineSweep.BeginAnimation(TranslateTransform.XProperty, null);
+            _successCount.StopAnimation();
+            _failedCount.StopAnimation();
+            _captureCount.StopAnimation();
             _activityClosed = null;
             _activityDismissed = null;
             _activityClicked = null;

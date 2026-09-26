@@ -8,12 +8,16 @@ using RvtMcp.Plugin.Views.Toast;
 internal static class Program
 {
     [STAThread]
-    private static int Main()
+    private static int Main(string[] args)
     {
         try
         {
+            if (args.Length == 1 && args[0] == "--demo")
+                return ToastPreview.Run();
             CheckCompactBody();
+            CheckCloseHover();
             CheckCompactLayout();
+            ToastVisualTests.Run();
             CheckNaNSafePlacement();
             CheckStationaryPointerFiltering();
             CheckSingleActivityCard();
@@ -54,6 +58,26 @@ internal static class Program
         Console.WriteLine("PASS: merged body preserves results, handles blanks, removes duplicates");
     }
 
+    private static void CheckCloseHover()
+    {
+        var snapshot = new ActivitySnapshot(1, false, 1, 0, 0, "List Rooms", "Done", true, false);
+        var window = new McpToastWindow(snapshot, null, null, null, null, null);
+        try
+        {
+            var close = (Border)typeof(McpToastWindow).GetField("_closeHost",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(window);
+            var original = close.Background;
+            close.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.MouseEnterEvent });
+            if (!ReferenceEquals(close.Background, original))
+                throw new Exception("Hovering × must not change its transparent background.");
+            close.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.MouseLeaveEvent });
+            if (!ReferenceEquals(close.Background, original))
+                throw new Exception("Leaving × must not change its background.");
+        }
+        finally { window.CloseImmediate(); }
+        Console.WriteLine("PASS: close control keeps a transparent hover background");
+    }
+
     private static void CheckCompactLayout()
     {
         double Measure(string body)
@@ -64,23 +88,28 @@ internal static class Program
             {
                 var root = (Border)window.Content;
                 var grid = (Grid)root.Child;
-                if (grid.RowDefinitions.Count != 4 || grid.Children.Count != 4)
+                if (grid.RowDefinitions.Count != 3 || grid.Children.Count != 3)
                     throw new Exception("Expected the stable activity card layout.");
                 var header = (DockPanel)grid.Children[0];
                 var hasActivityHeader = false;
                 foreach (var child in header.Children)
                 {
-                    if (child is TextBlock text && text.Text == "MCP · Activity")
+                    if (child is TextBlock text && text.Text == "RVT-MCP - List Rooms")
                     {
                         hasActivityHeader = true;
                         break;
                     }
                 }
                 if (!hasActivityHeader)
-                    throw new Exception("The activity card must render its localized/fallback header.");
-                var bodyText = (TextBlock)grid.Children[2];
-                if (bodyText.Text != "Latest: List Rooms · " + body || Grid.GetRow(bodyText) != 2)
-                    throw new Exception("The activity card must render the latest result body.");
+                    throw new Exception("The activity card must name the latest tool in its header.");
+                var bodyGrid = (Grid)grid.Children[1];
+                var counterRow = (Viewbox)bodyGrid.Children[0];
+                if (counterRow.Visibility != Visibility.Visible || (string)counterRow.ToolTip != body
+                    || bodyGrid.Children[1].Visibility != Visibility.Collapsed)
+                    throw new Exception("Activity must show counters, with its last summary only in the tooltip.");
+                var footer = (Grid)grid.Children[2];
+                if (((Grid)footer.Children[0]).HorizontalAlignment != HorizontalAlignment.Right)
+                    throw new Exception("Brand must align right independently of footer fill.");
                 root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 return root.DesiredSize.Height;
             }
@@ -91,7 +120,7 @@ internal static class Program
         var second = Measure("A longer body still stays on one fixed row");
         if (Math.Abs(first - second) > 0.1)
             throw new Exception($"Activity card height changed ({first} -> {second}).");
-        Console.WriteLine("PASS: activity card has one body row, no thumbnail, stable height");
+        Console.WriteLine("PASS: three-row card, latest-tool title, counters, right-aligned brand and stable height");
     }
 
     private static void CheckNaNSafePlacement()

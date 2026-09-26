@@ -43,7 +43,7 @@ Thanks [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) — the `send_code`/`s
 
 ### Changed
 
-- **Activity toasts use one shared card** — successive results update a single card (maximum 20-second idle lifetime, paused while hovered) instead of stacking per-result windows. The card shows success, failure and image counts; capture thumbnails are no longer embedded.
+- **Activity toasts use one shared card** — successive results update a single card (20-second default idle lifetime, configurable in Settings and paused while hovered) instead of stacking per-result windows. Its three rows show `RVT-MCP - {tool name}`, vertically rolling Success / Failed / Capture counts, and the right-aligned BIMwright wordmark. Success keeps the light-blue gradient, errors keep red; capture thumbnails are no longer embedded. The × button stays transparent on hover, and the brand's two letter layers crossfade within a moving highlight without dimming the whole logo. Animations respect Windows reduced-motion preferences.
 - **Activity card clicks open History** — clicking the card routes to the host History window, while the close button dismisses the card. Capture paths are never opened from the toast.
 - **Settings config persistence** — Settings reads a side-effect-free snapshot, applies staged keys with per-key results, and writes through a flushed same-directory temp file replacement. Toast idle duration accepts 10/20/30/60 seconds; send-code journal retention accepts 1–48 hours and preserves the selected duration when Off.
 

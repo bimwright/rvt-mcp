@@ -16,7 +16,6 @@ namespace RvtMcp.Plugin.Views.Toast
         public static readonly SolidColorBrush Text = Brush("#1E293B");
         public static readonly SolidColorBrush TextSecondary = Brush("#64748B");
         public static readonly SolidColorBrush CloseIcon = Brush("#64748B");
-        public static readonly SolidColorBrush CloseHover = Brush("#F0F4F8");
         public static readonly SolidColorBrush Primary = Brush("#007ACC");
         public static readonly SolidColorBrush Success = Brush("#38A169");
         public static readonly SolidColorBrush Error = Brush("#E53E3E");
@@ -34,8 +33,6 @@ namespace RvtMcp.Plugin.Views.Toast
             Color baseColor;
             if (!vm.Success)
                 baseColor = ((SolidColorBrush)Error).Color;
-            else if (vm.Kind == ToolActivityKind.Write)
-                baseColor = ((SolidColorBrush)Success).Color;
             else
                 baseColor = ((SolidColorBrush)Primary).Color;
 
@@ -46,7 +43,7 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             if (!vm.Success)
                 return Error;
-            return vm.Kind == ToolActivityKind.Write ? Success : Primary;
+            return Primary;
         }
 
         public static string GetIconGlyph(McpToastViewModel vm)
