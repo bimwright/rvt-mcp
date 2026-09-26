@@ -37,20 +37,35 @@ public class Helper { public int Value => 14; }";
         }
 
         [Fact]
+        public void RunsBodyWhenNoDocumentIsOpen()
+        {
+            // With no model open ActiveUIDocument is null; the preamble must not throw before the body
+            // runs, or no snippet can call app.OpenAndActivateDocument to open one.
+            Assert.Equal(true, CompileAndRun(SendCodeSourceBuilder.Build("return doc == null && uidoc == null;"), NoDocumentApi));
+        }
+
+        [Fact]
         public void PreservesCompilerErrorsForInvalidBody()
         {
             Assert.Contains(Compile(SendCodeSourceBuilder.Build("return missingName; ")).GetDiagnostics(),
                 d => d.Id == "CS0103");
         }
 
-        private static CSharpCompilation Compile(string source)
-        {
-            // Only stand in for UIApplication/Document; use the real Roslyn compiler and entrypoint.
-            const string api = @"namespace Autodesk.Revit.DB { public class Document {} }
+        // Only stand in for UIApplication/Document; use the real Roslyn compiler and entrypoint.
+        private const string OpenDocumentApi = @"namespace Autodesk.Revit.DB { public class Document {} }
 namespace Autodesk.Revit.UI {
  public class UIApplication { public UIDocument ActiveUIDocument { get; } = new UIDocument(); }
  public class UIDocument { public Autodesk.Revit.DB.Document Document { get; } = new Autodesk.Revit.DB.Document(); }
 }";
+
+        private const string NoDocumentApi = @"namespace Autodesk.Revit.DB { public class Document {} }
+namespace Autodesk.Revit.UI {
+ public class UIApplication { public UIDocument ActiveUIDocument { get; } = null; }
+ public class UIDocument { public Autodesk.Revit.DB.Document Document { get; } = new Autodesk.Revit.DB.Document(); }
+}";
+
+        private static CSharpCompilation Compile(string source, string api = OpenDocumentApi)
+        {
             var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))
                 .Split(Path.PathSeparator).Select(p => MetadataReference.CreateFromFile(p));
             return CSharpCompilation.Create("SendCodeTest_" + Guid.NewGuid().ToString("N"),
@@ -58,10 +73,10 @@ namespace Autodesk.Revit.UI {
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         }
 
-        private static object CompileAndRun(string source)
+        private static object CompileAndRun(string source, string api = OpenDocumentApi)
         {
             using var bytes = new MemoryStream();
-            var result = Compile(source).Emit(bytes);
+            var result = Compile(source, api).Emit(bytes);
             Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics));
             var assembly = Assembly.Load(bytes.ToArray());
             var app = Activator.CreateInstance(assembly.GetType("Autodesk.Revit.UI.UIApplication"));

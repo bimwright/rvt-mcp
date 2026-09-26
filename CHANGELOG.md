@@ -24,7 +24,9 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
-No changes on `master` since v0.6.4 yet.
+### Fixed
+
+- **`revit_send_code_to_revit` with no document open** — the wrapper read `app.ActiveUIDocument.Document` before the snippet ran, so every call threw a bare null reference when Revit had no document, including a snippet calling `app.OpenAndActivateDocument`. `doc` and `uidoc` are now `null` in that case and the snippet decides what to do.
 
 ## v0.6.4 - Installer client wiring and MCP prompts
 
