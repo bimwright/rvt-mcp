@@ -2196,7 +2196,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                     targets,
                     note = targets.Length == 0
                         ? "No revit-YYYY.json files found. Start Revit and ensure the rvt-mcp plugin is loaded (Add-Ins ribbon)."
-                        : "Pass any 'year' value above to revit_switch_target to route subsequent commands to that Revit."
+                        : "Pass a 'year' value above as the 'version' argument of revit_switch_target (the parameter is named 'version', the value is the 4-digit year) to route subsequent commands to that Revit."
                 }, Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
