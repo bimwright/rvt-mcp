@@ -29,10 +29,12 @@ namespace RvtMcp.Plugin.Views.Settings
         {
             Applied = new System.Collections.Generic.List<string>();
             Failed = new System.Collections.Generic.List<string>();
+            FieldErrors = new System.Collections.Generic.Dictionary<string, string>();
         }
 
         public System.Collections.Generic.IList<string> Applied { get; private set; }
         public System.Collections.Generic.IList<string> Failed { get; private set; }
+        public System.Collections.Generic.IDictionary<string, string> FieldErrors { get; private set; }
         public bool Succeeded => Failed.Count == 0;
         public bool JournalWasExpired { get; set; }
     }

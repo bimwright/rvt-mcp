@@ -19,7 +19,8 @@ namespace RvtMcp.Plugin.Views.Settings
     /// </summary>
     internal static class InvariantLanguageText
     {
-        public const string Heading = "LANGUAGE";
+        public const string Heading = "Language";
+        public const string RowLabel = "Interface language";
         public const string AutoOption = "Auto — follow Revit";
         public const string CurrentlyUsingPrefix = "Currently using: ";
         public const string SourcePrefix = "Source: ";

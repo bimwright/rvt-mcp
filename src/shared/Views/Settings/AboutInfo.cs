@@ -11,7 +11,6 @@ namespace RvtMcp.Plugin.Views.Settings
         public string LicenseId { get; set; }
         public string LicenseSourceUrl { get; set; }
         public string RepositoryUrl { get; set; }
-        public string DocumentationUrl { get; set; }
         public string IssuesUrl { get; set; }
         public string Author { get; set; }
         public string Copyright { get; set; }
@@ -35,7 +34,6 @@ namespace RvtMcp.Plugin.Views.Settings
                 LicenseId = "Apache-2.0",
                 LicenseSourceUrl = CreateLicenseSourceUrl(version),
                 RepositoryUrl = repository,
-                DocumentationUrl = repository + "/tree/" + CreateReference(version) + "/docs",
                 IssuesUrl = repository + "/issues",
                 Author = "Khoa Le",
                 Copyright = "Copyright 2026 Khoa Le",

@@ -11,7 +11,7 @@ namespace RvtMcp.Plugin.Views.Settings
     /// Staged Settings state. Loading is deliberately read-only; only Apply and the
     /// immediate On/Off and language actions write preferences.
     /// </summary>
-    public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
+    public sealed class SettingsViewModel : ISettingsPresentation
     {
         private readonly App _app;
         private readonly Dispatcher _dispatcher;
@@ -31,6 +31,7 @@ namespace RvtMcp.Plugin.Views.Settings
         private bool _cacheSendCodeBodiesDirty;
         private string _selectedLanguage;
         private bool _disposed;
+        private string _transportKind;
         private int _lastLanguageVersion;
 
         public SettingsViewModel(App app)
@@ -78,9 +79,22 @@ namespace RvtMcp.Plugin.Views.Settings
         }
         public bool IsDirty { get; private set; }
         public string ImmediateWarning { get; private set; }
+        public string ImmediateWarningKey { get; private set; }
+        public bool IsListenerRunning => _app.IsTransportRunning && _app.Transport != null;
+        public bool IsClientConnected => IsListenerRunning && _app.Transport.IsClientConnected;
 
         public string RevitYear => Snapshot?.RevitYear ?? "—";
-        public string TransportKind => Snapshot?.TransportKind ?? "—";
+        public string TransportKind
+        {
+            get
+            {
+                // Live while a listener runs; keeps the last known kind while it is stopped.
+                var info = _app.Transport?.ConnectionInfo ?? string.Empty;
+                if (info.StartsWith("TCP:", StringComparison.OrdinalIgnoreCase)) _transportKind = "TCP";
+                else if (info.StartsWith("Pipe:", StringComparison.OrdinalIgnoreCase)) _transportKind = "Named Pipe";
+                return _transportKind ?? Snapshot?.TransportKind ?? "—";
+            }
+        }
         public string ConnectionState
         {
             get
@@ -93,9 +107,7 @@ namespace RvtMcp.Plugin.Views.Settings
                     : SettingsText.Text("settings.general.state.waiting", "Waiting for MCP client");
             }
         }
-        public bool CanCopyPort => Snapshot != null &&
-            string.Equals(Snapshot.TransportKind, "TCP", StringComparison.OrdinalIgnoreCase) &&
-            _app.Transport is TcpTransportServer && _app.IsTransportRunning;
+        public bool CanCopyPort => _app.Transport is TcpTransportServer && _app.IsTransportRunning;
         public string PortText => CanCopyPort
             ? ((TcpTransportServer)_app.Transport).Port.ToString()
             : SettingsText.Text("settings.general.notApplicable", "Not applicable");
@@ -159,7 +171,9 @@ namespace RvtMcp.Plugin.Views.Settings
             foreach (var key in applied.Applied) result.Applied.Add(key);
             foreach (var failure in applied.Failed)
             {
-                result.Failed.Add(SaveFailed(failure.Key));
+                var message = SaveFailed(failure.Key);
+                result.Failed.Add(message);
+                result.FieldErrors[failure.Key] = message;
                 App.DebugLog("Settings apply failed for " + failure.Key + ": " + failure.Error);
             }
             result.JournalWasExpired = applied.JournalWasExpired;
@@ -169,6 +183,7 @@ namespace RvtMcp.Plugin.Views.Settings
             }
             if (result.JournalWasExpired)
             {
+                ImmediateWarningKey = "persistSendCodeBodies";
                 ImmediateWarning = SettingsText.Text("settings.footer.journalExpired",
                     "The send_code journal expired while Settings was open; it was not re-enabled.");
                 OnPropertyChanged(nameof(ImmediateWarning));
@@ -236,6 +251,7 @@ namespace RvtMcp.Plugin.Views.Settings
             string error;
             var persisted = RvtMcpConfig.TrySaveEnableToast(enabled, out error);
             if (!persisted) App.DebugLog("Settings save enableToast failed: " + error);
+            ImmediateWarningKey = persisted ? null : "enableToast";
             ImmediateWarning = persisted ? null : SaveFailed("enableToast");
             _app.ToastNotifier?.OnToastEnabledChanged(enabled, persisted);
             OnPropertyChanged(nameof(ToastEnabled));
@@ -251,10 +267,12 @@ namespace RvtMcp.Plugin.Views.Settings
                 string error;
                 var persisted = RvtMcpConfig.TrySaveUiLanguage(code, out error);
                 if (!persisted) App.DebugLog("Settings save uiLanguage failed: " + error);
+                ImmediateWarningKey = persisted ? null : "uiLanguage";
                 ImmediateWarning = persisted ? null : SaveFailed("uiLanguage");
             }
             else
             {
+                ImmediateWarningKey = "uiLanguage";
                 ImmediateWarning = InvariantLanguageText.SessionOnlyWarning;
             }
             L.SetLanguage(code);
@@ -265,6 +283,48 @@ namespace RvtMcp.Plugin.Views.Settings
         public void Cancel()
         {
             ReloadReadOnly();
+        }
+
+        public void SetListenerRunning(bool running)
+        {
+            if (running == IsListenerRunning) return;
+            if (running) StartListener();
+            else _app.StopTransport();
+            NotifyConnection();
+        }
+
+        public void RestartListener()
+        {
+            if (!IsListenerRunning) return;
+            // CreateAndStartTransport stops the current listener first, then writes a new discovery file.
+            StartListener();
+            NotifyConnection();
+        }
+
+        private void StartListener()
+        {
+            try
+            {
+                _app.CreateAndStartTransport();
+                if (ImmediateWarningKey == "listener") ImmediateWarning = ImmediateWarningKey = null;
+            }
+            catch (Exception ex)
+            {
+                App.DebugLog("Settings listener start failed: " + ex.Message);
+                ImmediateWarningKey = "listener";
+                ImmediateWarning = SettingsText.Text("settings.general.listenerFailed", "The MCP listener could not be started.");
+            }
+            OnPropertyChanged(nameof(ImmediateWarning));
+        }
+
+        private void NotifyConnection()
+        {
+            OnPropertyChanged(nameof(IsListenerRunning));
+            OnPropertyChanged(nameof(IsClientConnected));
+            OnPropertyChanged(nameof(ConnectionState));
+            OnPropertyChanged(nameof(TransportKind));
+            OnPropertyChanged(nameof(PortText));
+            OnPropertyChanged(nameof(CanCopyPort));
         }
 
         public void CopyPort()

@@ -30,7 +30,10 @@ namespace RvtMcp.Tests
             "settings.tools.timeout.serverLocal", "settings.tools.timeout.budget", "settings.apply", "settings.cancel", "settings.close",
             "settings.footer.copied", "settings.footer.portUnavailable", "settings.footer.applied",
             "settings.footer.journalExpired", "settings.footer.saveFailed",
-            "settings.footer.discardPrompt"
+            "settings.footer.discardPrompt", "settings.header.subtitle", "settings.discard", "settings.footer.unsaved",
+            "settings.general.cacheBodies.help", "settings.general.keepJournal.help", "settings.toast.description",
+            "settings.toast.enabled.help", "settings.toast.idle.help", "settings.general.listener",
+            "settings.general.restart", "settings.general.listenerFailed"
         };
 
         [Fact]

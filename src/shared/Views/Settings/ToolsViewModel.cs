@@ -15,33 +15,8 @@ using CatalogCodec = RvtMcp.ToolCatalog.ToolCatalogCodec;
 
 namespace RvtMcp.Plugin.Views.Settings
 {
-    public sealed class ToolRow
-    {
-        public int No { get; internal set; }
-        public string Name { get; internal set; }
-        public string Description { get; internal set; }
-        public string DescriptionDisplay
-        {
-            get
-            {
-                if (!IsSummaryFallback) return Description;
-                var marker = L.T("settings.tools.fallback");
-                if (string.Equals(marker, "settings.tools.fallback", StringComparison.Ordinal)) marker = "(fallback)";
-                var suffix = " " + marker;
-                if (ToolSummaryCatalog.ScalarLength(Description) + ToolSummaryCatalog.ScalarLength(suffix) <= 160)
-                    return Description + suffix;
-                var limit = Math.Max(0, 160 - ToolSummaryCatalog.ScalarLength(suffix));
-                return CatalogCodec.TakeScalars(Description, limit).TrimEnd() + suffix;
-            }
-        }
-        public bool IsSummaryFallback { get; internal set; }
-        public string Source { get; internal set; }
-        public string TimeoutDisplay { get; internal set; }
-        public string TimeoutHelpText { get; internal set; }
-    }
-
     /// <summary>Read-only projection of the current server catalog plus baked metadata.</summary>
-    public sealed class ToolsViewModel : INotifyPropertyChanged, IDisposable
+    public sealed class ToolsViewModel : ISettingsToolsPresentation
     {
         private readonly BakedToolRegistry _registry;
         private readonly Assembly _summaryAssembly;
