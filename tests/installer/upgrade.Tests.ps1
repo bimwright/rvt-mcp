@@ -524,7 +524,7 @@ try {
     }
     Test 'Client wiring: claude-desktop prefers the MSIX package cache over a stray Roaming dir' {
         # Regression: %APPDATA%\Claude exists (native leftovers) but the app is
-        # MSIX and only reads its package LocalCache — and the package family
+        # MSIX and only reads its package LocalCache - and the package family
         # name is arbitrary, not necessarily Claude_*.
         $fixture = New-SetupFixture
         Remove-Item -LiteralPath "$sandboxLocalAppData\Packages" -Recurse -Force -ErrorAction SilentlyContinue
@@ -565,6 +565,21 @@ try {
         Assert (-not (Test-Path -LiteralPath "$cursor.bak")) 'backup created on no-op'
         Assert ($output -match 'wire with -Client') 'detection hint missing'
     }
+    Test 'Shipped scripts parse as Windows PowerShell 5.1 reads them on an ANSI code page' {
+        # powershell.exe decodes a BOM-less script with the system ANSI code page
+        # (1252 en-US, 1258 vi-VN); UTF-8 punctuation such as an em dash then
+        # decodes to a smart quote that ends the string early.
+        foreach ($name in 'install.ps1', 'uninstall-all.ps1') {
+            $path = (Resolve-Path (Join-Path $PSScriptRoot "../../scripts/$name")).Path
+            foreach ($cp in 1252, 1258) {
+                $reader = New-Object IO.StreamReader($path, [Text.Encoding]::GetEncoding($cp), $true)
+                try { $text = $reader.ReadToEnd() } finally { $reader.Dispose() }
+                $errs = $null
+                $null = [System.Management.Automation.Language.Parser]::ParseInput($text, [ref]$null, [ref]$errs)
+                Assert ($errs.Count -eq 0) "$name has $($errs.Count) parse errors under code page $cp (first at line $(if ($errs.Count) { $errs[0].Extent.StartLineNumber }))"
+            }
+        }
+    }
 } finally {
     $env:USERPROFILE = $savedUserProfile
     $env:APPDATA = $savedAppData
@@ -578,3 +593,4 @@ try {
     Remove-Item -LiteralPath $resolved -Recurse -Force
 }
 if (@($results | Where-Object { -not $_.passed }).Count) { throw 'Installer regression tests failed' }
+
