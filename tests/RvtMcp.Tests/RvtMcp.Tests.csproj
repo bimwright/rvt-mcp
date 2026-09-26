@@ -29,6 +29,7 @@
     <Compile Include="..\..\src\shared\Logging\SendCodeJournalGate.cs" Link="Shared\SendCodeJournalGate.cs" />
     <Compile Include="..\..\src\shared\Logging\SessionLogHistoryLoader.cs" Link="Shared\SessionLogHistoryLoader.cs" />
     <Compile Include="..\..\src\shared\Logging\SummaryGenerator.cs" Link="Shared\SummaryGenerator.cs" />
+    <Compile Include="..\..\src\shared\Views\Toast\ActivityAggregator.cs" Link="Shared\ActivityAggregator.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\ToolActivityClassifier.cs" Link="Shared\ToolActivityClassifier.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\ToolNameFormatter.cs" Link="Shared\ToolNameFormatter.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\ToastContentBuilder.cs" Link="Shared\ToastContentBuilder.cs" />
