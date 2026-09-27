@@ -15,6 +15,13 @@ internal sealed class ToastPreview : Window
     private readonly TextBlock _state = new TextBlock { Margin = new Thickness(0, 10, 0, 10), TextWrapping = TextWrapping.Wrap };
     private readonly ListBox _log = new ListBox { Height = 220 };
     private int _index;
+    private int _identityIndex;
+    private readonly string[] _identities =
+    {
+        "Revit 2027",
+        "Revit 2022",
+        null
+    };
     private readonly (string Name, bool Capture)[] _commands =
     {
         ("Get Current View Info", false), ("List Levels", false), ("List Rooms", false),
@@ -31,7 +38,8 @@ internal sealed class ToastPreview : Window
     private ToastPreview()
     {
         _manager = new McpToastManager(Dispatcher, _activity,
-            onClick: _ => Log("Card click → History callback (preview only); card dismissed."));
+            onClick: _ => Log("Card click → History callback (preview only); card dismissed."),
+            instanceIdentity: () => _identities[_identityIndex]);
         Title = "RVT-MCP — production toast preview (simulated results)";
         Width = 620; Height = 535; Left = 450; Top = 130;
         WindowStartupLocation = WindowStartupLocation.Manual;
@@ -42,7 +50,7 @@ internal sealed class ToastPreview : Window
         panel.Children.Add(new TextBlock { Text = "Production toast · rolling counters", FontSize = 21, FontWeight = FontWeights.SemiBold });
         panel.Children.Add(new TextBlock
         {
-            Text = "Real window + manager + aggregator, simulated results. No Revit/API calls.\nHover: two-layer brand sweep. ×: no hover background, dismiss only.",
+            Text = "Real window + manager + aggregator, simulated results. No Revit/API calls.\nFooter: instance identity label (always on). Hover: two-layer brand sweep. ×: dismiss only.",
             TextWrapping = TextWrapping.Wrap, Foreground = McpToastTheme.TextSecondary, Margin = new Thickness(0, 8, 0, 12)
         });
         var actions = new WrapPanel();
@@ -53,6 +61,14 @@ internal sealed class ToastPreview : Window
         {
             Reset();
             _activity.ShowStatus("Agent connected", "rvt-mcp is ready (simulated)", 60);
+            _manager.Render(); PositionCard();
+        });
+        AddButton(actions, "Instance", () =>
+        {
+            _identityIndex = (_identityIndex + 1) % _identities.Length;
+            var label = _identities[_identityIndex] ?? "(none)";
+            Log("Instance identity → " + label);
+            _activity.ShowStatus("Identity preview", label, 60);
             _manager.Render(); PositionCard();
         });
         AddButton(actions, "Reset", Reset);

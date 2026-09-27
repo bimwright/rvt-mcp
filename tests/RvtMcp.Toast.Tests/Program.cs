@@ -21,6 +21,7 @@ internal static class Program
             ToastVisualTests.Run();
             CheckNaNSafePlacement();
             CheckBrandingFollowsSessionFlag();
+            CheckIdentityRow();
             CheckStationaryPointerFiltering();
             CheckSingleActivityCard();
             CheckStatusAndClickLifecycle();
@@ -169,6 +170,46 @@ internal static class Program
         }
         finally { manager.DismissAllImmediate(); }
         Console.WriteLine("PASS: new and open cards follow the session branding flag");
+    }
+
+    private static void CheckIdentityRow()
+    {
+        var snapshot = new ActivitySnapshot(1, false, 1, 0, 0, "List Rooms", "Done", true, false);
+
+        var window = new McpToastWindow(snapshot, null, null, null, null, null,
+            instanceIdentity: "Revit 2027");
+        try
+        {
+            var footer = BrandRow(window);
+            var identity = (TextBlock)typeof(McpToastWindow)
+                .GetField("_identityText", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(window);
+            if (identity.Text != "Revit 2027")
+                throw new Exception("The footer did not carry the supplied instance identity.");
+            if (footer.Visibility != Visibility.Visible)
+                throw new Exception("An instance identity must keep the footer row visible.");
+            window.SetShowBranding(false);
+            if (footer.Visibility != Visibility.Visible)
+                throw new Exception("Turning branding off must not hide the instance identity.");
+            if (TitleText(window) != "List Rooms")
+                throw new Exception("Identity must not restore the product prefix while branding is off.");
+            window.SetShowBranding(true);
+            if (TitleText(window) != "RVT-MCP - List Rooms")
+                throw new Exception("Branding on must still prefix the title alongside the identity.");
+        }
+        finally { window.CloseImmediate(); }
+
+        var plain = new McpToastWindow(snapshot, null, null, null, null, null);
+        try
+        {
+            if (BrandRow(plain).Visibility != Visibility.Hidden)
+                throw new Exception("A card without identity must still park the wordmark row.");
+            plain.SetShowBranding(false);
+            if (BrandRow(plain).Visibility != Visibility.Collapsed)
+                throw new Exception("A card without identity must collapse the footer with branding off.");
+        }
+        finally { plain.CloseImmediate(); }
+        Console.WriteLine("PASS: instance identity keeps the footer visible independently of branding");
     }
 
     private static string TitleText(McpToastWindow window)

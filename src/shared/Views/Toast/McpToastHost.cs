@@ -33,6 +33,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private Func<bool> _frameUsable = () => true;
         private Action<long> _activityClick = _ => { };
         private volatile bool _showBranding;
+        private volatile string _instanceIdentity;
 
         /// <summary>
         /// Wordmark and product prefix on the activity card. Off until turned on.
@@ -44,6 +45,15 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             _showBranding = show;
             PostToManager(manager => manager.ApplyShowBranding());
+        }
+
+        /// <summary>
+        /// Instance footer label (e.g. "Revit 2027"). Read when each card is
+        /// created, so a late or changed value applies to the next card.
+        /// </summary>
+        public void SetInstanceIdentity(string identity)
+        {
+            _instanceIdentity = string.IsNullOrWhiteSpace(identity) ? null : identity;
         }
 
         internal void SetFrameUsableProvider(Func<bool> provider)
@@ -84,7 +94,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 if (hostDispatcher != null)
                 {
                     _dispatcher = hostDispatcher;
-                    _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding);
+                    _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding, () => _instanceIdentity);
                     if (_ownerHandle != IntPtr.Zero)
                         _manager.SetOwnerHandle(_ownerHandle);
                     _usesDedicatedThread = false;
@@ -108,7 +118,7 @@ namespace RvtMcp.Plugin.Views.Toast
                         }
 
                         _dispatcher = Dispatcher.CurrentDispatcher;
-                        _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding);
+                        _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding, () => _instanceIdentity);
                         if (_ownerHandle != IntPtr.Zero)
                             _manager.SetOwnerHandle(_ownerHandle);
                     }

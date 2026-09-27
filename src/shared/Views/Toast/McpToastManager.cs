@@ -22,6 +22,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly Func<bool> _isFrameUsable;
         private readonly Action<long> _onClick;
         private readonly Func<bool> _showBranding;
+        private readonly Func<string> _instanceIdentity;
         private readonly DispatcherTimer _timer;
         private McpToastWindow _window;
         private IntPtr _ownerHandle;
@@ -31,18 +32,25 @@ namespace RvtMcp.Plugin.Views.Toast
         /// evaluated on the toast dispatcher by the timer; it must be cheap and must not
         /// call back into this manager. A missing callback means that the frame is usable.
         /// </param>
+        /// <param name="instanceIdentity">
+        /// Small always-on footer label identifying this Revit instance so cards
+        /// from parallel Revit processes can be told apart. Evaluated when each
+        /// card is created; null/empty hides the label.
+        /// </param>
         public McpToastManager(
             Dispatcher dispatcher,
             ActivityAggregator aggregator,
             Func<bool> isFrameUsable = null,
             Action<long> onClick = null,
-            Func<bool> showBranding = null)
+            Func<bool> showBranding = null,
+            Func<string> instanceIdentity = null)
         {
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             _aggregator = aggregator ?? throw new ArgumentNullException(nameof(aggregator));
             _isFrameUsable = isFrameUsable ?? (() => true);
             _onClick = onClick;
             _showBranding = showBranding ?? (() => true);
+            _instanceIdentity = instanceIdentity ?? (() => null);
 
             _timer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
             {
@@ -197,7 +205,8 @@ namespace RvtMcp.Plugin.Views.Toast
                 OnDismissRequested,
                 OnCardClicked,
                 OnPointerEntered,
-                OnPointerLeft);
+                OnPointerLeft,
+                instanceIdentity: _instanceIdentity());
 
             _window = window;
             window.SetShowBranding(_showBranding());

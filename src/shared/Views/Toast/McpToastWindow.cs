@@ -37,6 +37,9 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly TextBlock _brandText;
         private readonly TextBlock _brandShine;
         private readonly Grid _brandRow;
+        private readonly Grid _brandCell;
+        private readonly TextBlock _identityText;
+        private readonly string _instanceIdentity;
         private readonly TranslateTransform _brandSweep = new TranslateTransform(-0.75, 0);
         private readonly TranslateTransform _shineSweep = new TranslateTransform(-0.75, 0);
         private readonly Func<Point> _cursorPosition;
@@ -88,7 +91,8 @@ namespace RvtMcp.Plugin.Views.Toast
             Action<long> onPointerEntered,
             Action<long> onPointerLeft,
             Func<Point> cursorPosition = null,
-            Func<bool> motionEnabled = null)
+            Func<bool> motionEnabled = null,
+            string instanceIdentity = null)
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
             ViewModel = ToViewModel(snapshot);
@@ -100,6 +104,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _activityPointerLeft = onPointerLeft;
             _cursorPosition = cursorPosition ?? ReadCursorPosition;
             _motionEnabled = motionEnabled ?? (() => SystemParameters.ClientAreaAnimation);
+            _instanceIdentity = instanceIdentity;
 
             FontFamily = McpToastTheme.UiFont;
 
@@ -265,14 +270,27 @@ namespace RvtMcp.Plugin.Views.Toast
                 }
             };
 
-            var brandCell = new Grid
+            _brandCell = new Grid
             {
                 VerticalAlignment = VerticalAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Right
             };
-            brandCell.Children.Add(_brandText);
-            brandCell.Children.Add(_brandShine);
-            _brandRow.Children.Add(brandCell);
+            _brandCell.Children.Add(_brandText);
+            _brandCell.Children.Add(_brandShine);
+            _brandRow.Children.Add(_brandCell);
+
+            _identityText = new TextBlock
+            {
+                // Always-on instance label so toasts from parallel Revit processes
+                // (e.g. 2022 TCP vs 2027 pipe) are distinguishable at a glance.
+                Text = _instanceIdentity ?? string.Empty,
+                FontSize = 9,
+                Foreground = McpToastTheme.MutedAccent,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            _brandRow.Children.Add(_identityText);
 
             Grid.SetRow(_brandRow, 2);
             content.Children.Add(_brandRow);
@@ -463,8 +481,8 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             _brandHideGeneration++;
             _brandHiding = false;
-            _brandRow.BeginAnimation(UIElement.OpacityProperty, null);
-            _brandRow.Opacity = 1;
+            _brandCell.BeginAnimation(UIElement.OpacityProperty, null);
+            _brandCell.Opacity = 1;
             _brandRow.Visibility = Visibility.Visible;
             _brandRevealed = true;
             _brandText.OpacityMask = BuildBrandRevealMask(_brandSweep);
@@ -485,8 +503,8 @@ namespace RvtMcp.Plugin.Views.Toast
             _brandHiding = false;
             CancelBrandRevealTimer();
             StopBrandSweep();
-            _brandRow.BeginAnimation(UIElement.OpacityProperty, null);
-            _brandRow.Opacity = 1;
+            _brandCell.BeginAnimation(UIElement.OpacityProperty, null);
+            _brandCell.Opacity = 1;
             _brandRow.Visibility = Visibility.Visible;
             _brandRevealed = true;
             _brandText.OpacityMask = new SolidColorBrush(Dim(BrandSettleOpacity));
@@ -505,7 +523,7 @@ namespace RvtMcp.Plugin.Views.Toast
 
             _brandHiding = true;
             var generation = ++_brandHideGeneration;
-            var fade = new DoubleAnimation(_brandRow.Opacity, 0, TimeSpan.FromMilliseconds(BrandHideDurationMs))
+            var fade = new DoubleAnimation(_brandCell.Opacity, 0, TimeSpan.FromMilliseconds(BrandHideDurationMs))
             {
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
             };
@@ -515,12 +533,14 @@ namespace RvtMcp.Plugin.Views.Toast
                     return;
                 ParkBrandRow();
             };
-            _brandRow.BeginAnimation(UIElement.OpacityProperty, fade);
+            _brandCell.BeginAnimation(UIElement.OpacityProperty, fade);
         }
 
         /// <summary>
-        /// Branding on keeps the bottom row in the layout so hover does not
-        /// change the card height. Branding off removes that row.
+        /// An identity label keeps the bottom row visible permanently; otherwise
+        /// branding on reserves the row (hover-revealed wordmark) and branding
+        /// off removes it. Wordmark visibility is driven by its opacity mask,
+        /// so a visible row still draws no letters until a real hover.
         /// </summary>
         private void ParkBrandRow()
         {
@@ -529,10 +549,20 @@ namespace RvtMcp.Plugin.Views.Toast
             _brandRevealed = false;
             CancelBrandRevealTimer();
             StopBrandSweep();
-            _brandRow.BeginAnimation(UIElement.OpacityProperty, null);
-            _brandRow.Opacity = 1;
-            _brandRow.Visibility = _showBranding ? Visibility.Hidden : Visibility.Collapsed;
+            _brandCell.BeginAnimation(UIElement.OpacityProperty, null);
+            _brandCell.Opacity = 1;
+            // The row may stay visible for the identity label, so park the wipe
+            // masks too — a mid-sweep transform or settled solid mask would
+            // otherwise keep half-revealed letters on screen.
+            _brandSweep.X = _shineSweep.X = -0.75;
+            _brandText.OpacityMask = BuildBrandRevealMask(_brandSweep);
+            _brandShine.OpacityMask = BuildShineMask(_shineSweep);
+            _brandRow.Visibility = HasIdentity
+                ? Visibility.Visible
+                : (_showBranding ? Visibility.Hidden : Visibility.Collapsed);
         }
+
+        private bool HasIdentity => !string.IsNullOrEmpty(_instanceIdentity);
 
         private void CancelBrandRevealTimer()
         {
@@ -781,7 +811,7 @@ namespace RvtMcp.Plugin.Views.Toast
             MouseLeave -= _mouseLeaveHandler;
             CancelBrandRevealTimer();
             _brandHideGeneration++;
-            _brandRow.BeginAnimation(UIElement.OpacityProperty, null);
+            _brandCell.BeginAnimation(UIElement.OpacityProperty, null);
             MouseLeftButtonUp -= _mouseUpHandler;
             SourceInitialized -= _sourceInitializedHandler;
             Closed -= _closedHandler;
