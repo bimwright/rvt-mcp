@@ -70,10 +70,9 @@ namespace RvtMcp.Plugin.Views.Toast
                 durationMs,
                 toolDescription);
 
-            // A capture contributes to the image count, but the activity card never
-            // embeds or opens the image. The path has already passed the builder's
-            // local safety policy.
-            Record(vm.Title, vm.Body, vm.Success, vm.Success && !string.IsNullOrEmpty(vm.ThumbnailPath));
+            // The card shows a thumbnail of the latest capture and opens the file
+            // on click. The path has already passed the builder's local safety policy.
+            Record(vm.Title, vm.Body, vm.Success, vm.ThumbnailPath);
         }
 
         /// <summary>One-shot connection confirmation, independent of activity counters.</summary>
@@ -136,9 +135,9 @@ namespace RvtMcp.Plugin.Views.Toast
             _host.Shutdown();
         }
 
-        private void Record(string title, string body, bool success, bool hasImage)
+        private void Record(string title, string body, bool success, string imagePath)
         {
-            if (_activity.RecordResult(title, body, success, hasImage, IsOwnerFrameUsable()))
+            if (_activity.RecordResult(title, body, success, imagePath, IsOwnerFrameUsable()))
                 _host.Post(manager => manager.Render());
         }
 

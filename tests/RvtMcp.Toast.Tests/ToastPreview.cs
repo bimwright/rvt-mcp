@@ -1,7 +1,11 @@
 using System;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using RvtMcp.Plugin.Views.Toast;
 
@@ -124,11 +128,38 @@ internal sealed class ToastPreview : Window
 
     private void Deliver(string name, bool success, bool capture)
     {
-        _activity.RecordResult(name, success ? "Simulated success" : "Parameter is read-only (simulated)", success, capture, true);
+        _activity.RecordResult(name, success ? "Simulated success" : "Parameter is read-only (simulated)",
+            success, capture ? PreviewPng() : null, true);
         _manager.Render();
         PositionCard();
         Log($"MOCK {name} → {(success ? "SUCCESS" : "ERROR")}{(capture ? " + CAPTURE" : "")}");
         _state.Text = $"Latest: {name} · replay {_index}/10";
+    }
+
+    /// <summary>A real PNG under %TEMP% so the capture rows in the replay exercise the
+    /// thumbnail row end to end (the path allowlist covers temp and captures dirs).</summary>
+    private static string PreviewPng()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "rvtmcp-toast-preview.png");
+        if (File.Exists(path))
+            return path;
+
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x20, 0x4A, 0x87)), null, new Rect(0, 0, 500, 240));
+            dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50)), null, new Rect(30, 140, 200, 70));
+            dc.DrawText(new FormattedText("captured view (preview)", CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, new Typeface("Segoe UI"), 22, System.Windows.Media.Brushes.White, 1.25),
+                new Point(30, 40));
+        }
+        var bitmap = new RenderTargetBitmap(500, 240, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using (var stream = File.Create(path))
+            encoder.Save(stream);
+        return path;
     }
 
     private static void PositionCard()

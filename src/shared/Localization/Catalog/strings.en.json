@@ -41,6 +41,7 @@
   "toast.activity.success": "Success",
   "toast.activity.failed": "Failed",
   "toast.activity.capture": "Capture",
+  "toast.activity.open_image": "Open image",
   "toast.status.enabled": "Toast notifications enabled",
   "toast.status.enabled.summary": "New activity will appear here.",
   "toast.status.disabled": "Toast notifications disabled",

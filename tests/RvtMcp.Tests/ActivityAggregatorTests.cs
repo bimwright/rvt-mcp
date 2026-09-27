@@ -18,10 +18,10 @@ namespace RvtMcp.Tests
         private ActivityAggregator Make() => new ActivityAggregator(() => _idleSeconds, () => _clock.Now);
 
         private static void Ok(ActivityAggregator a, bool image = false, bool usable = true) =>
-            a.RecordResult("Create Level", "Level 2 created", true, image, usable);
+            a.RecordResult("Create Level", "Level 2 created", true, image ? "capture.png" : null, usable);
 
         private static void Fail(ActivityAggregator a, bool image = false, bool usable = true) =>
-            a.RecordResult("Create Grid", "No document is open.", false, image, usable);
+            a.RecordResult("Create Grid", "No document is open.", false, image ? "capture.png" : null, usable);
 
         private static ActivitySnapshot Visible(ActivityAggregator a)
         {
@@ -52,6 +52,30 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void Latest_image_path_tracks_only_the_latest_result()
+        {
+            var a = Make();
+            Ok(a, image: true);
+            Ok(a, image: true);
+
+            var card = Visible(a);
+            Assert.Equal("capture.png", card.LatestImagePath);
+            Assert.Equal(2, card.Images);
+
+            // A newer result without an image hides the thumbnail but keeps the count.
+            Ok(a);
+            card = Visible(a);
+            Assert.Null(card.LatestImagePath);
+            Assert.Equal(2, card.Images);
+
+            // A failed result never surfaces a thumbnail either.
+            Fail(a, image: true);
+            card = Visible(a);
+            Assert.Null(card.LatestImagePath);
+            Assert.Equal(2, card.Images);
+        }
+
+        [Fact]
         public void HasFailure_stays_after_later_successes()
         {
             var a = Make();
@@ -68,12 +92,12 @@ namespace RvtMcp.Tests
         {
             var a = Make();
 
-            Assert.True(a.RecordResult("A", null, true, false, true));
-            Assert.False(a.RecordResult("B", null, true, false, true));
-            Assert.False(a.RecordResult("C", null, true, false, true));
+            Assert.True(a.RecordResult("A", null, true, null, true));
+            Assert.False(a.RecordResult("B", null, true, null, true));
+            Assert.False(a.RecordResult("C", null, true, null, true));
 
             Assert.Equal(3, Visible(a).Succeeded);
-            Assert.True(a.RecordResult("D", null, true, false, true));
+            Assert.True(a.RecordResult("D", null, true, null, true));
         }
 
         // --- deadline -------------------------------------------------------
@@ -349,7 +373,7 @@ namespace RvtMcp.Tests
             Assert.Equal(ActivityCardPhase.Visible, a.TakeRender().Phase);
 
             _clock.At(1);
-            Assert.True(a.RecordResult("tool", "second", true, false, frameUsable: false));
+            Assert.True(a.RecordResult("tool", "second", true, null, frameUsable: false));
             Assert.Equal(ActivityCardPhase.Hidden, a.TakeRender().Phase);
 
             Assert.True(a.FlushIfUsable(frameUsable: true));
@@ -483,7 +507,7 @@ namespace RvtMcp.Tests
         public void Off_drops_the_card_so_a_late_render_shows_only_the_off_card()
         {
             var a = Make();
-            Assert.True(a.RecordResult("A", null, true, false, true)); // render posted, not yet run
+            Assert.True(a.RecordResult("A", null, true, null, true)); // render posted, not yet run
 
             a.Reset();
             a.ShowStatus("Toast off", null, 3);

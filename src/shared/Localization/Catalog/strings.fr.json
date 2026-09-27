@@ -38,6 +38,7 @@
   "toast.activity.success": "Réussites",
   "toast.activity.failed": "Échecs",
   "toast.activity.capture": "Captures",
+  "toast.activity.open_image": "Ouvrir l'image",
   "toast.status.enabled": "Toast notifications enabled",
   "toast.status.enabled.summary": "New activity will appear here.",
   "toast.status.disabled": "Toast notifications disabled",

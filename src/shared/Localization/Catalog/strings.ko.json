@@ -38,6 +38,7 @@
   "toast.activity.success": "성공",
   "toast.activity.failed": "실패",
   "toast.activity.capture": "캡처",
+  "toast.activity.open_image": "이미지 열기",
   "toast.status.enabled": "Toast notifications enabled",
   "toast.status.enabled.summary": "New activity will appear here.",
   "toast.status.disabled": "Toast notifications disabled",

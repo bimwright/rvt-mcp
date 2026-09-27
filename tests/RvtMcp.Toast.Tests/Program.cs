@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
@@ -22,6 +23,7 @@ internal static class Program
             CheckNaNSafePlacement();
             CheckBrandingFollowsSessionFlag();
             CheckIdentityRow();
+            CheckThumbnailRow();
             CheckStationaryPointerFiltering();
             CheckSingleActivityCard();
             CheckStatusAndClickLifecycle();
@@ -91,7 +93,7 @@ internal static class Program
             {
                 var root = (Border)window.Content;
                 var grid = (Grid)root.Child;
-                if (grid.RowDefinitions.Count != 3 || grid.Children.Count != 3)
+                if (grid.RowDefinitions.Count != 4 || grid.Children.Count != 4)
                     throw new Exception("Expected the stable activity card layout.");
                 var header = (DockPanel)grid.Children[0];
                 var hasActivityHeader = false;
@@ -110,7 +112,10 @@ internal static class Program
                 if (counterRow.Visibility != Visibility.Visible || (string)counterRow.ToolTip != body
                     || bodyGrid.Children[1].Visibility != Visibility.Collapsed)
                     throw new Exception("Activity must show counters, with its last summary only in the tooltip.");
-                var footer = (Grid)grid.Children[2];
+                var thumbnail = (Border)grid.Children[2];
+                if (thumbnail.Visibility != Visibility.Collapsed)
+                    throw new Exception("Thumbnail row must stay collapsed without a capture.");
+                var footer = (Grid)grid.Children[3];
                 if (((Grid)footer.Children[0]).HorizontalAlignment != HorizontalAlignment.Right)
                     throw new Exception("Brand must align right independently of footer fill.");
                 root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -132,7 +137,7 @@ internal static class Program
         var manager = new McpToastManager(Dispatcher.CurrentDispatcher, aggregator);
         try
         {
-            if (!aggregator.RecordResult("revit_list_rooms", "Done", true, false, true))
+            if (!aggregator.RecordResult("revit_list_rooms", "Done", true, null, true))
                 throw new Exception("The first activity result did not request a render.");
             manager.Render();
             Pump();
@@ -152,7 +157,7 @@ internal static class Program
         var manager = new McpToastManager(Dispatcher.CurrentDispatcher, aggregator, showBranding: () => show);
         try
         {
-            if (!aggregator.RecordResult("List Rooms", "Done", true, false, true))
+            if (!aggregator.RecordResult("List Rooms", "Done", true, null, true))
                 throw new Exception("The first activity result did not request a render.");
             manager.Render();
             Pump();
@@ -212,6 +217,55 @@ internal static class Program
         Console.WriteLine("PASS: instance identity keeps the footer visible independently of branding");
     }
 
+    private static void CheckThumbnailRow()
+    {
+        var png = WriteTempPng();
+        var snapshot = new ActivitySnapshot(1, false, 1, 0, 1, "Capture View", "Saved", true, false,
+            latestImagePath: png);
+
+        var window = new McpToastWindow(snapshot, null, null, null, null, null);
+        try
+        {
+            var host = (Border)typeof(McpToastWindow)
+                .GetField("_thumbnailHost", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(window);
+            var image = (Image)typeof(McpToastWindow)
+                .GetField("_thumbnailImage", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(window);
+            if (host.Visibility != Visibility.Visible || image.Source == null)
+                throw new Exception("A capture result must render its thumbnail in the card.");
+
+            // A newer result without an image collapses the row again.
+            window.Update(new ActivitySnapshot(1, false, 2, 0, 1, "List Rooms", "Done", true, false));
+            if (host.Visibility != Visibility.Collapsed || image.Source != null)
+                throw new Exception("The thumbnail must clear when the latest result has no image.");
+
+            // An unsafe path never renders.
+            window.Update(new ActivitySnapshot(1, false, 3, 0, 1, "Capture View", "Saved", true, false,
+                latestImagePath: @"C:\Windows\System32\cmd.exe.png"));
+            if (host.Visibility != Visibility.Collapsed)
+                throw new Exception("An out-of-allowlist path must not render a thumbnail.");
+        }
+        finally { window.CloseImmediate(); }
+        Console.WriteLine("PASS: latest-capture thumbnail shows, clears and rejects unsafe paths");
+    }
+
+    private static string WriteTempPng()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "rvtmcp-toast-check.png");
+        // 1x1 transparent PNG
+        var bytes = new byte[]
+        {
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44,
+            0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F,
+            0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00,
+            0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+            0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
+        };
+        File.WriteAllBytes(path, bytes);
+        return path;
+    }
+
     private static string TitleText(McpToastWindow window)
     {
         var title = (TextBlock)typeof(McpToastWindow).GetField("_titleText", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(window);
@@ -231,7 +285,7 @@ internal static class Program
         {
             for (var i = 0; i < 100; i++)
             {
-                if (aggregator.RecordResult("revit_list_rooms", "Done", true, false, true))
+                if (aggregator.RecordResult("revit_list_rooms", "Done", true, null, true))
                     manager.Render();
             }
             Pump();
@@ -242,7 +296,7 @@ internal static class Program
             var firstId = first.CardId;
             var stableHeight = first.ActualHeight;
 
-            if (aggregator.RecordResult("revit_list_rooms", "Updated", true, false, true))
+            if (aggregator.RecordResult("revit_list_rooms", "Updated", true, null, true))
                 manager.Render();
             Pump();
             var updated = Current(manager);
@@ -255,7 +309,7 @@ internal static class Program
                 throw new Exception("The current card could not be dismissed.");
             manager.Render(); // begin the one-way fade
 
-            if (aggregator.RecordResult("revit_list_rooms", "New card", true, false, true))
+            if (aggregator.RecordResult("revit_list_rooms", "New card", true, null, true))
                 manager.Render(); // force-closes the fading card before creating the new one
             Pump();
             var replacement = Current(manager);
@@ -272,7 +326,7 @@ internal static class Program
             if (Current(manager) != null)
                 throw new Exception("Turning toast off during fade left a topmost window behind.");
 
-            if (!aggregator.RecordResult("revit_list_rooms", "Restored", true, false, true))
+            if (!aggregator.RecordResult("revit_list_rooms", "Restored", true, null, true))
                 throw new Exception("The post-toggle activity result did not request a render.");
             manager.Render();
             Pump();
@@ -298,7 +352,7 @@ internal static class Program
             if (Current(manager) != null)
                 throw new Exception("DismissAllImmediate left a toast window behind.");
 
-            if (!aggregator.RecordResult("revit_list_rooms", "After shutdown", true, false, true))
+            if (!aggregator.RecordResult("revit_list_rooms", "After shutdown", true, null, true))
                 throw new Exception("DismissAllImmediate left the aggregator render request stuck.");
             manager.Render();
             Pump();

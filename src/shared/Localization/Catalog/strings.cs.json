@@ -38,6 +38,7 @@
   "toast.activity.success": "Úspěšné",
   "toast.activity.failed": "Chyby",
   "toast.activity.capture": "Snímky",
+  "toast.activity.open_image": "Otevřít obrázek",
   "toast.status.enabled": "Toast notifications enabled",
   "toast.status.enabled.summary": "New activity will appear here.",
   "toast.status.disabled": "Toast notifications disabled",

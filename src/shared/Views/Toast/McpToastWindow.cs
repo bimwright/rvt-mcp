@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Media.Effects;
 using System.Windows.Threading;
 using RvtMcp.Plugin.Localization;
@@ -40,6 +43,9 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly Grid _brandCell;
         private readonly TextBlock _identityText;
         private readonly string _instanceIdentity;
+        private readonly Border _thumbnailHost;
+        private readonly Image _thumbnailImage;
+        private string _thumbnailPath;
         private readonly TranslateTransform _brandSweep = new TranslateTransform(-0.75, 0);
         private readonly TranslateTransform _shineSweep = new TranslateTransform(-0.75, 0);
         private readonly Func<Point> _cursorPosition;
@@ -59,6 +65,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private bool _brandRevealed;
         private bool _brandHiding;
         private MouseButtonEventHandler _mouseUpHandler;
+        private MouseButtonEventHandler _thumbnailUpHandler;
         private EventHandler _sourceInitializedHandler;
         private EventHandler _closedHandler;
         private bool _isClosing;
@@ -149,6 +156,8 @@ namespace RvtMcp.Plugin.Views.Toast
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             // Status summary and activity counters share one fixed-height body row.
             content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
+            // Latest-capture thumbnail: collapsed unless the newest result carried an image.
+            content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var header = new DockPanel { LastChildFill = true };
@@ -235,6 +244,33 @@ namespace RvtMcp.Plugin.Views.Toast
             Grid.SetRow(body, 1);
             content.Children.Add(body);
 
+            _thumbnailImage = new Image
+            {
+                Stretch = Stretch.Uniform,
+                MaxWidth = 250,
+                MaxHeight = 120,
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+            _thumbnailHost = new Border
+            {
+                Margin = new Thickness(24, 6, 0, 0),
+                CornerRadius = new CornerRadius(4),
+                BorderBrush = McpToastTheme.MutedAccent,
+                BorderThickness = new Thickness(1),
+                Background = Brushes.White,
+                Child = _thumbnailImage,
+                Cursor = Cursors.Hand,
+                Visibility = Visibility.Collapsed
+            };
+            _thumbnailUpHandler = (_, e) =>
+            {
+                e.Handled = true;
+                OpenThumbnail();
+            };
+            _thumbnailHost.MouseLeftButtonUp += _thumbnailUpHandler;
+            Grid.SetRow(_thumbnailHost, 2);
+            content.Children.Add(_thumbnailHost);
+
             _brandRow = new Grid { Margin = new Thickness(24, 5, 0, 0) };
 
             _brandText = new TextBlock
@@ -292,7 +328,7 @@ namespace RvtMcp.Plugin.Views.Toast
             };
             _brandRow.Children.Add(_identityText);
 
-            Grid.SetRow(_brandRow, 2);
+            Grid.SetRow(_brandRow, 3);
             content.Children.Add(_brandRow);
             ParkBrandRow();
 
@@ -334,6 +370,8 @@ namespace RvtMcp.Plugin.Views.Toast
             };
             _mouseUpHandler = (_, e) =>
             {
+                if (e.Handled)
+                    return;
                 if (e.OriginalSource is Border activityCloseBorder && activityCloseBorder == closeHost)
                     return;
                 if (_isClosing)
@@ -695,6 +733,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 _bodyText.Visibility = Visibility.Visible;
                 _bodyText.Text = status.Body;
                 _bodyText.ToolTip = status.Body;
+                ApplyThumbnail(null);
             }
             else
             {
@@ -713,11 +752,78 @@ namespace RvtMcp.Plugin.Views.Toast
                 _counterRow.ToolTip = snapshot.Body;
                 System.Windows.Automation.AutomationProperties.SetName(_counterRow,
                     $"{snapshot.Succeeded} {_successLabel.Text} | {snapshot.Failed} {_failedLabel.Text} | {snapshot.Images} {_captureLabel.Text}");
+                ApplyThumbnail(snapshot.LatestImagePath);
             }
 
             _titleText.ToolTip = _titleText.Text;
             _titleText.TextWrapping = TextWrapping.NoWrap;
             _titleText.TextTrimming = TextTrimming.CharacterEllipsis;
+        }
+
+        /// <summary>
+        /// Shows a small preview of the latest capture between the counter row and the
+        /// footer. Only runs when the path changed — a counter-only update keeps the
+        /// already-decoded bitmap instead of reloading the file on every result.
+        /// </summary>
+        private void ApplyThumbnail(string path)
+        {
+            if (string.Equals(path, _thumbnailPath, StringComparison.Ordinal))
+                return;
+            _thumbnailPath = path;
+            _thumbnailImage.Source = null;
+
+            if (string.IsNullOrEmpty(path) || !ToastContentBuilder.IsSafeImagePath(path))
+            {
+                _thumbnailHost.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var bytes = ToastThumbnailLoader.TryLoadBytes(path, 8 * 1024 * 1024);
+            if (bytes == null)
+            {
+                _thumbnailHost.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            try
+            {
+                using (var stream = new MemoryStream(bytes))
+                {
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.DecodePixelWidth = 300;
+                    bitmap.StreamSource = stream;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    _thumbnailImage.Source = bitmap;
+                }
+                _thumbnailHost.ToolTip = LocalizedOrFallback("toast.activity.open_image", "Open image");
+                _thumbnailHost.Visibility = Visibility.Visible;
+            }
+            catch
+            {
+                _thumbnailHost.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        /// <summary>Click on the thumbnail opens the capture in the default viewer,
+        /// then dismisses the card — the same click-through the per-toast card had.</summary>
+        private void OpenThumbnail()
+        {
+            var path = _thumbnailPath;
+            if (_isClosing || !ToastContentBuilder.IsSafeImagePath(path))
+                return;
+
+            try
+            {
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            }
+            catch
+            {
+                // Best-effort — the card still dismisses.
+            }
+            _activityDismissed?.Invoke(_cardId);
         }
 
         private string ActivityTitle(string title)
@@ -805,6 +911,8 @@ namespace RvtMcp.Plugin.Views.Toast
             {
                 _closeHost.MouseLeftButtonUp -= _closeHostMouseUpHandler;
             }
+            _thumbnailHost.MouseLeftButtonUp -= _thumbnailUpHandler;
+            _thumbnailImage.Source = null;
 
             MouseEnter -= _mouseEnterHandler;
             MouseMove -= _mouseMoveHandler;

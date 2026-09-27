@@ -8,7 +8,7 @@ namespace RvtMcp.Plugin.Views.Toast
     {
         public ActivitySnapshot(long cardId, bool isStatus, int succeeded, int failed, int images,
             string title, string body, bool latestSuccess, bool hasFailure,
-            Func<ActivityStatusText> statusTextProvider = null)
+            Func<ActivityStatusText> statusTextProvider = null, string latestImagePath = null)
         {
             CardId = cardId;
             IsStatus = isStatus;
@@ -20,6 +20,7 @@ namespace RvtMcp.Plugin.Views.Toast
             LatestSuccess = latestSuccess;
             HasFailure = hasFailure;
             StatusTextProvider = statusTextProvider;
+            LatestImagePath = latestImagePath;
         }
 
         /// <summary>Never reused — a window callback carrying an old id is ignored.</summary>
@@ -42,6 +43,9 @@ namespace RvtMcp.Plugin.Views.Toast
         /// Activity cards leave this null and keep their captured result text.
         /// </summary>
         public Func<ActivityStatusText> StatusTextProvider { get; }
+        /// <summary>Capture path of the latest result only — a newer result without an
+        /// image clears it, so the card never shows a stale thumbnail.</summary>
+        public string LatestImagePath { get; }
     }
 
     /// <summary>Localized title/body for a status card, resolved at render time.</summary>
@@ -104,6 +108,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private string _body;
         private bool _latestSuccess;
         private bool _hasFailure;
+        private string _latestImagePath;
         private Func<ActivityStatusText> _statusTextProvider;
         private bool _hovering;
         private TimeSpan _deadline;
@@ -128,7 +133,7 @@ namespace RvtMcp.Plugin.Views.Toast
             get { lock (_gate) return _phase == Phase.Pending; }
         }
 
-        public bool RecordResult(string title, string body, bool success, bool hasImage, bool frameUsable)
+        public bool RecordResult(string title, string body, bool success, string imagePath, bool frameUsable)
         {
             lock (_gate)
             {
@@ -141,7 +146,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 if (success)
                 {
                     _succeeded++;
-                    if (hasImage)
+                    if (!string.IsNullOrEmpty(imagePath))
                         _images++;
                 }
                 else
@@ -152,6 +157,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 _title = title;
                 _body = body;
                 _latestSuccess = success;
+                _latestImagePath = success && !string.IsNullOrEmpty(imagePath) ? imagePath : null;
 
                 // A result can arrive after the owner became minimized/disabled but
                 // before the manager's next timer tick. Park the visible card now so
@@ -323,6 +329,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _body = null;
             _latestSuccess = false;
             _hasFailure = false;
+            _latestImagePath = null;
             _statusTextProvider = null;
             _hovering = false;
         }
@@ -357,6 +364,6 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private ActivitySnapshot Snapshot() => new ActivitySnapshot(
             _cardId, _isStatus, _succeeded, _failed, _images, _title, _body, _latestSuccess, _hasFailure,
-            _statusTextProvider);
+            _statusTextProvider, _latestImagePath);
     }
 }
