@@ -25,6 +25,7 @@ namespace RvtMcp.Plugin.Views.Settings
         private bool _disposed;
         private string _sortColumn = "Name";
         private bool _sortAscending = true;
+        private string _searchText = string.Empty;
         private CatalogStatus _status;
         private string _statusText;
         private string _statusHelpText;
@@ -58,6 +59,19 @@ namespace RvtMcp.Plugin.Views.Settings
         public string SourceBaked => SettingsText.Text("settings.tools.source.baked", "Baked");
         public string SortColumn => _sortColumn;
         public bool SortAscending => _sortAscending;
+        public string SearchText
+        {
+            get => _searchText;
+            set
+            {
+                var text = value ?? string.Empty;
+                if (string.Equals(_searchText, text, StringComparison.Ordinal)) return;
+                _searchText = text;
+                if (_disposed) return;
+                ApplySort();
+                OnPropertyChanged(nameof(SearchText));
+            }
+        }
 
         public void Refresh()
         {
@@ -130,9 +144,10 @@ namespace RvtMcp.Plugin.Views.Settings
                     key = row => row.Name;
                     break;
             }
+            var visible = _allRows.Where(row => row.MatchesQuery(_searchText));
             var ordered = _sortAscending
-                ? _allRows.OrderBy(key, StringComparer.Ordinal).ThenBy(row => row.Name, StringComparer.Ordinal)
-                : _allRows.OrderByDescending(key, StringComparer.Ordinal).ThenBy(row => row.Name, StringComparer.Ordinal);
+                ? visible.OrderBy(key, StringComparer.Ordinal).ThenBy(row => row.Name, StringComparer.Ordinal)
+                : visible.OrderByDescending(key, StringComparer.Ordinal).ThenBy(row => row.Name, StringComparer.Ordinal);
             Rows.Clear();
             var no = 0;
             foreach (var row in ordered)
@@ -141,6 +156,19 @@ namespace RvtMcp.Plugin.Views.Settings
                 Rows.Add(row);
             }
             OnPropertyChanged(nameof(Rows));
+            ApplyFilterStatus();
+        }
+
+        private void ApplyFilterStatus()
+        {
+            if (_status != CatalogStatus.Current) return;
+            if (_allRows.Count > 0 && Rows.Count == 0 && !string.IsNullOrWhiteSpace(_searchText))
+                _statusText = SettingsText.Text("settings.tools.status.noMatch", "No tools match this search.");
+            else if (_allRows.Count == 0)
+                _statusText = SettingsText.Text("settings.tools.status.empty", "No tools are exposed by the connected server.");
+            else
+                _statusText = string.Empty;
+            OnPropertyChanged(nameof(StatusText));
         }
 
         private void BuildRows(RvtMcp.ToolCatalog.ToolCatalog catalog)

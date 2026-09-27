@@ -50,6 +50,8 @@ namespace RvtMcp.Plugin.Views.Settings
         string StatusHelpText { get; }
         string SortColumn { get; }
         bool SortAscending { get; }
+        /// <summary>Filters the visible rows by tool name or description. Not saved.</summary>
+        string SearchText { get; set; }
         void Refresh();
         void SortBy(string column);
     }

@@ -58,6 +58,8 @@ namespace RvtMcp.Plugin.Views.Settings
         private DataGrid _toolsGrid;
         private TextBlock _toolsCounts;
         private TextBlock _toolsStatus;
+        private TextBlock _toolSearchPlaceholder;
+        private TextBox _toolSearch;
         private string _toolsSelectedName;
         private Ellipse _footerDot;
         private TextBlock _footerText;
@@ -316,6 +318,9 @@ namespace RvtMcp.Plugin.Views.Settings
             toolbar.Children.Add(refresh);
             DockPanel.SetDock(toolbar, Dock.Top);
             page.Children.Add(toolbar);
+            var search = BuildToolSearch();
+            DockPanel.SetDock(search, Dock.Top);
+            page.Children.Add(search);
 
             _toolsGrid = new DataGrid
             {
@@ -347,13 +352,13 @@ namespace RvtMcp.Plugin.Views.Settings
             {
                 Binding = new Binding(nameof(ToolRow.Name)), SortMemberPath = "Name",
                 Width = new DataGridLength(1, DataGridLengthUnitType.Star), MinWidth = 150,
-                ElementStyle = CellTextStyle(toolTip: new Binding(nameof(ToolRow.Name))),
+                ElementStyle = CellTextStyle(toolTip: new Binding(nameof(ToolRow.ToolTipText))),
             }, "settings.tools.name", "Tool Name");
             AddToolsColumn(new DataGridTextColumn
             {
                 Binding = new Binding(nameof(ToolRow.DescriptionDisplay)), SortMemberPath = "Description",
                 Width = new DataGridLength(1.4, DataGridLengthUnitType.Star),
-                ElementStyle = CellTextStyle(toolTip: new Binding(nameof(ToolRow.DescriptionDisplay))),
+                ElementStyle = CellTextStyle(toolTip: new Binding(nameof(ToolRow.ToolTipText))),
             }, "settings.tools.description", "Description");
             AddToolsColumn(new DataGridTemplateColumn
             {
@@ -364,6 +369,9 @@ namespace RvtMcp.Plugin.Views.Settings
                 Binding = new Binding(nameof(ToolRow.TimeoutDisplay)), SortMemberPath = "Timeout", Width = 104,
                 ElementStyle = CellTextStyle(toolTip: new Binding(nameof(ToolRow.TimeoutHelpText))),
             }, "settings.tools.timeout", "Time-out");
+            var rowStyle = new Style(typeof(DataGridRow), (Style)FindResource(typeof(DataGridRow)));
+            rowStyle.Setters.Add(new Setter(FrameworkElement.ToolTipProperty, new Binding(nameof(ToolRow.ToolTipText))));
+            _toolsGrid.RowStyle = rowStyle;
             _toolsGrid.Sorting += OnToolsGridSorting;
             _toolsGrid.SelectionChanged += OnToolsGridSelectionChanged;
             _toolsGrid.Columns[1].SortDirection = System.ComponentModel.ListSortDirection.Ascending;
@@ -377,6 +385,46 @@ namespace RvtMcp.Plugin.Views.Settings
                 Child = _toolsGrid,
             });
             return page;
+        }
+
+        private UIElement BuildToolSearch()
+        {
+            var host = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            _toolSearch = new TextBox
+            {
+                Height = 30,
+                Padding = new Thickness(8, 4, 8, 4),
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Background = SettingsStyles.Surface,
+                BorderBrush = SettingsStyles.Line,
+                BorderThickness = new Thickness(1),
+                Foreground = SettingsStyles.Text,
+            };
+            _toolSearchPlaceholder = new TextBlock
+            {
+                Margin = new Thickness(12, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = SettingsStyles.Secondary,
+                IsHitTestVisible = false,
+            };
+            _localizedText.Add(() =>
+            {
+                var caption = SettingsText.Text("settings.tools.search", "Search");
+                var hint = SettingsText.Text("settings.tools.search.placeholder", "Name or description");
+                _toolSearchPlaceholder.Text = hint;
+                _toolSearch.ToolTip = hint;
+                AutomationProperties.SetName(_toolSearch, caption);
+            });
+            _toolSearch.TextChanged += (_, __) =>
+            {
+                _toolSearchPlaceholder.Visibility = string.IsNullOrEmpty(_toolSearch.Text)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+                _toolsViewModel.SearchText = _toolSearch.Text ?? string.Empty;
+            };
+            host.Children.Add(_toolSearch);
+            host.Children.Add(_toolSearchPlaceholder);
+            return host;
         }
 
         private void AddToolsColumn(DataGridColumn column, string key, string fallback)
@@ -403,6 +451,7 @@ namespace RvtMcp.Plugin.Views.Settings
             badge.SetValue(Border.PaddingProperty, new Thickness(8, 1, 8, 2));
             badge.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left);
             badge.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+            badge.SetBinding(FrameworkElement.ToolTipProperty, new Binding(nameof(ToolRow.ToolTipText)));
             var text = new FrameworkElementFactory(typeof(TextBlock));
             text.SetBinding(TextBlock.TextProperty, new Binding(nameof(ToolRow.Source)));
             text.SetValue(TextBlock.FontSizeProperty, 11.0);

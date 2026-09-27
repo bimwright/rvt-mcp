@@ -166,6 +166,16 @@ internal sealed class FakeTools : ISettingsToolsPresentation
     public string StatusHelpText => null;
     public string SortColumn { get; private set; }
     public bool SortAscending { get; private set; } = true;
+    private string _searchText = string.Empty;
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            _searchText = value ?? string.Empty;
+            Rebuild();
+        }
+    }
 
     public void Refresh()
     {
@@ -177,7 +187,12 @@ internal sealed class FakeTools : ISettingsToolsPresentation
     {
         SortAscending = column == SortColumn ? !SortAscending : true;
         SortColumn = column;
-        Func<(string Name, string Description, string Source, string Timeout), string> key = column switch
+        Rebuild();
+    }
+
+    private void Rebuild()
+    {
+        Func<(string Name, string Description, string Source, string Timeout), string> key = SortColumn switch
         {
             "Description" => t => t.Description,
             "Source" => t => t.Source,
@@ -188,7 +203,13 @@ internal sealed class FakeTools : ISettingsToolsPresentation
         Rows.Clear();
         var no = 0;
         foreach (var tool in ordered)
-            Rows.Add(new ToolRow { No = ++no, Name = tool.Name, Description = tool.Description, Source = tool.Source, TimeoutDisplay = tool.Timeout, TimeoutHelpText = "Server budget " + tool.Timeout + "; transport grace 5 s." });
+        {
+            var row = new ToolRow { Name = tool.Name, Description = tool.Description, Source = tool.Source, TimeoutDisplay = tool.Timeout, TimeoutHelpText = "Server budget " + tool.Timeout + "; transport grace 5 s." };
+            if (!row.MatchesQuery(_searchText)) continue;
+            row.No = ++no;
+            Rows.Add(row);
+        }
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Rows)));
     }
 
     public void Dispose() => Disposed = true;

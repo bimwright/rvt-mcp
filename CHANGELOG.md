@@ -24,6 +24,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
+- **Tool search** — Settings → Tools has a search box that matches the tool name or its description. Each row tooltip shows the name and the full description.
 - **Session branding switch** — Settings → Toast → **Show branding** (off by default). Turning it on restores the `RVT-MCP` prefix. The wordmark stays hidden until the pointer moves onto the card, wipes in, and fades out when the pointer leaves. While branding is on, the card keeps that bottom row so the height does not change on hover. The card is narrower. A stationary cursor under a card that just opened does not count. The choice is not written to config.
 
 ## v0.8.1 - Two-sided installer, revit_open_model, and a Settings window

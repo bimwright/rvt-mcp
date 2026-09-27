@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -178,8 +179,23 @@ internal static class Program
             Field<ComboBox>(window, "_journalHours").SelectedItem = 8;
             Expect(tools.RefreshCount == before + 1, "combo selection inside a tab is not a tab switch");
             Click(Field<Button>(window, "_discard"));
+            var search = Field<TextBox>(window, "_toolSearch");
+            Expect(System.Windows.Automation.AutomationProperties.GetName(search) == "Search", "search box is named");
+            search.Text = "fire rating";
+            Expect(tools.Rows.Count == 1 && tools.Rows[0].Name == "door_fire_rating_audit", "description search: " + string.Join(",", tools.Rows.Select(row => row.Name)));
+            search.Text = "revit_create_level";
+            Expect(tools.Rows.Count == 1 && tools.Rows[0].Name == "revit_create_level", "name search");
+            search.Text = "zzzz";
+            Expect(tools.Rows.Count == 0, "unmatched search clears the grid");
+            search.Text = "";
+            Expect(tools.Rows.Count == 10, "clearing search restores the list");
+            var tip = tools.Rows.First(row => row.Name == "door_fire_rating_audit").ToolTipText;
+            Expect(tip.Contains("door_fire_rating_audit") && tip.Contains("fire rating"), "row tooltip keeps the name and the full description");
+            var rowStyle = grid.RowStyle;
+            var tipSetter = rowStyle.Setters.OfType<Setter>().First(setter => setter.Property == FrameworkElement.ToolTipProperty);
+            Expect(((Binding)tipSetter.Value).Path.Path == nameof(ToolRow.ToolTipText), "each grid row shows the tool tooltip");
         });
-        Console.WriteLine("PASS: Tools grid read-only with five columns; refresh only on tab switch");
+        Console.WriteLine("PASS: Tools grid read-only with five columns; refresh only on tab switch; search matches name and description");
     }
 
     private static void CheckLifecycle()
