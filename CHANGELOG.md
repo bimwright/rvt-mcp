@@ -24,7 +24,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
-No changes on `master` since v0.8.1 yet.
+- **Session branding switch** — Settings → Toast → **Show branding** (off by default). Turning it on restores the `RVT-MCP` prefix. The wordmark stays hidden until the pointer moves onto the card, wipes in, and fades out when the pointer leaves. While branding is on, the card keeps that bottom row so the height does not change on hover. The card is narrower. A stationary cursor under a card that just opened does not count. The choice is not written to config.
 
 ## v0.8.1 - Two-sided installer, revit_open_model, and a Settings window
 

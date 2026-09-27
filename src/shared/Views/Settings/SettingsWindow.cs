@@ -53,6 +53,7 @@ namespace RvtMcp.Plugin.Views.Settings
         private CheckBox _persistSendCodeBodies;
         private ComboBox _journalHours;
         private CheckBox _toastEnabled;
+        private CheckBox _showBranding;
         private ComboBox _toastIdle;
         private DataGrid _toolsGrid;
         private TextBlock _toolsCounts;
@@ -276,6 +277,10 @@ namespace RvtMcp.Plugin.Views.Settings
             _toastEnabled = Switch(enabledLabel);
             _toastEnabled.Checked += (_, __) => { if (!_syncingControls) _viewModel.SetToastEnabled(true); };
             _toastEnabled.Unchecked += (_, __) => { if (!_syncingControls) _viewModel.SetToastEnabled(false); };
+            var brandLabel = RowLabel("settings.toast.brand", "Show branding");
+            _showBranding = Switch(brandLabel);
+            _showBranding.Checked += (_, __) => { if (!_syncingControls) _viewModel.SetShowBranding(true); };
+            _showBranding.Unchecked += (_, __) => { if (!_syncingControls) _viewModel.SetShowBranding(false); };
             var idleLabel = RowLabel("settings.toast.idle", "Idle duration");
             _toastIdle = new ComboBox { Width = 120, ItemsSource = ToastIdleOptions, ItemStringFormat = "{0} s" };
             NameFromLabel(_toastIdle, idleLabel);
@@ -285,6 +290,7 @@ namespace RvtMcp.Plugin.Views.Settings
             };
             page.Children.Add(Card(
                 Row(enabledLabel, RowCaption("settings.toast.enabled.help", "Takes effect immediately."), _toastEnabled, "enableToast"),
+                Row(brandLabel, RowCaption("settings.toast.brand.help", "Appears when you point at the activity card. Applies immediately and lasts until Revit restarts."), _showBranding),
                 Row(idleLabel,
                     RowCaption("settings.toast.idle.help", "Hides the card when no new results arrive. Hover to keep it open. Applies from the next activity."),
                     _toastIdle, "toastIdleSeconds")));
@@ -642,6 +648,8 @@ namespace RvtMcp.Plugin.Views.Settings
                     + " · " + InvariantLanguageText.SourcePrefix + (_viewModel.Snapshot?.LocaleSource ?? InvariantLanguageText.AutoOption);
                 _listenerEnabled.IsChecked = _viewModel.IsListenerRunning;
                 _toastEnabled.IsChecked = _viewModel.ToastEnabled;
+                _showBranding.IsChecked = _viewModel.ShowBranding;
+                _showBranding.IsEnabled = _viewModel.ToastEnabled;
                 _toastIdle.SelectedItem = _viewModel.ToastIdleSeconds;
                 _toastIdle.IsEnabled = _viewModel.ToastEnabled;
                 _cacheSendCodeBodies.IsChecked = _viewModel.CacheSendCodeBodies;

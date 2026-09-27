@@ -109,12 +109,18 @@ internal static class Program
         {
             var toggle = Field<CheckBox>(window, "_toastEnabled");
             var idle = Field<ComboBox>(window, "_toastIdle");
+            var brand = Field<CheckBox>(window, "_showBranding");
+            Expect(brand.IsChecked == false && brand.IsEnabled, "branding starts hidden");
+            brand.IsChecked = true;
+            Expect(settings.ShowBranding && !settings.IsDirty, "brand switch applies immediately, not staged");
+            Expect(System.Windows.Automation.AutomationProperties.GetName(brand) == "Show branding", "brand switch is named by its row label");
             toggle.IsChecked = false;
             Expect(!settings.ToastEnabled && !settings.IsDirty, "toast switch applies immediately, not staged");
             Expect(!idle.IsEnabled && (int)idle.SelectedItem == 20, "idle duration is disabled but kept while toast is off");
+            Expect(!brand.IsEnabled && brand.IsChecked == true, "brand switch stays on and disabled while notifications are off");
             Expect(System.Windows.Automation.AutomationProperties.GetName(toggle) == "Show activity notifications", "switch is named by its row label");
         });
-        Console.WriteLine("PASS: toast switch is immediate; idle duration disabled while off");
+        Console.WriteLine("PASS: toast and branding switches are immediate; both disable while toast is off");
     }
 
     private static void CheckConnection()

@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -19,6 +20,7 @@ internal static class Program
             CheckCompactLayout();
             ToastVisualTests.Run();
             CheckNaNSafePlacement();
+            CheckBrandingFollowsSessionFlag();
             CheckStationaryPointerFiltering();
             CheckSingleActivityCard();
             CheckStatusAndClickLifecycle();
@@ -142,6 +144,44 @@ internal static class Program
         Console.WriteLine("PASS: first placement from unset WPF coordinates via manager");
     }
 
+    private static void CheckBrandingFollowsSessionFlag()
+    {
+        var show = false;
+        var aggregator = new ActivityAggregator();
+        var manager = new McpToastManager(Dispatcher.CurrentDispatcher, aggregator, showBranding: () => show);
+        try
+        {
+            if (!aggregator.RecordResult("List Rooms", "Done", true, false, true))
+                throw new Exception("The first activity result did not request a render.");
+            manager.Render();
+            Pump();
+            var window = Current(manager);
+            if (window == null)
+                throw new Exception("The activity card was not created.");
+            var footer = BrandRow(window);
+            if (TitleText(window) != "List Rooms" || footer.Visibility != Visibility.Collapsed)
+                throw new Exception("A card opened with branding off must omit the prefix and wordmark.");
+            show = true;
+            manager.ApplyShowBranding();
+            Pump();
+            if (TitleText(window) != "RVT-MCP - List Rooms" || footer.Visibility != Visibility.Hidden)
+                throw new Exception("Turning branding on must restore the prefix and reserve a blank brand row.");
+        }
+        finally { manager.DismissAllImmediate(); }
+        Console.WriteLine("PASS: new and open cards follow the session branding flag");
+    }
+
+    private static string TitleText(McpToastWindow window)
+    {
+        var title = (TextBlock)typeof(McpToastWindow).GetField("_titleText", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(window);
+        return title.Text;
+    }
+
+    private static Grid BrandRow(McpToastWindow window)
+    {
+        return (Grid)typeof(McpToastWindow).GetField("_brandRow", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(window);
+    }
+
     private static void CheckSingleActivityCard()
     {
         var aggregator = new ActivityAggregator();
@@ -243,6 +283,12 @@ internal static class Program
                 .Invoke(window, null);
             if (changed)
                 throw new Exception("A stationary pointer was treated as a real MouseEnter/Leave event.");
+            window.SetPosition(30, 30);
+            window.Show();
+            window.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.MouseEnterEvent });
+            Pump();
+            if (BrandRow(window).Visibility != Visibility.Hidden)
+                throw new Exception("A stationary pointer must not reveal the wordmark.");
         }
         finally { window.CloseImmediate(); }
         Console.WriteLine("PASS: stationary pointer baseline filters synthetic WPF events");

@@ -8,15 +8,18 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using System.Windows.Threading;
 using RvtMcp.Plugin.Localization;
 
 namespace RvtMcp.Plugin.Views.Toast
 {
     internal sealed class McpToastWindow : Window
     {
-        private const double CardWidth = 340;
-        private const double BrandRestOpacity = 0.3;
+        private const double CardWidth = 300;
         private const double BrandSettleOpacity = 0.8;
+        private const int BrandRevealDelayMs = 100;
+        private const int BrandRevealDurationMs = 500;
+        private const int BrandHideDurationMs = 200;
         private const int GwlExStyle = -20;
         private const long WsExNoActivate = 0x08000000L;
         private const long WsExToolWindow = 0x00000080L;
@@ -33,6 +36,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly TextBlock _captureLabel;
         private readonly TextBlock _brandText;
         private readonly TextBlock _brandShine;
+        private readonly Grid _brandRow;
         private readonly TranslateTransform _brandSweep = new TranslateTransform(-0.75, 0);
         private readonly TranslateTransform _shineSweep = new TranslateTransform(-0.75, 0);
         private readonly Func<Point> _cursorPosition;
@@ -43,7 +47,14 @@ namespace RvtMcp.Plugin.Views.Toast
         private Border _closeHost;
         private MouseButtonEventHandler _closeHostMouseUpHandler;
         private MouseEventHandler _mouseEnterHandler;
+        private MouseEventHandler _mouseMoveHandler;
         private MouseEventHandler _mouseLeaveHandler;
+        private DispatcherTimer _brandRevealTimer;
+        private int _brandHideGeneration;
+        private bool _brandPointerOver;
+        private bool _brandPointerMoved;
+        private bool _brandRevealed;
+        private bool _brandHiding;
         private MouseButtonEventHandler _mouseUpHandler;
         private EventHandler _sourceInitializedHandler;
         private EventHandler _closedHandler;
@@ -59,6 +70,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private int _lastPointerY;
         private bool _closedCallbackRaised;
         private bool _handlersDetached;
+        private bool _showBranding = true;
         private ActivitySnapshot _lastSnapshot;
 
         public McpToastViewModel ViewModel { get; private set; }
@@ -218,18 +230,18 @@ namespace RvtMcp.Plugin.Views.Toast
             Grid.SetRow(body, 1);
             content.Children.Add(body);
 
-            var footer = new Grid { Margin = new Thickness(24, 5, 0, 0) };
+            _brandRow = new Grid { Margin = new Thickness(24, 5, 0, 0) };
 
             _brandText = new TextBlock
             {
-                // Logo casing and colours. Brightness lives in the OpacityMask: dimmed at
-                // rest, then a lit front wipes left→right once ~1.3 s after the card shows
-                // (WipeBrand) and the wordmark settles at BrandSettleOpacity.
+                // Hidden until a real hover. The reveal mask samples fully transparent
+                // while the sweep sits at -0.75, so a collapsed row that is shown early
+                // still draws no letters.
                 FontSize = 10,
                 FontWeight = FontWeights.SemiBold,
                 VerticalAlignment = VerticalAlignment.Center,
                 ToolTip = BrandAssets.ProductTag,
-                OpacityMask = BuildBrandMask(_brandSweep),
+                OpacityMask = BuildBrandRevealMask(_brandSweep),
                 Inlines =
                 {
                     new Run(BrandAssets.WordmarkLeft) { Foreground = McpToastTheme.BrandBim },
@@ -260,10 +272,11 @@ namespace RvtMcp.Plugin.Views.Toast
             };
             brandCell.Children.Add(_brandText);
             brandCell.Children.Add(_brandShine);
-            footer.Children.Add(brandCell);
+            _brandRow.Children.Add(brandCell);
 
-            Grid.SetRow(footer, 2);
-            content.Children.Add(footer);
+            Grid.SetRow(_brandRow, 2);
+            content.Children.Add(_brandRow);
+            ParkBrandRow();
 
             ApplyActivitySnapshot(snapshot);
 
@@ -273,14 +286,33 @@ namespace RvtMcp.Plugin.Views.Toast
 
             _mouseEnterHandler = (_, __) =>
             {
-                if (PointerPositionChanged())
+                var moved = PointerPositionChanged();
+                if (moved)
                     _activityPointerEntered?.Invoke(_cardId);
-                WipeBrand(150, replay: true);
+                _brandPointerOver = true;
+                if (moved)
+                {
+                    _brandPointerMoved = true;
+                    ScheduleBrandReveal();
+                }
+            };
+            // A card that opens under a still cursor ignores that enter. The first
+            // real movement while the pointer remains inside is the hover.
+            _mouseMoveHandler = (_, __) =>
+            {
+                if (!_brandPointerOver || !PointerPositionChanged())
+                    return;
+                _brandPointerMoved = true;
+                ScheduleBrandReveal();
             };
             _mouseLeaveHandler = (_, __) =>
             {
-                if (PointerPositionChanged())
-                    _activityPointerLeft?.Invoke(_cardId);
+                if (!PointerPositionChanged())
+                    return;
+                _activityPointerLeft?.Invoke(_cardId);
+                _brandPointerOver = false;
+                _brandPointerMoved = false;
+                HideBrand(immediate: false);
             };
             _mouseUpHandler = (_, e) =>
             {
@@ -295,6 +327,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 e.Handled = true;
             };
             MouseEnter += _mouseEnterHandler;
+            MouseMove += _mouseMoveHandler;
             MouseLeave += _mouseLeaveHandler;
             MouseLeftButtonUp += _mouseUpHandler;
 
@@ -317,7 +350,6 @@ namespace RvtMcp.Plugin.Views.Toast
                 _slideTransform.X = 0;
                 _scaleTransform.ScaleX = _scaleTransform.ScaleY = 1;
                 Opacity = 1;
-                WipeBrand();
                 return;
             }
             var duration = TimeSpan.FromMilliseconds(280);
@@ -330,7 +362,6 @@ namespace RvtMcp.Plugin.Views.Toast
             _scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty,
                 new DoubleAnimation(0.96, 1, duration) { EasingFunction = ease });
             BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, duration) { EasingFunction = ease });
-            WipeBrand();
         }
 
         public void SetPosition(double top, double left)
@@ -348,6 +379,29 @@ namespace RvtMcp.Plugin.Views.Toast
             if (snapshot == null || snapshot.CardId != _cardId)
                 return;
             ApplyActivitySnapshot(snapshot);
+        }
+
+        /// <summary>
+        /// Arm or remove the hover wordmark, and the product prefix with it.
+        /// Turning it on leaves the card clean until the pointer actually moves
+        /// onto it. Turning it off removes the wordmark immediately.
+        /// </summary>
+        public void SetShowBranding(bool show)
+        {
+            if (_showBranding == show || _closedCallbackRaised)
+                return;
+            _showBranding = show;
+            if (_lastSnapshot != null)
+                ApplyActivitySnapshot(_lastSnapshot, preserveSnapshot: true);
+            if (!show)
+            {
+                HideBrand(immediate: true);
+                return;
+            }
+            if (!_brandRevealed)
+                ParkBrandRow();
+            if (_brandPointerOver && _brandPointerMoved)
+                ScheduleBrandReveal();
         }
 
         /// <summary>
@@ -373,58 +427,132 @@ namespace RvtMcp.Plugin.Views.Toast
             finally { NotifyClosed(); }
         }
 
-        /// <summary>Brand reveal: a lit front wipes left→right once while a narrow band of
-        /// lighter letters sweeps through the wordmark in sync, then the wordmark stays lit.
-        /// The pass starts ~1.3 s after the card appears — the delay for a reader's eye to
-        /// land on a fresh toast (delayMs=1300). Replayed quickly on hover.</summary>
-        private void WipeBrand(int delayMs = 1300, bool replay = false)
+        /// <summary>
+        /// A real pointer movement while branding is armed. Quick passes cancel
+        /// during the delay, so the wordmark never flashes. A second movement
+        /// while the letters are already up does not replay the wipe.
+        /// </summary>
+        private void ScheduleBrandReveal()
         {
-            if (_isClosing || _closedCallbackRaised)
+            if (!_showBranding || !_brandPointerOver || _closedCallbackRaised || _isClosing)
                 return;
-            _brandSweep.BeginAnimation(TranslateTransform.XProperty, null);
-            _shineSweep.BeginAnimation(TranslateTransform.XProperty, null);
+            if (_brandRevealed && !_brandHiding)
+                return;
+            if (_brandHiding)
+                ParkBrandRow();
             if (!_motionEnabled())
             {
-                _brandText.OpacityMask = new SolidColorBrush(Dim(BrandSettleOpacity));
-                _brandShine.OpacityMask = Brushes.Transparent;
+                ShowBrandSettled();
                 return;
             }
-            // During a hover replay both ends stay settled. Only the travelling band
-            // exchanges the base letters for their bright twin; never dim the entire logo.
-            _brandText.OpacityMask = replay ? BuildBrandReplayMask(_brandSweep) : BuildBrandMask(_brandSweep);
-            _brandShine.OpacityMask = BuildShineMask(_shineSweep);
-            _brandSweep.X = _shineSweep.X = -0.75;
-            var dur = TimeSpan.FromMilliseconds(800);
-            var ease = new QuadraticEase { EasingMode = EasingMode.EaseInOut };
-            var wipe = new DoubleAnimation(-0.75, 0.75, dur)
+            if (_brandRevealTimer != null)
+                return;
+
+            _brandRevealTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(BrandRevealDelayMs) };
+            _brandRevealTimer.Tick += (_, __) =>
             {
-                BeginTime = TimeSpan.FromMilliseconds(delayMs),
-                EasingFunction = ease
+                CancelBrandRevealTimer();
+                if (!_showBranding || !_brandPointerOver || _closedCallbackRaised || _isClosing)
+                    return;
+                BeginBrandReveal();
+            };
+            _brandRevealTimer.Start();
+        }
+
+        private void BeginBrandReveal()
+        {
+            _brandHideGeneration++;
+            _brandHiding = false;
+            _brandRow.BeginAnimation(UIElement.OpacityProperty, null);
+            _brandRow.Opacity = 1;
+            _brandRow.Visibility = Visibility.Visible;
+            _brandRevealed = true;
+            _brandText.OpacityMask = BuildBrandRevealMask(_brandSweep);
+            _brandShine.OpacityMask = BuildShineMask(_shineSweep);
+            StopBrandSweep();
+            _brandSweep.X = _shineSweep.X = -0.75;
+            var wipe = new DoubleAnimation(-0.75, 0.75, TimeSpan.FromMilliseconds(BrandRevealDurationMs))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             };
             _brandSweep.BeginAnimation(TranslateTransform.XProperty, wipe);
-            _shineSweep.BeginAnimation(TranslateTransform.XProperty, wipe);   // same timeline, two clocks
+            _shineSweep.BeginAnimation(TranslateTransform.XProperty, wipe);
         }
 
-        /// <summary>Dim→full-crest→rest alpha profile sliding across the wordmark.</summary>
-        private static LinearGradientBrush BuildBrandMask(TranslateTransform sweep)
+        private void ShowBrandSettled()
         {
-            return new LinearGradientBrush
-            {
-                StartPoint = new Point(0, 0.5),
-                EndPoint = new Point(1, 0.5),
-                RelativeTransform = sweep,
-                GradientStops =
-                {
-                    new GradientStop(Dim(BrandSettleOpacity), 0.00),
-                    new GradientStop(Dim(BrandSettleOpacity), 0.32),
-                    new GradientStop(Dim(1.0), 0.44),
-                    new GradientStop(Dim(BrandRestOpacity), 0.58),
-                    new GradientStop(Dim(BrandRestOpacity), 1.00),
-                }
-            };
+            _brandHideGeneration++;
+            _brandHiding = false;
+            CancelBrandRevealTimer();
+            StopBrandSweep();
+            _brandRow.BeginAnimation(UIElement.OpacityProperty, null);
+            _brandRow.Opacity = 1;
+            _brandRow.Visibility = Visibility.Visible;
+            _brandRevealed = true;
+            _brandText.OpacityMask = new SolidColorBrush(Dim(BrandSettleOpacity));
+            _brandShine.OpacityMask = Brushes.Transparent;
         }
 
-        private static LinearGradientBrush BuildBrandReplayMask(TranslateTransform sweep)
+        private void HideBrand(bool immediate)
+        {
+            CancelBrandRevealTimer();
+            StopBrandSweep();
+            if (immediate || !_motionEnabled() || !_brandRevealed)
+            {
+                ParkBrandRow();
+                return;
+            }
+
+            _brandHiding = true;
+            var generation = ++_brandHideGeneration;
+            var fade = new DoubleAnimation(_brandRow.Opacity, 0, TimeSpan.FromMilliseconds(BrandHideDurationMs))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+            };
+            fade.Completed += (_, __) =>
+            {
+                if (generation != _brandHideGeneration)
+                    return;
+                ParkBrandRow();
+            };
+            _brandRow.BeginAnimation(UIElement.OpacityProperty, fade);
+        }
+
+        /// <summary>
+        /// Branding on keeps the bottom row in the layout so hover does not
+        /// change the card height. Branding off removes that row.
+        /// </summary>
+        private void ParkBrandRow()
+        {
+            _brandHideGeneration++;
+            _brandHiding = false;
+            _brandRevealed = false;
+            CancelBrandRevealTimer();
+            StopBrandSweep();
+            _brandRow.BeginAnimation(UIElement.OpacityProperty, null);
+            _brandRow.Opacity = 1;
+            _brandRow.Visibility = _showBranding ? Visibility.Hidden : Visibility.Collapsed;
+        }
+
+        private void CancelBrandRevealTimer()
+        {
+            if (_brandRevealTimer == null)
+                return;
+            _brandRevealTimer.Stop();
+            _brandRevealTimer = null;
+        }
+
+        private void StopBrandSweep()
+        {
+            _brandSweep.BeginAnimation(TranslateTransform.XProperty, null);
+            _shineSweep.BeginAnimation(TranslateTransform.XProperty, null);
+        }
+
+        /// <summary>
+        /// Settled letters on the left, a hole at the crest so the lighter layer
+        /// shows through, and fully transparent ahead of the wipe.
+        /// </summary>
+        private static LinearGradientBrush BuildBrandRevealMask(TranslateTransform sweep)
         {
             return new LinearGradientBrush
             {
@@ -436,8 +564,8 @@ namespace RvtMcp.Plugin.Views.Toast
                     new GradientStop(Dim(BrandSettleOpacity), 0.00),
                     new GradientStop(Dim(BrandSettleOpacity), 0.36),
                     new GradientStop(Dim(0.0), 0.44),
-                    new GradientStop(Dim(BrandSettleOpacity), 0.52),
-                    new GradientStop(Dim(BrandSettleOpacity), 1.00),
+                    new GradientStop(Dim(0.0), 0.52),
+                    new GradientStop(Dim(0.0), 1.00),
                 }
             };
         }
@@ -540,8 +668,7 @@ namespace RvtMcp.Plugin.Views.Toast
             }
             else
             {
-                _titleText.Text = string.IsNullOrWhiteSpace(snapshot.Title)
-                    ? "RVT-MCP" : "RVT-MCP - " + snapshot.Title;
+                _titleText.Text = ActivityTitle(snapshot.Title);
                 _counterRow.Visibility = Visibility.Visible;
                 _bodyText.Visibility = Visibility.Collapsed;
                 _successLabel.Text = LocalizedOrFallback("toast.activity.success", "Success");
@@ -561,6 +688,14 @@ namespace RvtMcp.Plugin.Views.Toast
             _titleText.ToolTip = _titleText.Text;
             _titleText.TextWrapping = TextWrapping.NoWrap;
             _titleText.TextTrimming = TextTrimming.CharacterEllipsis;
+        }
+
+        private string ActivityTitle(string title)
+        {
+            var hasTitle = !string.IsNullOrWhiteSpace(title);
+            if (!_showBranding)
+                return hasTitle ? title : string.Empty;
+            return hasTitle ? "RVT-MCP - " + title : "RVT-MCP";
         }
 
         private static ActivityStatusText ResolveStatusText(ActivitySnapshot snapshot)
@@ -642,7 +777,11 @@ namespace RvtMcp.Plugin.Views.Toast
             }
 
             MouseEnter -= _mouseEnterHandler;
+            MouseMove -= _mouseMoveHandler;
             MouseLeave -= _mouseLeaveHandler;
+            CancelBrandRevealTimer();
+            _brandHideGeneration++;
+            _brandRow.BeginAnimation(UIElement.OpacityProperty, null);
             MouseLeftButtonUp -= _mouseUpHandler;
             SourceInitialized -= _sourceInitializedHandler;
             Closed -= _closedHandler;

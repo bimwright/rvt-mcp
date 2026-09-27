@@ -33,6 +33,7 @@ internal sealed class FakeSettings : ISettingsPresentation
     public string EffectiveLanguage => "en";
     public bool IsLanguageWriteDisabled => false;
     public bool ToastEnabled { get; private set; } = true;
+    public bool ShowBranding { get; private set; }
     public int ToastIdleSeconds { get => _idle; set { _idle = value; Changed(); } }
     public bool CacheSendCodeBodies { get => _cache; set { _cache = value; Changed(); } }
     public bool PersistSendCodeBodies { get => _persist; set { _persist = value; Changed(); } }
@@ -51,6 +52,12 @@ internal sealed class FakeSettings : ISettingsPresentation
     public void SetToastEnabled(bool enabled)
     {
         ToastEnabled = enabled;
+        Changed();
+    }
+
+    public void SetShowBranding(bool show)
+    {
+        ShowBranding = show;
         Changed();
     }
 

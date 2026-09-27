@@ -229,6 +229,8 @@
   "settings.toast.description": "Control how activity appears while you work.",
   "settings.toast.enabled.help": "Takes effect immediately.",
   "settings.toast.idle.help": "Hides the card when no new results arrive. Hover to keep it open. Applies from the next activity.",
+  "settings.toast.brand": "브랜드 표시",
+  "settings.toast.brand.help": "포인터를 활동 카드 위에 두면 나타납니다. 즉시 적용되며 Revit을 다시 시작할 때까지 유지됩니다.",
   "settings.general.listener": "MCP listener",
   "settings.general.restart": "Restart the listener with a new port",
   "settings.general.listenerFailed": "The MCP listener could not be started.",

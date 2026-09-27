@@ -17,6 +17,7 @@ namespace RvtMcp.Plugin.Views.Settings
         private readonly Dispatcher _dispatcher;
         private RvtMcpConfig _snapshot;
         private bool _toastEnabled;
+        private bool _showBranding;
         private int _toastIdleSeconds;
         private bool _persistSendCodeBodies;
         private int _persistSendCodeBodiesHours;
@@ -54,6 +55,7 @@ namespace RvtMcp.Plugin.Views.Settings
             !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(RvtMcpConfig.EnvUiLanguage));
         public bool IsLanguageWriteDisabled => HasEnvironmentLanguageOverride;
         public bool ToastEnabled => _toastEnabled;
+        public bool ShowBranding => _showBranding;
         public int ToastIdleSeconds
         {
             get => _toastIdleSeconds;
@@ -116,6 +118,7 @@ namespace RvtMcp.Plugin.Views.Settings
         {
             _snapshot = RvtMcpConfig.LoadReadOnly();
             _toastEnabled = _app.ToastEnabled;
+            _showBranding = _app.ToastNotifier?.ShowBranding ?? false;
             _toastIdleSeconds = _snapshot.ToastIdleSecondsOrDefault;
             _persistSendCodeBodies = _snapshot.IsPersistSendCodeBodiesActive();
             _persistSendCodeBodiesHours = _snapshot.PersistSendCodeBodiesHoursOrDefault;
@@ -256,6 +259,13 @@ namespace RvtMcp.Plugin.Views.Settings
             _app.ToastNotifier?.OnToastEnabledChanged(enabled, persisted);
             OnPropertyChanged(nameof(ToastEnabled));
             OnPropertyChanged(nameof(ImmediateWarning));
+        }
+
+        public void SetShowBranding(bool show)
+        {
+            _showBranding = show;
+            _app.ToastNotifier?.SetShowBranding(show);
+            OnPropertyChanged(nameof(ShowBranding));
         }
 
         public void SetLanguage(string requested)

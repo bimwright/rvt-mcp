@@ -229,6 +229,8 @@
   "settings.toast.description": "Control how activity appears while you work.",
   "settings.toast.enabled.help": "Takes effect immediately.",
   "settings.toast.idle.help": "Hides the card when no new results arrive. Hover to keep it open. Applies from the next activity.",
+  "settings.toast.brand": "Merknaam tonen",
+  "settings.toast.brand.help": "Verschijnt als de aanwijzer op de activiteitskaart staat. Werkt direct, tot Revit opnieuw start.",
   "settings.general.listener": "MCP listener",
   "settings.general.restart": "Restart the listener with a new port",
   "settings.general.listenerFailed": "The MCP listener could not be started.",

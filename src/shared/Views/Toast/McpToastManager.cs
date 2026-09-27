@@ -21,6 +21,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly ActivityAggregator _aggregator;
         private readonly Func<bool> _isFrameUsable;
         private readonly Action<long> _onClick;
+        private readonly Func<bool> _showBranding;
         private readonly DispatcherTimer _timer;
         private McpToastWindow _window;
         private IntPtr _ownerHandle;
@@ -34,12 +35,14 @@ namespace RvtMcp.Plugin.Views.Toast
             Dispatcher dispatcher,
             ActivityAggregator aggregator,
             Func<bool> isFrameUsable = null,
-            Action<long> onClick = null)
+            Action<long> onClick = null,
+            Func<bool> showBranding = null)
         {
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             _aggregator = aggregator ?? throw new ArgumentNullException(nameof(aggregator));
             _isFrameUsable = isFrameUsable ?? (() => true);
             _onClick = onClick;
+            _showBranding = showBranding ?? (() => true);
 
             _timer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
             {
@@ -53,6 +56,13 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             if (hwnd != IntPtr.Zero)
                 _ownerHandle = hwnd;
+        }
+
+        /// <summary>Apply the current session branding flag to the open card, if any.</summary>
+        public void ApplyShowBranding()
+        {
+            EnsureDispatcher();
+            _window?.SetShowBranding(_showBranding());
         }
 
         /// <summary>
@@ -190,6 +200,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 OnPointerLeft);
 
             _window = window;
+            window.SetShowBranding(_showBranding());
             AttachOwner(window);
 
             // WPF initializes Window.Top/Left to NaN. Set finite coordinates before Show

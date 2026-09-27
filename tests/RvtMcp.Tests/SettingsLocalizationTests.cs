@@ -17,6 +17,7 @@ namespace RvtMcp.Tests
             "settings.general.state.waiting", "settings.general.notApplicable",
             "settings.general.cacheBodies", "settings.general.keepJournal", "settings.general.journalDuration",
             "settings.toast.heading", "settings.toast.enabled", "settings.toast.idle", "settings.toast.help",
+            "settings.toast.brand", "settings.toast.brand.help",
             "settings.about.description", "settings.about.hint", "settings.about.product", "settings.about.version",
             "settings.about.revit", "settings.about.author", "settings.about.license", "settings.about.copyright",
             "settings.about.viewLicense", "settings.about.github", "settings.about.docs", "settings.about.issues",

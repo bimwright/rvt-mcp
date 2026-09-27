@@ -32,6 +32,19 @@ namespace RvtMcp.Plugin.Views.Toast
         private Application _toastApplication;
         private Func<bool> _frameUsable = () => true;
         private Action<long> _activityClick = _ => { };
+        private volatile bool _showBranding;
+
+        /// <summary>
+        /// Wordmark and product prefix on the activity card. Off until turned on.
+        /// Session-only: a Revit restart clears it, and nothing is written to config.
+        /// </summary>
+        public bool ShowBranding => _showBranding;
+
+        public void SetShowBranding(bool show)
+        {
+            _showBranding = show;
+            PostToManager(manager => manager.ApplyShowBranding());
+        }
 
         internal void SetFrameUsableProvider(Func<bool> provider)
         {
@@ -71,7 +84,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 if (hostDispatcher != null)
                 {
                     _dispatcher = hostDispatcher;
-                    _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id));
+                    _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding);
                     if (_ownerHandle != IntPtr.Zero)
                         _manager.SetOwnerHandle(_ownerHandle);
                     _usesDedicatedThread = false;
@@ -95,7 +108,7 @@ namespace RvtMcp.Plugin.Views.Toast
                         }
 
                         _dispatcher = Dispatcher.CurrentDispatcher;
-                        _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id));
+                        _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding);
                         if (_ownerHandle != IntPtr.Zero)
                             _manager.SetOwnerHandle(_ownerHandle);
                     }
