@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 229,
+  "tool_count": 230,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -195,9 +195,14 @@
     },
     {
       "name": "revit_analyze_model_statistics",
-      "description_hash": "sha256:5a89855a43f739236e7c2e852bdbd3df6d9ebf6fb3f17108276ba46a4dfa8566",
+      "description_hash": "sha256:5599cd0e09a4f45766640b0445a201ee5b460c011122714d3797b30f74bd8b91",
       "inputSchema": {
-        "properties": {},
+        "properties": {
+          "maxElements": {
+            "description": "",
+            "type": "Nullable`1"
+          }
+        },
         "required": [],
         "type": "object"
       }
@@ -4379,7 +4384,15 @@
         "type": "object"
       }
     },
-    
+    {
+      "name": "revit_list_recent_models",
+      "description_hash": "sha256:af93f977840a1e80cf639e77b28e45971f562742a80e97c3d8b0ccf50ff0bc19",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      }
+    },
     {
       "name": "revit_list_revisions",
       "description_hash": "sha256:303e650bd9f17c5dc1925938470b0188fe4cd5af5e32bf7497b13c43e5ff9d6a",

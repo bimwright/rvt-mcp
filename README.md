@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-226%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-227%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -73,19 +73,19 @@ Community videos of rvt-mcp at work. Install steps shown in a video can be older
 
 | Mode | Tools | Notes |
 |------|------:|-------|
-| Fresh install | **226** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **41** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **226** | Full catalog |
-| `all` + adaptive bake | **229** | Adds 3 suggestion-lifecycle tools |
+| Fresh install | **227** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **42** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **227** | Full catalog |
+| `all` + adaptive bake | **230** | Adds 3 suggestion-lifecycle tools |
 
-Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 41-tool surface. `--read-only` drops every write-capable toolset (including `create`) regardless of source.
+Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 42-tool surface. `--read-only` drops every write-capable toolset (including `create`) regardless of source.
 
 | Toolset | What it covers |
 |---------|----------------|
 | `query` | View, selection, filters, stats, parameters, relationships, worksets, groups/assemblies |
 | `create` | Grids, levels, rooms, line/point/surface-based elements, groups |
 | `view` | Create views, sheets layout helpers, capture image, crop/scale |
-| `meta` | Batch execute (max 20), multi-Revit targets, project info, purge unused (MVP), message, send_code |
+| `meta` | Batch execute (max 20), multi-Revit targets, recent models, project info, purge unused (MVP), message, send_code |
 | `lint` | View naming patterns, firm-profile detect, warnings summary |
 | `schedule` | List/create schedules, fields, formulas, data |
 | `families` | Load/unload, types, instances, audit, export `.rfa` (project-side) |

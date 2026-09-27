@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-226%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-227%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -73,19 +73,19 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
-| 全新安装 | **226** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
-| 裸 `rvt-mcp.exe` | **41** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **226** | 完整目录 |
-| `all` + adaptive bake | **229** | 再加 3 个 suggestion 生命周期工具 |
+| 全新安装 | **227** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
+| 裸 `rvt-mcp.exe` | **42** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **227** | 完整目录 |
+| `all` + adaptive bake | **230** | 再加 3 个 suggestion 生命周期工具 |
 
-数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 41 个工具。无论来源如何，`--read-only` 都会去掉所有可写 toolset（含 `create`）。
+数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 42 个工具。无论来源如何，`--read-only` 都会去掉所有可写 toolset（含 `create`）。
 
 | Toolset | 覆盖 |
 |---------|------|
 | `query` | 视图、选择、过滤、统计、参数、关系、workset、组/程序集 |
 | `create` | 轴网、标高、房间、线/点/面构件、组 |
 | `view` | 建视图、图纸布局辅助、截图、裁剪/比例 |
-| `meta` | 批处理（最多 20）、多 Revit 目标、项目信息、purge（MVP）、消息、send_code |
+| `meta` | 批处理（最多 20）、多 Revit 目标、最近模型、项目信息、purge（MVP）、消息、send_code |
 | `lint` | 视图命名、firm-profile、警告摘要 |
 | `schedule` | 明细表 list/创建、字段、公式、数据 |
 | `families` | 加载/卸载、类型、实例、审计、导出 `.rfa`（项目侧） |

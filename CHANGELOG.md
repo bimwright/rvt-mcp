@@ -24,6 +24,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
+- **`revit_list_recent_models`** — lists this Revit's recent files when no document is open. The agent asks which one to open, then calls `revit_open_model`. A no-document failure now says Revit is running and names that tool. Tool counts: default **42**, `--toolsets all` **227**, adaptive bake **230**.
 - **Tool search** — Settings → Tools has a search box that matches the tool name or its description. Each row tooltip shows the name and the full description.
 - **Session branding switch** — Settings → Toast → **Show branding** (off by default). Turning it on restores the `RVT-MCP` prefix. The wordmark stays hidden until the pointer moves onto the card, wipes in, and fades out when the pointer leaves. While branding is on, the card keeps that bottom row so the height does not change on hover. The card is narrower. A stationary cursor under a card that just opened does not count. The choice is not written to config.
 

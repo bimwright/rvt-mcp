@@ -711,12 +711,12 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_analyze_model_statistics", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("Count elements grouped by category (Walls, Doors, Pipes, etc.). Call to understand project scope before detailed queries.")]
-        public static async Task<string> AnalyzeModelStatistics()
+        [McpServerTool(Name = "revit_analyze_model_statistics", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("Count elements grouped by category (Walls, Doors, Pipes, etc.). Call to understand project scope before detailed queries. Iteration is capped at maxElements (default 100000); raise it for full accuracy on very large models at the cost of a longer UI freeze.")]
+        public static async Task<string> AnalyzeModelStatistics(int? maxElements = null)
         {
             try
             {
-                var result = await ToolGateway.SendToRevit("analyze_model_statistics");
+                var result = await ToolGateway.SendToRevit("analyze_model_statistics", new { maxElements });
                 return JsonConvert.SerializeObject(result, Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
@@ -2238,9 +2238,23 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
     [McpServerToolType, Toolset("meta")]
     public class MetaTools
     {
+        [McpServerTool(Name = "revit_list_recent_models", ReadOnly = true, Idempotent = true), System.ComponentModel.Description(
+            "List this Revit's recent models from its Revit.ini Recent File List. Works when no document is open. " +
+            "Does not open a file. Ask the user which path to open, then call revit_open_model with that absolute path. " +
+            "Returns up to 50 entries, most recent first, each with index, path, file name, and whether the file still exists.")]
+        public static async Task<string> ListRecentModels()
+        {
+            try
+            {
+                var result = await ToolGateway.SendToRevit("list_recent_models");
+                return JsonConvert.SerializeObject(result, Formatting.Indented);
+            }
+            catch (Exception ex) { return $"Error: {ex.Message}"; }
+        }
+
         [McpServerTool(Name = "revit_open_model", Destructive = false), System.ComponentModel.Description(
             "Open a Revit model, template or family from disk and make it the active document. " +
-            "THIS IS THE TOOL TO CALL WHEN NO DOCUMENT IS OPEN - every other tool reports 'No document is open' until one is. " +
+            "THIS IS THE TOOL TO CALL WHEN NO DOCUMENT IS OPEN. Other tools then report that Revit is running with no document and name revit_list_recent_models. Ask the user which recent file to open before calling this. " +
             "path: an absolute path on the machine Revit runs on, NOT on the MCP client's machine. " +
             "A workshared .rvt is never opened directly: a new local copy is always created from its central model " +
             "(same as Revit's Open > 'Create New Local') under the Revit.ini ProjectPath folder as <central>_<username>.rvt - " +

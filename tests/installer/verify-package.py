@@ -123,7 +123,7 @@ def main():
     # The server reads the machine's real rvtmcp.config.json, which an install
     # seeds with toolsets=all, so the default surface is requested explicitly.
     all_count = repo_json("tests/RvtMcp.Tests/Golden/tools-list.json")["tool_count"]
-    for mode, flags, expected in (("default", ["--toolsets", "query,create,view,meta"], 41),
+    for mode, flags, expected in (("default", ["--toolsets", "query,create,view,meta"], 42),
                                   ("all", ["--toolsets", "all"], all_count)):
         client = Client(exe, package.parent / f"smoke-{mode}-stderr.log", flags + ["--target", "2027"])
         try:

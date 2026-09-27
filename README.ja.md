@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-226%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-227%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -73,19 +73,19 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 | モード | Tools | 注記 |
 |--------|------:|------|
-| 新規インストール | **226** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
-| 素の `rvt-mcp.exe` | **41** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **226** | フルカタログ |
-| `all` + adaptive bake | **229** | 提案ライフサイクル 3 ツールを追加 |
+| 新規インストール | **227** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
+| 素の `rvt-mcp.exe` | **42** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **227** | フルカタログ |
+| `all` + adaptive bake | **230** | 提案ライフサイクル 3 ツールを追加 |
 
-件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 41 ツールに戻ります。`--read-only` は出所に関わらず書き込み可能 toolset（`create` 含む）をすべて落とします。
+件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 42 ツールに戻ります。`--read-only` は出所に関わらず書き込み可能 toolset（`create` 含む）をすべて落とします。
 
 | Toolset | 範囲 |
 |---------|------|
 | `query` | ビュー、選択、フィルタ、統計、パラメータ、関係、ワークセット、グループ/アセンブリ |
 | `create` | 通り芯、レベル、部屋、線/点/面要素、グループ |
 | `view` | ビュー作成、シート配置補助、キャプチャ、クロップ/縮尺 |
-| `meta` | バッチ（最大 20）、複数 Revit、プロジェクト情報、purge（MVP）、メッセージ、send_code |
+| `meta` | バッチ（最大 20）、複数 Revit、最近のモデル、プロジェクト情報、purge（MVP）、メッセージ、send_code |
 | `lint` | ビュー命名、firm-profile、警告サマリ |
 | `schedule` | 集計表 list/作成、フィールド、式、データ |
 | `families` | ロード/アンロード、タイプ、インスタンス、監査、`.rfa` エクスポート（プロジェクト側） |

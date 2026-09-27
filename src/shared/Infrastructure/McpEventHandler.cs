@@ -194,13 +194,15 @@ namespace RvtMcp.Plugin
                         : responseResultJson;
 
                     var resultError = McpResponsePrivacy.RedactErrorForResponse(result.Error);
+                    var wireError = McpResponsePrivacy.RedactErrorForResponse(
+                        NoDocumentGuidance.ForAgent(result.Error));
 
                     var response = JsonConvert.SerializeObject(new
                     {
                         id = request.Id,
                         success = result.Success,
                         data = result.Data,
-                        error = resultError
+                        error = wireError
                     });
 
                     var size = ResponseSizeGuard.Evaluate(
