@@ -585,8 +585,15 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         // short grace so the plugin's structured timeout response wins the race.
         private static readonly TimeSpan TransportGrace = TimeSpan.FromSeconds(5);
 
+        // Tests assign this to record the wire call without opening a socket.
+        internal static Func<string, object, int?, Task<JObject>> SendOverride;
+
         public static async Task<JObject> SendToRevit(string command, object parameters = null, int? timeoutSeconds = null)
         {
+            var sendOverride = SendOverride;
+            if (sendOverride != null)
+                return await sendOverride(command, parameters, timeoutSeconds);
+
             EnsureConnected();
 
             var id = $"req-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
@@ -989,7 +996,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         }
 
         [McpServerTool(Name = "revit_unload_family", Destructive = true), System.ComponentModel.Description("Remove (purge) a loadable family from the document. Identify by familyId or familyName. cascadeDeleteInstances=true to also delete placed instances; otherwise error if instances exist. dryRun=true returns the projected effect without changing the model. System families cannot be unloaded.")]
-        public static async Task<string> UnloadFamily(long? familyId = null, string familyName = "", bool cascadeDeleteInstances = false, bool dryRun = false)
+        public static async Task<string> UnloadFamily(string familyId = "", string familyName = "", bool cascadeDeleteInstances = false, bool dryRun = false)
         {
             try
             {
@@ -1000,7 +1007,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         }
 
         [McpServerTool(Name = "revit_duplicate_family_type", Destructive = false), System.ComponentModel.Description("Duplicate a FamilySymbol or system type within its family under newTypeName, optionally setting type parameter overrides (JSON object as string, parameter name → value). Returns the new type id. Works for FamilySymbol and ElementType subclasses (WallType, FloorType, etc.).")]
-        public static async Task<string> DuplicateFamilyType(long sourceTypeId, string newTypeName, string typeParameterOverrides = "")
+        public static async Task<string> DuplicateFamilyType(string sourceTypeId, string newTypeName, string typeParameterOverrides = "")
         {
             try
             {
@@ -1012,7 +1019,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         }
 
         [McpServerTool(Name = "revit_rename_family_type", Destructive = false), System.ComponentModel.Description("Rename a FamilySymbol or system type. Must be unique within the family. Catches Autodesk.Revit.Exceptions.ArgumentException for duplicate/invalid names and returns a clean error DTO without throwing.")]
-        public static async Task<string> RenameFamilyType(long typeId, string newName)
+        public static async Task<string> RenameFamilyType(string typeId, string newName)
         {
             try
             {
@@ -1034,7 +1041,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         }
 
         [McpServerTool(Name = "revit_replace_family_type", Destructive = false), System.ComponentModel.Description("Replace all instances of FamilySymbol A with FamilySymbol B across the project, active view, or selection. Both types must be the same category. dryRun=true previews counts without changing the model. Target symbol is auto-activated.")]
-        public static async Task<string> ReplaceFamilyType(long fromTypeId, long toTypeId, string scope = "all", long? viewId = null, bool dryRun = false)
+        public static async Task<string> ReplaceFamilyType(string fromTypeId, string toTypeId, string scope = "all", long? viewId = null, bool dryRun = false)
         {
             try
             {
@@ -1045,7 +1052,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         }
 
         [McpServerTool(Name = "revit_get_family_instances", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("List placed instances of a Family (or a specific type within it) with location/host/level DTOs in mm. viewOnly=true restricts to the active view. Returns location_kind (point|line|null), coordinates in mm, host_id/name, mark.")]
-        public static async Task<string> GetFamilyInstances(long? familyId = null, string familyName = "", string typeName = "", bool viewOnly = false, int limit = 1000)
+        public static async Task<string> GetFamilyInstances(string familyId = "", string familyName = "", string typeName = "", bool viewOnly = false, int limit = 1000)
         {
             try
             {
@@ -1056,7 +1063,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         }
 
         [McpServerTool(Name = "revit_list_family_types_in_family", ReadOnly = true, Idempotent = true), System.ComponentModel.Description("List a bounded page of types in one family. Use parameterNames to return only needed values; maxTypes hard max 500.")]
-        public static async Task<string> ListFamilyTypesInFamily(long? familyId = null, string familyName = "", bool includeParameterValues = true, bool includeBuiltInOnly = false, int startIndex = 0, int maxTypes = 100, string[] parameterNames = null)
+        public static async Task<string> ListFamilyTypesInFamily(string familyId = "", string familyName = "", bool includeParameterValues = true, bool includeBuiltInOnly = false, int startIndex = 0, int maxTypes = 100, string[] parameterNames = null)
         {
             try
             {
@@ -1067,7 +1074,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         }
 
         [McpServerTool(Name = "revit_export_family_to_path", Destructive = false), System.ComponentModel.Description("Save a loadable family from the current project back to an .rfa file at outputPath. Writes to disk (not ReadOnly). Rejects in-place and system families. overwriteExisting=false errors if the file already exists. Uses doc.EditFamily + Document.SaveAs.")]
-        public static async Task<string> ExportFamilyToPath(string outputPath, long? familyId = null, string familyName = "", bool overwriteExisting = false)
+        public static async Task<string> ExportFamilyToPath(string outputPath, string familyId = "", string familyName = "", bool overwriteExisting = false)
         {
             try
             {
@@ -3478,9 +3485,10 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         {
             try
             {
+                var parsedVolume = McpJsonInput.OptionalObject(volume, nameof(volume));
                 var result = await ToolGateway.SendToRevit("find_elements_in_volume", new
                 {
-                    volume,
+                    volume = parsedVolume,
                     room_id = roomId,
                     categories,
                     view_id = viewId,

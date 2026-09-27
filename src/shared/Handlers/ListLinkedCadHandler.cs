@@ -90,8 +90,13 @@ namespace RvtMcp.Plugin.Handlers
                 {
                     name = typeElement.Name;
 
-                    // Resolve path and status from CADLinkType / ExternalFileReference if available
-                    var extRef = ExternalFileUtils.GetExternalFileReference(doc, typeElement.Id);
+                    // Resolve path and status from CADLinkType / ExternalFileReference if available.
+                    // Imported (non-linked) CAD types are not external file references —
+                    // GetExternalFileReference throws ArgumentException for them instead of
+                    // returning null, so check IsExternalFileReference first.
+                    var extRef = ExternalFileUtils.IsExternalFileReference(doc, typeElement.Id)
+                        ? ExternalFileUtils.GetExternalFileReference(doc, typeElement.Id)
+                        : null;
                     if (extRef != null)
                     {
                         linkedFileStatus = extRef.GetLinkedFileStatus().ToString();

@@ -40,6 +40,12 @@ namespace RvtMcp.Plugin.Handlers
             if (doc == null)
                 return CommandResult.Fail("No document is open.");
 
+            // The IFC exporter modifies the document internally, so a read-only
+            // document fails deep inside doc.Export with the cryptic
+            // "no open transaction" error — refuse early with a clear reason.
+            if (!doc.IsModifiable)
+                return CommandResult.Fail("IFC export requires a modifiable document (the current document is read-only).");
+
             JObject request;
             try
             {

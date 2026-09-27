@@ -2574,7 +2574,7 @@
           },
           "sourceTypeId": {
             "description": "",
-            "type": "Int64"
+            "type": "String"
           },
           "typeParameterOverrides": {
             "description": "",
@@ -2793,7 +2793,7 @@
         "properties": {
           "familyId": {
             "description": "",
-            "type": "Nullable`1"
+            "type": "String"
           },
           "familyName": {
             "description": "",
@@ -3379,7 +3379,7 @@
         "properties": {
           "familyId": {
             "description": "",
-            "type": "Nullable`1"
+            "type": "String"
           },
           "familyName": {
             "description": "",
@@ -4119,7 +4119,7 @@
         "properties": {
           "familyId": {
             "description": "",
-            "type": "Nullable`1"
+            "type": "String"
           },
           "familyName": {
             "description": "",
@@ -4379,6 +4379,7 @@
         "type": "object"
       }
     },
+    
     {
       "name": "revit_list_revisions",
       "description_hash": "sha256:303e650bd9f17c5dc1925938470b0188fe4cd5af5e32bf7497b13c43e5ff9d6a",
@@ -4704,7 +4705,7 @@
     },
     {
       "name": "revit_open_model",
-      "description_hash": "sha256:46ec3115d266a3764aeaaff6b3719406709c36f738359958895cddca4da3580d",
+      "description_hash": "sha256:84c803daa618440f788e3c349ea1ba91ee5ddc1bf247663cba126273ac462996",
       "inputSchema": {
         "properties": {
           "activate": {
@@ -5102,7 +5103,7 @@
           },
           "typeId": {
             "description": "",
-            "type": "Int64"
+            "type": "String"
           }
         },
         "required": [
@@ -5157,7 +5158,7 @@
           },
           "fromTypeId": {
             "description": "",
-            "type": "Int64"
+            "type": "String"
           },
           "scope": {
             "description": "",
@@ -5165,7 +5166,7 @@
           },
           "toTypeId": {
             "description": "",
-            "type": "Int64"
+            "type": "String"
           },
           "viewId": {
             "description": "",
@@ -6187,7 +6188,7 @@
           },
           "familyId": {
             "description": "",
-            "type": "Nullable`1"
+            "type": "String"
           },
           "familyName": {
             "description": "",
