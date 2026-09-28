@@ -138,6 +138,11 @@ namespace RvtMcp.Plugin.Handlers
                                 foreach (Parameter param in titleBlockInstance.Parameters)
                                 {
                                     if (param.IsReadOnly || !param.HasValue || param.Definition == null) continue;
+                                    // Sheet Number/Sheet Name on the titleblock mirror the sheet itself and were
+                                    // already set on newSheet — copying the source values collides at commit
+                                    // ("Sheet Number is already in use") and aborts the whole duplication.
+                                    var builtIn = (param.Definition as InternalDefinition)?.BuiltInParameter;
+                                    if (builtIn == BuiltInParameter.SHEET_NUMBER || builtIn == BuiltInParameter.SHEET_NAME) continue;
                                     var newParam = newTitleBlockInstance.get_Parameter(param.Definition);
                                     if (newParam != null && !newParam.IsReadOnly)
                                     {
@@ -256,18 +261,21 @@ namespace RvtMcp.Plugin.Handlers
                             }
                         }
 
-                        tx.Commit();
+                        var commitStatus = tx.Commit();
+                        if (commitStatus != TransactionStatus.Committed)
+                        {
+                            // Do not dereference elements whose creation was rolled back.
+                            // Report a failure so batch_execute also rolls back its group.
+                            txGroup.RollBack();
+                            return CommandResult.Fail($"Transaction did not commit (status: {commitStatus}).");
+                        }
                         txGroup.Assimilate();
                     }
                     catch (Exception ex)
                     {
                         if (tx.HasStarted()) tx.RollBack();
                         txGroup.RollBack();
-                        return CommandResult.Ok(new
-                        {
-                            duplicated = false,
-                            error = ex.Message
-                        });
+                        return CommandResult.Fail($"Failed to duplicate sheet: {ex.Message}");
                     }
                 }
             }

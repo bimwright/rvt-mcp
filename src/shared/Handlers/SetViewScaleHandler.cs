@@ -33,16 +33,14 @@ namespace RvtMcp.Plugin.Handlers
                 tx.Start();
                 try
                 {
-                    var parameter = view.get_Parameter(BuiltInParameter.VIEW_SCALE);
-                    if (parameter == null || parameter.IsReadOnly)
-                    {
-                        tx.RollBack();
-                        return CommandResult.Fail("View does not accept scale changes (VIEW_SCALE parameter not writable).");
-                    }
-
+                    // VIEW_SCALE reports IsReadOnly on regular plan views even though the
+                    // scale is freely changeable — the supported write path is View.Scale.
                     var previous = view.Scale;
-                    parameter.Set(scale.Value);
-                    tx.Commit();
+                    view.Scale = scale.Value;
+                    var status = tx.Commit();
+                    if (status != TransactionStatus.Committed)
+                        return CommandResult.Fail($"Transaction commit status: {status}");
+
                     return CommandResult.Ok(new
                     {
                         view_id = RevitCompat.GetId(view.Id),
