@@ -35,7 +35,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _host.SetOwnerHandle(hwnd);
         }
 
-        /// <summary>Session wordmark flag. See <see cref="McpToastHost.ShowBranding"/>.</summary>
+        /// <summary>Current wordmark preference. See <see cref="McpToastHost.ShowBranding"/>.</summary>
         public bool ShowBranding => _host.ShowBranding;
 
         public void SetShowBranding(bool show) => _host.SetShowBranding(show);

@@ -38,6 +38,7 @@ namespace RvtMcp.Plugin
         public const bool DefaultEnableAdaptiveBake        = false;
         public const bool DefaultCacheSendCodeBodies       = false;
         public const bool DefaultEnableToast               = true;
+        public const bool DefaultShowBranding              = false;
         public const bool DefaultPersistSendCodeBodies     = false;
         public const int DefaultToastIdleSeconds           = 20;
         public const int DefaultPersistSendCodeBodiesHours = 4;
@@ -65,6 +66,10 @@ namespace RvtMcp.Plugin
 
         [JsonProperty("enableToast")]
         public bool? EnableToast { get; set; }
+
+        /// <summary>Show the activity-card wordmark and product prefix. Saved across Revit sessions.</summary>
+        [JsonProperty("showBranding")]
+        public bool? ShowBranding { get; set; }
 
         /// <summary>Idle duration for the single activity toast. Settings accepts 10, 20, 30, or 60 seconds.</summary>
         [JsonProperty("toastIdleSeconds")]
@@ -100,6 +105,7 @@ namespace RvtMcp.Plugin
         public bool EnableAdaptiveBakeOrDefault    => EnableAdaptiveBake ?? DefaultEnableAdaptiveBake;
         public bool CacheSendCodeBodiesOrDefault  => CacheSendCodeBodies ?? DefaultCacheSendCodeBodies;
         public bool EnableToastOrDefault          => EnableToast       ?? DefaultEnableToast;
+        public bool ShowBrandingOrDefault         => ShowBranding      ?? DefaultShowBranding;
         public int ToastIdleSecondsOrDefault      => NormalizeToastIdleSeconds(ToastIdleSeconds);
         public int PersistSendCodeBodiesHoursOrDefault => NormalizePersistSendCodeBodiesHours(PersistSendCodeBodiesHours);
 
@@ -467,6 +473,11 @@ namespace RvtMcp.Plugin
         public static bool TrySaveEnableToast(bool enabled, out string error, string configFilePath = null)
         {
             return TryUpdateConfig(configFilePath, root => root["enableToast"] = enabled, out error);
+        }
+
+        public static bool TrySaveShowBranding(bool show, out string error, string configFilePath = null)
+        {
+            return TryUpdateConfig(configFilePath, root => root["showBranding"] = show, out error);
         }
 
         public static bool TrySaveToastIdleSeconds(int seconds, out string error, string configFilePath = null)

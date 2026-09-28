@@ -118,7 +118,7 @@ namespace RvtMcp.Plugin.Views.Settings
         {
             _snapshot = RvtMcpConfig.LoadReadOnly();
             _toastEnabled = _app.ToastEnabled;
-            _showBranding = _app.ToastNotifier?.ShowBranding ?? false;
+            _showBranding = _app.ToastNotifier?.ShowBranding ?? _snapshot.ShowBrandingOrDefault;
             _toastIdleSeconds = _snapshot.ToastIdleSecondsOrDefault;
             _persistSendCodeBodies = _snapshot.IsPersistSendCodeBodiesActive();
             _persistSendCodeBodiesHours = _snapshot.PersistSendCodeBodiesHoursOrDefault;
@@ -264,8 +264,15 @@ namespace RvtMcp.Plugin.Views.Settings
         public void SetShowBranding(bool show)
         {
             _showBranding = show;
+            if (_app.Config != null) _app.Config.ShowBranding = show;
             _app.ToastNotifier?.SetShowBranding(show);
+            string error;
+            var persisted = RvtMcpConfig.TrySaveShowBranding(show, out error);
+            if (!persisted) App.DebugLog("Settings save showBranding failed: " + error);
+            ImmediateWarningKey = persisted ? null : "showBranding";
+            ImmediateWarning = persisted ? null : SaveFailed("showBranding");
             OnPropertyChanged(nameof(ShowBranding));
+            OnPropertyChanged(nameof(ImmediateWarning));
         }
 
         public void SetLanguage(string requested)

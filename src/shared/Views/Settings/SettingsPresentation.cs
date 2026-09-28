@@ -13,7 +13,7 @@ namespace RvtMcp.Plugin.Views.Settings
         string EffectiveLanguage { get; }
         bool IsLanguageWriteDisabled { get; }
         bool ToastEnabled { get; }
-        /// <summary>Wordmark on the activity card. Immediate and session-only; not staged or saved.</summary>
+        /// <summary>Wordmark on the activity card. Applied and saved immediately, not staged.</summary>
         bool ShowBranding { get; }
         int ToastIdleSeconds { get; set; }
         bool CacheSendCodeBodies { get; set; }
@@ -30,7 +30,7 @@ namespace RvtMcp.Plugin.Views.Settings
         bool CanCopyPort { get; }
         string PortText { get; }
         void SetToastEnabled(bool enabled);
-        /// <summary>Show or hide the activity-card wordmark for this Revit session.</summary>
+        /// <summary>Show or hide the activity-card wordmark and save the preference across sessions.</summary>
         void SetShowBranding(bool show);
         void SetLanguage(string language);
         /// <summary>Same as the ribbon MCP toggle: start or stop the plugin listener.</summary>

@@ -66,7 +66,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 _ownerHandle = hwnd;
         }
 
-        /// <summary>Apply the current session branding flag to the open card, if any.</summary>
+        /// <summary>Apply the current branding preference to the open card, if any.</summary>
         public void ApplyShowBranding()
         {
             EnsureDispatcher();

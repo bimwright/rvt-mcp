@@ -234,7 +234,7 @@
   "settings.toast.enabled.help": "Takes effect immediately.",
   "settings.toast.idle.help": "Hides the card when no new results arrive. Hover to keep it open. Applies from the next activity.",
   "settings.toast.brand": "Mostrar la marca",
-  "settings.toast.brand.help": "Aparece al señalar la tarjeta de actividad. Se aplica al instante, hasta reiniciar Revit.",
+  "settings.toast.brand.help": "Aparece al señalar la tarjeta de actividad. Se aplica al instante y se conserva tras reiniciar Revit.",
   "settings.general.listener": "MCP listener",
   "settings.general.restart": "Restart the listener with a new port",
   "settings.general.listenerFailed": "The MCP listener could not be started.",

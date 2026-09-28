@@ -292,7 +292,7 @@ namespace RvtMcp.Plugin.Views.Settings
             };
             page.Children.Add(Card(
                 Row(enabledLabel, RowCaption("settings.toast.enabled.help", "Takes effect immediately."), _toastEnabled, "enableToast"),
-                Row(brandLabel, RowCaption("settings.toast.brand.help", "Appears when you point at the activity card. Applies immediately and lasts until Revit restarts."), _showBranding),
+                Row(brandLabel, RowCaption("settings.toast.brand.help", "Appears when you point at the activity card. Applies immediately and is remembered after Revit restarts."), _showBranding, "showBranding"),
                 Row(idleLabel,
                     RowCaption("settings.toast.idle.help", "Hides the card when no new results arrive. Hover to keep it open. Applies from the next activity."),
                     _toastIdle, "toastIdleSeconds")));

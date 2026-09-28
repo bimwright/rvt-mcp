@@ -234,7 +234,7 @@
   "settings.toast.enabled.help": "Takes effect immediately.",
   "settings.toast.idle.help": "Hides the card when no new results arrive. Hover to keep it open. Applies from the next activity.",
   "settings.toast.brand": "顯示品牌",
-  "settings.toast.brand.help": "指標停在活動卡片上時顯示。立即生效，持續到重新啟動 Revit。",
+  "settings.toast.brand.help": "指標停在活動卡片上時顯示。立即生效，重新啟動 Revit 後仍保留此設定。",
   "settings.general.listener": "MCP listener",
   "settings.general.restart": "Restart the listener with a new port",
   "settings.general.listenerFailed": "The MCP listener could not be started.",

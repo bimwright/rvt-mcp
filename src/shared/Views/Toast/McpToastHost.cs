@@ -36,8 +36,8 @@ namespace RvtMcp.Plugin.Views.Toast
         private volatile string _instanceIdentity;
 
         /// <summary>
-        /// Wordmark and product prefix on the activity card. Off until turned on.
-        /// Session-only: a Revit restart clears it, and nothing is written to config.
+        /// Wordmark and product prefix on the activity card. Off by default.
+        /// App restores the saved preference at startup; Settings applies and saves changes.
         /// </summary>
         public bool ShowBranding => _showBranding;
 

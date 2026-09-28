@@ -98,6 +98,9 @@ internal static class Program
 
             settings.SetImmediateWarning("enableToast", "enableToast: could not be saved");
             Expect(errors["enableToast"].Visibility == Visibility.Visible, "immediate save warning renders under the toast switch");
+            settings.SetImmediateWarning("showBranding", "showBranding: could not be saved");
+            Expect(errors["showBranding"].Visibility == Visibility.Visible, "branding save warning renders under its own switch");
+            Expect(errors["enableToast"].Visibility == Visibility.Collapsed, "previous immediate warning is cleared");
             settings.SetImmediateWarning("unknownKey", "Something else failed");
             Expect(Field<TextBlock>(window, "_footerText").Text == "Something else failed", "warning without a row falls back to the footer");
         });
@@ -114,6 +117,9 @@ internal static class Program
             Expect(brand.IsChecked == false && brand.IsEnabled, "branding starts hidden");
             brand.IsChecked = true;
             Expect(settings.ShowBranding && !settings.IsDirty, "brand switch applies immediately, not staged");
+            idle.SelectedItem = 30;
+            Click(Field<Button>(window, "_discard"));
+            Expect(settings.ShowBranding && brand.IsChecked == true, "Discard only reverts staged edits, not immediate branding");
             Expect(System.Windows.Automation.AutomationProperties.GetName(brand) == "Show branding", "brand switch is named by its row label");
             toggle.IsChecked = false;
             Expect(!settings.ToastEnabled && !settings.IsDirty, "toast switch applies immediately, not staged");

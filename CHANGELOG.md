@@ -26,7 +26,8 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 - **`revit_list_recent_models`** — lists this Revit's recent files when no document is open. The agent asks which one to open, then calls `revit_open_model`. A no-document failure now says Revit is running and names that tool. Tool counts: default **42**, `--toolsets all` **227**, adaptive bake **230**.
 - **Tool search** — Settings → Tools has a search box that matches the tool name or its description. Each row tooltip shows the name and the full description.
-- **Session branding switch** — Settings → Toast → **Show branding** (off by default). Turning it on restores the `RVT-MCP` prefix. The wordmark stays hidden until the pointer moves onto the card, wipes in, and fades out when the pointer leaves. While branding is on, the card keeps that bottom row so the height does not change on hover. The card is narrower. A stationary cursor under a card that just opened does not count. The choice is not written to config.
+- **Persistent branding switch** — Settings → Toast → **Show branding** (off by default). Turning it on restores the `RVT-MCP` prefix. The wordmark stays hidden until the pointer moves onto the card, wipes in, and fades out when the pointer leaves. While branding is on, the card keeps that bottom row so the height does not change on hover. The card is narrower. A stationary cursor under a card that just opened does not count. The choice applies immediately and is saved as `showBranding` in the user config, including when turned off. A save failure is reported beneath the switch; the new state still applies to the current session.
+- **Why activity toasts exist** — the English and Vietnamese READMEs explain tool-result feedback, freedom from watching the chat, multitasking and a more modern, non-modal experience.
 
 ## v0.8.1 - Two-sided installer, revit_open_model, and a Settings window
 

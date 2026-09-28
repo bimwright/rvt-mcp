@@ -113,6 +113,18 @@ Counts exclude your personal baked tools. The installer writes the seeded defaul
 - **Ribbon:** start or stop the connection, open **History** to search and re-run past calls, and switch completion **Toasts** (on by default).
 - **UI languages:** the add-in UI comes in 15 languages and follows Revit's UI language; change it with the **Language** button in the ribbon slide-out — it opens **Settings → General → Language** (`BIMWRIGHT_UI_LANGUAGE` still wins). Tool names and payloads stay English. See [docs/localization.md](docs/localization.md).
 
+### Why activity toasts exist
+
+Toasts are work feedback, not just decoration. They grew out of three practical needs:
+
+- **Free users from watching the chat.** In real-world MCP workflows, an AI agent can work for a long time while Revit gives little visible feedback. Watching the chat just to check whether the agent is doing anything wastes attention. The activity card reports completed tool calls so users can turn to other work between updates.
+- **Support multitasking.** The maintainer develops and repeatedly tests several desktop applications in parallel. Compact notifications make it easier to follow those sessions without keeping every chat in view.
+- **Modernize the experience.** Revit-side feedback makes automation feel more responsive and understandable, without interrupting work with modal dialogs.
+
+A toast reports a tool result, **not progress inside a running tool or completion of the entire task**. Repeated results share one card; notifications may wait while Revit is minimized or blocked by a modal dialog. They do not replace reviewing the agent's work.
+
+Notifications are **on by default** and can be turned off. In **Settings → Toast**, choose the idle duration (10/20/30/60 seconds; default 20) and **Show branding** (**off by default**). Branding restores the `RVT-MCP` prefix and shows the wordmark on hover. The choice applies immediately and is saved across Revit restarts; users do not need to display branding to get activity feedback.
+
 ### Prompts
 
 Four ready-made workflows ship as MCP prompts — pick `/mcp__rvt-mcp__revit_<name>` (Claude Code) or the prompts menu (Claude Desktop), and the agent follows the script with the tools it already has:
@@ -142,6 +154,8 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\RvtMc
 | Persist send_code journal | `--persist-send-code-bodies` / `--no-…` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES=1` | `persistSendCodeBodies` |
 | Journal TTL | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | Completion toast (default on) | ribbon **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
+| Toast branding (default off, saved) | Settings → Toast → **Show branding** | — | `showBranding` |
+| Toast idle duration (default 20 s) | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
 | UI language (add-in) | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
 
 After changing server flags, restart the MCP connection so the client picks up the new tool list.
@@ -206,6 +220,8 @@ Open-source tools connecting AI assistants to BIM and CAD applications.
 
 The name **bimwright** combines **BIM** with **wright**, an old word for a maker or builder—as in *shipwright*.
 
+See [how the gateway names are chosen](https://github.com/bimwright/.github/blob/master/profile/README.md#naming).
+
 - [rvt-mcp](https://github.com/bimwright/rvt-mcp) — Revit  
 - [dwg-mcp](https://github.com/bimwright/dwg-mcp) — AutoCAD  
 - [nwd-mcp](https://github.com/bimwright/nwd-mcp) — Navisworks  
@@ -220,4 +236,4 @@ Apache-2.0 — [LICENSE](LICENSE).
 
 Forks and rebrands are welcome — the license terms are all that's required (keep `LICENSE` and the copyright notices, mark changed files). If rvt-mcp helped you, a star or a mention of BIMwright in your product is appreciated but entirely optional. Issues and PRs are always welcome.
 
-Revit and Autodesk are trademarks of Autodesk, Inc. bimwright is independent and not affiliated with Autodesk.
+Revit and Autodesk are trademarks of Autodesk, Inc. bimwright is an independent open-source project and is not affiliated with, sponsored by, or endorsed by Autodesk, Inc.

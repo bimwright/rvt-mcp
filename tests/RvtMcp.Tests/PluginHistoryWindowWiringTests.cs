@@ -86,6 +86,38 @@ namespace RvtMcp.Tests
             Assert.Contains("new McpToastHost(() => Config?.ToastIdleSecondsOrDefault ?? RvtMcpConfig.DefaultToastIdleSeconds)", source);
         }
 
+        [Theory]
+        [InlineData("plugin-r22")]
+        [InlineData("plugin-r23")]
+        [InlineData("plugin-r24")]
+        [InlineData("plugin-r25")]
+        [InlineData("plugin-r26")]
+        [InlineData("plugin-r27")]
+        public void Saved_branding_is_restored_before_the_listener_starts(string pluginFolder)
+        {
+            var source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", pluginFolder, "App.cs"));
+            var config = source.IndexOf("Config = RvtMcpConfig.Load", System.StringComparison.Ordinal);
+            var restore = source.IndexOf("toastHost.SetShowBranding(Config.ShowBrandingOrDefault)", System.StringComparison.Ordinal);
+            var listener = source.IndexOf("CreateAndStartTransport();", System.StringComparison.Ordinal);
+            Assert.True(config >= 0 && restore > config && listener > restore);
+        }
+
+        [Fact]
+        public void Settings_branding_applies_saves_and_reports_failure_immediately()
+        {
+            var source = File.ReadAllText(Path.Combine(GetRepoRoot(),
+                "src", "shared", "Views", "Settings", "SettingsViewModel.cs"));
+            var start = source.IndexOf("public void SetShowBranding(bool show)", System.StringComparison.Ordinal);
+            var end = source.IndexOf("public void SetLanguage(", start, System.StringComparison.Ordinal);
+            var method = source.Substring(start, end - start);
+            Assert.Contains("_app.Config.ShowBranding = show", method);
+            Assert.Contains("_app.ToastNotifier?.SetShowBranding(show)", method);
+            Assert.Contains("RvtMcpConfig.TrySaveShowBranding(show, out error)", method);
+            Assert.Contains("ImmediateWarningKey = persisted ? null : \"showBranding\"", method);
+            Assert.Contains("SaveFailed(\"showBranding\")", method);
+            Assert.Contains("OnPropertyChanged(nameof(ImmediateWarning))", method);
+        }
+
         [Fact]
         public void LocalizationHost_init_is_nonfatal_and_logs_missing_keys()
         {

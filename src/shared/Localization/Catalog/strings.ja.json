@@ -234,7 +234,7 @@
   "settings.toast.enabled.help": "Takes effect immediately.",
   "settings.toast.idle.help": "Hides the card when no new results arrive. Hover to keep it open. Applies from the next activity.",
   "settings.toast.brand": "ブランド名を表示",
-  "settings.toast.brand.help": "ポインタをアクティビティカードに置くと表示します。すぐに適用され、Revit の再起動まで有効です。",
+  "settings.toast.brand.help": "ポインタをアクティビティカードに置くと表示します。すぐに適用され、Revit の再起動後も設定が保持されます。",
   "settings.general.listener": "MCP listener",
   "settings.general.restart": "Restart the listener with a new port",
   "settings.general.listenerFailed": "The MCP listener could not be started.",

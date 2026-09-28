@@ -113,6 +113,18 @@ Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp
 - **Ribbon:** bật/tắt kết nối, mở **History** để tìm và chạy lại các lời gọi trước, và bật/tắt **Toast** hoàn thành (mặc định bật).
 - **Ngôn ngữ giao diện:** UI của add-in có 15 ngôn ngữ và theo ngôn ngữ giao diện của Revit; đổi bằng nút **Language** trong slide-out của ribbon — nút mở **Settings → tab General → nhóm Language** (`BIMWRIGHT_UI_LANGUAGE` vẫn thắng). Tên tool và payload vẫn là tiếng Anh. Xem [docs/localization.md](docs/localization.md).
 
+### Vì sao có toast thông báo hoạt động?
+
+Toast không chỉ để trang trí. Tính năng này xuất phát từ ba nhu cầu thực tế của người phát triển:
+
+- **Giải phóng người dùng khỏi việc nhìn chat liên tục.** Khi quan sát người khác dùng MCP vào công việc thực tế, tôi thấy AI agent có thể làm khá lâu trong khi Revit không có phản hồi rõ ràng. Người dùng phải nhìn khung chat chỉ để biết AI có đang làm việc hay không. Việc chờ và theo dõi này chiếm sự chú ý không cần thiết. Toast báo kết quả sau mỗi lần gọi tool hoàn tất, để người dùng có thể chuyển sang việc khác giữa các lần cập nhật.
+- **Hỗ trợ multitasking.** Tôi thường làm nhiều việc cùng lúc, tự triển khai và test lặp lại trên nhiều ứng dụng. Thông báo ngắn giúp theo dõi các phiên làm việc mà không phải giữ mắt ở từng khung chat.
+- **Hiện đại hóa trải nghiệm.** Phản hồi ngay trong Revit giúp quá trình tự động hóa rõ ràng, dễ nắm bắt hơn mà không phải ngắt công việc bằng hộp thoại.
+
+Toast báo **kết quả từng tool**, không phải thanh tiến độ bên trong tool đang chạy và cũng không có nghĩa toàn bộ yêu cầu đã hoàn thành. Các kết quả liên tiếp cập nhật chung một card; thông báo có thể chờ khi Revit bị thu nhỏ hoặc đang có hộp thoại modal. Người dùng vẫn cần kiểm tra kết quả công việc của agent.
+
+Toast **bật mặc định** và có thể tắt. Trong **Settings → Toast**, chọn thời gian tự ẩn (10/20/30/60 giây; mặc định 20) và **Show branding** (**tắt mặc định**). Bật branding sẽ hiện prefix `RVT-MCP` và wordmark khi hover. Lựa chọn có hiệu lực ngay và được lưu qua các lần khởi động Revit; không cần bật brand để nhận thông báo hoạt động.
+
 ---
 
 ## Cấu hình
@@ -131,6 +143,8 @@ Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp
 | Journal persist send_code | `--persist-send-code-bodies` / `--no-…` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES=1` | `persistSendCodeBodies` |
 | TTL journal | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | Toast hoàn thành (mặc định bật) | ribbon **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
+| Brand trên toast (mặc định tắt, có lưu) | Settings → Toast → **Show branding** | — | `showBranding` |
+| Thời gian toast tự ẩn (mặc định 20 giây) | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
 | Ngôn ngữ UI (add-in) | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
 
 Đổi cờ server xong: restart kết nối MCP để client nhận tool list mới.
@@ -195,6 +209,8 @@ Các công cụ mã nguồn mở kết nối trợ lý AI với ứng dụng BIM
 
 Tên **bimwright** ghép **BIM** với **wright**, một từ tiếng Anh cổ chỉ người thợ chế tạo hoặc xây dựng — như trong *shipwright* (thợ đóng tàu).
 
+Xem [cách đặt tên các gateway](https://github.com/bimwright/.github/blob/master/profile/README.vi.md#cách-đặt-tên).
+
 - [rvt-mcp](https://github.com/bimwright/rvt-mcp) — Revit  
 - [dwg-mcp](https://github.com/bimwright/dwg-mcp) — AutoCAD  
 - [nwd-mcp](https://github.com/bimwright/nwd-mcp) — Navisworks  
@@ -209,4 +225,4 @@ Apache-2.0 — [LICENSE](LICENSE).
 
 Bạn cứ tự do fork và đổi thương hiệu — chỉ cần tuân thủ điều khoản license (giữ `LICENSE` và các copyright notice, ghi chú file đã sửa). Nếu rvt-mcp có ích cho bạn, một star hoặc lời nhắc tới BIMwright trong sản phẩm của bạn là điều tác giả rất trân trọng, nhưng hoàn toàn tùy ý. Luôn chào đón issue và PR.
 
-Revit và Autodesk là trademark của Autodesk, Inc. bimwright độc lập, không liên kết Autodesk.
+Revit và Autodesk là nhãn hiệu của Autodesk, Inc. bimwright là dự án mã nguồn mở độc lập, không liên kết, không được tài trợ hay chứng thực bởi Autodesk, Inc.

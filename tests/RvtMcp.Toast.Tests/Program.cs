@@ -21,7 +21,7 @@ internal static class Program
             CheckCompactLayout();
             ToastVisualTests.Run();
             CheckNaNSafePlacement();
-            CheckBrandingFollowsSessionFlag();
+            CheckBrandingFollowsPreference();
             CheckIdentityRow();
             CheckThumbnailRow();
             CheckStationaryPointerFiltering();
@@ -150,7 +150,7 @@ internal static class Program
         Console.WriteLine("PASS: first placement from unset WPF coordinates via manager");
     }
 
-    private static void CheckBrandingFollowsSessionFlag()
+    private static void CheckBrandingFollowsPreference()
     {
         var show = false;
         var aggregator = new ActivityAggregator();
@@ -174,7 +174,7 @@ internal static class Program
                 throw new Exception("Turning branding on must restore the prefix and reserve a blank brand row.");
         }
         finally { manager.DismissAllImmediate(); }
-        Console.WriteLine("PASS: new and open cards follow the session branding flag");
+        Console.WriteLine("PASS: new and open cards follow the branding preference");
     }
 
     private static void CheckIdentityRow()
