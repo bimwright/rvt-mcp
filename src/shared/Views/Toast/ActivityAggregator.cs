@@ -8,7 +8,7 @@ namespace RvtMcp.Plugin.Views.Toast
     {
         public ActivitySnapshot(long cardId, bool isStatus, int succeeded, int failed, int images,
             string title, string body, bool latestSuccess, bool hasFailure,
-            Func<ActivityStatusText> statusTextProvider = null, string latestImagePath = null)
+            Func<ActivityStatusText> statusTextProvider = null, string imagePath = null)
         {
             CardId = cardId;
             IsStatus = isStatus;
@@ -20,7 +20,7 @@ namespace RvtMcp.Plugin.Views.Toast
             LatestSuccess = latestSuccess;
             HasFailure = hasFailure;
             StatusTextProvider = statusTextProvider;
-            LatestImagePath = latestImagePath;
+            ImagePath = imagePath;
         }
 
         /// <summary>Never reused — a window callback carrying an old id is ignored.</summary>
@@ -43,9 +43,10 @@ namespace RvtMcp.Plugin.Views.Toast
         /// Activity cards leave this null and keep their captured result text.
         /// </summary>
         public Func<ActivityStatusText> StatusTextProvider { get; }
-        /// <summary>Capture path of the latest result only — a newer result without an
-        /// image clears it, so the card never shows a stale thumbnail.</summary>
-        public string LatestImagePath { get; }
+        /// <summary>Capture shown as the card thumbnail. A capture stays for at least
+        /// <see cref="ActivityAggregator.ThumbnailHoldSeconds"/>; after that the newest
+        /// result decides (its own capture, or none).</summary>
+        public string ImagePath { get; }
     }
 
     /// <summary>Localized title/body for a status card, resolved at render time.</summary>
@@ -88,6 +89,7 @@ namespace RvtMcp.Plugin.Views.Toast
     public sealed class ActivityAggregator
     {
         public const int DefaultIdleSeconds = 20;
+        public const int ThumbnailHoldSeconds = 5;
 
         // Pending: counted while the Revit frame was unusable, shown by FlushIfUsable.
         private enum Phase { None, Pending, Visible, Closing }
@@ -108,7 +110,12 @@ namespace RvtMcp.Plugin.Views.Toast
         private string _body;
         private bool _latestSuccess;
         private bool _hasFailure;
-        private string _latestImagePath;
+        private string _imagePath;
+        private TimeSpan _imageShownAt;
+        // A result that arrived while the current capture was still held: its image, or
+        // null to clear. Only the newest waiting change is kept.
+        private bool _imageChangePending;
+        private string _pendingImagePath;
         private Func<ActivityStatusText> _statusTextProvider;
         private bool _hovering;
         private TimeSpan _deadline;
@@ -157,7 +164,6 @@ namespace RvtMcp.Plugin.Views.Toast
                 _title = title;
                 _body = body;
                 _latestSuccess = success;
-                _latestImagePath = success && !string.IsNullOrEmpty(imagePath) ? imagePath : null;
 
                 // A result can arrive after the owner became minimized/disabled but
                 // before the manager's next timer tick. Park the visible card now so
@@ -165,6 +171,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 if (!_isStatus && !frameUsable && _phase == Phase.Visible)
                     _phase = Phase.Pending;
 
+                SetImage(success && !string.IsNullOrEmpty(imagePath) ? imagePath : null);
                 if (_phase == Phase.Visible)
                     Rearm();
                 return RequestRender();
@@ -212,6 +219,8 @@ namespace RvtMcp.Plugin.Views.Toast
                     return false;
                 _phase = Phase.Visible;
                 _hovering = false;
+                if (_imagePath != null)
+                    _imageShownAt = _now();
                 Rearm();
                 return RequestRender();
             }
@@ -220,6 +229,8 @@ namespace RvtMcp.Plugin.Views.Toast
         /// <summary>
         /// Timer: close an expired card. An activity card on an unusable frame is parked
         /// instead, so a minimized Revit comes back to the full counts, not to nothing.
+        /// Also applies a thumbnail change that waited for the current capture's hold,
+        /// except while the pointer is on the card (it may be heading for the thumbnail).
         /// </summary>
         public bool Tick(bool frameUsable)
         {
@@ -233,9 +244,14 @@ namespace RvtMcp.Plugin.Views.Toast
                     _hovering = false;
                     return RequestRender();
                 }
-                if (!Expired())
+                if (Expired())
+                {
+                    _phase = Phase.Closing;
+                    return RequestRender();
+                }
+                if (!_imageChangePending || _hovering || _now() < _imageShownAt + ImageHold)
                     return false;
-                _phase = Phase.Closing;
+                ShowImage(_pendingImagePath);
                 return RequestRender();
             }
         }
@@ -329,7 +345,9 @@ namespace RvtMcp.Plugin.Views.Toast
             _body = null;
             _latestSuccess = false;
             _hasFailure = false;
-            _latestImagePath = null;
+            _imagePath = null;
+            _imageChangePending = false;
+            _pendingImagePath = null;
             _statusTextProvider = null;
             _hovering = false;
         }
@@ -352,6 +370,28 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private bool Expired() => !_hovering && _now() >= _deadline;
 
+        private static readonly TimeSpan ImageHold = TimeSpan.FromSeconds(ThumbnailHoldSeconds);
+
+        /// <summary>A visible capture younger than the hold is not replaced yet; the change waits for Tick.</summary>
+        private void SetImage(string path)
+        {
+            if (_imagePath != null && _phase == Phase.Visible && _now() < _imageShownAt + ImageHold)
+            {
+                _imageChangePending = true;
+                _pendingImagePath = path;
+                return;
+            }
+            ShowImage(path);
+        }
+
+        private void ShowImage(string path)
+        {
+            _imagePath = path;
+            _imageShownAt = _now();
+            _imageChangePending = false;
+            _pendingImagePath = null;
+        }
+
         private bool IsLive(long cardId) => cardId == _cardId && _phase == Phase.Visible;
 
         private bool RequestRender()
@@ -364,6 +404,6 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private ActivitySnapshot Snapshot() => new ActivitySnapshot(
             _cardId, _isStatus, _succeeded, _failed, _images, _title, _body, _latestSuccess, _hasFailure,
-            _statusTextProvider, _latestImagePath);
+            _statusTextProvider, _imagePath);
     }
 }

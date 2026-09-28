@@ -32,9 +32,12 @@ namespace RvtMcp.Plugin
             // Toasts held while the frame was minimized/modal flush here.
             _toastNotifier?.FlushPendingIfUsable();
 
-            // Instance footer on every toast so parallel Revit processes serving
-            // different agents are distinguishable.
-            _toastNotifier?.SetInstanceInfo("Revit " + (AuthToken.RevitVersion ?? "?"));
+            // Toast title ("rvt-mcp 2027") so parallel gateways and Revit processes
+            // serving different agents are distinguishable.
+            var year = AuthToken.RevitVersion;
+            _toastNotifier?.SetInstanceInfo(string.IsNullOrEmpty(year)
+                ? Views.BrandAssets.ProductName
+                : Views.BrandAssets.ProductName + " " + year);
 
             // Rising edge: first client attach (and each re-attach) confirms
             // the agent↔plugin wire end-to-end.

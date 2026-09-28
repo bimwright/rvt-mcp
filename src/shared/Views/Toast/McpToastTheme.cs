@@ -20,6 +20,8 @@ namespace RvtMcp.Plugin.Views.Toast
         public static readonly SolidColorBrush Success = Brush("#38A169");
         public static readonly SolidColorBrush Error = Brush("#E53E3E");
         public static readonly SolidColorBrush MutedAccent = Brush("#94A3B8");
+        // Backdrop behind a capture: darker than the card so a white sheet reads as a sheet.
+        public static readonly SolidColorBrush ThumbnailBackground = Brush("#E6EAF0");
         // Brand wordmark colours come from the logo: navy "BIM" + green "wright".
         public static readonly SolidColorBrush BrandBim = Brush("#0C3F76");
         public static readonly SolidColorBrush BrandWright = Brush("#589039");

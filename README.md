@@ -123,7 +123,9 @@ Toasts are work feedback, not just decoration. They grew out of three practical 
 
 A toast reports a tool result, **not progress inside a running tool or completion of the entire task**. Repeated results share one card; notifications may wait while Revit is minimized or blocked by a modal dialog. They do not replace reviewing the agent's work.
 
-Notifications are **on by default** and can be turned off. In **Settings → Toast**, choose the idle duration (10/20/30/60 seconds; default 20) and **Show branding** (**off by default**). Branding restores the `RVT-MCP` prefix and shows the wordmark on hover. The choice applies immediately and is saved across Revit restarts; users do not need to display branding to get activity feedback.
+Each card names the gateway and Revit year (for example `rvt-mcp 2022`), the latest tool, and the Success · Failed · Capture counts. A capture preview stays on the card for at least 5 seconds.
+
+Notifications are **on by default** and can be turned off. In **Settings → Toast**, choose the idle duration (10/20/30/60 seconds; default 20) and **Show branding** (**off by default**), which shows the wordmark on hover. The choice applies immediately and is saved across Revit restarts; users do not need to display branding to get activity feedback.
 
 ### Prompts
 

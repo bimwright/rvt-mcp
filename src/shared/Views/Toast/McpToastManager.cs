@@ -23,6 +23,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly Action<long> _onClick;
         private readonly Func<bool> _showBranding;
         private readonly Func<string> _instanceIdentity;
+        private readonly Func<bool> _motionEnabled;
         private readonly DispatcherTimer _timer;
         private McpToastWindow _window;
         private IntPtr _ownerHandle;
@@ -33,9 +34,12 @@ namespace RvtMcp.Plugin.Views.Toast
         /// call back into this manager. A missing callback means that the frame is usable.
         /// </param>
         /// <param name="instanceIdentity">
-        /// Small always-on footer label identifying this Revit instance so cards
-        /// from parallel Revit processes can be told apart. Evaluated when each
-        /// card is created; null/empty hides the label.
+        /// Card title identifying this Revit instance so cards from parallel
+        /// Revit processes can be told apart. Evaluated when each card is
+        /// created; null/empty falls back to the product name.
+        /// </param>
+        /// <param name="motionEnabled">
+        /// Passed to each card window; null follows the Windows animation setting.
         /// </param>
         public McpToastManager(
             Dispatcher dispatcher,
@@ -43,7 +47,8 @@ namespace RvtMcp.Plugin.Views.Toast
             Func<bool> isFrameUsable = null,
             Action<long> onClick = null,
             Func<bool> showBranding = null,
-            Func<string> instanceIdentity = null)
+            Func<string> instanceIdentity = null,
+            Func<bool> motionEnabled = null)
         {
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             _aggregator = aggregator ?? throw new ArgumentNullException(nameof(aggregator));
@@ -51,6 +56,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _onClick = onClick;
             _showBranding = showBranding ?? (() => true);
             _instanceIdentity = instanceIdentity ?? (() => null);
+            _motionEnabled = motionEnabled;
 
             _timer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
             {
@@ -206,6 +212,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 OnCardClicked,
                 OnPointerEntered,
                 OnPointerLeft,
+                motionEnabled: _motionEnabled,
                 instanceIdentity: _instanceIdentity());
 
             _window = window;

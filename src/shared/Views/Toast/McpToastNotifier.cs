@@ -41,7 +41,7 @@ namespace RvtMcp.Plugin.Views.Toast
         public void SetShowBranding(bool show) => _host.SetShowBranding(show);
 
         /// <summary>
-        /// Instance footer shown on every card regardless of the branding flag —
+        /// Card title shown on every card regardless of the branding flag —
         /// distinguishes toasts when several Revit processes serve different agents.
         /// </summary>
         public void SetInstanceInfo(string info) => _host.SetInstanceIdentity(info);

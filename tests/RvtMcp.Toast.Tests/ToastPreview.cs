@@ -19,11 +19,12 @@ internal sealed class ToastPreview : Window
     private readonly TextBlock _state = new TextBlock { Margin = new Thickness(0, 10, 0, 10), TextWrapping = TextWrapping.Wrap };
     private readonly ListBox _log = new ListBox { Height = 220 };
     private int _index;
+    private int _captureIndex;
     private int _identityIndex;
     private readonly string[] _identities =
     {
-        "Revit 2027",
-        "Revit 2022",
+        "rvt-mcp 2027",
+        "rvt-mcp 2022",
         null
     };
     private readonly (string Name, bool Capture)[] _commands =
@@ -43,7 +44,8 @@ internal sealed class ToastPreview : Window
     {
         _manager = new McpToastManager(Dispatcher, _activity,
             onClick: _ => Log("Card click → History callback (preview only); card dismissed."),
-            instanceIdentity: () => _identities[_identityIndex]);
+            instanceIdentity: () => _identities[_identityIndex],
+            motionEnabled: () => true);
         Title = "RVT-MCP — production toast preview (simulated results)";
         Width = 620; Height = 535; Left = 450; Top = 130;
         WindowStartupLocation = WindowStartupLocation.Manual;
@@ -54,7 +56,7 @@ internal sealed class ToastPreview : Window
         panel.Children.Add(new TextBlock { Text = "Production toast · rolling counters", FontSize = 21, FontWeight = FontWeights.SemiBold });
         panel.Children.Add(new TextBlock
         {
-            Text = "Real window + manager + aggregator, simulated results. No Revit/API calls.\nFooter: instance identity label (always on). Hover: two-layer brand sweep. ×: dismiss only.",
+            Text = "Real window + manager + aggregator, simulated results. No Revit/API calls.\nMotion is forced on here, whatever Windows' animation setting says. Title: instance identity. Hover: two-layer brand sweep. ×: dismiss only.",
             TextWrapping = TextWrapping.Wrap, Foreground = McpToastTheme.TextSecondary, Margin = new Thickness(0, 8, 0, 12)
         });
         var actions = new WrapPanel();
@@ -81,7 +83,7 @@ internal sealed class ToastPreview : Window
         panel.Children.Add(_log);
         panel.Children.Add(new TextBlock
         {
-            Text = "10 Success | 0 Failed | 2 Capture after replay (captures also count as success).\nIdle timeout: 60 s; hover pauses it. Closing this preview closes the toast too.",
+            Text = "10 Success · 0 Failed · 2 Capture after replay (captures also count as success). The two captures differ in shape (wide, then tall) to show centring and the cross-fade.\nIdle timeout: 60 s; hover pauses it. Closing this preview closes the toast too.",
             TextWrapping = TextWrapping.Wrap, FontSize = 12, Foreground = McpToastTheme.TextSecondary, Margin = new Thickness(0, 12, 0, 0)
         });
         Content = panel;
@@ -122,6 +124,7 @@ internal sealed class ToastPreview : Window
         _manager.DismissAllImmediate();
         _activity.Reset();
         _index = 0;
+        _captureIndex = 0;
         _log.Items.Clear();
         _state.Text = "Ready";
     }
@@ -129,7 +132,7 @@ internal sealed class ToastPreview : Window
     private void Deliver(string name, bool success, bool capture)
     {
         _activity.RecordResult(name, success ? "Simulated success" : "Parameter is read-only (simulated)",
-            success, capture ? PreviewPng() : null, true);
+            success, capture ? PreviewPng(_captureIndex++ % 2) : null, true);
         _manager.Render();
         PositionCard();
         Log($"MOCK {name} → {(success ? "SUCCESS" : "ERROR")}{(capture ? " + CAPTURE" : "")}");
@@ -138,22 +141,26 @@ internal sealed class ToastPreview : Window
 
     /// <summary>A real PNG under %TEMP% so the capture rows in the replay exercise the
     /// thumbnail row end to end (the path allowlist covers temp and captures dirs).</summary>
-    private static string PreviewPng()
+    private static string PreviewPng(int variant)
     {
-        var path = Path.Combine(Path.GetTempPath(), "rvtmcp-toast-preview.png");
+        var wide = variant == 0;
+        var path = Path.Combine(Path.GetTempPath(), wide ? "rvtmcp-toast-preview-wide.png" : "rvtmcp-toast-preview-tall.png");
         if (File.Exists(path))
             return path;
 
+        var width = wide ? 500 : 260;
+        var height = wide ? 240 : 380;
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
-            dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x20, 0x4A, 0x87)), null, new Rect(0, 0, 500, 240));
-            dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50)), null, new Rect(30, 140, 200, 70));
-            dc.DrawText(new FormattedText("captured view (preview)", CultureInfo.InvariantCulture,
+            dc.DrawRectangle(new SolidColorBrush(wide ? Color.FromRgb(0x20, 0x4A, 0x87) : Color.FromRgb(0x87, 0x4A, 0x20)),
+                null, new Rect(0, 0, width, height));
+            dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50)), null, new Rect(30, height - 100, 200, 70));
+            dc.DrawText(new FormattedText(wide ? "captured view (wide)" : "captured view (tall)", CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight, new Typeface("Segoe UI"), 22, System.Windows.Media.Brushes.White, 1.25),
                 new Point(30, 40));
         }
-        var bitmap = new RenderTargetBitmap(500, 240, 96, 96, PixelFormats.Pbgra32);
+        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(visual);
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));

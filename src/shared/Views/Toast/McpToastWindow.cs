@@ -19,6 +19,17 @@ namespace RvtMcp.Plugin.Views.Toast
     internal sealed class McpToastWindow : Window
     {
         private const double CardWidth = 300;
+        // Counter row width: the card minus the accent border (6), content margins (10 + 12)
+        // and the icon column (24). The spare width is shared evenly around the separators.
+        private const double CounterRowWidth = CardWidth - 52;
+        // The capture sits in a fixed frame with the image centred on both axes, so the card never
+        // changes size between captures of different shapes and only opens or closes as a whole.
+        private const double ThumbnailFrameHeight = 120;
+        private const double ThumbnailGap = 6;
+        private const double ThumbnailRowHeight = ThumbnailGap + ThumbnailFrameHeight;
+        private const int ThumbnailOpenMs = 260;
+        private const int ThumbnailCloseMs = 240;
+        private const int ThumbnailFadeMs = 300;
         private const double BrandSettleOpacity = 0.8;
         private const int BrandRevealDelayMs = 100;
         private const int BrandRevealDurationMs = 500;
@@ -29,6 +40,7 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private readonly TextBlock _iconText;
         private readonly TextBlock _titleText;
+        private readonly TextBlock _toolText;
         private readonly TextBlock _bodyText;
         private readonly Viewbox _counterRow;
         private readonly RollingToastNumber _successCount = new RollingToastNumber();
@@ -41,11 +53,15 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly TextBlock _brandShine;
         private readonly Grid _brandRow;
         private readonly Grid _brandCell;
-        private readonly TextBlock _identityText;
         private readonly string _instanceIdentity;
+        private readonly Border _thumbnailRow;
         private readonly Border _thumbnailHost;
         private readonly Image _thumbnailImage;
+        private readonly Image _thumbnailBack;
         private string _thumbnailPath;
+        private bool _thumbnailShown;
+        private int _thumbnailStateGeneration;
+        private int _thumbnailSwapGeneration;
         private readonly TranslateTransform _brandSweep = new TranslateTransform(-0.75, 0);
         private readonly TranslateTransform _shineSweep = new TranslateTransform(-0.75, 0);
         private readonly Func<Point> _cursorPosition;
@@ -153,10 +169,12 @@ namespace RvtMcp.Plugin.Views.Toast
             };
 
             var content = new Grid { Margin = new Thickness(10, 10, 12, 10) };
+            // Title (product + Revit year), then the latest tool or status title.
+            content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             // Status summary and activity counters share one fixed-height body row.
-            content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
-            // Latest-capture thumbnail: collapsed unless the newest result carried an image.
+            content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(26) });
+            // Capture thumbnail: collapsed unless the aggregator holds a capture for the card.
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
@@ -204,7 +222,7 @@ namespace RvtMcp.Plugin.Views.Toast
 
             _titleText = new TextBlock
             {
-                Text = ViewModel.Title ?? string.Empty,
+                Text = IdentityTitle,
                 FontWeight = FontWeights.SemiBold,
                 FontSize = 13,
                 Foreground = McpToastTheme.Text,
@@ -216,13 +234,33 @@ namespace RvtMcp.Plugin.Views.Toast
             Grid.SetRow(header, 0);
             content.Children.Add(header);
 
-            var body = new Grid { Margin = new Thickness(24, 5, 0, 0) };
-            var counters = new StackPanel { Orientation = Orientation.Horizontal };
-            _successLabel = AddCounter(counters, _successCount);
-            AddCounterSeparator(counters);
-            _failedLabel = AddCounter(counters, _failedCount);
-            AddCounterSeparator(counters);
-            _captureLabel = AddCounter(counters, _captureCount);
+            _toolText = new TextBlock
+            {
+                Margin = new Thickness(24, 1, 0, 0),
+                FontSize = 12,
+                Foreground = McpToastTheme.Text,
+                TextWrapping = TextWrapping.NoWrap,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            Grid.SetRow(_toolText, 1);
+            content.Children.Add(_toolText);
+
+            var body = new Grid { Margin = new Thickness(24, 2, 0, 0) };
+            // group · group · group: the star columns split the spare width evenly, so the
+            // separators sit centred between the groups and the row spans the card.
+            var counters = new Grid { MinWidth = CounterRowWidth };
+            for (var i = 0; i < 5; i++)
+            {
+                counters.ColumnDefinitions.Add(new ColumnDefinition
+                {
+                    Width = i % 2 == 0 ? GridLength.Auto : new GridLength(1, GridUnitType.Star)
+                });
+            }
+            _successLabel = AddCounter(counters, 0, _successCount);
+            AddCounterSeparator(counters, 1);
+            _failedLabel = AddCounter(counters, 2, _failedCount);
+            AddCounterSeparator(counters, 3);
+            _captureLabel = AddCounter(counters, 4, _captureCount);
             // Long translations and large counts shrink within the same row; card size never changes.
             _counterRow = new Viewbox
             {
@@ -241,26 +279,25 @@ namespace RvtMcp.Plugin.Views.Toast
                 VerticalAlignment = VerticalAlignment.Center
             };
             body.Children.Add(_bodyText);
-            Grid.SetRow(body, 1);
+            Grid.SetRow(body, 2);
             content.Children.Add(body);
 
-            _thumbnailImage = new Image
-            {
-                Stretch = Stretch.Uniform,
-                MaxWidth = 250,
-                MaxHeight = 120,
-                HorizontalAlignment = HorizontalAlignment.Left
-            };
+            _thumbnailImage = CreateThumbnailImage();
+            _thumbnailBack = CreateThumbnailImage();
+            var thumbnailStack = new Grid();
+            thumbnailStack.Children.Add(_thumbnailBack);
+            thumbnailStack.Children.Add(_thumbnailImage);
             _thumbnailHost = new Border
             {
-                Margin = new Thickness(24, 6, 0, 0),
+                Margin = new Thickness(24, ThumbnailGap, 0, 0),
+                Height = ThumbnailFrameHeight,
+                Padding = new Thickness(3),
                 CornerRadius = new CornerRadius(4),
                 BorderBrush = McpToastTheme.MutedAccent,
                 BorderThickness = new Thickness(1),
-                Background = Brushes.White,
-                Child = _thumbnailImage,
-                Cursor = Cursors.Hand,
-                Visibility = Visibility.Collapsed
+                Background = McpToastTheme.ThumbnailBackground,
+                Child = thumbnailStack,
+                Cursor = Cursors.Hand
             };
             _thumbnailUpHandler = (_, e) =>
             {
@@ -268,8 +305,16 @@ namespace RvtMcp.Plugin.Views.Toast
                 OpenThumbnail();
             };
             _thumbnailHost.MouseLeftButtonUp += _thumbnailUpHandler;
-            Grid.SetRow(_thumbnailHost, 2);
-            content.Children.Add(_thumbnailHost);
+            // The row clips the frame while it opens and closes; its height is what the card follows.
+            _thumbnailRow = new Border
+            {
+                Height = 0,
+                ClipToBounds = true,
+                Child = _thumbnailHost,
+                Visibility = Visibility.Collapsed
+            };
+            Grid.SetRow(_thumbnailRow, 3);
+            content.Children.Add(_thumbnailRow);
 
             _brandRow = new Grid { Margin = new Thickness(24, 5, 0, 0) };
 
@@ -315,20 +360,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _brandCell.Children.Add(_brandShine);
             _brandRow.Children.Add(_brandCell);
 
-            _identityText = new TextBlock
-            {
-                // Always-on instance label so toasts from parallel Revit processes
-                // (e.g. 2022 TCP vs 2027 pipe) are distinguishable at a glance.
-                Text = _instanceIdentity ?? string.Empty,
-                FontSize = 9,
-                Foreground = McpToastTheme.MutedAccent,
-                VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                TextTrimming = TextTrimming.CharacterEllipsis
-            };
-            _brandRow.Children.Add(_identityText);
-
-            Grid.SetRow(_brandRow, 3);
+            Grid.SetRow(_brandRow, 4);
             content.Children.Add(_brandRow);
             ParkBrandRow();
 
@@ -438,17 +470,15 @@ namespace RvtMcp.Plugin.Views.Toast
         }
 
         /// <summary>
-        /// Arm or remove the hover wordmark, and the product prefix with it.
-        /// Turning it on leaves the card clean until the pointer actually moves
-        /// onto it. Turning it off removes the wordmark immediately.
+        /// Arm or remove the hover wordmark. Turning it on leaves the card clean
+        /// until the pointer actually moves onto it. Turning it off removes the
+        /// wordmark immediately.
         /// </summary>
         public void SetShowBranding(bool show)
         {
             if (_showBranding == show || _closedCallbackRaised)
                 return;
             _showBranding = show;
-            if (_lastSnapshot != null)
-                ApplyActivitySnapshot(_lastSnapshot, preserveSnapshot: true);
             if (!show)
             {
                 HideBrand(immediate: true);
@@ -575,10 +605,9 @@ namespace RvtMcp.Plugin.Views.Toast
         }
 
         /// <summary>
-        /// An identity label keeps the bottom row visible permanently; otherwise
-        /// branding on reserves the row (hover-revealed wordmark) and branding
-        /// off removes it. Wordmark visibility is driven by its opacity mask,
-        /// so a visible row still draws no letters until a real hover.
+        /// Branding on reserves the bottom row (hover-revealed wordmark) and
+        /// branding off removes it. Wordmark visibility is driven by its opacity
+        /// mask, so a visible row still draws no letters until a real hover.
         /// </summary>
         private void ParkBrandRow()
         {
@@ -589,18 +618,20 @@ namespace RvtMcp.Plugin.Views.Toast
             StopBrandSweep();
             _brandCell.BeginAnimation(UIElement.OpacityProperty, null);
             _brandCell.Opacity = 1;
-            // The row may stay visible for the identity label, so park the wipe
+            // The row stays reserved (Hidden) while branding is on, so park the wipe
             // masks too — a mid-sweep transform or settled solid mask would
             // otherwise keep half-revealed letters on screen.
             _brandSweep.X = _shineSweep.X = -0.75;
             _brandText.OpacityMask = BuildBrandRevealMask(_brandSweep);
             _brandShine.OpacityMask = BuildShineMask(_shineSweep);
-            _brandRow.Visibility = HasIdentity
-                ? Visibility.Visible
-                : (_showBranding ? Visibility.Hidden : Visibility.Collapsed);
+            _brandRow.Visibility = _showBranding ? Visibility.Hidden : Visibility.Collapsed;
         }
 
-        private bool HasIdentity => !string.IsNullOrEmpty(_instanceIdentity);
+        /// <summary>"rvt-mcp 2027": names the gateway and the Revit year, so cards from several
+        /// MCP gateways or Revit years running side by side are told apart.</summary>
+        private string IdentityTitle => string.IsNullOrWhiteSpace(_instanceIdentity)
+            ? BrandAssets.ProductName
+            : _instanceIdentity;
 
         private void CancelBrandRevealTimer()
         {
@@ -638,30 +669,39 @@ namespace RvtMcp.Plugin.Views.Toast
             };
         }
 
-        private static TextBlock AddCounter(Panel row, RollingToastNumber number)
+        private static TextBlock AddCounter(Grid row, int column, RollingToastNumber number)
         {
-            row.Children.Add(number);
+            var group = new StackPanel { Orientation = Orientation.Horizontal };
+            group.Children.Add(number);
+            // Same size as the number, both centred in the slot height, so they share a baseline.
             var label = new TextBlock
             {
-                FontSize = 12,
-                Foreground = McpToastTheme.Text,
+                FontSize = RollingToastNumber.TextSize,
+                Foreground = McpToastTheme.TextSecondary,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(3, 0, 0, 0)
+                Margin = new Thickness(4, 0, 0, 0)
             };
-            row.Children.Add(label);
+            group.Children.Add(label);
+            Grid.SetColumn(group, column);
+            row.Children.Add(group);
             return label;
         }
 
-        private static void AddCounterSeparator(Panel row)
+        private static void AddCounterSeparator(Grid row, int column)
         {
-            row.Children.Add(new TextBlock
+            var separator = new TextBlock
             {
-                Text = "|",
-                FontSize = 12,
+                Text = "\u00B7",
+                FontSize = RollingToastNumber.TextSize,
+                FontWeight = FontWeights.Bold,
                 Foreground = McpToastTheme.MutedAccent,
+                HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(8, 0, 6, 0)
-            });
+                // Minimum gap when large counts leave no spare width.
+                Margin = new Thickness(6, 0, 6, 0)
+            };
+            Grid.SetColumn(separator, column);
+            row.Children.Add(separator);
         }
 
         /// <summary>Narrow alpha band peaking on the brand front's crest so the glint
@@ -725,65 +765,73 @@ namespace RvtMcp.Plugin.Views.Toast
             _iconText.Text = snapshot.LatestSuccess ? "\uE73E" : "\uE783";
             _iconText.Foreground = snapshot.HasFailure ? McpToastTheme.Error : McpToastTheme.Primary;
 
+            _titleText.Text = IdentityTitle;
+            var animate = !preserveSnapshot && IsVisible && _motionEnabled();
             if (snapshot.IsStatus)
             {
                 var status = ResolveStatusText(snapshot);
-                _titleText.Text = status.Title;
+                _toolText.Text = status.Title;
                 _counterRow.Visibility = Visibility.Collapsed;
                 _bodyText.Visibility = Visibility.Visible;
                 _bodyText.Text = status.Body;
                 _bodyText.ToolTip = status.Body;
-                ApplyThumbnail(null);
+                ApplyThumbnail(null, animate);
             }
             else
             {
-                _titleText.Text = ActivityTitle(snapshot.Title);
+                _toolText.Text = snapshot.Title ?? string.Empty;
                 _counterRow.Visibility = Visibility.Visible;
                 _bodyText.Visibility = Visibility.Collapsed;
                 _successLabel.Text = LocalizedOrFallback("toast.activity.success", "Success");
                 _failedLabel.Text = LocalizedOrFallback("toast.activity.failed", "Failed");
                 _captureLabel.Text = LocalizedOrFallback("toast.activity.capture", "Capture");
-                var animate = !preserveSnapshot && IsVisible && _motionEnabled();
                 _successCount.SetValue(snapshot.Succeeded, McpToastTheme.Primary, animate);
                 _failedCount.SetValue(snapshot.Failed,
                     snapshot.Failed > 0 ? McpToastTheme.Error : McpToastTheme.TextSecondary, animate);
-                _captureCount.SetValue(snapshot.Images, McpToastTheme.Primary, animate);
-                // Keep the last result available without adding a fourth visible row.
+                _captureCount.SetValue(snapshot.Images, McpToastTheme.Text, animate);
+                // Keep the last result available without adding another visible row.
                 _counterRow.ToolTip = snapshot.Body;
                 System.Windows.Automation.AutomationProperties.SetName(_counterRow,
-                    $"{snapshot.Succeeded} {_successLabel.Text} | {snapshot.Failed} {_failedLabel.Text} | {snapshot.Images} {_captureLabel.Text}");
-                ApplyThumbnail(snapshot.LatestImagePath);
+                    $"{snapshot.Succeeded} {_successLabel.Text}, {snapshot.Failed} {_failedLabel.Text}, {snapshot.Images} {_captureLabel.Text}");
+                ApplyThumbnail(snapshot.ImagePath, animate);
             }
 
             _titleText.ToolTip = _titleText.Text;
             _titleText.TextWrapping = TextWrapping.NoWrap;
             _titleText.TextTrimming = TextTrimming.CharacterEllipsis;
+            _toolText.ToolTip = _toolText.Text;
         }
 
         /// <summary>
-        /// Shows a small preview of the latest capture between the counter row and the
+        /// Shows a small preview of the held capture between the counter row and the
         /// footer. Only runs when the path changed — a counter-only update keeps the
         /// already-decoded bitmap instead of reloading the file on every result.
+        /// The frame opens and closes with the card following it, and a new capture
+        /// replaces the old one with a cross-fade.
         /// </summary>
-        private void ApplyThumbnail(string path)
+        private void ApplyThumbnail(string path, bool animate)
         {
             if (string.Equals(path, _thumbnailPath, StringComparison.Ordinal))
                 return;
             _thumbnailPath = path;
-            _thumbnailImage.Source = null;
 
+            var bitmap = LoadThumbnail(path);
+            if (bitmap == null)
+                HideThumbnail(animate);
+            else if (_thumbnailShown)
+                SwapThumbnail(bitmap, animate);
+            else
+                RevealThumbnail(bitmap, animate);
+        }
+
+        private static BitmapSource LoadThumbnail(string path)
+        {
             if (string.IsNullOrEmpty(path) || !ToastContentBuilder.IsSafeImagePath(path))
-            {
-                _thumbnailHost.Visibility = Visibility.Collapsed;
-                return;
-            }
+                return null;
 
             var bytes = ToastThumbnailLoader.TryLoadBytes(path, 8 * 1024 * 1024);
             if (bytes == null)
-            {
-                _thumbnailHost.Visibility = Visibility.Collapsed;
-                return;
-            }
+                return null;
 
             try
             {
@@ -796,15 +844,169 @@ namespace RvtMcp.Plugin.Views.Toast
                     bitmap.StreamSource = stream;
                     bitmap.EndInit();
                     bitmap.Freeze();
-                    _thumbnailImage.Source = bitmap;
+                    return bitmap;
                 }
-                _thumbnailHost.ToolTip = LocalizedOrFallback("toast.activity.open_image", "Open image");
-                _thumbnailHost.Visibility = Visibility.Visible;
             }
             catch
             {
-                _thumbnailHost.Visibility = Visibility.Collapsed;
+                return null;
             }
+        }
+
+        private static Image CreateThumbnailImage()
+        {
+            var image = new Image
+            {
+                Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+            return image;
+        }
+
+        /// <summary>No capture → capture: the frame grows from nothing while it fades in.</summary>
+        private void RevealThumbnail(BitmapSource bitmap, bool animate)
+        {
+            var generation = ++_thumbnailStateGeneration;
+            _thumbnailShown = true;
+            _thumbnailSwapGeneration++;
+            _thumbnailBack.BeginAnimation(OpacityProperty, null);
+            _thumbnailBack.Source = null;
+            _thumbnailImage.BeginAnimation(OpacityProperty, null);
+            _thumbnailImage.Opacity = 1;
+            _thumbnailImage.Source = bitmap;
+            _thumbnailHost.ToolTip = LocalizedOrFallback("toast.activity.open_image", "Open image");
+
+            if (_thumbnailRow.Visibility != Visibility.Visible)
+            {
+                _thumbnailRow.Height = 0;
+                _thumbnailHost.Opacity = 0;
+                _thumbnailRow.Visibility = Visibility.Visible;
+            }
+
+            if (!animate)
+            {
+                SettleThumbnailOpen();
+                return;
+            }
+
+            var open = new DoubleAnimation(ThumbnailRowHeight, TimeSpan.FromMilliseconds(ThumbnailOpenMs))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            open.Completed += (_, __) =>
+            {
+                if (generation == _thumbnailStateGeneration)
+                    SettleThumbnailOpen();
+            };
+            _thumbnailRow.BeginAnimation(HeightProperty, open);
+            _thumbnailHost.BeginAnimation(OpacityProperty,
+                new DoubleAnimation(1, TimeSpan.FromMilliseconds(ThumbnailOpenMs - 40))
+                {
+                    BeginTime = TimeSpan.FromMilliseconds(50),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                });
+        }
+
+        private void SettleThumbnailOpen()
+        {
+            _thumbnailRow.BeginAnimation(HeightProperty, null);
+            _thumbnailHost.BeginAnimation(OpacityProperty, null);
+            _thumbnailRow.Height = ThumbnailRowHeight;
+            _thumbnailHost.Opacity = 1;
+        }
+
+        /// <summary>Capture → capture: the new one fades in over the old one, which fades out.</summary>
+        private void SwapThumbnail(BitmapSource bitmap, bool animate)
+        {
+            var generation = ++_thumbnailSwapGeneration;
+            _thumbnailBack.BeginAnimation(OpacityProperty, null);
+            _thumbnailBack.Source = _thumbnailImage.Source;
+            _thumbnailBack.Opacity = 1;
+            _thumbnailImage.BeginAnimation(OpacityProperty, null);
+            _thumbnailImage.Source = bitmap;
+
+            if (!animate)
+            {
+                SettleThumbnailSwap();
+                return;
+            }
+
+            _thumbnailImage.Opacity = 0;
+            var duration = TimeSpan.FromMilliseconds(ThumbnailFadeMs);
+            var incoming = new DoubleAnimation(0, 1, duration)
+            {
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+            };
+            incoming.Completed += (_, __) =>
+            {
+                if (generation == _thumbnailSwapGeneration)
+                    SettleThumbnailSwap();
+            };
+            _thumbnailImage.BeginAnimation(OpacityProperty, incoming);
+            _thumbnailBack.BeginAnimation(OpacityProperty,
+                new DoubleAnimation(1, 0, duration)
+                {
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+                });
+        }
+
+        private void SettleThumbnailSwap()
+        {
+            _thumbnailImage.BeginAnimation(OpacityProperty, null);
+            _thumbnailBack.BeginAnimation(OpacityProperty, null);
+            _thumbnailImage.Opacity = 1;
+            _thumbnailBack.Opacity = 1;
+            _thumbnailBack.Source = null;
+        }
+
+        /// <summary>Capture → none: the frame fades out, then the card closes up around the gap.</summary>
+        private void HideThumbnail(bool animate)
+        {
+            if (!_thumbnailShown)
+                return;
+            _thumbnailShown = false;
+            var generation = ++_thumbnailStateGeneration;
+
+            if (!animate)
+            {
+                CollapseThumbnail();
+                return;
+            }
+
+            _thumbnailHost.BeginAnimation(OpacityProperty,
+                new DoubleAnimation(0, TimeSpan.FromMilliseconds(ThumbnailCloseMs - 90))
+                {
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+                });
+            var close = new DoubleAnimation(0, TimeSpan.FromMilliseconds(ThumbnailCloseMs))
+            {
+                BeginTime = TimeSpan.FromMilliseconds(70),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+            };
+            close.Completed += (_, __) =>
+            {
+                if (generation == _thumbnailStateGeneration)
+                    CollapseThumbnail();
+            };
+            _thumbnailRow.BeginAnimation(HeightProperty, close);
+        }
+
+        private void CollapseThumbnail()
+        {
+            _thumbnailSwapGeneration++;
+            _thumbnailRow.BeginAnimation(HeightProperty, null);
+            _thumbnailHost.BeginAnimation(OpacityProperty, null);
+            _thumbnailImage.BeginAnimation(OpacityProperty, null);
+            _thumbnailBack.BeginAnimation(OpacityProperty, null);
+            _thumbnailRow.Height = 0;
+            _thumbnailRow.Visibility = Visibility.Collapsed;
+            _thumbnailHost.Opacity = 1;
+            _thumbnailImage.Opacity = 1;
+            _thumbnailBack.Opacity = 1;
+            _thumbnailImage.Source = null;
+            _thumbnailBack.Source = null;
         }
 
         /// <summary>Click on the thumbnail opens the capture in the default viewer,
@@ -824,14 +1026,6 @@ namespace RvtMcp.Plugin.Views.Toast
                 // Best-effort — the card still dismisses.
             }
             _activityDismissed?.Invoke(_cardId);
-        }
-
-        private string ActivityTitle(string title)
-        {
-            var hasTitle = !string.IsNullOrWhiteSpace(title);
-            if (!_showBranding)
-                return hasTitle ? title : string.Empty;
-            return hasTitle ? "RVT-MCP - " + title : "RVT-MCP";
         }
 
         private static ActivityStatusText ResolveStatusText(ActivitySnapshot snapshot)
@@ -912,7 +1106,14 @@ namespace RvtMcp.Plugin.Views.Toast
                 _closeHost.MouseLeftButtonUp -= _closeHostMouseUpHandler;
             }
             _thumbnailHost.MouseLeftButtonUp -= _thumbnailUpHandler;
+            _thumbnailStateGeneration++;
+            _thumbnailSwapGeneration++;
+            _thumbnailRow.BeginAnimation(HeightProperty, null);
+            _thumbnailHost.BeginAnimation(OpacityProperty, null);
+            _thumbnailImage.BeginAnimation(OpacityProperty, null);
+            _thumbnailBack.BeginAnimation(OpacityProperty, null);
             _thumbnailImage.Source = null;
+            _thumbnailBack.Source = null;
 
             MouseEnter -= _mouseEnterHandler;
             MouseMove -= _mouseMoveHandler;

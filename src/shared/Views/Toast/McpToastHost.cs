@@ -48,8 +48,8 @@ namespace RvtMcp.Plugin.Views.Toast
         }
 
         /// <summary>
-        /// Instance footer label (e.g. "Revit 2027"). Read when each card is
-        /// created, so a late or changed value applies to the next card.
+        /// Card title naming this instance (e.g. "rvt-mcp 2027"). Read when each
+        /// card is created, so a late or changed value applies to the next card.
         /// </summary>
         public void SetInstanceIdentity(string identity)
         {

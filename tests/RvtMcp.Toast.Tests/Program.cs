@@ -93,32 +93,46 @@ internal static class Program
             {
                 var root = (Border)window.Content;
                 var grid = (Grid)root.Child;
-                if (grid.RowDefinitions.Count != 4 || grid.Children.Count != 4)
+                if (grid.RowDefinitions.Count != 5 || grid.Children.Count != 5)
                     throw new Exception("Expected the stable activity card layout.");
                 var header = (DockPanel)grid.Children[0];
-                var hasActivityHeader = false;
+                var hasProductHeader = false;
                 foreach (var child in header.Children)
                 {
-                    if (child is TextBlock text && text.Text == "RVT-MCP - List Rooms")
+                    if (child is TextBlock text && text.Text == "rvt-mcp")
                     {
-                        hasActivityHeader = true;
+                        hasProductHeader = true;
                         break;
                     }
                 }
-                if (!hasActivityHeader)
-                    throw new Exception("The activity card must name the latest tool in its header.");
-                var bodyGrid = (Grid)grid.Children[1];
+                if (!hasProductHeader)
+                    throw new Exception("The activity card must name the product in its title.");
+                if (((TextBlock)grid.Children[1]).Text != "List Rooms")
+                    throw new Exception("The line under the title must name the latest tool.");
+                var bodyGrid = (Grid)grid.Children[2];
                 var counterRow = (Viewbox)bodyGrid.Children[0];
                 if (counterRow.Visibility != Visibility.Visible || (string)counterRow.ToolTip != body
                     || bodyGrid.Children[1].Visibility != Visibility.Collapsed)
                     throw new Exception("Activity must show counters, with its last summary only in the tooltip.");
-                var thumbnail = (Border)grid.Children[2];
+                var thumbnail = (Border)grid.Children[3];
                 if (thumbnail.Visibility != Visibility.Collapsed)
                     throw new Exception("Thumbnail row must stay collapsed without a capture.");
-                var footer = (Grid)grid.Children[3];
+                var footer = (Grid)grid.Children[4];
                 if (((Grid)footer.Children[0]).HorizontalAlignment != HorizontalAlignment.Right)
                     throw new Exception("Brand must align right independently of footer fill.");
                 root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                root.Arrange(new Rect(root.DesiredSize));
+
+                // The counter row spans the card: first group flush with the tool line,
+                // equal gaps around both separators.
+                var counters = (Grid)counterRow.Child;
+                var gap1 = counters.ColumnDefinitions[1].ActualWidth;
+                var gap2 = counters.ColumnDefinitions[3].ActualWidth;
+                if (counters.ColumnDefinitions.Count != 5 || gap1 < 20 || Math.Abs(gap1 - gap2) > 0.5)
+                    throw new Exception($"Counter separators must be spread evenly (gaps {gap1} / {gap2}).");
+                var toolX = grid.Children[1].TranslatePoint(new Point(0, 0), grid).X;
+                if (Math.Abs(counterRow.TranslatePoint(new Point(0, 0), grid).X - toolX) > 0.5)
+                    throw new Exception("The first counter must line up with the tool line.");
                 return root.DesiredSize.Height;
             }
             finally { window.CloseImmediate(); }
@@ -128,7 +142,7 @@ internal static class Program
         var second = Measure("A longer body still stays on one fixed row");
         if (Math.Abs(first - second) > 0.1)
             throw new Exception($"Activity card height changed ({first} -> {second}).");
-        Console.WriteLine("PASS: three-row card, latest-tool title, counters, right-aligned brand and stable height");
+        Console.WriteLine("PASS: product title, latest-tool line, evenly spread counters, right-aligned brand and stable height");
     }
 
     private static void CheckNaNSafePlacement()
@@ -165,13 +179,15 @@ internal static class Program
             if (window == null)
                 throw new Exception("The activity card was not created.");
             var footer = BrandRow(window);
-            if (TitleText(window) != "List Rooms" || footer.Visibility != Visibility.Collapsed)
-                throw new Exception("A card opened with branding off must omit the prefix and wordmark.");
+            if (TitleText(window) != "rvt-mcp" || ToolText(window) != "List Rooms"
+                || footer.Visibility != Visibility.Collapsed)
+                throw new Exception("A card opened with branding off must omit the wordmark row.");
             show = true;
             manager.ApplyShowBranding();
             Pump();
-            if (TitleText(window) != "RVT-MCP - List Rooms" || footer.Visibility != Visibility.Hidden)
-                throw new Exception("Turning branding on must restore the prefix and reserve a blank brand row.");
+            if (TitleText(window) != "rvt-mcp" || ToolText(window) != "List Rooms"
+                || footer.Visibility != Visibility.Hidden)
+                throw new Exception("Turning branding on must reserve a blank brand row and leave the text alone.");
         }
         finally { manager.DismissAllImmediate(); }
         Console.WriteLine("PASS: new and open cards follow the branding preference");
@@ -182,52 +198,41 @@ internal static class Program
         var snapshot = new ActivitySnapshot(1, false, 1, 0, 0, "List Rooms", "Done", true, false);
 
         var window = new McpToastWindow(snapshot, null, null, null, null, null,
-            instanceIdentity: "Revit 2027");
+            instanceIdentity: "rvt-mcp 2027");
         try
         {
-            var footer = BrandRow(window);
-            var identity = (TextBlock)typeof(McpToastWindow)
-                .GetField("_identityText", BindingFlags.Instance | BindingFlags.NonPublic)
-                .GetValue(window);
-            if (identity.Text != "Revit 2027")
-                throw new Exception("The footer did not carry the supplied instance identity.");
-            if (footer.Visibility != Visibility.Visible)
-                throw new Exception("An instance identity must keep the footer row visible.");
+            if (TitleText(window) != "rvt-mcp 2027" || ToolText(window) != "List Rooms")
+                throw new Exception("The title must carry the supplied instance identity above the tool.");
             window.SetShowBranding(false);
-            if (footer.Visibility != Visibility.Visible)
-                throw new Exception("Turning branding off must not hide the instance identity.");
-            if (TitleText(window) != "List Rooms")
-                throw new Exception("Identity must not restore the product prefix while branding is off.");
+            if (TitleText(window) != "rvt-mcp 2027" || BrandRow(window).Visibility != Visibility.Collapsed)
+                throw new Exception("Turning branding off must keep the title and collapse the wordmark row.");
             window.SetShowBranding(true);
-            if (TitleText(window) != "RVT-MCP - List Rooms")
-                throw new Exception("Branding on must still prefix the title alongside the identity.");
+            if (TitleText(window) != "rvt-mcp 2027" || BrandRow(window).Visibility != Visibility.Hidden)
+                throw new Exception("Turning branding on must keep the title and reserve the wordmark row.");
         }
         finally { window.CloseImmediate(); }
 
         var plain = new McpToastWindow(snapshot, null, null, null, null, null);
         try
         {
-            if (BrandRow(plain).Visibility != Visibility.Hidden)
-                throw new Exception("A card without identity must still park the wordmark row.");
-            plain.SetShowBranding(false);
-            if (BrandRow(plain).Visibility != Visibility.Collapsed)
-                throw new Exception("A card without identity must collapse the footer with branding off.");
+            if (TitleText(plain) != "rvt-mcp")
+                throw new Exception("A card without identity must fall back to the product name.");
         }
         finally { plain.CloseImmediate(); }
-        Console.WriteLine("PASS: instance identity keeps the footer visible independently of branding");
+        Console.WriteLine("PASS: title names the instance independently of branding");
     }
 
     private static void CheckThumbnailRow()
     {
         var png = WriteTempPng();
         var snapshot = new ActivitySnapshot(1, false, 1, 0, 1, "Capture View", "Saved", true, false,
-            latestImagePath: png);
+            imagePath: png);
 
         var window = new McpToastWindow(snapshot, null, null, null, null, null);
         try
         {
             var host = (Border)typeof(McpToastWindow)
-                .GetField("_thumbnailHost", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetField("_thumbnailRow", BindingFlags.Instance | BindingFlags.NonPublic)
                 .GetValue(window);
             var image = (Image)typeof(McpToastWindow)
                 .GetField("_thumbnailImage", BindingFlags.Instance | BindingFlags.NonPublic)
@@ -242,7 +247,7 @@ internal static class Program
 
             // An unsafe path never renders.
             window.Update(new ActivitySnapshot(1, false, 3, 0, 1, "Capture View", "Saved", true, false,
-                latestImagePath: @"C:\Windows\System32\cmd.exe.png"));
+                imagePath: @"C:\Windows\System32\cmd.exe.png"));
             if (host.Visibility != Visibility.Collapsed)
                 throw new Exception("An out-of-allowlist path must not render a thumbnail.");
         }
@@ -266,6 +271,12 @@ internal static class Program
         return path;
     }
 
+    private static string ToolText(McpToastWindow window)
+    {
+        var tool = (TextBlock)typeof(McpToastWindow).GetField("_toolText", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(window);
+        return tool.Text;
+    }
+
     private static string TitleText(McpToastWindow window)
     {
         var title = (TextBlock)typeof(McpToastWindow).GetField("_titleText", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(window);
@@ -280,7 +291,9 @@ internal static class Program
     private static void CheckSingleActivityCard()
     {
         var aggregator = new ActivityAggregator();
-        var manager = new McpToastManager(Dispatcher.CurrentDispatcher, aggregator);
+        // Pin motion on: the fade assertions below must not depend on the machine's
+        // Windows animation setting (with it off, a dismissed card closes instantly).
+        var manager = new McpToastManager(Dispatcher.CurrentDispatcher, aggregator, motionEnabled: () => true);
         try
         {
             for (var i = 0; i < 100; i++)
