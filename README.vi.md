@@ -29,7 +29,7 @@
 
 `rvt-mcp` là cầu nối **local** giữa MCP client và một session Revit đang chạy. Server .NET 8 nói MCP qua stdio; mỗi năm Revit (2022–2027) có một add-in mỏng chạy trong Revit, kết nối qua localhost TCP (≤2024) hoặc named pipe (≥2025). Mọi thứ nằm trên máy, toàn bộ bằng C#, độ dài ở biên tool tính bằng mm. Chi tiết: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Agent có **bộ tool typed** cho việc Revit thường gặp, escape hatch C# cho phần còn lại, và đường **tùy chọn** biến pattern lặp lại thành tool cá nhân (ToolBaker): bắt đầu từ một runtime chung rồi phát triển tool *của bạn* phía trên. Family Editor authoring hiện nằm ngoài phạm vi ([roadmap](docs/roadmap.md)).
+Agent có **bộ tool typed** cho việc Revit thường gặp, escape hatch C# cho phần còn lại, và đường **tùy chọn** biến pattern lặp lại thành tool cá nhân (ToolBaker): bắt đầu từ một runtime chung rồi phát triển tool *của bạn* phía trên. Family Editor authoring hiện nằm ngoài phạm vi.
 
 ---
 
@@ -187,7 +187,6 @@ Thêm: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).
 | [docs/send-code.md](docs/send-code.md) | Dạng source và xử lý lỗi của send_code |
 | [docs/bake.md](docs/bake.md) | Adaptive bake và privacy body |
 | [docs/localization.md](docs/localization.md) | Ngôn ngữ UI, override, hot reload |
-| [docs/roadmap.md](docs/roadmap.md) | Hardening gần và non-goal |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Build, test, thêm tool |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 

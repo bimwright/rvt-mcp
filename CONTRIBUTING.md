@@ -115,7 +115,7 @@ Run the Haiku benchmark before merging when your PR:
 - Edits any tool's description text, OR
 - Precedes tagging a minor or major release.
 
-Procedure: see `benchmarks/README.md`. The benchmark uses Claude Code to spawn a Haiku sub-agent; no Anthropic API key is required.
+The benchmark uses Claude Code to spawn a Haiku sub-agent; no Anthropic API key is required. The procedure is maintainer-internal.
 
 A ≥15% param-accuracy drop vs the last baseline blocks merge until the regression is understood. Smaller drops are human-review.
 

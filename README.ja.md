@@ -29,7 +29,7 @@
 
 `rvt-mcp` は MCP クライアントと起動中の Revit セッションをつなぐ**ローカル**ブリッジです。.NET 8 のサーバが stdio で MCP を話し、Revit の年ごと（2022–2027）の薄いアドインが Revit 内で動作します。両者は localhost TCP（≤2024）または named pipe（≥2025）で接続します。すべてマシン内で完結し、全体が C# で、ツール境界の長さは mm です。詳細は [ARCHITECTURE.md](ARCHITECTURE.md)。
 
-エージェントには、よくある Revit 作業のための **typed ツール面**、それ以外のための C# の逃げ道、繰り返すパターンを個人ツールにする**任意**の仕組み（ToolBaker）があります。共有ランタイムから始めて、*自分の*ツールを育ててください。Family Editor でのオーサリングは当面対象外です（[ロードマップ](docs/roadmap.md)）。
+エージェントには、よくある Revit 作業のための **typed ツール面**、それ以外のための C# の逃げ道、繰り返すパターンを個人ツールにする**任意**の仕組み（ToolBaker）があります。共有ランタイムから始めて、*自分の*ツールを育ててください。Family Editor でのオーサリングは当面対象外です。
 
 ---
 
@@ -171,7 +171,6 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 | [docs/send-code.md](docs/send-code.md) | send_code のソース形式と失敗処理 |
 | [docs/bake.md](docs/bake.md) | Adaptive bake と本体プライバシー |
 | [docs/localization.md](docs/localization.md) | UI 言語、オーバーライド、ホットリロード |
-| [docs/roadmap.md](docs/roadmap.md) | 直近の hardening と non-goals |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | ビルド、テスト、ツール追加 |
 | [CHANGELOG.md](CHANGELOG.md) | リリースノート |
 

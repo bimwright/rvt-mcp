@@ -29,7 +29,7 @@
 
 `rvt-mcp` is a **local** bridge between an MCP client and a running Revit session. A .NET 8 server talks MCP over stdio; a thin add-in per Revit year (2022–2027) runs inside Revit and is reached over localhost TCP (≤2024) or a named pipe (≥2025). Nothing leaves the machine, it is C# end to end, and lengths are millimetres at the tool boundary. Details: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Agents get a **typed tool surface** for common Revit work, a C# escape hatch for everything else, and an **optional** way to turn repeated patterns into personal tools (ToolBaker): start from a shared runtime and grow *your* tools on top. Family Editor authoring is out of scope for now ([roadmap](docs/roadmap.md)).
+Agents get a **typed tool surface** for common Revit work, a C# escape hatch for everything else, and an **optional** way to turn repeated patterns into personal tools (ToolBaker): start from a shared runtime and grow *your* tools on top. Family Editor authoring is out of scope for now.
 
 ---
 
@@ -198,7 +198,6 @@ More: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).
 | [docs/send-code.md](docs/send-code.md) | send_code source forms and failure handling |
 | [docs/bake.md](docs/bake.md) | Adaptive bake and body privacy |
 | [docs/localization.md](docs/localization.md) | UI languages, overrides, hot reload |
-| [docs/roadmap.md](docs/roadmap.md) | Near-term hardening and non-goals |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Build, test, add a tool |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 

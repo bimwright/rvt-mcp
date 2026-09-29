@@ -12,7 +12,7 @@ namespace RvtMcp.Plugin.Localization
     /// returns the key itself and is logged once. Placeholders: <c>{name}</c> fills
     /// invariant, <c>{name:n}</c> formats with the locale culture (counts/measurements
     /// only — ids, scales, ports, hashes stay invariant). Never throws.
-    /// Spec: docs/superpowers/specs/2026-09-24-ui-localization-design.md §5.1.
+    /// Spec: ui-localization spec §5.1.
     /// </summary>
     public sealed class StringTable
     {

@@ -5,7 +5,7 @@ namespace RvtMcp.Plugin.Localization
     /// <summary>
     /// Maps Revit's <c>LanguageType</c> enum name (taken as a string so no Revit API
     /// reference is needed) plus the merged <c>uiLanguage</c> config value to a shipped
-    /// locale. Design: docs/superpowers/specs/2026-09-24-ui-localization-design.md §4.
+    /// locale. Design: ui-localization spec §4.
     /// </summary>
     public static class LocaleResolver
     {
