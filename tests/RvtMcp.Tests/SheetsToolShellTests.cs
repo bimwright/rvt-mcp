@@ -124,11 +124,11 @@ namespace RvtMcp.Tests
         [Fact]
         public async Task List_titleblocks_sends_flags()
         {
-            var sent = await Capture.Send(() => SheetsTools.ListTitleblocks("KEI", false, 10));
+            var sent = await Capture.Send(() => SheetsTools.ListTitleblocks("A1", false, 10));
 
             Assert.Equal("list_titleblocks", sent.Command);
             var json = sent.Json();
-            Assert.Equal("KEI", json.Value<string>("name_pattern"));
+            Assert.Equal("A1", json.Value<string>("name_pattern"));
             Assert.False(json.Value<bool>("include_inactive"));
             Assert.Equal(10, json.Value<int>("limit"));
         }

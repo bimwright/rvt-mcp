@@ -39,12 +39,12 @@ namespace RvtMcp.Tests
         [Fact]
         public async Task List_shared_parameters_sends_camel_case()
         {
-            var sent = await Capture.Send(() => ParametersTools.ListSharedParameters(@"C:\sp.txt", "KEI", true, 50));
+            var sent = await Capture.Send(() => ParametersTools.ListSharedParameters(@"C:\sp.txt", "General", true, 50));
 
             Assert.Equal("list_shared_parameters", sent.Command);
             var json = sent.Json();
             Assert.Equal(@"C:\sp.txt", json.Value<string>("sharedParameterFilePath"));
-            Assert.Equal("KEI", json.Value<string>("groupName"));
+            Assert.Equal("General", json.Value<string>("groupName"));
             Assert.True(json.Value<bool>("includeBindings"));
             Assert.Equal(50, json.Value<int>("limit"));
         }
