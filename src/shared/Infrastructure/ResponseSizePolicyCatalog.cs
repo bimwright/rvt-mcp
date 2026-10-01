@@ -174,12 +174,35 @@ namespace RvtMcp.Plugin
                 || string.Equals(commandName, "compute_room_finishes", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(commandName, "workflow_takeoff_report", StringComparison.OrdinalIgnoreCase))
             {
-                try { return string.Equals(JObject.Parse(paramsJson ?? "{}").Value<string>("output"), "file", StringComparison.OrdinalIgnoreCase); }
+                try
+                {
+                    var parameters = JObject.Parse(paramsJson ?? "{}");
+                    return string.Equals(parameters.Value<string>("output"), "file", StringComparison.OrdinalIgnoreCase)
+                        || (string.Equals(commandName, "workflow_takeoff_report", StringComparison.OrdinalIgnoreCase)
+                            && !string.IsNullOrWhiteSpace(parameters.Value<string>("output_path")));
+                }
                 catch { return false; }
             }
             if (string.Equals(commandName, "workflow_model_audit", StringComparison.OrdinalIgnoreCase)) return false;
 
             return classifiedAsWrite || HasUiSideEffect(commandName, paramsJson);
+        }
+
+        public static string? GetOperationError(string? commandName, JObject? data)
+        {
+            // Takeoff returns a workflow DTO even when its optional file export fails.
+            // Transport success alone must not promote that failed write to success.
+            if (!string.Equals(commandName, "workflow_takeoff_report", StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(data?.Value<string>("status"), "failed", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            if (data?["steps"] is JArray steps)
+                foreach (var step in steps)
+                    if (step is JObject item
+                        && string.Equals(item.Value<string>("status"), "failed", StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrWhiteSpace(item.Value<string>("error")))
+                        return item.Value<string>("error");
+            return "Takeoff report export failed.";
         }
 
         public static bool HasUiSideEffect(string? commandName, string? paramsJson)

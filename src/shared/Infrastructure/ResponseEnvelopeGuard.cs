@@ -16,6 +16,12 @@ namespace RvtMcp.Plugin
             var budget = config.EnableResponseGuardOrDefault
                 ? config.ResponseBudgetBytesOrDefault : config.MaxResponseBytesOrDefault;
             var response = (JObject)envelope.DeepClone();
+            var operationError = ResponseSizePolicyCatalog.GetOperationError(command, response["data"] as JObject);
+            if (operationError != null)
+            {
+                response["success"] = false;
+                response["error"] = McpResponsePrivacy.RedactErrorForResponse(operationError);
+            }
             var payload = measuredPayload ?? response.ToString(Formatting.None);
             var originalBytes = Encoding.UTF8.GetByteCount(payload);
             var spill = new ResponseSpillProcessor(writer ?? new ResponseSpillWriter()).Process(
@@ -57,8 +63,10 @@ namespace RvtMcp.Plugin
                         ["success"] = true,
                         ["mutation_applied"] = compact["mutation_applied"],
                         ["response_compacted"] = true,
-                        ["original_byte_count"] = originalBytes
+                        ["original_byte_count"] = compact["original_byte_count"]
                     };
+                    var outputPath = compact["output_path"] ?? compact["summary"]?["output_path"];
+                    if (outputPath != null) response["data"]["output_path"] = outputPath.DeepClone();
                 }
             }
             else if (size.AgentWarning != null)

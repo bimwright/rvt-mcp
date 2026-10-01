@@ -15,7 +15,7 @@ using Xunit;
 
 namespace RvtMcp.Tests
 {
-    [Collection("Sequential")]
+    [Collection("ServerStateConfig")]
     public class RuntimeControlsTests : IDisposable
     {
         private readonly string _root = Path.Combine(Path.GetTempPath(), "rvt-runtime-" + Guid.NewGuid().ToString("N"));

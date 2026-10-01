@@ -492,7 +492,7 @@
     },
     {
       "name": "revit_set_structural_load",
-      "description_hash": "sha256:a015f085117e8f12ad0ae21661aba314513dbf90f27074b69f96cec1535ffa17",
+      "description_hash": "sha256:39dea791a156f22e1bf05172c55d3ed6820580a74901ce1a0d1d56b60eb90c2d",
       "inputSchema": {
         "properties": {
           "action": {
@@ -534,7 +534,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false

@@ -18,6 +18,11 @@ namespace RvtMcp.Plugin
         public static JObject Compact(object? data, int originalByteCount)
         {
             var source = ToObject(data);
+            // The MCP layer may compact again after JSON escaping grows a plugin
+            // summary. Keep the original outcome and metadata, not a summary of it.
+            if (IsTrue(source, "response_compacted"))
+                return (JObject)source.DeepClone();
+
             var summary = new JObject();
             var collectionCounts = new JObject();
             var idPreview = new JObject();
@@ -57,11 +62,14 @@ namespace RvtMcp.Plugin
                 }
             }
 
-            var mutationApplied = !IsTrue(source, "dry_run")
-                && !IsTrue(source, "dryRun")
-                && !IsTrue(source, "rolledBack")
-                && !IsFalse(source, "success")
-                && !IsFalse(source, "ok");
+            var explicitOutcome = source["mutation_applied"];
+            var mutationApplied = explicitOutcome?.Type == JTokenType.Boolean || explicitOutcome?.Type == JTokenType.Null
+                ? explicitOutcome.DeepClone()
+                : new JValue(!IsTrue(source, "dry_run")
+                    && !IsTrue(source, "dryRun")
+                    && !IsTrue(source, "rolledBack")
+                    && !IsFalse(source, "success")
+                    && !IsFalse(source, "ok"));
 
             return new JObject
             {

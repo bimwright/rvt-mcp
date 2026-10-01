@@ -27,7 +27,7 @@ namespace RvtMcp.Server
             var command = name.StartsWith("revit_", StringComparison.Ordinal) ? name.Substring(6) : name;
             var arguments = System.Text.Json.JsonSerializer.Serialize(request?.Arguments);
             var text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
-            var failed = result.IsError == true || IsFailure(text);
+            var failed = result.IsError == true || IsFailure(text, command);
             if (failed) result.IsError = true;
             var wire = Serialize(result);
             // Reserve room for the JSON-RPC envelope. Measurement includes JSON escaping,
@@ -74,8 +74,8 @@ namespace RvtMcp.Server
                         ["mutation_applied"] = ToolReadPolicy.IsReadOnly(command) ? new JValue(false)
                             : guarded?["mutation_applied"] ?? JValue.CreateNull(),
                         ["response_compacted"] = true,
-                        ["original_byte_count"] = bytes,
-                        ["path"] = guarded?["path"],
+                        ["original_byte_count"] = guarded?["original_byte_count"] ?? new JValue(bytes),
+                        ["path"] = guarded?["path"] ?? guarded?["output_path"] ?? guarded?["summary"]?["output_path"],
                         ["error"] = failed ? "Operation failed; oversized error detail omitted."
                             : envelope.Value<bool>("success") ? null : "RESPONSE_TOO_LARGE: narrow the request; do not repeat the same unscoped call."
                     }, failed || !envelope.Value<bool>("success"));
@@ -89,19 +89,20 @@ namespace RvtMcp.Server
                 }
             }
             text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
-            if (IsFailure(text)) result.IsError = true;
+            if (IsFailure(text, command)) result.IsError = true;
             session?.RecordCall(command, arguments, result.IsError != true, durationMs,
                 error: result.IsError == true ? text : null, resultJson: text);
             return result;
         }
 
-        internal static bool IsFailure(string text)
+        internal static bool IsFailure(string text, string command = null)
         {
             if (text?.TrimStart().StartsWith("Error:", StringComparison.OrdinalIgnoreCase) == true) return true;
             try
             {
                 var obj = JObject.Parse(text ?? "{}");
-                return obj.Value<bool?>("ok") == false || obj.Value<bool?>("success") == false;
+                return obj.Value<bool?>("ok") == false || obj.Value<bool?>("success") == false
+                    || ResponseSizePolicyCatalog.GetOperationError(command, obj) != null;
             }
             catch { return false; }
         }

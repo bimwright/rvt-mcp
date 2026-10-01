@@ -39,7 +39,7 @@
     },
     {
       "name": "revit_acquire_coordinates_from_link",
-      "description_hash": "sha256:b014dcf5ad6e154aca513ee8ec038f9e780450fb0924dea31474b4ab6a9a12bc",
+      "description_hash": "sha256:10aa70fd280a5970a57673f002f5b5ca2b7e8e92ffbf1229f072ab6d22bedeaf",
       "inputSchema": {
         "properties": {
           "confirm": {
@@ -57,7 +57,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -361,7 +361,7 @@
     },
     {
       "name": "revit_apply_filter_to_view",
-      "description_hash": "sha256:d27c5997b32e1bbbfe0f5f87cabc216aa90bd99fa2002107d9ff0b8bc3babd18",
+      "description_hash": "sha256:e5d8979c287670e02d497f5d9184a30d3a96e9e17406687d804020c1b571a900",
       "inputSchema": {
         "properties": {
           "filterId": {
@@ -383,7 +383,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -391,7 +391,7 @@
     },
     {
       "name": "revit_apply_keynote_to_element",
-      "description_hash": "sha256:73de8f69d68c784be6424d401b86d376636c4fde24946f66eb6962fc8000558c",
+      "description_hash": "sha256:df3f337f4819773d32fe289d94850e32c78ae29785dae3530f649919581642b9",
       "inputSchema": {
         "properties": {
           "dryRun": {
@@ -414,7 +414,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -422,7 +422,7 @@
     },
     {
       "name": "revit_apply_schedule_filter_sort",
-      "description_hash": "sha256:c58e830d75e2b1a15d4a1e84a4c066e37254e0088641ac779b818a0be9b2d9ac",
+      "description_hash": "sha256:4c9765e6c7b968ae6a55137bddfaf34ad53ae6cf62ce0eeedbeb24da340fcdd2",
       "inputSchema": {
         "properties": {
           "filters": {
@@ -450,7 +450,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -458,7 +458,7 @@
     },
     {
       "name": "revit_apply_view_template",
-      "description_hash": "sha256:e6d12d2771fb6c52af49b901ba395d48346e04cd9a359af1a734c363d261b23b",
+      "description_hash": "sha256:d857ea280f68c5c84037455984a0719b9a8a8292c9989b43066f6a5e3ea1e817",
       "inputSchema": {
         "properties": {
           "mode": {
@@ -484,7 +484,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -492,7 +492,7 @@
     },
     {
       "name": "revit_assign_elements_to_workset",
-      "description_hash": "sha256:3204ed7250333bf6201e49925a96b6c40edeb780f31d651c21b533e178a5bc1f",
+      "description_hash": "sha256:1e13cb9a24733d6b8f1d236c7d82d378bac9a0b5c26cca430111a7c02131f9f0",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -514,7 +514,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -522,7 +522,7 @@
     },
     {
       "name": "revit_assign_material_to_element",
-      "description_hash": "sha256:a02dd2715c1e57cc3c93154455d31452d50902589c0209340a8de700ab88f8c7",
+      "description_hash": "sha256:18a12ecb7b4a672458e2aed3e6e7c83cbde89e6583a4561586efefd623435f96",
       "inputSchema": {
         "properties": {
           "allowTypeMutation": {
@@ -560,7 +560,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -568,7 +568,7 @@
     },
     {
       "name": "revit_assign_revision_to_sheet",
-      "description_hash": "sha256:b592e4ba34e078d9e0215bdfee330bac2e0e6227e23c0c44c0efab505e1acd26",
+      "description_hash": "sha256:12dddf5278ef35d83effb4f2579805a0e527f39b486967cb5eb59b896cca0dd1",
       "inputSchema": {
         "properties": {
           "mode": {
@@ -594,7 +594,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -757,7 +757,7 @@
     },
     {
       "name": "revit_bind_shared_parameter",
-      "description_hash": "sha256:73977a178f1f6d55424ce2ca641583a4b6e68f4c2defb7e3fe2f7880d972b4e7",
+      "description_hash": "sha256:6a03fa4f33739626eb3e0d9d472ca3f7a21ebf826581e86de8c90cf93a541e58",
       "inputSchema": {
         "properties": {
           "allowRebind": {
@@ -792,7 +792,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -832,7 +832,7 @@
     },
     {
       "name": "revit_change_element_type",
-      "description_hash": "sha256:a68ae3ce9778e460cc3ba61c60e719359f6f2c00cefb9c69c68892a0d25cf797",
+      "description_hash": "sha256:9b5964b2aa17f9c3a10654475f5741244611522a64b2ae55ccaa050640fca885",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -851,7 +851,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -902,7 +902,7 @@
     },
     {
       "name": "revit_clear_element_overrides",
-      "description_hash": "sha256:5049421aa0a518a1580b76d1ee199eadcfcc33a0be32e60f81601a483e3bb230",
+      "description_hash": "sha256:ca5251a9cc52c7f5e37aebb62fb59cc0ec81e30464b227365306506b15f9b46f",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -918,7 +918,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -926,7 +926,7 @@
     },
     {
       "name": "revit_color_elements",
-      "description_hash": "sha256:fb9e4ee7647a306f10723bfd3c077502ee0895490fb508753dec8e084d1eb221",
+      "description_hash": "sha256:bede17603abfb6cde251fe07daf4f5a90b09d93a69265c9b27346634d1a3b3d1",
       "inputSchema": {
         "properties": {
           "category": {
@@ -949,7 +949,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -1045,7 +1045,7 @@
     },
     {
       "name": "revit_connect_mep_elements",
-      "description_hash": "sha256:c83054916be1d0f11ee3216abdb92b5329702ba4d200827a88481befd8a5222d",
+      "description_hash": "sha256:e9e8811624699f2fd097999cebc269a6de6b4424a2cd6d2b224a3af1d505f891",
       "inputSchema": {
         "properties": {
           "connectorIndex1": {
@@ -1072,7 +1072,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -2888,7 +2888,7 @@
     },
     {
       "name": "revit_delete_element",
-      "description_hash": "sha256:90a607747c8a1d8a5e648fe3b8c80b6b458d708bf44dbe6a3075232bc4df3738",
+      "description_hash": "sha256:f8f74c803fb2713c171d09fa89b3e286cef7f45ac2a852a7ccc40490c9be4665",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -2902,7 +2902,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -2910,7 +2910,7 @@
     },
     {
       "name": "revit_delete_saved_selection",
-      "description_hash": "sha256:874099f76f2ff171575f1f4fc89adde6e9f0316df436b489761b1bea285f416d",
+      "description_hash": "sha256:f105c26b76bceaa7e9c7bb14130c42b5ab65da61d3312fbdc5d8f03488f8ddd3",
       "inputSchema": {
         "properties": {
           "dryRun": {
@@ -2930,7 +2930,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -2938,7 +2938,7 @@
     },
     {
       "name": "revit_delete_view_template",
-      "description_hash": "sha256:bac90ecd9237afe858c6a8ec129abc013092b4d32e09605d1ff6a23526610c80",
+      "description_hash": "sha256:481d1d2622c75f3332739ef57f7aaacd6603f5300f4736a011051332ae411e7b",
       "inputSchema": {
         "properties": {
           "clearFromViews": {
@@ -2964,7 +2964,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -5635,7 +5635,7 @@
     },
     {
       "name": "revit_load_family_from_path",
-      "description_hash": "sha256:39a07044d9691a8bf64dd5f0b477c4a70fcd50046ea80e28e1719ab77c074cea",
+      "description_hash": "sha256:844d6e0b9e425320ac1b19a506a16eb75984f5a64b509ce980a13f5d9a9d64ae",
       "inputSchema": {
         "properties": {
           "includeSymbols": {
@@ -5669,7 +5669,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -5782,7 +5782,7 @@
     },
     {
       "name": "revit_operate_element",
-      "description_hash": "sha256:dce2159ff80ff8d40e6fce4d17a5033a20cc1f7116c95bbace82d066996e578c",
+      "description_hash": "sha256:f4d2f0c2fbd7c751b1a75964d182b6533d8f78ccdd4fbcf844e6104ea8197f64",
       "inputSchema": {
         "properties": {
           "b": {
@@ -5813,7 +5813,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -5821,7 +5821,7 @@
     },
     {
       "name": "revit_override_element_graphics",
-      "description_hash": "sha256:b79694fdebdea84a6bfdb89d9f7c00643a42eca6b1d31cd1a4fbaf37b7c028d1",
+      "description_hash": "sha256:d3bf9c4d83f54980746c02018ec3d493001231467fd43502627e3eb3508236e4",
       "inputSchema": {
         "properties": {
           "cutLineColor": {
@@ -5863,7 +5863,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6023,7 +6023,7 @@
     },
     {
       "name": "revit_purge_unused",
-      "description_hash": "sha256:decda75a72760c14458715af0dcfe220ecd1790b62de17e3700899a310e55870",
+      "description_hash": "sha256:c87b39803c463f9ae7cd35bba102588a920aa4ea2d4c3da27397b8d6e6277549",
       "inputSchema": {
         "properties": {
           "dry_run": {
@@ -6043,7 +6043,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6139,7 +6139,7 @@
     },
     {
       "name": "revit_remove_filter_from_view",
-      "description_hash": "sha256:cb66fbebad42970f1a40790509a21b845b6473bbba8c0796d758e919ecfad260",
+      "description_hash": "sha256:97b35eda1ad0efcc3573a313c9b100e081cd8ac4a95702e123d6f2cb921f9e4f",
       "inputSchema": {
         "properties": {
           "deleteDefinitionIfUnused": {
@@ -6161,7 +6161,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6169,7 +6169,7 @@
     },
     {
       "name": "revit_remove_parameter_binding",
-      "description_hash": "sha256:3e6d9af0e1cb6a6507e4556480c2286d999a2c8f2f4804e335893ef256a5ec9e",
+      "description_hash": "sha256:48c51ccb830e893f66a28ee858356c8344e4109881ad2039db8f888b0d662048",
       "inputSchema": {
         "properties": {
           "categories": {
@@ -6197,7 +6197,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6205,7 +6205,7 @@
     },
     {
       "name": "revit_rename_family_type",
-      "description_hash": "sha256:4dc8122189b592f24d1eef3aa335a298b8d7a1f5a0ce426c15c7c73002c83d63",
+      "description_hash": "sha256:b263347b4eec4aece6496ef53259335b57c3653bb5ff2464479d1de5a1113897",
       "inputSchema": {
         "properties": {
           "newName": {
@@ -6224,7 +6224,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6232,7 +6232,7 @@
     },
     {
       "name": "revit_renumber_sheets",
-      "description_hash": "sha256:4371c8eca6b9e5aa311e459628b07fd22bc6c2879da447aecb6f162595128eb7",
+      "description_hash": "sha256:ed76f296a1dc0527bf8ec8730d0619096002fc2f8b16625180378a0c3ef407b9",
       "inputSchema": {
         "properties": {
           "dryRun": {
@@ -6264,7 +6264,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6272,7 +6272,7 @@
     },
     {
       "name": "revit_replace_family_type",
-      "description_hash": "sha256:81f9909ad1828f09fa8ba419a6484695c330ed2e16d5375331b6a6a807987af3",
+      "description_hash": "sha256:be78f1b75065536409cdd6d732a44bc34853df4769f1f39ae48b1478112fa442",
       "inputSchema": {
         "properties": {
           "dryRun": {
@@ -6303,7 +6303,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6341,7 +6341,7 @@
     },
     {
       "name": "revit_save_selection",
-      "description_hash": "sha256:774f61389c22aecbed777d17a1c063e3d4a730b39ef4097657f1c373a8f16e5a",
+      "description_hash": "sha256:480e16b7ed47acb904fe665be725c228ca8e12e8b3254c88377c6c5dd910c0de",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -6375,7 +6375,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6431,7 +6431,7 @@
     },
     {
       "name": "revit_set_category_visibility",
-      "description_hash": "sha256:cc76cdab0e543362ce34f88553736433ae9522efa53615894d04449fb17238f8",
+      "description_hash": "sha256:c7ce1aec46c8d08b712a55f95176cd58af2cd23fe08b5ccd257f62a3e096fad3",
       "inputSchema": {
         "properties": {
           "categories": {
@@ -6454,7 +6454,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6462,7 +6462,7 @@
     },
     {
       "name": "revit_set_element_parameter_values",
-      "description_hash": "sha256:2d8e685c2e2bd6745ca22322d3f6b1bd84938b369379ddc1f1250122a2328703",
+      "description_hash": "sha256:338c1af9601ecd928fef15f4ede64b51e64e01bc2c56ffafc9bead9cbed518ed",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -6490,7 +6490,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6498,7 +6498,7 @@
     },
     {
       "name": "revit_set_element_phase",
-      "description_hash": "sha256:63757a12943a618b0d7ceba65a61e98b3aaad54903dde1787a0f5289a84448d5",
+      "description_hash": "sha256:3c6a565c8f76f62486fd822ed5c758b2ad91aa22eeb98129f806fddbff2384f7",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -6528,7 +6528,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6536,7 +6536,7 @@
     },
     {
       "name": "revit_set_filter_overrides",
-      "description_hash": "sha256:7fb567439f59a4c24ca51cd040c0684aee049a99c6f6b096cc14cd3304af8a3a",
+      "description_hash": "sha256:309d8dd8666173393d7666dd2ab34ae9121e4e7fcf12eceac157c3a8149bcbf5",
       "inputSchema": {
         "properties": {
           "cutLineColor": {
@@ -6578,7 +6578,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6586,7 +6586,7 @@
     },
     {
       "name": "revit_set_material_appearance",
-      "description_hash": "sha256:65be5e28af6acb59dedd1e996b8bcbe02d82dc43e9a1884117fe8e0a19febf42",
+      "description_hash": "sha256:fbf9788f08cde375a5ba200660d821ea61ae5ba9ffb8906f53a088fd2c833d94",
       "inputSchema": {
         "properties": {
           "blue": {
@@ -6646,7 +6646,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6654,7 +6654,7 @@
     },
     {
       "name": "revit_set_material_identity",
-      "description_hash": "sha256:674b57faf93dbc1c15ccfa17cb24286077699d96c1d8cb2c5dde6c45fac56f9a",
+      "description_hash": "sha256:e9b62be229b65f12ca27b219e950c82991fbdfb55584383eac145ea19bd2307e",
       "inputSchema": {
         "properties": {
           "cost": {
@@ -6702,7 +6702,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6710,7 +6710,7 @@
     },
     {
       "name": "revit_set_material_structural_asset",
-      "description_hash": "sha256:8368320e11dfca7710fba44774b39665333cdfc4c5356eae696a775435392b74",
+      "description_hash": "sha256:89e675438a421490c2f2578729c5a28f51ab8a38580a19b76de06a5004b24df6",
       "inputSchema": {
         "properties": {
           "assetName": {
@@ -6750,7 +6750,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6758,7 +6758,7 @@
     },
     {
       "name": "revit_set_material_thermal_asset",
-      "description_hash": "sha256:1705e51c64515fc6e380fe52a9f0b8cd740a70a46238f068b0bfe3c58a557e78",
+      "description_hash": "sha256:2aedd3f8a6747da4d1e08ced24d9044c0052a299828e5534de9df7ddab80ac5b",
       "inputSchema": {
         "properties": {
           "assetName": {
@@ -6798,7 +6798,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6806,7 +6806,7 @@
     },
     {
       "name": "revit_set_parameter_value_by_guid",
-      "description_hash": "sha256:f058849149a56812f3cb40eabaf065ea21ccb13bda0d8939f655cdf53bcc82a6",
+      "description_hash": "sha256:c5be63ab949953990e168e4be77c9f0b7ddaf1157faaeba8ea3517b32092083e",
       "inputSchema": {
         "properties": {
           "allOrNothing": {
@@ -6846,7 +6846,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6854,7 +6854,7 @@
     },
     {
       "name": "revit_set_project_base_point",
-      "description_hash": "sha256:5c4a2f30f36279e60548368ed89e18068379ca5231dacd1fea2f53bc53a4be67",
+      "description_hash": "sha256:cf8259e9a340fabf3e59c351fca5e3a81980a28ad348145f6de0dddc02576d89",
       "inputSchema": {
         "properties": {
           "angleToTrueNorth": {
@@ -6889,7 +6889,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6897,7 +6897,7 @@
     },
     {
       "name": "revit_set_project_info",
-      "description_hash": "sha256:b8705c18f6e056666217b0807dbdf983102d5f5ed25f9ca6dfbad315c376cfdc",
+      "description_hash": "sha256:4dfe332684f23cce38cd63d1f14a9dc56fd38ed4f8d77d6762bf5ea02c7289cd",
       "inputSchema": {
         "properties": {
           "address": {
@@ -6929,7 +6929,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6937,7 +6937,7 @@
     },
     {
       "name": "revit_set_structural_load",
-      "description_hash": "sha256:a015f085117e8f12ad0ae21661aba314513dbf90f27074b69f96cec1535ffa17",
+      "description_hash": "sha256:39dea791a156f22e1bf05172c55d3ed6820580a74901ce1a0d1d56b60eb90c2d",
       "inputSchema": {
         "properties": {
           "action": {
@@ -6979,7 +6979,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -6987,7 +6987,7 @@
     },
     {
       "name": "revit_set_system_classification",
-      "description_hash": "sha256:50a57c8ae0180f1440e49394d6f6c44cc14478d3acac1845d179e7e1e00841b2",
+      "description_hash": "sha256:2f4d5c0603c07e049a539fa643d09636c12eb363a4d2b31f137ba3ca139abb89",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -7005,7 +7005,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7013,7 +7013,7 @@
     },
     {
       "name": "revit_set_titleblock_parameters",
-      "description_hash": "sha256:46511e74b4229653f8f962144c4339decd2ffb186cf24cdc70a62cb6f3cf0fca",
+      "description_hash": "sha256:e201a27174b0386b99010940b842a67a31abcb07e1ecea0268a0fbe9fb6312b5",
       "inputSchema": {
         "properties": {
           "parameters": {
@@ -7039,7 +7039,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7047,7 +7047,7 @@
     },
     {
       "name": "revit_set_type_parameter_values",
-      "description_hash": "sha256:74dd1a3d8b4bf1f1d3772ac59d7b48bf597424a8c451b0cc772b7b9f0362b94c",
+      "description_hash": "sha256:9fe2a4d13989e7d8340542ede154b3f7c8558b97498a40fd9b2f55dbc700d886",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -7078,7 +7078,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7086,7 +7086,7 @@
     },
     {
       "name": "revit_set_view_crop",
-      "description_hash": "sha256:4726af078a2f5a3069b79bb6bc9bf71285a2042ddc192984040898c27e9f69c3",
+      "description_hash": "sha256:bbd403d22c047aab240263e4c13b3c00b2f6fd14e0611b0fc8141b9fb8798f72",
       "inputSchema": {
         "properties": {
           "bounds_json": {
@@ -7118,7 +7118,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7126,7 +7126,7 @@
     },
     {
       "name": "revit_set_view_phase",
-      "description_hash": "sha256:bb2e0942e300daa7977b99682de1946019decd15182d121ce2c4396dadb70afa",
+      "description_hash": "sha256:a21d70ef1b873f1adb0f246d1fa73e72ced1d2d4925902a4a67f6b49295c8937",
       "inputSchema": {
         "properties": {
           "phaseFilterId": {
@@ -7154,7 +7154,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7162,7 +7162,7 @@
     },
     {
       "name": "revit_set_view_scale",
-      "description_hash": "sha256:bd2bf63aae1e584fc10152b81096948898d719b7f7c3e49d2dcba11abd5b29e4",
+      "description_hash": "sha256:60fa330f037cc4710727a0719ca4697d3e5fed5970e9a3a1c2781bddc61e988c",
       "inputSchema": {
         "properties": {
           "scale": {
@@ -7180,7 +7180,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7490,7 +7490,7 @@
     },
     {
       "name": "revit_unload_family",
-      "description_hash": "sha256:ceec25daaa9e6540cce9e1aa9b1cafc460b030eabafbb7aca8b579338b1a8616",
+      "description_hash": "sha256:998aa277453a04e34ba283c44098ca871345443da28cd5336eb4d7de7476f447",
       "inputSchema": {
         "properties": {
           "cascadeDeleteInstances": {
@@ -7514,7 +7514,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7550,7 +7550,7 @@
     },
     {
       "name": "revit_update_schedule_field",
-      "description_hash": "sha256:25d3abb93c0a556c430a8bf4650af582fec77518aefda03c1105882d58866406",
+      "description_hash": "sha256:b13941140e87c06221534ae93a2b7a162af9826dd138e0ae5938cc476eb26e91",
       "inputSchema": {
         "properties": {
           "changes": {
@@ -7577,7 +7577,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7585,7 +7585,7 @@
     },
     {
       "name": "revit_wipe_empty_tags",
-      "description_hash": "sha256:954c9967158102118961c2582beec422b963123a1d8db65f285596feb142f866",
+      "description_hash": "sha256:b06463abab8cc3e7415e12a5aa7bb68693c605d99ceed6522f77537f3bd443ed",
       "inputSchema": {
         "properties": {
           "dryRun": {
@@ -7605,7 +7605,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7613,7 +7613,7 @@
     },
     {
       "name": "revit_workflow_clash_review",
-      "description_hash": "sha256:31997279c3b00815fc110e334d14d0e9c930d586f42829fcfae46137e9fea280",
+      "description_hash": "sha256:88849ea1cc124cdb86f5bccbfcf0e6f11d0405c301a12c7a3376d677750527de",
       "inputSchema": {
         "properties": {
           "category_a": {
@@ -7660,7 +7660,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7759,7 +7759,7 @@
     },
     {
       "name": "revit_workflow_naming_normalization",
-      "description_hash": "sha256:99226d7f26635ab4468cd2da6cbeb83eae8f761618c3a75fdbc482da4c411954",
+      "description_hash": "sha256:1847b2452ba4bc677a687f4aa2373e2f8ad24abe8ebb4c3f078d8074031e1454",
       "inputSchema": {
         "properties": {
           "dry_run": {
@@ -7793,7 +7793,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7849,7 +7849,7 @@
     },
     {
       "name": "revit_workflow_sheet_set",
-      "description_hash": "sha256:a582175ec7a75cf31952b7e0bfaf46200408dfe880dd703fedbd98c707d592b7",
+      "description_hash": "sha256:26dde06ec77554d36bc4bfc1d00bfe5266001b033cfe7e8c7833eb270d459a91",
       "inputSchema": {
         "properties": {
           "continue_on_error": {
@@ -7875,7 +7875,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7883,7 +7883,7 @@
     },
     {
       "name": "revit_workflow_takeoff_report",
-      "description_hash": "sha256:fbd67218ecd9d0671375bac22ea9ceb3332e55493271ab022ee93cb35c500d5a",
+      "description_hash": "sha256:1518bcf1014c12ba5d81850648ace4827e6e15302d45b127ffa37b4da96e222f",
       "inputSchema": {
         "properties": {
           "categories": {
@@ -7919,7 +7919,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7927,7 +7927,7 @@
     },
     {
       "name": "revit_workflow_view_cleanup",
-      "description_hash": "sha256:0a972727c89b0d25fcfb998d92a678825ad9a09ed1d59ea4ae0c8d083096e7f9",
+      "description_hash": "sha256:f058cb81940ac8578b8311dc05086ed4f9df1d636494af98e185f23f3eb3b708",
       "inputSchema": {
         "properties": {
           "delete_empty_views": {
@@ -7959,7 +7959,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
