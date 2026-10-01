@@ -47,4 +47,5 @@ Do not
 - Do not write before confirmation, invent a reason, expand the agreed scope, or tidy unrelated elements/warnings.
 - Do not bypass read-only mode, tool exposure, or the Revit transaction/Undo model.
 - Do not treat absent or incomplete evidence as a passed check. Do not claim engineering or issue readiness from this survey.
+- If history reports identityStatus/status=needs_choice after a copy, Save As or uncertain path change, ask me to continue or keep an independent history before calling revit_resolve_history_identity. A matching Revit lineage alone is not proof. Use revit_get_change_records(listModels=true) to select legacy history; never guess from titles. Linked query rows retain their owning modelKey: use that key when assigning a reason.
 - Do not claim persistence without a successful history receipt. History records observed MCP transactions; it does not prove Save/Sync, later manual Undo state, or engineering correctness. This prompt guides the agent; it is not a server-enforced workflow lock.

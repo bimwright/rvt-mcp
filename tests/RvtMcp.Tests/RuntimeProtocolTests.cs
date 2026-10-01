@@ -253,6 +253,13 @@ namespace RvtMcp.Tests
                 await using var client = await McpClient.CreateAsync(new StreamClientTransport(output, output), cancellationToken: deadline.Token);
                 var tools = await client.ListToolsAsync(cancellationToken: deadline.Token);
                 Assert.DoesNotContain(tools, tool => tool.Name == "revit_send_code_to_revit");
+                Assert.Equal(!readOnly, tools.Any(tool => tool.Name == "revit_resolve_history_identity"));
+                if (!readOnly)
+                {
+                    var identity = Assert.Single(tools, tool => tool.Name == "revit_resolve_history_identity");
+                    Assert.False(identity.ProtocolTool.Annotations.ReadOnlyHint);
+                    Assert.True(identity.ProtocolTool.Annotations.DestructiveHint);
+                }
                 if (readOnly) Assert.All(tools, tool => Assert.True(tool.ProtocolTool.Annotations.ReadOnlyHint));
                 Assert.Contains(tools, tool => tool.Name == "revit_list_schedules");
                 var response = await client.CallToolAsync("revit_get_element_details",

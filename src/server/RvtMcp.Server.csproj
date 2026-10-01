@@ -52,6 +52,7 @@
     <Compile Include="..\shared\Infrastructure\ChangeSummary.cs" Link="Shared\ChangeSummary.cs" />
     <Compile Include="..\shared\Infrastructure\ChangeHistoryTransfer.cs" Link="Shared\ChangeHistoryTransfer.cs" />
     <Compile Include="..\shared\Infrastructure\HistoryDiagnostics.cs" Link="Shared\HistoryDiagnostics.cs" />
+    <Compile Include="..\shared\Infrastructure\HistoryFileIdentity.cs" Link="Shared\HistoryFileIdentity.cs" />
     <Compile Include="..\shared\Views\Toast\ToolActivityClassifier.cs" Link="Shared\ToolActivityClassifier.cs" />
     <Compile Include="..\shared\Security\McpResponsePrivacy.cs" Link="Shared\McpResponsePrivacy.cs" />
     <Compile Include="..\shared\Security\ErrorSanitizer.cs" Link="Shared\ErrorSanitizer.cs" />

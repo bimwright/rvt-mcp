@@ -20,6 +20,24 @@ namespace RvtMcp.Tests
         public ChangeHistoryRuntimeTests() { ToolGateway.History = new ChangeHistoryStore(_root); }
 
         [Theory]
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        public async System.Threading.Tasks.Task Disabled_identity_decisions_never_contact_Revit_or_create_storage(bool readOnly, bool historyEnabled)
+        {
+            var originalSend = ToolGateway.SendOverride;
+            try
+            {
+                ServerState.Config = new RvtMcpConfig { ReadOnly = readOnly, EnableChangeHistory = historyEnabled };
+                ToolGateway.SendOverride = (command, args, timeout) => throw new Exception("Policy must reject before Revit.");
+                Assert.Contains("disabled", await ChangeHistoryTools.ResolveHistoryIdentity(new string('a', 64), "continue", "Owner choice"));
+                Assert.False(Directory.Exists(_root));
+                Assert.Empty(JObject.Parse(await ChangeHistoryTools.GetChangeRecords(listModels: true))["models"]);
+                Assert.False(Directory.Exists(_root));
+            }
+            finally { ToolGateway.SendOverride = originalSend; }
+        }
+
+        [Theory]
         [InlineData(false)]
         [InlineData(true)]
         public async System.Threading.Tasks.Task Active_history_query_resolves_identity_without_creating_storage(bool readOnly)

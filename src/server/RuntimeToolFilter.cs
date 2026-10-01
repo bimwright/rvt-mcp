@@ -114,7 +114,7 @@ namespace RvtMcp.Server
                             ["response_compacted"] = true,
                             ["mutation_applied"] = JValue.CreateNull(),
                             ["_changes"] = changes == null ? null : ChangeSummary.Omitted(),
-                            ["_history"] = history == null ? null : new JObject { ["status"] = history["status"], ["callId"] = history["callId"], ["modelKey"] = history["modelKey"] }
+                            ["_history"] = history == null ? null : new JObject { ["status"] = history["status"], ["callId"] = history["callId"], ["modelKey"] = history["modelKey"], ["identityStatus"] = history["identityStatus"] }
                         }, result.IsError == true);
                 }
             }

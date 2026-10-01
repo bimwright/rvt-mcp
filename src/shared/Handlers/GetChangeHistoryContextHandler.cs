@@ -11,7 +11,8 @@ namespace RvtMcp.Plugin.Handlers
         public CommandResult Execute(UIApplication app, string paramsJson)
         {
             var model = McpChangeTracker.Scope.Identity(app.ActiveUIDocument?.Document);
-            return CommandResult.Ok(new { modelKey = (string)model?["key"] });
+            return CommandResult.Ok(new { modelKey = (string)model?["key"], title = (string)model?["title"],
+                physicalKey = (string)model?["physicalKey"], lineageKey = (string)model?["lineageKey"] });
         }
     }
 }

@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 232,
+  "tool_count": 233,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -3863,9 +3863,13 @@
     },
     {
       "name": "revit_get_change_records",
-      "description_hash": "sha256:c6dd03754825ef89b2b87459de7efbcfedc4fde640a322dad8a99271542171c1",
+      "description_hash": "sha256:c10899565b25911901dc720d9837a3210dafecc7c1118abadf39839add64d434",
       "inputSchema": {
         "properties": {
+          "afterModelKey": {
+            "description": "",
+            "type": "String"
+          },
           "elementId": {
             "description": "",
             "type": "Nullable`1"
@@ -3877,6 +3881,10 @@
           "limit": {
             "description": "",
             "type": "Int32"
+          },
+          "listModels": {
+            "description": "",
+            "type": "Boolean"
           },
           "modelKey": {
             "description": "",
@@ -6396,6 +6404,38 @@
         "required": [
           "fromTypeId",
           "toTypeId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_resolve_history_identity",
+      "description_hash": "sha256:ea66c9bb4e49884027837440155269b90680513fd5b3eae459b98cd15a6edf95",
+      "inputSchema": {
+        "properties": {
+          "decision": {
+            "description": "",
+            "type": "String"
+          },
+          "reason": {
+            "description": "",
+            "type": "String"
+          },
+          "sourceModelKey": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "sourceModelKey",
+          "decision",
+          "reason"
         ],
         "type": "object"
       },

@@ -31,7 +31,8 @@ namespace RvtMcp.Tests
             "set_titleblock_parameters", "set_type_parameter_values", "set_view_crop", "set_view_phase",
             "set_view_scale", "unload_family", "unload_link", "update_schedule_field", "wipe_empty_tags",
             "workflow_clash_review", "workflow_data_roundtrip", "workflow_naming_normalization",
-            "workflow_sheet_set", "workflow_takeoff_report", "workflow_view_cleanup"
+            "workflow_sheet_set", "workflow_takeoff_report", "workflow_view_cleanup",
+            "resolve_history_identity"
         };
 
         public static IEnumerable<object[]> DestructiveTools

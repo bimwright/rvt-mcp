@@ -16,11 +16,13 @@ namespace RvtMcp.Server.Memory
     public sealed class ChangeHistoryStore
     {
         private readonly string _projects;
+        private readonly HistoryIdentityCatalog _identities;
         public ChangeHistoryTransfer Transfer { get; }
         public ChangeHistoryStore(string dataRoot = null)
         {
             dataRoot ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bimwright", "rvt-mcp");
             _projects = Path.Combine(dataRoot, "projects");
+            _identities = new HistoryIdentityCatalog(_projects);
             Transfer = new ChangeHistoryTransfer(dataRoot);
         }
         public static bool IsModelKey(string key) => key?.Length == 64 && key.All(c => c >= '0' && c <= '9' || c >= 'a' && c <= 'f');
@@ -161,7 +163,9 @@ ON CONFLICT(model_key) DO UPDATE SET metadata_json=$json,last_seen=$at;",
                     }
                 }
                 tx.Commit();
-                models.Add(new JObject { ["modelKey"] = key, ["title"] = Text(model["title"]), ["complete"] = complete, ["elementCount"] = elements.Count });
+                _identities.Observe(model, at);
+                models.Add(new JObject { ["modelKey"] = key, ["title"] = Text(model["title"]), ["complete"] = complete,
+                    ["elementCount"] = elements.Count, ["identity"] = _identities.Resolve(model) });
             }
             var active = payload["activeModel"] as JObject;
             return new JObject
@@ -170,6 +174,7 @@ ON CONFLICT(model_key) DO UPDATE SET metadata_json=$json,last_seen=$at;",
                 ["callId"] = docs.Count > 0 ? id : null,
                 ["modelKey"] = IsModelKey(active?.Value<string>("key")) ? active.Value<string>("key") : null,
                 ["models"] = models,
+                ["identityStatus"] = models.Any(m => m["identity"]?.Value<string>("status") == "needs_choice") ? "needs_choice" : "resolved",
                 ["complete"] = payload.Value<bool?>("complete") == true && unresolved == 0,
                 ["skippedDocuments"] = unresolved,
                 ["note"] = unresolved > 0 ? "Some changed documents have no stable model identity and were skipped. Do not replay the model operation."
@@ -207,7 +212,56 @@ ON CONFLICT(model_key) DO UPDATE SET metadata_json=$json,last_seen=$at;",
                 ["note"] = known ? null : "Reason is unknown. Ask the user rather than inventing one." };
         }
 
-        public JObject Query(string modelKey, long? elementId = null, string uniqueId = null, string from = null, string until = null, int limit = 50)
+        public JObject Query(string modelKey, long? elementId = null, string uniqueId = null, string from = null, string until = null, int limit = 50, JObject model = null)
+        {
+            if (model != null && model.Value<string>("key") != modelKey) throw new ArgumentException("History context key mismatch.");
+            var identity = _identities.Resolve(model ?? new JObject { ["key"] = modelKey });
+            var all = new List<JObject>(); var more = false;
+            foreach (var key in identity["historyKeys"].Values<string>())
+            {
+                var part = QueryOne(key, elementId, uniqueId, from, until, limit);
+                more |= part.Value<bool?>("hasMore") == true;
+                foreach (var call in part["calls"].OfType<JObject>())
+                { call["modelKey"] = key; all.Add(call); }
+            }
+            return new JObject { ["modelKey"] = modelKey, ["identity"] = identity,
+                ["calls"] = new JArray(all.OrderByDescending(c => c.Value<string>("at"), StringComparer.Ordinal)
+                    .ThenBy(c => c.Value<string>("modelKey"), StringComparer.Ordinal).ThenBy(c => c.Value<string>("callId"), StringComparer.Ordinal).Take(limit)),
+                ["hasMore"] = more || all.Count > limit,
+                ["note"] = "Local observed MCP history only. Use each call's modelKey to assign its reason. Missing entries do not prove an element was unchanged; history does not confirm Save/Sync or later Undo." };
+        }
+
+        public JObject ResolveIdentity(JObject model, string sourceModelKey, string decision, string reason)
+        {
+            var source = ReadModel(sourceModelKey);
+            if (source == null) throw new ArgumentException("The source modelKey has no local history. List local models first.");
+            return _identities.Decide(model, source, decision, reason);
+        }
+
+        private JObject ReadModel(string key)
+        {
+            if (!File.Exists(DatabasePath(key))) return null;
+            using var db = Open(key, false);
+            using var command = Command(db, null, "SELECT metadata_json FROM model_info WHERE model_key=$key", ("$key", key));
+            return command.ExecuteScalar() is string json ? JObject.Parse(json) : null;
+        }
+
+        public JObject ListModels(string afterModelKey = null, int limit = 50)
+        {
+            if (limit < 1 || limit > 100 || afterModelKey != null && !IsModelKey(afterModelKey)) throw new ArgumentException("Invalid model list cursor or limit (1-100).");
+            var keys = Directory.Exists(_projects) ? Directory.EnumerateFiles(_projects, "*.db")
+                .Select(Path.GetFileNameWithoutExtension).Where(IsModelKey)
+                .Where(k => afterModelKey == null || string.CompareOrdinal(k, afterModelKey) > 0).OrderBy(k => k, StringComparer.Ordinal).Take(limit + 1).ToArray() : Array.Empty<string>();
+            var models = new JArray();
+            foreach (var key in keys.Take(limit))
+            {
+                var model = ReadModel(key);
+                if (model != null) models.Add(new JObject { ["modelKey"] = key, ["title"] = Text(model["title"]), ["identity"] = _identities.Resolve(model) });
+            }
+            return new JObject { ["models"] = models, ["nextAfterModelKey"] = keys.Length > limit ? keys[limit - 1] : null };
+        }
+
+        private JObject QueryOne(string modelKey, long? elementId, string uniqueId, string from, string until, int limit)
         {
             if (limit < 1 || limit > 100) throw new ArgumentException("limit must be between 1 and 100.");
             if (elementId <= 0 || uniqueId?.Length > 128) throw new ArgumentException("Invalid element identifier.");

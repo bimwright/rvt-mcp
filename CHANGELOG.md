@@ -24,6 +24,8 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## v1.0.0 — Unreleased
 
+- **History identity continuity (development)** — proven Windows file aliases and renames can follow the same history. Revit lineage only suggests a choice for copies/Save As; `revit_resolve_history_identity` records the owner's explicit continuation or independent history. Existing databases and reason ownership stay intact, links are reversible, and legacy keys can be listed with `revit_get_change_records(listModels=true)`. Ordinary reads remain unchanged. Tool counts: default **45**, `--toolsets all` **230**, adaptive bake **233**. Matching plugin/server builds are required; existing Setup/MCPB candidates are unchanged.
+
 - **Closed-document change capture** — capture summaries use metadata collected during transactions, so a command that closes its temporary project or EditFamily document before returning does not dereference an invalid Revit document.
 
 - **History review fixes (development)** — ordinary reads no longer publish pending captures or add `_history`. Unsaved/unresolved documents are skipped before writing; legacy invalid captures are quarantined and bounded recovery runs in the background. `revit_get_change_records` can resolve the active saved model without a receipt from a read. Server options cannot relax plugin read-only/send-code policy. Runtime data migration now covers old product folders, resumes partial copies, preserves SQLite WAL data and reports conflicts before loading fallback settings. History failures emit redacted diagnostics; Toast tests use isolated temporary folders.

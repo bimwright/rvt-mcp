@@ -91,6 +91,20 @@ namespace RvtMcp.Plugin
                     }
                     if (identity != null)
                     {
+                        identity["physicalKey"] = HistoryFileIdentity.TryGet(identity.Value<string>("path"), App.DebugLog);
+                        // Optional evidence must not discard an otherwise valid model key.
+                        try
+                        {
+                            // A lineage hint only proposes choices. A copied RVT can retain it.
+                            string lineage = null;
+#if REVIT2024_OR_GREATER
+                            if (doc.CreationGUID != Guid.Empty) lineage = "creation:" + doc.CreationGUID;
+#else
+                            lineage = doc.IsFamilyDocument ? doc.OwnerFamily?.UniqueId : doc.ProjectInformation?.UniqueId;
+#endif
+                            identity["lineageKey"] = string.IsNullOrEmpty(lineage) ? null : ChangeHistoryIdentity.Create(lineage, "revit-lineage", null).Value<string>("key");
+                        }
+                        catch (Exception ex) { HistoryDiagnostics.Report("history_lineage_identity", ex, log: App.DebugLog); }
                         identity["workshared"] = doc.IsWorkshared;
                         if (!doc.IsFamilyDocument)
                         {

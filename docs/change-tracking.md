@@ -58,11 +58,22 @@ To disable recording, set `enableChangeHistory=false` in `rvtmcp.config.json`, s
 `--enable-change-history` enables it; CLI overrides environment, which overrides JSON.
 Existing history remains queryable when recording is off. Disabling does not delete it.
 
-Each model has its own database, named by an opaque SHA-256 key. Workshared models
-use central identity; ordinary models use their file path; cloud models use project
-and model GUIDs. Names/titles are never identity. Path aliases are not resolved to
-one physical file. Unsaved, detached and unresolved identities are reported as
+Existing databases keep their opaque SHA-256 keys: central identity for workshared
+models, file path for ordinary models, and project/model GUIDs for cloud models.
+A separate local identity catalog links histories without moving calls or reasons.
+Names/titles are never identity. Unsaved, detached and unresolved identities remain
 unavailable instead of being merged into another model's history.
+
+On Windows, a file fingerprint uses the file server, volume, 128-bit file ID and
+creation time. A proven same-file rename or path alias can query the old history
+automatically. Unavailable fingerprints, changed file IDs and unproven network
+aliases require an explicit choice. Revit lineage is only a hint: different files
+with matching lineage return `needs_choice`, never an automatic continuation.
+The owner chooses `continue` or `separate`; the decision and reason are recorded
+locally. Continuing includes related histories in queries; separating keeps an
+independent history. Later decisions can change these logical links without deleting
+calls. Cycles and separating paths proven to identify the same file are rejected.
+Groups are limited to 64 keys; a query suggests at most 20 lineage candidates.
 
 Private model identities/paths stay local. The plugin transfers a separate private
 capture to the server; only the server writes SQLite (WAL and a busy timeout).
@@ -94,7 +105,7 @@ Transient storage failures stay pending for retry. A failure before a capture re
 this mechanism. History does not confirm Save/Sync and is not updated by subsequent
 manual Undo or model edits outside MCP.
 
-Two `meta` tools use the opaque model key; neither accepts a model path:
+Three `meta` tools use opaque model keys; none accepts a model path:
 
 - `revit_record_change(modelKey, callIds, requestText, goal, reason, ...)` attaches a
   reason to an explicit JSON string array of server-issued call IDs. All must belong
@@ -103,13 +114,29 @@ Two `meta` tools use the opaque model key; neither accepts a model path:
   as unknown. Optional `alternativesJson`, `surveyJson` and `remainingWorkJson` accept
   JSON objects/arrays. Text is redacted, limited to 32,768 input characters overall
   and 4,096 characters per string; truncation is explicit.
-- `revit_get_change_records(modelKey?, elementId?, uniqueId?, from?, until?, limit=50)`
+- `revit_get_change_records(modelKey?, elementId?, uniqueId?, from?, until?, limit=50, listModels=false, afterModelKey?)`
   returns local calls and their reasons. Dates are interpreted in UTC; limit is 1–100.
-  Omit `modelKey` to resolve the active saved model without writing history files.
+  Omit `modelKey` to resolve the active saved model without registering its identity
+  or adding history records. SQLite queries of existing WAL databases can create
+  coordination sidecars; ordinary model reads do not touch history storage.
   Supplying an existing key also works without a Revit connection.
+  Confirmed related histories are queried together; each call retains its owning
+  `modelKey`, which must be used for reason assignment. Set `listModels=true` to
+  list local keys/titles, including pre-catalog history; use `nextAfterModelKey`
+  as the next request's `afterModelKey`. Do not combine list mode with call filters.
   `reasonStatus` distinguishes `unassigned`, `unknown` and `recorded`. Each returned
   call shows at most 200 elements; filter by a specific ID to query others in the DB.
   `hasMore` indicates more matching calls. Missing rows do not prove no change.
+- `revit_resolve_history_identity(sourceModelKey, decision, reason)` records the
+  owner's choice for the active saved model. The source must have local history;
+  `decision` is `continue` or `separate`, and `reason` is 1–4,096 characters.
+  Legacy history without file evidence can be listed and linked explicitly.
+  This writes only the identity catalog and never edits or saves a Revit model.
+  It is hidden in read-only mode and blocked while history recording is disabled.
+
+Changed-model receipts include identity resolution and top-level `identityStatus`.
+If it is `needs_choice`, preserve the call IDs and ask the owner before resolving.
+New calls remain in their own database while the choice is pending.
 
 Before/after values currently come from committed `updated` rows of the typed
 `set_element_parameter_values` handler (including partial-success calls): raw values and display strings are stored
