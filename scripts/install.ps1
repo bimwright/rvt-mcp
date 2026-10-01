@@ -1242,6 +1242,16 @@ try {
         } elseif ($serverCommand) {
             $serverCheck = 'skipped (WhatIf)'
         }
+        # Finish payload verification before any client points at the relocated
+        # server. A later verification failure would restore the old data root.
+        if (-not $WhatIfPreference) {
+            foreach ($year in $Years) {
+                $yearTwo = "{0:D2}" -f ($year - 2000)
+                $addinsRoot = Get-AddinsRoot $year
+                Assert-InstalledPlugin -Year $year -Zip (Join-Path $pluginSourceDir "RvtMcp.Plugin.R$yearTwo.zip") -AddinPath (Join-Path $addinsRoot "RvtMcp.R$yearTwo.addin") -PluginDir (Join-Path $addinsRoot 'RvtMcp')
+                $verified += "R$yearTwo"
+            }
+        }
         $configDefault = Set-DefaultToolsetsConfig -ConfigPath (Join-Path $env:LOCALAPPDATA 'Bimwright\rvt-mcp\rvtmcp.config.json')
         if (@($Client | Where-Object { $_ -ne 'none' }).Count) {
             if ($serverCommand) {
@@ -1253,14 +1263,6 @@ try {
             $detected = @(Get-McpClientSpecs | Where-Object { Test-McpClientDetected $_ } | ForEach-Object { $_.Name })
             if ($detected.Count) {
                 $wiredClients = @("detected: $($detected -join ', ') - wire with -Client <names> or -Client auto")
-            }
-        }
-        if (-not $WhatIfPreference) {
-            foreach ($year in $Years) {
-                $yearTwo = "{0:D2}" -f ($year - 2000)
-                $addinsRoot = Get-AddinsRoot $year
-                Assert-InstalledPlugin -Year $year -Zip (Join-Path $pluginSourceDir "RvtMcp.Plugin.R$yearTwo.zip") -AddinPath (Join-Path $addinsRoot "RvtMcp.R$yearTwo.addin") -PluginDir (Join-Path $addinsRoot 'RvtMcp')
-                $verified += "R$yearTwo"
             }
         }
     }

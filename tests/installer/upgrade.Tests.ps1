@@ -95,6 +95,9 @@ function Invoke-FixtureSetup {
         if ($Fixture.Running) { [pscustomobject]@{Name='Revit';Id=1234} }
     }
     function Test-ServerExecutable { param([string]$Path, [int]$TimeoutSeconds) if ($Fixture.SmokeFails) { throw 'Server executable could not start (stub). Antivirus or policy may have blocked it.' } }
+    if ($Fixture.PSObject.Properties['VerificationFails'] -and $Fixture.VerificationFails) {
+        function Assert-InstalledPlugin { throw 'Installed plugin verification failed (stub).' }
+    }
     # Client CLIs never touch the real PATH here: detected only when the
     # fixture opts in with Add-Member FakeCli $true, then calls are recorded.
     $Fixture | Add-Member -NotePropertyName CliCalls -NotePropertyValue (New-Object 'System.Collections.Generic.List[string]') -Force
@@ -130,6 +133,8 @@ function New-LegacyRootFixture {
     Set-Content -LiteralPath "$old/rvtmcp.config.json" '{"custom":true}'
     Set-Content -LiteralPath "$old/baked/x/tool.json" '{}'
     Set-Content -LiteralPath "$old/locales/strings.vi.json" '{"k":"v"}'
+    [IO.File]::WriteAllBytes((Join-Path $old 'bake.db'), [byte[]](0, 1, 128, 255))
+    [IO.File]::WriteAllBytes((Join-Path $old 'bake.db-wal'), [byte[]](255, 128, 1, 0))
     Set-Content -LiteralPath "$old/rvt/server/current/rvt-mcp.exe" 'old-server-current'
     Set-Content -LiteralPath "$old/rvt/server/0.6.2/rvt-mcp.exe" 'old-server-062'
     return $old
@@ -768,6 +773,32 @@ try {
         Assert (@(Get-ChildItem -LiteralPath $fixture.Root -Recurse -Filter '*.rvtmcp-rollback-*').Count -eq 0) 'backups left behind'
         Assert (@(Get-ChildItem -LiteralPath $sandboxLocalAppData -Recurse -Filter '*.rvtmcp-rollback-*' -ErrorAction SilentlyContinue).Count -eq 0) 'backups left under profile'
         Clear-ProductRoots
+    }
+    Test 'Plugin verification failure restores legacy data without repointing the client' {
+        Clear-ProductRoots
+        $fixture = New-SetupFixture
+        $fixture | Add-Member -NotePropertyName VerificationFails -NotePropertyValue $true
+        $old = New-LegacyRootFixture
+        $new = Join-Path $sandboxLocalAppData 'Bimwright\rvt-mcp'
+        $claudeJson = Join-Path $sandboxUserProfile '.claude.json'
+        @{mcpServers=@{'rvt-mcp'=@{command="$old\rvt\server\current\rvt-mcp.exe";args=@('--read-only')}}} |
+            ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $claudeJson
+        $clientHash = (Get-FileHash -LiteralPath $claudeJson).Hash
+        $dataHashes = @(Get-ChildItem -LiteralPath $old -File -Recurse -Force | ForEach-Object {
+            [pscustomobject]@{Path=$_.FullName;Hash=(Get-FileHash -LiteralPath $_.FullName).Hash}
+        })
+        try {
+            Assert-Throws { Invoke-FixtureSetup $fixture -ServerInstallRoot "$new/server/current" -Client 'claude' } 'verification failed'
+            Assert (-not (Test-Path -LiteralPath $new)) 'new root survived rollback'
+            foreach ($file in $dataHashes) {
+                Assert ((Get-FileHash -LiteralPath $file.Path).Hash -eq $file.Hash) "legacy bytes changed: $($file.Path)"
+            }
+            Assert ((Get-FileHash -LiteralPath $claudeJson).Hash -eq $clientHash) 'client points to the rolled-back installation'
+            Assert-OldInstall $fixture
+        } finally {
+            Remove-Item -LiteralPath $claudeJson, "$claudeJson.bak" -Force -ErrorAction SilentlyContinue
+            Clear-ProductRoots
+        }
     }
     Test 'WhatIf previews relocation without touching the filesystem' {
         Clear-ProductRoots

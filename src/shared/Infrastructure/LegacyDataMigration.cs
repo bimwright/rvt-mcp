@@ -17,9 +17,16 @@ namespace RvtMcp.Plugin
             if (!Directory.Exists(legacy)) return;
             if (File.Exists(marker)) return;
 
+            // Bimwright is now shared by the family; its existence alone is not
+            // evidence of a pre-rename Revit installation.
+            var folders = new[] { "baked", "journal", "firm-profiles" };
+            var logs = Directory.GetFiles(legacy, "*.log");
+            if (!Array.Exists(folders, sub => Directory.Exists(Path.Combine(legacy, sub)))
+                && logs.Length == 0) return;
+
             Directory.CreateDirectory(current);
 
-            foreach (var sub in new[] { "baked", "journal", "firm-profiles" })
+            foreach (var sub in folders)
             {
                 var src = Path.Combine(legacy, sub);
                 var dst = Path.Combine(current, sub);
@@ -29,9 +36,7 @@ namespace RvtMcp.Plugin
                 }
             }
 
-            foreach (var log in Directory.Exists(legacy)
-                ? Directory.GetFiles(legacy, "*.log")
-                : Array.Empty<string>())
+            foreach (var log in logs)
             {
                 var dst = Path.Combine(current, Path.GetFileName(log));
                 if (!File.Exists(dst)) File.Copy(log, dst);

@@ -14,6 +14,8 @@ On a fresh machine, follow the [README verification steps](../README.md#install)
 
 ## Upgrade
 
+Older installers used `%LOCALAPPDATA%\RvtMcp\`. The new installer moves that whole folder to `%LOCALAPPDATA%\Bimwright\rvt-mcp\`, flattens `rvt\server\` to `server\`, and preserves settings, ToolBaker data and other personal files. Close Revit and MCP clients using rvt-mcp before this migration. Known client commands are repointed only after the installed server and all selected add-ins pass verification; a caught failure restores the old folder and leaves those commands unchanged. If both product folders already exist, the installer stops without merging them. Use the server and add-ins from the same setup ZIP.
+
 Updates are manual. Close all Revit windows and stop the MCP connection in your AI client, extract the new release ZIP into a separate folder, then run its `install.ps1 -WhatIf` followed by `install.ps1`. Upgrade the server and plugins together; restart Revit and the MCP client, then repeat the [checks in the README](../README.md#install). Do not uninstall first: upgrades replace plugins and the server in place.
 
 The server path never changes between versions, so MCP clients keep working and only need a restart; clients still running the previous copy keep it until they restart (the summary lists it under `In use`, and the next install removes it). Older add-in copies that carry RvtMcp's AddInId — Bimwright-era leftovers — are removed automatically, because Revit would otherwise load only one of them. A machine-wide copy under `%ProgramData%` stops the install (removing it needs admin rights).

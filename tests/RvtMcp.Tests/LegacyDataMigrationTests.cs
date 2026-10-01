@@ -6,6 +6,32 @@ using RvtMcp.Plugin;
 public class LegacyDataMigrationTests
 {
     [Fact]
+    public void MigrateOnce_FamilyRootWithSiblingDoesNotCreateProductRoot()
+    {
+        var tempLocal = Path.Combine(Path.GetTempPath(), "rvtmcp-migration-test-" + Guid.NewGuid());
+        Directory.CreateDirectory(tempLocal);
+        try
+        {
+            var sibling = Path.Combine(tempLocal, "Bimwright", "ipt-mcp", "baked");
+            Directory.CreateDirectory(sibling);
+            File.WriteAllText(Path.Combine(sibling, "tool.json"), "{}");
+            var oldRoot = Path.Combine(tempLocal, "RvtMcp");
+            Directory.CreateDirectory(oldRoot);
+            File.WriteAllText(Path.Combine(oldRoot, "rvtmcp.config.json"), "{}");
+
+            LegacyDataMigration.MigrateOnce(tempLocal);
+
+            Assert.False(Directory.Exists(Path.Combine(tempLocal, "Bimwright", "rvt-mcp")));
+            Assert.Equal("{}", File.ReadAllText(Path.Combine(sibling, "tool.json")));
+            Assert.True(File.Exists(Path.Combine(oldRoot, "rvtmcp.config.json")));
+        }
+        finally
+        {
+            Directory.Delete(tempLocal, recursive: true);
+        }
+    }
+
+    [Fact]
     public void MigrateOnce_CopiesBakedFolderAndCreatesMarker()
     {
         // Arrange: redirect LOCALAPPDATA to temp using parameterized helper.
