@@ -265,8 +265,8 @@ namespace RvtMcp.Server
         // under 2048 UTF-8 bytes. Lead with the keyword paragraph (highest discriminative
         // signal for queries like "list Revit tools"), then a compact toolset-name index
         // — 2 examples per toolset — so semantic search for individual ops still resolves.
-        private const string ServerInstructionsText =
-@"rvt-mcp — MCP gateway for Autodesk Revit 2022-2027. Use whenever user works with .rvt, Revit, BIM, walls, doors, windows, floors, ceilings, roofs, levels, grids, rooms, sheets, schedules, families, views, view templates, view filters, MEP (ducts, pipes, trays, conduits, HVAC, lighting, plumbing), structural (columns, beams, foundations, rebar), dimensions, tags, annotations, keynotes, worksets, phases, links, parameters, materials, IFC, DWG, NWC, PDF.
+        private const string ServerInstructionsText = LegacyUpdateNotice.InstructionsPrefix +
+@"rvt-mcp — MCP gateway for Autodesk Revit 2022-2027. Use for .rvt, Revit, BIM, walls, doors, windows, floors, ceilings, roofs, levels, grids, rooms, sheets, schedules, families, views, view templates, view filters, MEP (ducts, pipes, trays, conduits, HVAC, lighting, plumbing), structural (columns, beams, foundations, rebar), dimensions, tags, annotations, keynotes, worksets, phases, links, parameters, materials, IFC, DWG, NWC, PDF.
 
 Multi-Revit: if >1 Revit may be open, call revit_list_available_targets THEN revit_switch_target. Years are 2022-2027, not R-codes. Defaults: query,create,view,meta. --toolsets all for export/clash. Do not retry clash/export after 60s timeout.
 
@@ -286,14 +286,10 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - materials: list_materials, assign_material_to_element
 - geometry: clash_detection, measure_distance_between_elements
 - rooms: list_rooms, compute_room_finishes
-- links: project coordinates, link/acquire/publish
 - parameters: create_shared_parameter, create_project_parameter
-- organization: apply_view_template, save_selection
 - workflows: workflow_clash_review, workflow_model_audit
 - structural: create_structural_column, create_rebar_set
-- kei: query_kei_database, import_project_equipment
 - meta: send_code_to_revit, batch_execute, list_available_targets, switch_target
-- lint: find_untagged_elements, get_model_warnings_summary
 - toolbaker: list_baked_tools, run_baked_tool";
 
         private static bool IncludeSendCode(HashSet<string> enabled, RvtMcpConfig config)
@@ -564,6 +560,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 Session?.RecordCall(command, paramsJson, true, sw.ElapsedMilliseconds,
                     resultJson: data.ToString(Formatting.None));
                 UsageLogger?.RecordToolCall(command, paramsJson, true);
+                LegacyUpdateNotice.AttachOnce(data);
                 return data;
             }
             else
@@ -2196,7 +2193,8 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                     targets,
                     note = targets.Length == 0
                         ? "No revit-YYYY.json files found. Start Revit and ensure the rvt-mcp plugin is loaded (Add-Ins ribbon)."
-                        : "Pass any 'year' value above to revit_switch_target to route subsequent commands to that Revit."
+                        : "Pass any 'year' value above to revit_switch_target to route subsequent commands to that Revit.",
+                    update_notice = LegacyUpdateNotice.Text
                 }, Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
@@ -2217,7 +2215,8 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                     discovery_dir = AuthToken.DiscoveryDir(),
                     note = AuthToken.Target == null
                         ? "Auto-detect mode: next reconnect picks the first alive Revit (pipe 2027>2026>2025, then tcp 2024>2023>2022)."
-                        : "Pinned to Revit " + AuthToken.Target + ". Call revit_switch_target with version='auto' to clear the pin."
+                        : "Pinned to Revit " + AuthToken.Target + ". Call revit_switch_target with version='auto' to clear the pin.",
+                    update_notice = LegacyUpdateNotice.Text
                 }, Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }

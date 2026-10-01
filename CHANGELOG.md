@@ -5,7 +5,8 @@
 | Version | Date | Available as |
 |---|---|---|
 | Unreleased | — | Source on `master` only |
-| v0.6.3 | 2026-09-25 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.3) (latest) |
+| v0.6.4 | 2026-10-01 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.4) (legacy 0.6 line, update notice) |
+| v0.6.3 | 2026-09-25 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.3) |
 | v0.6.2 | 2026-09-22 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.2); NuGet `RvtMcp.Server` 0.6.2 |
 | v0.6.1 | 2026-08-28 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.1); NuGet `RvtMcp.Server` 0.6.1 |
 | v0.6.0 | — | Not published on its own; shipped inside v0.6.1 |
@@ -21,6 +22,14 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
+
+## v0.6.4 — 2026-10-01 (legacy)
+
+Rebuild of v0.6.3 from branch `legacy/v0.6.4`. Its only purpose is to tell AI agents and users that a newer rvt-mcp exists.
+
+- MCP `initialize` instructions now start with a short legacy-build notice pointing at https://github.com/bimwright/rvt-mcp/releases/latest.
+- The first successful Revit tool result of each server session, plus `revit_list_available_targets` and `revit_get_current_target`, carry an extra `update_notice` JSON field. Existing fields are unchanged.
+- No functional changes otherwise. Install the latest release instead of this one when you can.
 ## Unreleased
 
 No changes on `master` since v0.6.3 yet.
