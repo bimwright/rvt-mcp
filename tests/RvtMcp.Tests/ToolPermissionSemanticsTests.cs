@@ -55,7 +55,8 @@ namespace RvtMcp.Tests
             {
                 "compute_room_finishes", "export_room_data", "export_shared_parameter_file",
                 "get_material_takeoff", "import_cad_to_view", "link_revit_model", "list_bake_suggestions",
-                "open_model", "workflow_room_documentation"
+                "open_model", "workflow_room_documentation",
+                "record_change" // Adds one immutable reason/link; rejects calls already assigned to any reason.
             };
             foreach (var method in Tools())
             {
@@ -73,6 +74,7 @@ namespace RvtMcp.Tests
         [InlineData("revit_tag_all_walls")]
         [InlineData("revit_export_room_data")]
         [InlineData("revit_open_model")]
+        [InlineData("revit_record_change")]
         public void Additive_or_navigation_tools_do_not_gain_destructive_hints(string name)
         {
             var method = Assert.Single(Tools(), m => m.GetCustomAttribute<McpServerToolAttribute>().Name == name);

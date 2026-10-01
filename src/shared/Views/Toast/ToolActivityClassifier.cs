@@ -14,6 +14,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private static readonly HashSet<string> ExactWriteCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "batch_execute",
+            "record_change",
             "send_code_to_revit",
             "run_baked_tool",
             "capture_view_image", "get_material_takeoff", "compute_room_finishes",

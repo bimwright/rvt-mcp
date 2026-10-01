@@ -33,6 +33,7 @@ namespace RvtMcp.Plugin
         public const string EnvUiLanguage                = "BIMWRIGHT_UI_LANGUAGE";
         public const string EnvEnableSendCode = "BIMWRIGHT_ENABLE_SEND_CODE";
         public const string EnvEnableCallLog = "BIMWRIGHT_ENABLE_CALL_LOG";
+        public const string EnvEnableChangeHistory = "BIMWRIGHT_ENABLE_CHANGE_HISTORY";
         public const string EnvEnableResponseGuard = "BIMWRIGHT_ENABLE_RESPONSE_GUARD";
         public const string EnvResponseWarnBytes = "BIMWRIGHT_RESPONSE_WARN_BYTES";
         public const string EnvResponseStrongWarnBytes = "BIMWRIGHT_RESPONSE_STRONG_WARN_BYTES";
@@ -64,6 +65,9 @@ namespace RvtMcp.Plugin
 
         [JsonProperty("enableCallLog")]
         public bool? EnableCallLog { get; set; }
+
+        [JsonProperty("enableChangeHistory")]
+        public bool? EnableChangeHistory { get; set; }
 
         [JsonProperty("enableResponseGuard")]
         public bool? EnableResponseGuard { get; set; }
@@ -130,6 +134,7 @@ namespace RvtMcp.Plugin
         public bool ReadOnlyOrDefault              => ReadOnly           ?? DefaultReadOnly;
         public bool EnableSendCodeOrDefault => !ReadOnlyOrDefault && (EnableSendCode ?? true);
         public bool EnableCallLogOrDefault => EnableCallLog ?? false;
+        public bool EnableChangeHistoryOrDefault => EnableChangeHistory ?? true;
         public bool EnableResponseGuardOrDefault => EnableResponseGuard ?? true;
         public int ResponseWarnBytesOrDefault => PositiveBytes(ResponseWarnBytes, 64 * 1024, "responseWarnBytes");
         public int ResponseStrongWarnBytesOrDefault => PositiveBytes(ResponseStrongWarnBytes, 256 * 1024, "responseStrongWarnBytes");
@@ -160,6 +165,7 @@ namespace RvtMcp.Plugin
                 ReadOnly = ReadOnlyOrDefault,
                 EnableSendCode = EnableSendCodeOrDefault,
                 EnableCallLog = EnableCallLogOrDefault,
+                EnableChangeHistory = EnableChangeHistoryOrDefault,
                 EnableResponseGuard = EnableResponseGuardOrDefault,
                 ResponseWarnBytes = ResponseWarnBytesOrDefault,
                 ResponseStrongWarnBytes = ResponseStrongWarnBytesOrDefault,
@@ -175,6 +181,7 @@ namespace RvtMcp.Plugin
             result.ReadOnly = runtime.ReadOnly ?? ReadOnly;
             result.EnableSendCode = runtime.EnableSendCode ?? EnableSendCode;
             result.EnableCallLog = runtime.EnableCallLog ?? EnableCallLog;
+            result.EnableChangeHistory = runtime.EnableChangeHistory ?? EnableChangeHistory;
             result.EnableResponseGuard = runtime.EnableResponseGuard ?? EnableResponseGuard;
             result.ResponseWarnBytes = runtime.ResponseWarnBytes ?? ResponseWarnBytes;
             result.ResponseStrongWarnBytes = runtime.ResponseStrongWarnBytes ?? ResponseStrongWarnBytes;
@@ -331,6 +338,7 @@ namespace RvtMcp.Plugin
 
             config.EnableSendCode = ParseBool(lookup(EnvEnableSendCode)) ?? config.EnableSendCode;
             config.EnableCallLog = ParseBool(lookup(EnvEnableCallLog)) ?? config.EnableCallLog;
+            config.EnableChangeHistory = ParseBool(lookup(EnvEnableChangeHistory)) ?? config.EnableChangeHistory;
             config.EnableResponseGuard = ParseBool(lookup(EnvEnableResponseGuard)) ?? config.EnableResponseGuard;
             config.ResponseWarnBytes = ParseBytes(lookup(EnvResponseWarnBytes), EnvResponseWarnBytes) ?? config.ResponseWarnBytes;
             config.ResponseStrongWarnBytes = ParseBytes(lookup(EnvResponseStrongWarnBytes), EnvResponseStrongWarnBytes) ?? config.ResponseStrongWarnBytes;
@@ -428,6 +436,8 @@ namespace RvtMcp.Plugin
                     case "--disable-send-code": config.EnableSendCode = false; break;
                     case "--enable-call-log": config.EnableCallLog = true; break;
                     case "--disable-call-log": config.EnableCallLog = false; break;
+                    case "--enable-change-history": config.EnableChangeHistory = true; break;
+                    case "--disable-change-history": config.EnableChangeHistory = false; break;
                     case "--enable-response-guard": config.EnableResponseGuard = true; break;
                     case "--disable-response-guard": config.EnableResponseGuard = false; break;
                     case "--response-warn-bytes": config.ResponseWarnBytes = ReadBytes(args, ref i); break;

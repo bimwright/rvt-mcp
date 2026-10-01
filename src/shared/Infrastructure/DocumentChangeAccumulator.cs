@@ -12,6 +12,7 @@ namespace RvtMcp.Plugin
         public const int TrackingLimit = 50000;
         private readonly Dictionary<long, string> _kinds = new Dictionary<long, string>();
         private readonly Dictionary<long, string> _categories = new Dictionary<long, string>();
+        private readonly Dictionary<long, string> _uniqueIds = new Dictionary<long, string>();
         private readonly List<string> _transactions = new List<string>();
         private string _incomplete;
         private bool _namesTruncated;
@@ -26,7 +27,7 @@ namespace RvtMcp.Plugin
             _transactions.Add(name);
         }
 
-        public void Observe(long id, string kind, string category = null)
+        public void Observe(long id, string kind, string category = null, string uniqueId = null)
         {
             if (!_kinds.ContainsKey(id) && _kinds.Count >= TrackingLimit)
             {
@@ -38,10 +39,24 @@ namespace RvtMcp.Plugin
             {
                 _kinds.Remove(id);
                 _categories.Remove(id);
+                _uniqueIds.Remove(id);
                 return;
             }
             _kinds[id] = previous == "added" && kind == "modified" ? "added" : kind;
             if (category != null) _categories[id] = category;
+            if (uniqueId != null) _uniqueIds[id] = uniqueId;
+        }
+
+        public JArray HistoryElements()
+        {
+            // Unobservable rollback invalidates the alleged final set, not just the public summary.
+            if (_incomplete != null) return new JArray();
+            return new JArray(_kinds.OrderBy(p => p.Key).Select(p => new JObject
+            {
+                ["elementId"] = p.Key, ["kind"] = p.Value,
+                ["uniqueId"] = _uniqueIds.TryGetValue(p.Key, out var uniqueId) ? uniqueId : null,
+                ["category"] = _categories.TryGetValue(p.Key, out var category) ? category : null
+            }));
         }
 
         public JObject Snapshot(string document)

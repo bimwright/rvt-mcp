@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 227,
+  "tool_count": 229,
   "tools": [
     {
       "name": "revit_acquire_coordinates_from_link",
@@ -3800,6 +3800,48 @@
       }
     },
     {
+      "name": "revit_get_change_records",
+      "description_hash": "sha256:07cf3c2c8af8b3e2c8226cb92f6749aef723dc3b651308c1cfb50166094bfb71",
+      "inputSchema": {
+        "properties": {
+          "elementId": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "from": {
+            "description": "",
+            "type": "String"
+          },
+          "limit": {
+            "description": "",
+            "type": "Int32"
+          },
+          "modelKey": {
+            "description": "",
+            "type": "String"
+          },
+          "uniqueId": {
+            "description": "",
+            "type": "String"
+          },
+          "until": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "modelKey"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
       "name": "revit_get_current_target",
       "description_hash": "sha256:ec5bec0fb636c436d2c994d1dc76bf8cfec89b67d57be291c315fb83e7b0e75a",
       "inputSchema": {
@@ -6017,6 +6059,63 @@
         "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": true
+      }
+    },
+    {
+      "name": "revit_record_change",
+      "description_hash": "sha256:3f60be621280bd43ed1e879e5d3d772f56e1fd483df97faebe0cded3d3b8c39e",
+      "inputSchema": {
+        "properties": {
+          "alternativesJson": {
+            "description": "",
+            "type": "String"
+          },
+          "callIds": {
+            "description": "",
+            "type": "String"
+          },
+          "goal": {
+            "description": "",
+            "type": "String"
+          },
+          "modelKey": {
+            "description": "",
+            "type": "String"
+          },
+          "reason": {
+            "description": "",
+            "type": "String"
+          },
+          "remainingWorkJson": {
+            "description": "",
+            "type": "String"
+          },
+          "requestText": {
+            "description": "",
+            "type": "String"
+          },
+          "selectedOption": {
+            "description": "",
+            "type": "String"
+          },
+          "surveyJson": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "modelKey",
+          "callIds",
+          "requestText",
+          "goal"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {

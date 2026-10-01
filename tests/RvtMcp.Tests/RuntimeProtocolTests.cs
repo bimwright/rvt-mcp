@@ -30,6 +30,7 @@ namespace RvtMcp.Tests
             var root = Path.Combine(Path.GetTempPath(), "rvt-changes-" + Guid.NewGuid().ToString("N"));
             var original = ServerState.Config;
             var originalSend = ToolGateway.SendOverride;
+            var originalHistory = ToolGateway.History;
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             var pipeName = "rvt-changes-" + Guid.NewGuid().ToString("N");
             using var input = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
@@ -40,16 +41,24 @@ namespace RvtMcp.Tests
                 var config = new RvtMcpConfig { Toolsets = new List<string> { "meta" }, EnableCallLog = true };
                 ServerState.Config = config;
                 var session = new SessionContext(true, root);
+                ToolGateway.History = new ChangeHistoryStore(Path.Combine(root, "history"));
+                var historyPayload = ChangeHistoryTests.Capture(count: 12);
+                historyPayload["success"] = !failed;
+                var historyRequest = new ChangeHistoryRequest { Id = historyPayload.Value<string>("callId"), Session = historyPayload.Value<string>("session") };
                 ToolGateway.SendOverride = async (command, args, timeout) =>
                 {
                     await Task.Yield();
                     var a = new DocumentChangeAccumulator(); a.Observe(12, "modified", "Walls");
-                    return ToolGateway.InterpretResponse(new JObject
+                    var envelope = new JObject
                     {
                         ["success"] = !failed, ["data"] = new JObject { ["executed"] = true },
                         ["error"] = failed ? "failure after commit" : null,
-                        ["changes"] = new JObject { ["complete"] = true, ["documents"] = new JArray(a.Snapshot("Sample")) }
-                    });
+                        ["changes"] = new JObject { ["complete"] = true, ["documents"] = new JArray(a.Snapshot("Sample")) },
+                        ["history_transfer"] = new JObject { ["id"] = historyRequest.Id }
+                    };
+                    ToolGateway.History.Transfer.Write(historyRequest.Id, historyPayload);
+                    ToolGateway.CaptureHistory(envelope, historyRequest);
+                    return ToolGateway.InterpretResponse(envelope);
                 };
                 var builder = Host.CreateApplicationBuilder(); builder.Logging.ClearProviders();
                 var mcp = builder.Services.AddMcpServer().WithStreamServerTransport(input, input);
@@ -62,13 +71,19 @@ namespace RvtMcp.Tests
                 Assert.Equal(failed, response.IsError == true);
                 var data = JObject.Parse(((TextContentBlock)response.Content[0]).Text);
                 Assert.Equal(12, data["_changes"]["documents"][0]["modified"]["ids"][0].Value<int>());
+                Assert.Equal("recorded", data["_history"].Value<string>("status"));
+                Assert.Equal(historyRequest.Id, data["_history"].Value<string>("callId"));
+                Assert.DoesNotContain("private-client", data.ToString());
+                Assert.DoesNotContain("history_transfer", data.ToString());
+                var persisted = Assert.Single(ToolGateway.History.Query(historyPayload["activeModel"].Value<string>("key"))["calls"]);
+                Assert.Equal(!failed, persisted.Value<bool>("success"));
                 var entry = Assert.Single(session.Journal.ReadDay(DateTime.UtcNow.ToString("yyyy-MM-dd")));
                 Assert.Equal(12, entry.Changes["documents"][0]["modified"]["ids"][0].Value<int>());
                 await client.DisposeAsync(); await host.StopAsync(deadline.Token);
             }
             finally
             {
-                ServerState.Config = original; ToolGateway.SendOverride = originalSend;
+                ServerState.Config = original; ToolGateway.SendOverride = originalSend; ToolGateway.History = originalHistory;
                 if (Directory.Exists(root)) Directory.Delete(root, true);
             }
         }

@@ -17,6 +17,7 @@ namespace RvtMcp.Plugin
         public string CommandName { get; set; }
         public string ParamsJson { get; set; }
         public RvtMcpConfig RuntimeOptions { get; set; }
+        public ChangeHistoryRequest History { get; set; }
         public TaskCompletionSource<string> Tcs { get; set; }
     }
 
@@ -59,6 +60,8 @@ namespace RvtMcp.Plugin
                 var sw = Stopwatch.StartNew();
                 var runtimeConfig = new RvtMcpConfig();
                 JObject changes = null;
+                JObject history = null;
+                JObject historyMarker = null;
                 try
                 {
                     runtimeConfig = RvtMcpConfig.LoadReadOnly().WithRuntimeOptions(request.RuntimeOptions);
@@ -153,7 +156,7 @@ namespace RvtMcp.Plugin
                     }
 
                     CommandResult result;
-                    using (var capture = McpChangeTracker.Begin())
+                    using (var capture = McpChangeTracker.Begin(request.History?.IsValid == true && runtimeConfig.EnableChangeHistoryOrDefault))
                     {
                         bool rolledBack = false;
                         try
@@ -162,7 +165,12 @@ namespace RvtMcp.Plugin
                             rolledBack = request.CommandName == "batch_execute"
                                 && result.Data != null && JObject.FromObject(result.Data).Value<bool>("rolledBack");
                         }
-                        finally { changes = capture.Snapshot(rolledBack); }
+                        finally
+                        {
+                            changes = capture.Snapshot(rolledBack);
+                            try { history = capture.HistorySnapshot(app.ActiveUIDocument?.Document, rolledBack); }
+                            catch { historyMarker = new JObject { ["status"] = "capture_failed" }; }
+                        }
                     }
                     sw.Stop();
                     // Spill may replace result.Data; the outcome is judged on the handler's own data.
@@ -179,6 +187,9 @@ namespace RvtMcp.Plugin
                     });
                     var envelope = JObject.Parse(preSpillResponse);
                     if (changes != null) envelope["changes"] = changes;
+                    // Reserve the small receipt marker in the response budget before writing the capture.
+                    if (history != null || historyMarker != null)
+                        envelope["history_transfer"] = historyMarker ?? new JObject { ["id"] = request.History.Id };
                     var preGuard = ResponseEnvelopeGuard.Apply(request.CommandName, request.ParamsJson,
                         envelope, runtimeConfig);
                     result.Data = preGuard["data"];
@@ -209,7 +220,6 @@ namespace RvtMcp.Plugin
                         : responseResultJson;
 
                     var resultError = McpResponsePrivacy.RedactErrorForResponse(result.Error);
-                    var response = preGuard.ToString(Formatting.None);
                     string rejectError = result.Success && !preGuard.Value<bool>("success")
                         ? preGuard.Value<string>("error") : null;
 
@@ -217,6 +227,9 @@ namespace RvtMcp.Plugin
                     // size guard so a rejected response is not recorded as a success.
                     var outcome = CommandOutcome.Normalize(
                         request.CommandName, result.Success, handlerData, resultError, rejectError);
+                    historyMarker = historyMarker ?? PublishHistory(request, history, outcome.Success, handlerData, app.Application.VersionNumber);
+                    if (historyMarker != null) preGuard["history_transfer"] = historyMarker;
+                    var response = preGuard.ToString(Formatting.None);
 
                     McpLogger.Log(request.CommandName, request.ParamsJson, outcome.Success,
                                   sw.ElapsedMilliseconds, outcome.Error, codeSnippet, resultJson, runtimeConfig.EnableCallLogOrDefault);
@@ -287,6 +300,8 @@ namespace RvtMcp.Plugin
                         error = exError
                     });
                     if (changes != null) errorEnvelope["changes"] = changes;
+                    historyMarker = historyMarker ?? PublishHistory(request, history, false, null, app.Application.VersionNumber);
+                    if (historyMarker != null) errorEnvelope["history_transfer"] = historyMarker;
                     if (changes != null)
                     {
                         try { errorEnvelope = ResponseEnvelopeGuard.Apply(request.CommandName, request.ParamsJson, errorEnvelope, runtimeConfig); }
@@ -321,6 +336,35 @@ namespace RvtMcp.Plugin
         }
 
         public string GetName() => "RvtMcp.McpEventHandler";
+
+        private static JObject PublishHistory(PendingRequest request, JObject history, bool success, object data, string revitYear)
+        {
+            if (history == null) return null;
+            try
+            {
+                history["callId"] = request.History.Id;
+                history["session"] = request.History.Session;
+                history["tool"] = request.CommandName;
+                history["at"] = DateTime.UtcNow.ToString("o");
+                history["success"] = success;
+                history["revitYear"] = revitYear;
+                history["user"] = Environment.UserName;
+                history["machine"] = Environment.MachineName;
+                // The handler returns updated rows only after commit, including partial-success calls.
+                if (request.CommandName == "set_element_parameter_values" && data != null)
+                {
+                    var values = JObject.FromObject(data);
+                    history["parameterValues"] = new JObject { ["parameter"] = values["parameterName"], ["updated"] = values["updated"] };
+                }
+                new ChangeHistoryTransfer().Write(request.History.Id, history);
+                return new JObject { ["id"] = request.History.Id };
+            }
+            catch
+            {
+                // History failure must never change or replay an already completed Revit operation.
+                return new JObject { ["status"] = "capture_failed" };
+            }
+        }
 
         public void CancelAll()
         {

@@ -71,6 +71,8 @@ namespace RvtMcp.Server
             // Initialize memory system (shared across tool classes + resources)
             var session = new Memory.SessionContext(config.EnableCallLogOrDefault);
             ToolGateway.Session = session;
+            ToolGateway.History = new Memory.ChangeHistoryStore();
+            if (config.EnableChangeHistoryOrDefault) ToolGateway.History.RecoverPending();
             ToolGateway.UsageLogger = new UsageEventLogger(bakePaths, config);
             RevitResources.Session = session;
 
@@ -207,6 +209,8 @@ namespace RvtMcp.Server
                 "  --disable-send-code     Hide send_code_to_revit. --read-only also hides it.",
                 "  --enable-call-log       Persist tool-call params/results in server and plugin logs (default OFF).",
                 "  --disable-call-log      Suppress call logs, including the send_code body journal.",
+                "  --enable-change-history / --disable-change-history (default ON)",
+                "                          Local per-model change/reason history, independent of call logs.",
                 "",
                 "Response limits (UTF-8 bytes, integers >=1024; warn <= strong <= budget <= max):",
                 "  --enable-response-guard / --disable-response-guard (default ON)",
@@ -369,6 +373,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 types.Add(typeof(AdaptiveBakeTools));
             if (IncludeSendCode(enabled, config)) types.Add(typeof(SendCodeTools));
             if (enabled.Contains("meta"))       types.Add(typeof(MetaTools));
+            if (enabled.Contains("meta"))       types.Add(typeof(ChangeHistoryTools));
             if (enabled.Contains("lint"))       types.Add(typeof(LintTools));
             if (enabled.Contains("structural")) types.Add(typeof(StructuralTools));
             return types.ToArray();
@@ -383,6 +388,8 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
     internal static class ToolGateway
     {
         public static Memory.SessionContext Session { get; set; }
+        internal static Memory.ChangeHistoryStore History { get; set; }
+        private static readonly string HistorySession = Guid.NewGuid().ToString("N");
         public static UsageEventLogger UsageLogger { get; set; }
         public static string CurrentRevitVersion { get; private set; }
 
@@ -602,7 +609,8 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             EnsureConnected();
 
             var id = $"req-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
-            var request = JsonConvert.SerializeObject(new { id, command, @params = parameters ?? new { }, token = _token, timeout_seconds = timeoutSeconds, runtime = config.ToRuntimeOptions() }, RequestJsonSettings);
+            var history = config.EnableChangeHistoryOrDefault ? new ChangeHistoryRequest { Id = Guid.NewGuid().ToString("N"), Session = HistorySession } : null;
+            var request = JsonConvert.SerializeObject(new { id, command, @params = parameters ?? new { }, token = _token, timeout_seconds = timeoutSeconds, runtime = config.ToRuntimeOptions(), history }, RequestJsonSettings);
 
             var tcs = new TaskCompletionSource<string>();
             _pending[id] = tcs;
@@ -628,7 +636,25 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             var response = JObject.Parse(responseLine);
             var paramsJson = parameters != null ? JsonConvert.SerializeObject(parameters, RequestJsonSettings) : null;
             UsageLogger?.RecordToolCall(command, paramsJson, response.Value<bool>("success"));
+            CaptureHistory(response, history);
             return InterpretResponse(response);
+        }
+
+        internal static void CaptureHistory(JObject response, ChangeHistoryRequest request)
+        {
+            if (request == null) return;
+            JObject receipt = null;
+            var marker = response["history_transfer"] as JObject;
+            if (marker?.Value<string>("id") == request.Id)
+            {
+                try { receipt = (History ??= new Memory.ChangeHistoryStore()).Consume(request.Id); }
+                catch { receipt = new JObject { ["status"] = "storage_failed", ["callId"] = request.Id,
+                    ["note"] = "Change history could not be recorded. The private capture remains pending for recovery. Do not repeat the model operation." }; }
+            }
+            else if (marker != null || response["changes"] != null)
+                receipt = new JObject { ["status"] = "unavailable",
+                    ["note"] = "Change history is unavailable for this operation. Check plugin compatibility or local storage; do not repeat the model operation." };
+            if (receipt != null) ChangeCaptureContext.RecordHistory(receipt);
         }
 
         internal static JObject InterpretResponse(JObject response)

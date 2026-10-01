@@ -1,6 +1,6 @@
 # Disciplined model change   (argument: change = the requested model change)
 
-Goal: survey first, make the smallest agreed change, read back the result, and record why in this conversation. Nothing is written before I confirm the concrete proposal.
+Goal: survey first, make the smallest agreed change, read back the result, and record why in this conversation and available local change history. Nothing is written before I confirm the concrete proposal.
 Requested change: {change}
 Session: {mode}
 
@@ -33,6 +33,7 @@ Steps
 6. Read back the agreed targets and properties with the same query tools; compare before, intended and observed after values. Check related elements only within verified coverage. Distinguish dry-run, rollback, failure, unknown outcome and applied changes; inspect each batch result and rolledBack. After a timeout or ambiguous result, inspect current state before any further write; never replay a possibly completed mutation to obtain a fuller response. Stop on unexpected changes or incomplete verification and explain what remains unresolved.
 
 Report (change record in this conversation)
+- Keep the server-issued callId and modelKey/models from each write's _history receipt before readback calls. If revit_record_change is exposed and history was recorded, attach only the explicit callIds for this agreed change in each model, using my request, goal and reason. Do not collect unrelated pending calls or invent changed-element lists. Empty reason remains unknown. If history is unavailable, disabled, partial or storage_failed, state that limitation and keep the conversation record; never repeat a model write to repair history. revit_get_change_records can query stored element IDs beyond the public summary cap.
 - If a response includes _changes, compare each document's added/modified/deleted IDs with the agreed scope. Check complete, status and truncated before claiming coverage; null counts mean unknown, not zero. These are committed element events, not a parameter diff or proof of engineering correctness. An absent _changes does not prove no change when the outcome or plugin capability is unknown. Keep readback for the actual values; do not replay a write to recover omitted IDs.
 - Request (my words) | Goal | Reason (mine, or "unknown")
 - Confirmed scope and option; rejected alternatives
@@ -46,4 +47,4 @@ Do not
 - Do not write before confirmation, invent a reason, expand the agreed scope, or tidy unrelated elements/warnings.
 - Do not bypass read-only mode, tool exposure, or the Revit transaction/Undo model.
 - Do not treat absent or incomplete evidence as a passed check. Do not claim engineering or issue readiness from this survey.
-- Do not claim this conversation record is a persistent change database or automatic tracking of actual changed elements. This prompt guides the agent; it is not a server-enforced workflow lock.
+- Do not claim persistence without a successful history receipt. History records observed MCP transactions; it does not prove Save/Sync, later manual Undo state, or engineering correctness. This prompt guides the agent; it is not a server-enforced workflow lock.

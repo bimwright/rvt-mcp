@@ -11,10 +11,10 @@ namespace RvtMcp.Plugin
     {
         private static Scope _active;
 
-        public static Scope Begin()
+        public static Scope Begin(bool history = false)
         {
             if (_active != null) throw new InvalidOperationException("A change capture scope is already active.");
-            return _active = new Scope();
+            return _active = new Scope(history);
         }
 
         public static void OnDocumentChanged(object sender, DocumentChangedEventArgs e)
@@ -29,7 +29,10 @@ namespace RvtMcp.Plugin
         {
             private readonly Dictionary<Document, DocumentChangeAccumulator> _documents = new Dictionary<Document, DocumentChangeAccumulator>();
             private readonly Dictionary<Document, string> _titles = new Dictionary<Document, string>();
+            private readonly Dictionary<Document, JObject> _identities = new Dictionary<Document, JObject>();
+            private readonly bool _history;
             internal bool Incomplete;
+            internal Scope(bool history) { _history = history; }
 
             internal void Record(DocumentChangedEventArgs e)
             {
@@ -39,8 +42,8 @@ namespace RvtMcp.Plugin
                 {
                     if (_documents.Count >= 8) { Incomplete = true; return; }
                     _documents[doc] = changes = new DocumentChangeAccumulator();
-                    // B has no persistence consumer: do not collect local/cloud model paths at all.
                     _titles[doc] = doc.Title;
+                    if (_history) _identities[doc] = Identity(doc);
                 }
                 if (e.Operation != UndoOperation.TransactionCommitted)
                 {
@@ -53,14 +56,65 @@ namespace RvtMcp.Plugin
                 Observe(doc, changes, e.GetDeletedElementIds(), "deleted");
             }
 
-            private static void Observe(Document doc, DocumentChangeAccumulator changes, ICollection<ElementId> ids, string kind)
+            private void Observe(Document doc, DocumentChangeAccumulator changes, ICollection<ElementId> ids, string kind)
             {
                 foreach (var id in ids)
                 {
                     // Deleted elements no longer exist. Do not scan the whole model to guess their category.
                     var element = kind == "deleted" ? null : doc.GetElement(id);
-                    changes.Observe(RevitCompat.GetId(id), kind, element?.Category?.Name);
+                    changes.Observe(RevitCompat.GetId(id), kind, element?.Category?.Name, _history ? element?.UniqueId : null);
                 }
+            }
+
+            private static JObject Identity(Document doc)
+            {
+                if (doc == null) return null;
+                try
+                {
+                    // A detached session must not write history into the source central's database.
+                    if (doc.IsDetached) return null;
+                    JObject identity;
+                    if (doc.IsModelInCloud)
+                    {
+                        var cloud = doc.GetCloudModelPath();
+                        identity = ChangeHistoryIdentity.Create(cloud.GetProjectGUID() + "/" + cloud.GetModelGUID(), "cloud", doc.Title);
+                    }
+                    else
+                    {
+                        var path = doc.IsWorkshared
+                            ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath()) : doc.PathName;
+                        identity = ChangeHistoryIdentity.Create(path, doc.IsWorkshared ? "central" : "file", doc.Title, path);
+                    }
+                    if (identity != null)
+                    {
+                        identity["workshared"] = doc.IsWorkshared;
+                        if (!doc.IsFamilyDocument)
+                        {
+                            identity["projectName"] = BakeRedactor.RedactForBake(doc.ProjectInformation?.Name ?? "");
+                            identity["projectNumber"] = BakeRedactor.RedactForBake(doc.ProjectInformation?.Number ?? "");
+                        }
+                    }
+                    return identity;
+                }
+                catch { return null; } // Never assign a title-based identity when the authoritative identity is unavailable.
+            }
+
+            public JObject HistorySnapshot(Document activeDocument, bool batchRolledBack = false)
+            {
+                if (!_history) return null;
+                var documents = new JArray();
+                if (!batchRolledBack)
+                    foreach (var pair in _documents)
+                    {
+                        var summary = pair.Value.Snapshot(_titles[pair.Key]);
+                        if (summary != null) documents.Add(new JObject
+                        {
+                            ["model"] = _identities[pair.Key], ["summary"] = summary,
+                            ["elements"] = pair.Value.HistoryElements()
+                        });
+                    }
+                return new JObject { ["activeModel"] = Identity(activeDocument), ["documents"] = documents,
+                    ["complete"] = batchRolledBack || !Incomplete };
             }
 
             public JObject Snapshot(bool batchRolledBack = false)
