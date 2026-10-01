@@ -139,7 +139,7 @@ namespace RvtMcp.Plugin
         public static string DefaultConfigFilePath =>
             Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RvtMcp",
+                "Bimwright", "rvt-mcp",
                 "rvtmcp.config.json");
 
         /// <summary>Test hook: redirects every Load that does not pass an explicit path.</summary>
@@ -808,7 +808,7 @@ namespace RvtMcp.Plugin
         private static bool IsAllowedConfigDirectory(string directory, bool explicitPath)
         {
             var profileRoot = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RvtMcp");
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bimwright", "rvt-mcp");
             if (IsPathWithin(directory, profileRoot))
                 return true;
 

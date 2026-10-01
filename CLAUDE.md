@@ -14,7 +14,7 @@ Two processes:
 - **RvtMcp.Server.exe** — MCP Server, runs as separate process, stdio transport (ModelContextProtocol NuGet)
 - **RvtMcp.Plugin.dll** — Revit addin, loads inside Revit.exe, TCP listener (R22–R24) or Named Pipe (R25–R27) + ExternalEvent marshalling. Each Revit version gets its own shell DLL compiled from the same `src/shared/` source glob.
 
-Communication: newline-delimited JSON (NDJSON). Discovery files written per Revit version in `%LOCALAPPDATA%\RvtMcp\`:
+Communication: newline-delimited JSON (NDJSON). Discovery files written per Revit version in `%LOCALAPPDATA%\Bimwright\rvt-mcp\`:
 - `revit-2022.json` / `revit-2023.json` / `revit-2024.json` — TCP transport (port OS-assigned) + auth token + PID
 - `revit-2025.json` / `revit-2026.json` / `revit-2027.json` — Named Pipe transport + auth token + PID
 
@@ -84,7 +84,7 @@ MCP Server runs from `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`.
 - ConcurrentQueue<PendingRequest> with per-request TaskCompletionSource
 - ExternalEvent.Raise() marshals to Revit UI thread
 - One live command per ExternalEvent (re-Raise if the queue still has work); skip completed TCS (timeout/cancel)
-- Wire responses: agent-visible warning from 64 KiB, strong warning above 256 KiB; past the ~700 KiB enforcement budget (compact bytes; headroom below the 1 MiB delivered ceiling) reads reject with command-specific scope hints and completed mutations return compact `success=true` summaries. Eight approved bulk tools support `output=inline|file` to `%LOCALAPPDATA%\RvtMcp\spill\`; `send_code` and oversized `run_baked_tool` output auto-spill. Spill files are local same-machine artifacts, expire after 24h, and are capped at 50.
+- Wire responses: agent-visible warning from 64 KiB, strong warning above 256 KiB; past the ~700 KiB enforcement budget (compact bytes; headroom below the 1 MiB delivered ceiling) reads reject with command-specific scope hints and completed mutations return compact `success=true` summaries. Eight approved bulk tools support `output=inline|file` to `%LOCALAPPDATA%\Bimwright\rvt-mcp\spill\`; `send_code` and oversized `run_baked_tool` output auto-spill. Spill files are local same-machine artifacts, expire after 24h, and are capped at 50.
 - Shutdown: cancel all pending TCS, stop transport, dispose ExternalEvent
 
 ### Commands

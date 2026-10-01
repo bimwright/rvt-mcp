@@ -14,7 +14,7 @@ what `-Client` does under the hood. Last verified on a live machine:
 |---|---|
 | Entry name | `rvt-mcp` — exactly one entry per client |
 | Transport | stdio |
-| Command | `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` (absolute) |
+| Command | `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe` (absolute) |
 | Args | none required (`--toolsets all`, `--read-only` optional) |
 
 The `current` path never changes across upgrades — wire once, upgrade freely.
@@ -67,7 +67,7 @@ three things differ — plan around them:
 ### Claude Code (CLI — preferred path)
 
 ```powershell
-claude mcp add -s user rvt-mcp -- "$env:LOCALAPPDATA\RvtMcp\rvt\server\current\rvt-mcp.exe"
+claude mcp add -s user rvt-mcp -- "$env:LOCALAPPDATA\Bimwright\rvt-mcp\server\current\rvt-mcp.exe"
 claude mcp get rvt-mcp     # expect Scope: User config, Status: Connected
 ```
 
@@ -90,7 +90,7 @@ claude mcp get rvt-mcp     # expect Scope: User config, Status: Connected
 ### Codex (CLI)
 
 ```powershell
-codex mcp add rvt-mcp -- "$env:LOCALAPPDATA\RvtMcp\rvt\server\current\rvt-mcp.exe"
+codex mcp add rvt-mcp -- "$env:LOCALAPPDATA\Bimwright\rvt-mcp\server\current\rvt-mcp.exe"
 codex mcp get rvt-mcp --json   # verify transport.command
 ```
 
@@ -120,7 +120,7 @@ codex mcp get rvt-mcp --json   # verify transport.command
 ### Grok (CLI)
 
 ```powershell
-grok mcp add rvt-mcp "$env:LOCALAPPDATA\RvtMcp\rvt\server\current\rvt-mcp.exe" --transport stdio
+grok mcp add rvt-mcp "$env:LOCALAPPDATA\Bimwright\rvt-mcp\server\current\rvt-mcp.exe" --transport stdio
 grok mcp list; grok mcp doctor
 ```
 

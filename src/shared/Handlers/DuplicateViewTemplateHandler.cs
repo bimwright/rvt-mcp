@@ -62,8 +62,10 @@ namespace RvtMcp.Plugin.Handlers
                 tx.Start();
                 try
                 {
-                    var copyId = template.Duplicate(ViewDuplicateOption.Duplicate);
-                    duplicatedTemplate = doc.GetElement(copyId) as View;
+                    // View.Duplicate rejects template views by API design; the supported
+                    // copy is CreateViewTemplate(), which snapshots this view's settings
+                    // into a new template element.
+                    duplicatedTemplate = template.CreateViewTemplate();
                     if (duplicatedTemplate == null)
                     {
                         tx.RollBack();

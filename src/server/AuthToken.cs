@@ -9,7 +9,7 @@ namespace RvtMcp.Server
 {
     /// <summary>
     /// Snapshot of a Revit plugin advertising itself via a discovery file in
-    /// %LOCALAPPDATA%\RvtMcp\revit-YYYY.json.
+    /// %LOCALAPPDATA%\Bimwright\rvt-mcp\revit-YYYY.json.
     /// </summary>
     internal sealed class DiscoveredRevit
     {
@@ -43,7 +43,7 @@ namespace RvtMcp.Server
         {
             return Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RvtMcp");
+                "Bimwright", "rvt-mcp");
         }
 
         public static string DiscoveryFileName(string year)

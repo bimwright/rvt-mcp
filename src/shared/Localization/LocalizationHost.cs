@@ -35,11 +35,11 @@ namespace RvtMcp.Plugin.Localization
         private readonly Dictionary<string, Dictionary<string, string>> _lastGood =
             new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
 
-        /// <summary>%LOCALAPPDATA%\RvtMcp\locales — shared by all Revit instances.</summary>
+        /// <summary>%LOCALAPPDATA%\Bimwright\rvt-mcp\locales — shared by all Revit instances.</summary>
         public static string DefaultOverrideDir =>
             Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RvtMcp", "locales");
+                "Bimwright", "rvt-mcp", "locales");
 
         public string OverrideDir => _overrideDir;
 

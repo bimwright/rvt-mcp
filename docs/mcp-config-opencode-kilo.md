@@ -63,7 +63,7 @@ For RvtMcp, **prefer user-level XDG path on Windows**: `%USERPROFILE%\.config\op
     "rvt-mcp": {
       "type": "local",
       "command": [
-        "C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
+        "C:\\Users\\<user>\\AppData\\Local\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe"
       ],
       "environment": {
         "BIMWRIGHT_READ_ONLY": "0",
@@ -164,7 +164,7 @@ Precedence: **project > global** (project wins on conflicting keys, no merge bey
     "rvt-mcp": {
       "type": "local",
       "command": [
-        "C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
+        "C:\\Users\\<user>\\AppData\\Local\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe"
       ],
       "environment": {
         "BIMWRIGHT_READ_ONLY": "0"
@@ -283,7 +283,7 @@ The installer **no longer edits client configs** — wire both clients by editin
 ```jsonc
 "rvt-mcp": {
   "type": "local",
-  "command": ["C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"],
+  "command": ["C:\\Users\\<user>\\AppData\\Local\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe"],
   "enabled": true
 }
 ```

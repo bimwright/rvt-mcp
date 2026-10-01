@@ -51,7 +51,7 @@ Expand-Archive "$dir.zip" -DestinationPath $dir -Force
 powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-Một lần chạy cài cả hai phía: add-in cho mọi bản Revit 2022–2027 trên máy, và entry `rvt-mcp` trong mọi MCP client tìm thấy (mỗi config được backup trước). Thêm `-WhatIf` để xem trước, `-Client claude,cursor` để chỉ nối các client đó, hoặc `-Client none` để không đụng config client và tự đăng ký server — nằm ở `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` ([các bước cho từng client](docs/mcp-client-wiring.md)).
+Một lần chạy cài cả hai phía: add-in cho mọi bản Revit 2022–2027 trên máy, và entry `rvt-mcp` trong mọi MCP client tìm thấy (mỗi config được backup trước). Thêm `-WhatIf` để xem trước, `-Client claude,cursor` để chỉ nối các client đó, hoặc `-Client none` để không đụng config client và tự đăng ký server — nằm ở `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe` ([các bước cho từng client](docs/mcp-client-wiring.md)).
 
 **Kiểm tra:** khởi động lại AI client, mở một model trong Revit, bật MCP trên ribbon (**Add-Ins** → **RvtMcp**) rồi nhờ agent gọi `revit_get_current_view_info`. Kết quả phải là tên và loại của view đang mở.
 
@@ -131,7 +131,7 @@ Toast **bật mặc định** và có thể tắt. Trong **Settings → Toast**,
 
 ## Cấu hình
 
-Ưu tiên, cao thắng: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json`.
+Ưu tiên, cao thắng: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`.
 
 | Setting | CLI | Env | JSON |
 |---------|-----|-----|------|
@@ -167,7 +167,7 @@ Chỉ Revit desktop đầy đủ; Revit Viewer không được hỗ trợ. CI bu
 
 ## Bảo mật và privacy
 
-- Mặc định local: loopback TCP hoặc named pipe local, kèm auth token theo session trong các file discovery dưới `%LOCALAPPDATA%\RvtMcp\`.
+- Mặc định local: loopback TCP hoặc named pipe local, kèm auth token theo session trong các file discovery dưới `%LOCALAPPDATA%\Bimwright\rvt-mcp\`.
 - Argument tool được schema-check trước khi handler chạy; lỗi trả về model được sanitize.
 - `send_code` chạy C# tùy ý trong process Revit — mạnh và rủi ro. Dùng `--read-only` hoặc `--disable-toolbaker` nếu không chấp nhận được.
 - Adaptive bake, body cache và journal send_code đều opt-in và nằm dưới profile user; mặc định không ghi raw body send_code vào log dài hạn.

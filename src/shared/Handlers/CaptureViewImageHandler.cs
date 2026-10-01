@@ -10,8 +10,8 @@ namespace RvtMcp.Plugin.Handlers
     public class CaptureViewImageHandler : IRevitCommand
     {
         public string Name => "capture_view_image";
-        public string Description => "Export a view to a raster image (png/jpeg). output_path is optional; if provided it must be absolute and inside %TEMP% or %LOCALAPPDATA%\\RvtMcp\\captures\\. Returns saved path + pixel size.";
-        public string ParametersSchema => @"{""type"":""object"",""properties"":{""view_id"":{""type"":""integer""},""output_path"":{""type"":""string"",""description"":""Optional absolute path inside %TEMP% or %LOCALAPPDATA%\\RvtMcp\\captures\\. Defaults to a generated name under captures.""},""pixel_size"":{""type"":""integer"",""default"":1600},""image_format"":{""type"":""string"",""enum"":[""png"",""jpeg""],""default"":""png""}},""required"":[]}";
+        public string Description => "Export a view to a raster image (png/jpeg). output_path is optional; if provided it must be absolute and inside %TEMP% or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\. Returns saved path + pixel size.";
+        public string ParametersSchema => @"{""type"":""object"",""properties"":{""view_id"":{""type"":""integer""},""output_path"":{""type"":""string"",""description"":""Optional absolute path inside %TEMP% or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\. Defaults to a generated name under captures.""},""pixel_size"":{""type"":""integer"",""default"":1600},""image_format"":{""type"":""string"",""enum"":[""png"",""jpeg""],""default"":""png""}},""required"":[]}";
 
         public CommandResult Execute(UIApplication app, string paramsJson)
         {

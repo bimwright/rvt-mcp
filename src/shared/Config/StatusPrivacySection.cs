@@ -31,7 +31,7 @@ namespace RvtMcp.Plugin
             }
 
             sb.AppendLine();
-            sb.Append("Note: change adaptive/cache/persist via env, CLI, or %LOCALAPPDATA%\\RvtMcp\\rvtmcp.config.json; restart MCP client after server flags change. Default privacy keeps body cache and journal OFF.");
+            sb.Append("Note: change adaptive/cache/persist via env, CLI, or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\rvtmcp.config.json; restart MCP client after server flags change. Default privacy keeps body cache and journal OFF.");
             return sb.ToString();
         }
 

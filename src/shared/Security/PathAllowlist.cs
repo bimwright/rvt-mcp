@@ -12,7 +12,7 @@ namespace RvtMcp.Plugin
         public static string CapturesDirectory =>
             Path.GetFullPath(Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RvtMcp",
+                "Bimwright", "rvt-mcp",
                 "captures"));
 
         public static string TempDirectory => Path.GetFullPath(Path.GetTempPath());

@@ -11,7 +11,7 @@ namespace RvtMcp.Plugin
                 ? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
                 : localAppDataPath;
             var legacy = Path.Combine(local, "Bimwright");
-            var current = Path.Combine(local, "RvtMcp");
+            var current = Path.Combine(local, "Bimwright", "rvt-mcp");
             var marker = Path.Combine(current, ".migrated-from-bimwright");
 
             if (!Directory.Exists(legacy)) return;

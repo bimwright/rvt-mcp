@@ -12,7 +12,7 @@ namespace RvtMcp.Plugin
         public static string LocalAppDataOverride { get; set; }
 
         private static string RootDir =>
-            LocalAppDataOverride ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RvtMcp");
+            LocalAppDataOverride ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bimwright", "rvt-mcp");
 
         public static string JournalPath => Path.Combine(RootDir, "send-code-journal.jsonl");
 

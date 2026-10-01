@@ -55,7 +55,7 @@
   "revit_create_view": "Create a view (floorplan or 3d). Params: viewType ('floorplan' or '3d'), level (name, required for floorplan), name (optional).",
   "revit_place_view_on_sheet": "Place a view on a sheet. Auto-creates sheet if sheetId omitted. Params: viewId (required), sheetId (optional), sheetNumber (optional), sheetName (optional).",
   "revit_analyze_sheet_layout": "Analyze title block and a bounded viewport page in mm. Use startViewport + maxViewports (hard max 500).",
-  "revit_capture_view_image": "Export a view to a raster image. output_path is optional; if provided it must be absolute and inside %TEMP% or %LOCALAPPDATA%\\RvtMcp\\captures\\. Params: view_id…",
+  "revit_capture_view_image": "Export a view to a raster image. output_path is optional; if provided it must be absolute and inside %TEMP% or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\. Params: view_id…",
   "revit_set_view_crop": "Modify view crop: enabled, visible, explicit bounds_json (mm), or fit_element_ids with padding_mm. Params: view_id (optional, default active), enabled, visible…",
   "revit_set_view_scale": "Set the graphical scale denominator of a view (e.g., 50 for 1:50). Params: view_id (optional, default active), scale (required, positive integer).",
   "revit_activate_view": "Set the active view in Revit UI. UI-only operation. Params: view_id OR view_name (required).",

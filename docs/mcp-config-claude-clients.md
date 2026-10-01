@@ -51,16 +51,16 @@ claude mcp add [options] <name> -- <command> [args...]
 
 ```bash
 # Local scope (default): only this project — usually NOT what you want
-claude mcp add rvt-mcp -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
+claude mcp add rvt-mcp -- "%LOCALAPPDATA%\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe"
 
 # User scope: every project on this machine (recommended)
-claude mcp add rvt-mcp --scope user -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
+claude mcp add rvt-mcp --scope user -- "%LOCALAPPDATA%\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe"
 
 # Project scope: write into .mcp.json (commit to repo, team uses it)
-claude mcp add rvt-mcp --scope project -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
+claude mcp add rvt-mcp --scope project -- "%LOCALAPPDATA%\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe"
 
 # Pin a specific Revit year (server otherwise auto-detects)
-claude mcp add rvt-mcp-2024 --scope user -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe" --target 2024
+claude mcp add rvt-mcp-2024 --scope user -- "%LOCALAPPDATA%\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe" --target 2024
 ```
 
 **Useful operations:**
@@ -111,7 +111,7 @@ The extension is **a thin UI over the CLI**, not a separate MCP runtime:
 **Workflow for RvtMcp users on VS Code:**
 
 1. Open a terminal in VS Code (`Ctrl+\``).
-2. Run `claude mcp add rvt-mcp --scope user -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"`.
+2. Run `claude mcp add rvt-mcp --scope user -- "%LOCALAPPDATA%\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe"`.
 3. Open Claude Code chat panel, type `/mcp` — `rvt-mcp` appears with status.
 4. Click to enable/disable or reconnect.
 
@@ -143,7 +143,7 @@ Source: `support.claude.com/en/articles/10949351` and `modelcontextprotocol.io/d
   "mcpServers": {
     "rvt-mcp": {
       "type": "stdio",
-      "command": "C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe",
+      "command": "C:\\Users\\<user>\\AppData\\Local\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe",
       "args": [],
       "env": {
         "BIMWRIGHT_READ_ONLY": "0"
@@ -273,7 +273,7 @@ Stdio servers like RvtMcp are **not auto-reconnected** if they crash mid-session
 
 **Install once (Claude Code CLI):**
 ```bash
-claude mcp add rvt-mcp --scope user -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
+claude mcp add rvt-mcp --scope user -- "%LOCALAPPDATA%\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe"
 claude mcp list                    # verify ✓ Connected
 ```
 
@@ -296,7 +296,7 @@ If Claude lists `mcp__rvt-mcp__*` tools, discovery is working. If it says "I don
 **Debug a stuck connection:**
 - Claude Code CLI/VS Code: `/mcp` panel shows status; click reconnect.
 - Claude Desktop: quit + relaunch (no in-app reconnect).
-- All clients: tail `%LOCALAPPDATA%\RvtMcp\debug.log` for plugin/server messages.
+- All clients: tail `%LOCALAPPDATA%\Bimwright\rvt-mcp\debug.log` for plugin/server messages.
 
 ---
 

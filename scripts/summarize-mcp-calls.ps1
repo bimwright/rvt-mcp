@@ -2,7 +2,7 @@
 # Usage:
 #   powershell -File summarize-mcp-calls.ps1
 
-$LogDir = Join-Path $env:LOCALAPPDATA "RvtMcp"
+$LogDir = Join-Path $env:LOCALAPPDATA "Bimwright\rvt-mcp"
 $LogPath = Join-Path $LogDir "mcp-calls.jsonl"
 
 if (-not (Test-Path $LogPath)) {

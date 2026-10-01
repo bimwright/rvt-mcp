@@ -42,7 +42,7 @@ Codex uses **TOML**, not JSON. The MCP server registry lives under tables named 
 
 ```toml
 [mcp_servers.rvt-mcp]
-command = "C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
+command = "C:\\Users\\<user>\\AppData\\Local\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe"
 args = []
 ```
 
@@ -50,9 +50,9 @@ args = []
 
 ```toml
 [mcp_servers.rvt-mcp]
-command = "C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
+command = "C:\\Users\\<user>\\AppData\\Local\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe"
 args = ["--target", "2024"]         # optional: pin a Revit calendar year (4 digits, never R-codes)
-cwd = "%LOCALAPPDATA%\\RvtMcp"      # optional: working dir for the process
+cwd = "%LOCALAPPDATA%\\Bimwright\\rvt-mcp"      # optional: working dir for the process
 
 # Lifecycle
 enabled = true                       # default true; set false to keep entry but disable
@@ -125,16 +125,16 @@ You can edit `config.toml` by hand OR use the CLI:
 
 ```bash
 # Basic stdio
-codex mcp add rvt-mcp -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
+codex mcp add rvt-mcp -- "%LOCALAPPDATA%\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe"
 
 # With env vars
 codex mcp add rvt-mcp \
   --env BIMWRIGHT_READ_ONLY=0 \
   --env BIMWRIGHT_TOOLSETS=query,create,view \
-  -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe"
+  -- "%LOCALAPPDATA%\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe"
 
 # Pin a specific Revit year
-codex mcp add rvt-mcp-2024 -- "%LOCALAPPDATA%\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe" --target 2024
+codex mcp add rvt-mcp-2024 -- "%LOCALAPPDATA%\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe" --target 2024
 ```
 
 The `--` separates Codex's own flags from the command + args passed to the MCP server, identical convention to `claude mcp add`.
@@ -194,7 +194,7 @@ Status as of 2026-05-22: **issue still open**, no patch released. If your instal
 The installer **no longer edits client configs** — connect Codex with the procedure in [mcp-client-wiring.md](mcp-client-wiring.md):
 
 ```powershell
-codex mcp add rvt-mcp -- "$env:LOCALAPPDATA\RvtMcp\rvt\server\current\rvt-mcp.exe"
+codex mcp add rvt-mcp -- "$env:LOCALAPPDATA\Bimwright\rvt-mcp\server\current\rvt-mcp.exe"
 codex mcp get rvt-mcp --json
 ```
 

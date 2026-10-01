@@ -38,7 +38,7 @@ namespace RvtMcp.Plugin.ToolBaker
         public BakedToolRegistry()
             : this(Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RvtMcp", "baked"))
+                "Bimwright", "rvt-mcp", "baked"))
         {
         }
 

@@ -51,7 +51,7 @@ Expand-Archive "$dir.zip" -DestinationPath $dir -Force
 powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-1 回の実行で両側をセットアップします：マシン上のすべての Revit 2022–2027 へのアドインと、検出したすべての MCP クライアントへの `rvt-mcp` エントリです（各設定は先にバックアップされます）。`-WhatIf` でプレビュー、`-Client claude,cursor` で指定したクライアントだけを接続、`-Client none` でクライアント設定に触れずにサーバを自分で登録できます。サーバの場所は `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` です（[クライアント別手順](docs/mcp-client-wiring.md)）。
+1 回の実行で両側をセットアップします：マシン上のすべての Revit 2022–2027 へのアドインと、検出したすべての MCP クライアントへの `rvt-mcp` エントリです（各設定は先にバックアップされます）。`-WhatIf` でプレビュー、`-Client claude,cursor` で指定したクライアントだけを接続、`-Client none` でクライアント設定に触れずにサーバを自分で登録できます。サーバの場所は `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe` です（[クライアント別手順](docs/mcp-client-wiring.md)）。
 
 **動作確認：** AI クライアントを再起動し、Revit でモデルを開き、リボン（**アドイン**（Add-Ins）→ **RvtMcp**）で MCP を開始して、エージェントに `revit_get_current_view_info` を呼ばせます。アクティブビューの名前と種類が返れば成功です。
 
@@ -117,7 +117,7 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 ## 設定
 
-優先度（高い方が勝つ）：**CLI → env（`BIMWRIGHT_*`）→** `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json`。
+優先度（高い方が勝つ）：**CLI → env（`BIMWRIGHT_*`）→** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`。
 
 | 設定 | CLI | Env | JSON |
 |------|-----|-----|------|
@@ -151,7 +151,7 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 ## セキュリティとプライバシー
 
-- 既定はローカル：loopback TCP またはローカル named pipe で、`%LOCALAPPDATA%\RvtMcp\` の discovery ファイルにセッションごとの auth token があります。
+- 既定はローカル：loopback TCP またはローカル named pipe で、`%LOCALAPPDATA%\Bimwright\rvt-mcp\` の discovery ファイルにセッションごとの auth token があります。
 - ツール引数はハンドラ実行前にスキーマ検証され、モデルへ返すエラーはサニタイズされます。
 - `send_code` は Revit プロセス内で任意の C# を実行します — 強力で危険です。許容できなければ `--read-only` または `--disable-toolbaker` を使ってください。
 - Adaptive bake、body キャッシュ、send_code journal は opt-in で、ユーザプロファイル下に留まります。既定では raw send_code 本体を長期ログに書きません。

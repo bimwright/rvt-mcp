@@ -51,7 +51,7 @@ Expand-Archive "$dir.zip" -DestinationPath $dir -Force
 powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-一次运行即可配置两端：为本机所有 Revit 2022–2027 安装插件，并在检测到的每个 MCP 客户端中写入 `rvt-mcp` 条目（每个配置都会先备份）。加 `-WhatIf` 可预览，用 `-Client claude,cursor` 只连接这些客户端，或用 `-Client none` 不改动客户端配置、自己注册 server——路径为 `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`（[各客户端步骤](docs/mcp-client-wiring.md)）。
+一次运行即可配置两端：为本机所有 Revit 2022–2027 安装插件，并在检测到的每个 MCP 客户端中写入 `rvt-mcp` 条目（每个配置都会先备份）。加 `-WhatIf` 可预览，用 `-Client claude,cursor` 只连接这些客户端，或用 `-Client none` 不改动客户端配置、自己注册 server——路径为 `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe`（[各客户端步骤](docs/mcp-client-wiring.md)）。
 
 **验证：** 重启 AI 客户端，在 Revit 中打开模型，在 ribbon（**附加模块**（Add-Ins）→ **RvtMcp**）上启动 MCP，然后让 agent 调用 `revit_get_current_view_info`。返回当前视图的名称和类型即表示成功。
 
@@ -117,7 +117,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 ## 配置
 
-优先级从高到低：**CLI → env（`BIMWRIGHT_*`）→** `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json`。
+优先级从高到低：**CLI → env（`BIMWRIGHT_*`）→** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`。
 
 | 设置 | CLI | Env | JSON |
 |------|-----|-----|------|
@@ -151,7 +151,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 ## 安全与隐私
 
-- 默认本地：loopback TCP 或本机 named pipe，`%LOCALAPPDATA%\RvtMcp\` 下的 discovery 文件含每会话 auth token。
+- 默认本地：loopback TCP 或本机 named pipe，`%LOCALAPPDATA%\Bimwright\rvt-mcp\` 下的 discovery 文件含每会话 auth token。
 - 工具参数在 handler 运行前做 schema 校验；返回模型的错误经过脱敏。
 - `send_code` 可在 Revit 进程中运行任意 C# — 强大且有风险。无法接受时请使用 `--read-only` 或 `--disable-toolbaker`。
 - Adaptive bake、body cache 与 send_code journal 均为 opt-in，留在用户配置目录下；默认不把原始 send_code 正文写入长期日志。

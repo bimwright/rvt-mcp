@@ -21,7 +21,7 @@ Revit API  (UIApplication / Document)
 
 ## Discovery
 
-Every plugin writes a per-version discovery file to `%LOCALAPPDATA%\RvtMcp\` on startup:
+Every plugin writes a per-version discovery file to `%LOCALAPPDATA%\Bimwright\rvt-mcp\` on startup:
 
 | Revit | Discovery file | Transport |
 |-------|----------------|-----------|
@@ -117,14 +117,14 @@ Loaded baked IRevitCommand
 run_baked_tool(name)
 ```
 
-Baked tools persist across Revit restarts in the current local user registry and are executed only through `list_baked_tools` + `run_baked_tool`; they are not exposed as native MCP tools. SQLite-backed metadata, stronger isolation, and signed-bake verification are planned adaptive-bake hardening work. `send_code_to_revit` is the unsandboxed cousin — it executes arbitrary C# against the running Revit session and is runtime-gated by plugin-visible adaptive-bake opt-in from the Revit process environment or `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json`.
+Baked tools persist across Revit restarts in the current local user registry and are executed only through `list_baked_tools` + `run_baked_tool`; they are not exposed as native MCP tools. SQLite-backed metadata, stronger isolation, and signed-bake verification are planned adaptive-bake hardening work. `send_code_to_revit` is the unsandboxed cousin — it executes arbitrary C# against the running Revit session and is runtime-gated by plugin-visible adaptive-bake opt-in from the Revit process environment or `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`.
 
 ## Config precedence (A9)
 
 ```
 RvtMcpConfig.Load(args, configFilePath)
    │
-   ├── Layer 1: JSON file at %LOCALAPPDATA%\RvtMcp\rvtmcp.config.json
+   ├── Layer 1: JSON file at %LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json
    ├── Layer 2: env vars (BIMWRIGHT_TARGET, BIMWRIGHT_TOOLSETS, …)
    └── Layer 3: CLI args (--target, --toolsets, --read-only, …)
                     (later layers overwrite earlier; nulls don't override)

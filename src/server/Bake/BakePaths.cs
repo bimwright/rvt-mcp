@@ -15,7 +15,7 @@ namespace RvtMcp.Server.Bake
             if (string.IsNullOrWhiteSpace(localApplicationData))
                 throw new ArgumentException("Local application data path is required.", nameof(localApplicationData));
 
-            Root = Path.Combine(localApplicationData, "RvtMcp");
+            Root = Path.Combine(localApplicationData, "Bimwright", "rvt-mcp");
             UsageJsonl = Path.Combine(Root, "usage.jsonl");
             BakeDb = Path.Combine(Root, "bake.db");
             AuditJsonl = Path.Combine(Root, "bake-audit.jsonl");

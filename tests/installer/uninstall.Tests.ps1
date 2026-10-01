@@ -43,11 +43,13 @@ function Test([string]$Name, [scriptblock]$Body) {
     try { & $Body; $results.Add([pscustomobject]@{name=$Name;passed=$true}); Write-Host "PASS $Name" }
     catch { $results.Add([pscustomobject]@{name=$Name;passed=$false;error=$_.Exception.Message}); Write-Host "FAIL $Name : $_" }
 }
-$removableNames = @('rvt','spill','revit-2027.json')
+$removableNames = @('rvt','server','spill','revit-2027.json')
 $keptNames = @('rvtmcp.config.json','locales','bake.db','bake.db-wal','baked','usage.jsonl','bake-audit.jsonl','firm-profiles','shared-parameters.txt','.migrated-from-bimwright','logs','revit-mcp.log','mcp-calls.jsonl','send-code-journal.jsonl','journal','captures','mcp-calls.version','notes.txt','custom')
 function New-RootFixture {
     $root = Join-Path $testRoot ([guid]::NewGuid().ToString('N'))
-    New-Item -ItemType Directory -Path "$root/locales", "$root/baked", "$root/firm-profiles", "$root/logs", "$root/rvt/server/0.6.2", "$root/spill", "$root/journal", "$root/captures", "$root/custom" -Force | Out-Null
+    # Both server layouts: nested rvt\server (legacy root) and flat server\
+    # (current root) must be swept.
+    New-Item -ItemType Directory -Path "$root/locales", "$root/baked", "$root/firm-profiles", "$root/logs", "$root/rvt/server/0.6.2", "$root/server/current", "$root/spill", "$root/journal", "$root/captures", "$root/custom" -Force | Out-Null
     Set-Content "$root/rvtmcp.config.json" '{}'
     Set-Content "$root/locales/strings.vi.json" '{}'
     Set-Content "$root/bake.db" 'db'
@@ -63,6 +65,7 @@ function New-RootFixture {
     Set-Content "$root/send-code-journal.jsonl" 'l'
     Set-Content "$root/logs/a.log" 'l'
     Set-Content "$root/rvt/server/0.6.2/rvt-mcp.exe" 'exe'
+    Set-Content "$root/server/current/rvt-mcp.exe" 'exe'
     Set-Content "$root/revit-2027.json" '{}'
     Set-Content "$root/spill/x.json" '{}'
     Set-Content "$root/journal/j.json" '{}'
@@ -186,6 +189,40 @@ try {
             Assert (-not (Test-Path -LiteralPath "$root/rvtmcp.config.json") -and -not (Test-Path -LiteralPath "$root/logs")) '-Purge did not remove the rest'
             Assert ($script:failed -contains 'step4-discovery') 'In-use copy not reported as failure'
         } finally { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue; $null = $proc.WaitForExit(5000) }
+    }
+    Test 'Uninstall -Purge removes product roots but never the Bimwright parent or siblings' {
+        $fam = Join-Path $testRoot "fam-$([guid]::NewGuid().ToString('N'))"
+        New-Item -ItemType Directory -Path "$fam/Bimwright/rvt-mcp/server/current", "$fam/Bimwright/ipt-mcp", "$fam/Bimwright/Dwg", "$fam/RvtMcp/rvt/server/current" -Force | Out-Null
+        Set-Content -LiteralPath "$fam/Bimwright/rvt-mcp/server/current/rvt-mcp.exe" 'exe'
+        Set-Content -LiteralPath "$fam/Bimwright/rvt-mcp/rvtmcp.config.json" '{}'
+        Set-Content -LiteralPath "$fam/Bimwright/ipt-mcp/keep.txt" 'k'
+        Set-Content -LiteralPath "$fam/Bimwright/Dwg/keep.txt" 'k'
+        Set-Content -LiteralPath "$fam/RvtMcp/rvtmcp.config.json" '{}'
+        $script:handled=@(); $script:skipped=@(); $script:failed=@()
+        Invoke-Step4 -Root "$fam/Bimwright/rvt-mcp" -Purge
+        Invoke-Step4 -Root "$fam/RvtMcp" -Purge
+        Assert (-not (Test-Path -LiteralPath "$fam/Bimwright/rvt-mcp")) 'new root survived -Purge'
+        Assert (-not (Test-Path -LiteralPath "$fam/RvtMcp")) 'legacy root survived -Purge'
+        Assert (Test-Path -LiteralPath "$fam/Bimwright") 'Bimwright family parent removed'
+        Assert ((Get-Content -LiteralPath "$fam/Bimwright/ipt-mcp/keep.txt" -Raw).Trim() -eq 'k') 'ipt-mcp sibling touched'
+        Assert ((Get-Content -LiteralPath "$fam/Bimwright/Dwg/keep.txt" -Raw).Trim() -eq 'k') 'Dwg sibling touched'
+    }
+    Test 'Uninstall of the new layout removes server\ and discovery files, keeps data' {
+        $fam = Join-Path $testRoot "fam-$([guid]::NewGuid().ToString('N'))"
+        New-Item -ItemType Directory -Path "$fam/Bimwright/rvt-mcp/server/current", "$fam/Bimwright/rvt-mcp/server/0.6.2", "$fam/Bimwright/rvt-mcp/spill", "$fam/Bimwright/ipt-mcp" -Force | Out-Null
+        Set-Content -LiteralPath "$fam/Bimwright/rvt-mcp/server/current/rvt-mcp.exe" 'exe'
+        Set-Content -LiteralPath "$fam/Bimwright/rvt-mcp/server/0.6.2/rvt-mcp.exe" 'exe'
+        Set-Content -LiteralPath "$fam/Bimwright/rvt-mcp/revit-2027.json" '{}'
+        Set-Content -LiteralPath "$fam/Bimwright/rvt-mcp/spill/x.json" '{}'
+        Set-Content -LiteralPath "$fam/Bimwright/rvt-mcp/rvtmcp.config.json" '{}'
+        Set-Content -LiteralPath "$fam/Bimwright/ipt-mcp/keep.txt" 'k'
+        $script:handled=@(); $script:skipped=@(); $script:failed=@()
+        Invoke-Step4 -Root "$fam/Bimwright/rvt-mcp"
+        Assert (-not (Test-Path -LiteralPath "$fam/Bimwright/rvt-mcp/server")) 'server dir not removed'
+        Assert (-not (Test-Path -LiteralPath "$fam/Bimwright/rvt-mcp/revit-2027.json")) 'discovery file not removed'
+        Assert (-not (Test-Path -LiteralPath "$fam/Bimwright/rvt-mcp/spill")) 'spill not removed'
+        Assert (Test-Path -LiteralPath "$fam/Bimwright/rvt-mcp/rvtmcp.config.json") 'personal data removed'
+        Assert ((Get-Content -LiteralPath "$fam/Bimwright/ipt-mcp/keep.txt" -Raw).Trim() -eq 'k') 'sibling product touched'
     }
 } finally {
     $env:USERPROFILE = $savedUserProfile

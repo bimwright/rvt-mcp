@@ -89,7 +89,7 @@ namespace RvtMcp.Plugin.Handlers
                 if (createFileIfMissing)
                 {
                     string localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    string dir = Path.Combine(localApp, "RvtMcp");
+                    string dir = Path.Combine(localApp, "Bimwright", "rvt-mcp");
                     resolvedPath = Path.Combine(dir, "shared-parameters.txt");
                 }
                 else

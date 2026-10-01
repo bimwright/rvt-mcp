@@ -256,7 +256,7 @@ namespace RvtMcp.Plugin
             {
                 var dir = System.IO.Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "RvtMcp");
+                    "Bimwright", "rvt-mcp");
                 System.IO.Directory.CreateDirectory(dir);
                 var logFile = System.IO.Path.Combine(dir, "debug.log");
                 System.IO.File.AppendAllText(logFile,

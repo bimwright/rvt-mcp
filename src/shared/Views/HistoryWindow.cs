@@ -442,7 +442,7 @@ namespace RvtMcp.Plugin.Views
                 ? Path.GetDirectoryName(McpLogger.CurrentLogPath)
                 : Path.Combine(
                     McpLogger.LocalAppDataOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "RvtMcp");
+                    "Bimwright", "rvt-mcp");
 
             var liveCount = _sessionLog.Entries.Count(e => !e.IsHistorical);
             var entries = SessionLogHistoryLoader.LoadPastSessions(logDir, McpLogger.CurrentSessionId, liveCount);
@@ -464,7 +464,7 @@ namespace RvtMcp.Plugin.Views
         {
             var dir = Path.Combine(
                 McpLogger.LocalAppDataOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RvtMcp");
+                "Bimwright", "rvt-mcp");
             try
             {
                 Directory.CreateDirectory(dir);

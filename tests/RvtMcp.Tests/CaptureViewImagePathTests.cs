@@ -35,14 +35,14 @@ namespace RvtMcp.Tests
             Assert.Contains("unexpanded environment variables", err1);
             Assert.Contains(PathAllowlist.TempDirectory, err1);
 
-            var err2 = CaptureOutputPath.Validate(@"%LOCALAPPDATA%\RvtMcp\captures\test.png");
+            var err2 = CaptureOutputPath.Validate(@"%LOCALAPPDATA%\Bimwright\rvt-mcp\captures\test.png");
             Assert.Contains("unexpanded environment variables", err2);
             Assert.Contains(PathAllowlist.CapturesDirectory, err2);
 
             var err3 = CaptureOutputPath.Validate(@"%temp%\test.png");
             Assert.Contains("unexpanded environment variables", err3);
 
-            var err4 = CaptureOutputPath.Validate(@"%LocalAppData%\RvtMcp\captures\test.png");
+            var err4 = CaptureOutputPath.Validate(@"%LocalAppData%\Bimwright\rvt-mcp\captures\test.png");
             Assert.Contains("unexpanded environment variables", err4);
         }
 

@@ -21,9 +21,9 @@ public class LegacyDataMigrationTests
             LegacyDataMigration.MigrateOnce(tempLocal);
 
             // Assert
-            var newBaked = Path.Combine(tempLocal, "RvtMcp", "baked", "tool1.json");
+            var newBaked = Path.Combine(tempLocal, "Bimwright", "rvt-mcp", "baked", "tool1.json");
             Assert.True(File.Exists(newBaked));
-            var marker = Path.Combine(tempLocal, "RvtMcp", ".migrated-from-bimwright");
+            var marker = Path.Combine(tempLocal, "Bimwright", "rvt-mcp", ".migrated-from-bimwright");
             Assert.True(File.Exists(marker));
         }
         finally
@@ -43,10 +43,10 @@ public class LegacyDataMigrationTests
             File.WriteAllText(Path.Combine(tempLocal, "Bimwright", "baked", "tool1.json"), "{}");
 
             LegacyDataMigration.MigrateOnce(tempLocal);
-            var firstMtime = File.GetLastWriteTimeUtc(Path.Combine(tempLocal, "RvtMcp", "baked", "tool1.json"));
+            var firstMtime = File.GetLastWriteTimeUtc(Path.Combine(tempLocal, "Bimwright", "rvt-mcp", "baked", "tool1.json"));
 
             LegacyDataMigration.MigrateOnce(tempLocal);   // second call — should be no-op
-            var secondMtime = File.GetLastWriteTimeUtc(Path.Combine(tempLocal, "RvtMcp", "baked", "tool1.json"));
+            var secondMtime = File.GetLastWriteTimeUtc(Path.Combine(tempLocal, "Bimwright", "rvt-mcp", "baked", "tool1.json"));
 
             Assert.Equal(firstMtime, secondMtime);
         }

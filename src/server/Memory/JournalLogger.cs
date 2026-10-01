@@ -17,7 +17,7 @@ namespace RvtMcp.Server.Memory
         {
             _journalDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RvtMcp", "journal");
+                "Bimwright", "rvt-mcp", "journal");
             Directory.CreateDirectory(_journalDir);
         }
 

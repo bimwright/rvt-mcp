@@ -84,14 +84,14 @@ The installer:
 - detects installed Revit years (a year counts when its `Revit.exe` exists);
 - removes older add-in copies that carry RvtMcp's AddInId (Bimwright-era leftovers);
 - installs the matching add-ins and the server, and checks that the server starts;
-- seeds `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json` with `"toolsets": ["all"]` so a fresh install exposes the full tool surface — a `toolsets` key the user already set is kept, and the file stays user data (uninstall keeps it, `-Purge` removes it);
+- seeds `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json` with `"toolsets": ["all"]` so a fresh install exposes the full tool surface — a `toolsets` key the user already set is kept, and the file stays user data (uninstall keeps it, `-Purge` removes it);
 - verifies the installed add-ins against the package.
 
 Any error restores the previous add-ins and server. A machine-wide copy under `%ProgramData%` stops the install before anything changes (removing it needs admin rights). The same run then wires every detected MCP client — that is Step 3.
 
 Read the summary:
 
-- `Server :` is the command for Step 3. Since the fixed-path installer this is `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe`; v0.6.2 and earlier printed a versioned folder.
+- `Server :` is the command for Step 3. Since the fixed-path installer this is `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe`; v0.6.2 and earlier printed a versioned folder.
 - `In use :` lists old server copies that an open MCP client still runs. Restart that client.
 - `Legacy :` lists versioned copies from older installers. Repoint clients (Step 3), then run `install.ps1 -PruneOldServers`.
 
@@ -120,7 +120,7 @@ Manual path (clients the installer does not know, or when the user wants hand co
 |---|---|
 | Name | `rvt-mcp` (exactly one entry per client) |
 | Transport | stdio |
-| Command | The `Server :` path from the install summary, as an absolute path — normally `C:\Users\<user>\AppData\Local\RvtMcp\rvt\server\current\rvt-mcp.exe` |
+| Command | The `Server :` path from the install summary, as an absolute path — normally `C:\Users\<user>\AppData\Local\Bimwright\rvt-mcp\server\current\rvt-mcp.exe` |
 | Args | None required — an installed machine already enables the full surface via `rvtmcp.config.json`. Optional flags (`--toolsets`, `--read-only`, …) are in the README configuration table |
 
 JSON-style clients usually take:
@@ -129,7 +129,7 @@ JSON-style clients usually take:
 {
   "mcpServers": {
     "rvt-mcp": {
-      "command": "C:\\Users\\<user>\\AppData\\Local\\RvtMcp\\rvt\\server\\current\\rvt-mcp.exe",
+      "command": "C:\\Users\\<user>\\AppData\\Local\\Bimwright\\rvt-mcp\\server\\current\\rvt-mcp.exe",
       "args": []
     }
   }
@@ -184,9 +184,9 @@ The uninstaller removes:
 
 - RvtMcp add-ins for every Revit year 2022–2027, including Bimwright-era copies with the same AddInId;
 - the legacy .NET global tool, if present;
-- server copies, discovery files and the spill cache under `%LOCALAPPDATA%\RvtMcp\`.
+- server copies, discovery files and the spill cache under `%LOCALAPPDATA%\Bimwright\rvt-mcp\`.
 
-A server copy that an open MCP client still runs is kept; close the client and run the uninstaller again. Everything else under `%LOCALAPPDATA%\RvtMcp\` (settings, translations, ToolBaker data, firm profiles, shared parameters, logs, captures) is kept. `-Purge` deletes the whole folder, and `-Purge -KeepLogs` keeps logs.
+A server copy that an open MCP client still runs is kept; close the client and run the uninstaller again. Everything else under `%LOCALAPPDATA%\Bimwright\rvt-mcp\` (settings, translations, ToolBaker data, firm profiles, shared parameters, logs, captures) is kept. `-Purge` deletes the whole folder, and `-Purge -KeepLogs` keeps logs.
 
 ### Partial rollback
 
@@ -216,8 +216,8 @@ For anything not in this table, open an issue at <https://github.com/bimwright/r
 
 The plugin UI (ribbon, toasts, History, dialogs) follows the Revit UI language, or the user's pick in Settings → Language (ribbon slide-out → **Language** button), or `BIMWRIGHT_UI_LANGUAGE` if that env var is set (it beats the user's pick at every launch). If the user reports a wrong or awkward string, you can fix it live on their machine — no reinstall, no restart:
 
-1. **Read** `%LOCALAPPDATA%\RvtMcp\locales\_active.<locale>.json` — every key's currently displayed value, plus the `locked` list.
-2. **Write** the corrected `"key": "text"` pairs into `%LOCALAPPDATA%\RvtMcp\locales\strings.<locale>.json` (create the file/folder if absent). Keep `{placeholder}` tokens identical to the English value.
+1. **Read** `%LOCALAPPDATA%\Bimwright\rvt-mcp\locales\_active.<locale>.json` — every key's currently displayed value, plus the `locked` list.
+2. **Write** the corrected `"key": "text"` pairs into `%LOCALAPPDATA%\Bimwright\rvt-mcp\locales\strings.<locale>.json` (create the file/folder if absent). Keep `{placeholder}` tokens identical to the English value.
 3. **Verify** by re-reading `_active.<locale>.json` after ~1 second (debounced reload) — your key must show the **new value** there. `_report.<locale>.json` lists current validation problems; if your key appears under `rejected`, the `reason` tells you why (`unknown_key`, `placeholder_mismatch`, `locked_key`, …). An **absent** `_report` only means "nothing to report" — it does not prove your edit applied (an ignored wrong-locale file produces no report either). The value inside `_active` is the proof.
 4. Tell the user it applied immediately via hot reload.
 

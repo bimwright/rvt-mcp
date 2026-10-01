@@ -9,7 +9,7 @@ Profile JSON files loaded by `detect_firm_profile` and `suggest_view_name_correc
 Files are scanned from:
 
 1. `<plugin-dir>/firm-profiles/*.json` — shipped with the plugin (read-only for users).
-2. `%LOCALAPPDATA%\RvtMcp\firm-profiles\*.json` — user-added.
+2. `%LOCALAPPDATA%\Bimwright\rvt-mcp\firm-profiles\*.json` — user-added.
 
 User profiles override shipped profiles on `id` collision.
 

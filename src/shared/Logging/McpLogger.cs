@@ -26,7 +26,7 @@ namespace RvtMcp.Plugin
         {
             var dir = Path.Combine(
                 LocalAppDataOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RvtMcp");
+                "Bimwright", "rvt-mcp");
             Directory.CreateDirectory(dir);
             _logPath = Path.Combine(dir, "mcp-calls.jsonl");
             _sessionId = DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" +

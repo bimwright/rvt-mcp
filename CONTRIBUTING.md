@@ -97,7 +97,7 @@ Open a GitHub issue with:
 - Revit version + year.
 - Bimwright server version (`bimwright --version`) and plugin version (check the `.addin` manifest).
 - Reproduction steps — ideally the exact MCP tool call and params.
-- Logs from `%LOCALAPPDATA%\RvtMcp\` — but **check for paths you don't want to share** (the sanitizer masks absolute paths in errors sent to the model, but local log files are unredacted).
+- Logs from `%LOCALAPPDATA%\Bimwright\rvt-mcp\` — but **check for paths you don't want to share** (the sanitizer masks absolute paths in errors sent to the model, but local log files are unredacted).
 
 ## Testing & drift detection
 

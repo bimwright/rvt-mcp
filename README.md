@@ -51,7 +51,7 @@ Expand-Archive "$dir.zip" -DestinationPath $dir -Force
 powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 ```
 
-One run sets up both sides: the add-in for every Revit 2022–2027 on the machine, and the `rvt-mcp` entry in every MCP client it finds (each config is backed up first). Add `-WhatIf` to preview, `-Client claude,cursor` to wire only those clients, or `-Client none` to skip client configs and register the server yourself — it lives at `%LOCALAPPDATA%\RvtMcp\rvt\server\current\rvt-mcp.exe` ([per-client steps](docs/mcp-client-wiring.md)).
+One run sets up both sides: the add-in for every Revit 2022–2027 on the machine, and the `rvt-mcp` entry in every MCP client it finds (each config is backed up first). Add `-WhatIf` to preview, `-Client claude,cursor` to wire only those clients, or `-Client none` to skip client configs and register the server yourself — it lives at `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe` ([per-client steps](docs/mcp-client-wiring.md)).
 
 **Check it works:** restart your AI client, open a model in Revit, start MCP from the ribbon (**Add-Ins** → **RvtMcp**) and ask the agent to call `revit_get_current_view_info`. It should return the active view's name and type.
 
@@ -142,7 +142,7 @@ If a prompt's toolsets aren't enabled, it answers with the exact `--toolsets` li
 
 ## Configuration
 
-Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json`.
+Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`.
 
 | Setting | CLI | Env | JSON |
 |---------|-----|-----|------|
@@ -178,7 +178,7 @@ Full Revit desktop only; Revit Viewer is not a supported target. CI builds all s
 
 ## Security and privacy
 
-- Local by default: loopback TCP or a local named pipe, with a per-session auth token in the discovery files under `%LOCALAPPDATA%\RvtMcp\`.
+- Local by default: loopback TCP or a local named pipe, with a per-session auth token in the discovery files under `%LOCALAPPDATA%\Bimwright\rvt-mcp\`.
 - Tool arguments are schema-checked before handlers run; errors returned to the model are sanitized.
 - `send_code` runs arbitrary C# in the Revit process — powerful and risky. Use `--read-only` or `--disable-toolbaker` if that is unacceptable.
 - Adaptive bake, body cache and send_code journals are opt-in and stay under your user profile; defaults do not write raw send_code bodies to long-lived logs.

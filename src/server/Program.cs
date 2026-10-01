@@ -193,7 +193,7 @@ namespace RvtMcp.Server
                 "                          Revits run. Use the 4-digit year — legacy R-codes (R22..R27)",
                 "                          are rejected in v0.5+.",
                 "                          Default: auto-detect via revit-YYYY.json files in",
-                "                          %LOCALAPPDATA%\\RvtMcp\\.",
+                "                          %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\.",
                 "",
                 "Tool exposure (A3 Progressive Disclosure):",
                 "  --toolsets <csv>        Comma list of toolsets to enable. Default: " + string.Join(",", ToolsetFilter.DefaultOn) + ".",
@@ -212,7 +212,7 @@ namespace RvtMcp.Server
                 "                          Disable local send_code_to_revit code body caching.",
                 "  --persist-send-code-bodies",
                 "                          Opt-in TTL journal for send_code bodies (default OFF).",
-                "                          Stamps %LOCALAPPDATA%\\RvtMcp\\rvtmcp.config.json so the",
+                "                          Stamps %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\rvtmcp.config.json so the",
                 "                          Revit plugin (sole journal writer) can see the window.",
                 "  --persist-send-code-bodies-for <ttl>",
                 "                          Duration for the journal window (1h–2d; e.g. 4h, 2d, 90m).",
@@ -234,7 +234,7 @@ namespace RvtMcp.Server
                 "   NOT revive — use --persist-send-code-bodies to re-enable explicitly.)",
                 "",
                 "Config file (lowest precedence):",
-                "  %LOCALAPPDATA%\\RvtMcp\\rvtmcp.config.json",
+                "  %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\rvtmcp.config.json",
                 "",
                 "Other:",
                 "  -h, --help              Show this help and exit.",
@@ -460,7 +460,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 {
                     var which = target != null ? $"(target={target})" : "(auto-detect R22-R27)";
                     throw new InvalidOperationException(
-                        $"Revit MCP plugin not running {which}. Check discovery files in %LOCALAPPDATA%\\RvtMcp\\");
+                        $"Revit MCP plugin not running {which}. Check discovery files in %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\");
                 }
 
                 _reader = new StreamReader(stream, Encoding.UTF8);
@@ -1290,7 +1290,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_capture_view_image"), System.ComponentModel.Description("Export a view to a raster image. output_path is optional; if provided it must be absolute and inside %TEMP% or %LOCALAPPDATA%\\RvtMcp\\captures\\. Params: view_id (optional, default active), output_path (optional, defaults under captures), pixel_size (default 1600), image_format ('png'|'jpeg', default 'png').")]
+        [McpServerTool(Name = "revit_capture_view_image"), System.ComponentModel.Description("Export a view to a raster image. output_path is optional; if provided it must be absolute and inside %TEMP% or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\. Params: view_id (optional, default active), output_path (optional, defaults under captures), pixel_size (default 1600), image_format ('png'|'jpeg', default 'png').")]
         public static async Task<string> CaptureViewImage(
             string output_path = null,
             long? view_id = null, int pixel_size = 1600, string image_format = "png")
@@ -2303,7 +2303,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 
         [McpServerTool(Name = "revit_list_available_targets", ReadOnly = true, Idempotent = true), System.ComponentModel.Description(
             "List every Revit instance currently running with the rvt-mcp plugin loaded. " +
-            "Reads the discovery directory %LOCALAPPDATA%\\RvtMcp\\ and parses each revit-YYYY.json file. " +
+            "Reads the discovery directory %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\ and parses each revit-YYYY.json file. " +
             "Use this BEFORE revit_switch_target so you know which years (4-digit, e.g. 2024) are actually available — do not guess. " +
             "Returns: {discovery_dir, count, targets: [{year, transport ('tcp'|'pipe'), port, pipe_name, pid, discovery_file, is_currently_connected}]}. " +
             "If count == 0, no Revit is running or no plugin is loaded — instruct the user to start Revit and enable the rvt-mcp plugin.")]

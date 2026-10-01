@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
   Remove RvtMcp from this machine (Revit add-ins + server + discovery files + spill cache).
-  Personal data under %LOCALAPPDATA%\RvtMcp is kept unless -Purge.
+  Personal data under %LOCALAPPDATA%\Bimwright\rvt-mcp is kept unless -Purge.
+  A leftover legacy %LOCALAPPDATA%\RvtMcp folder gets the same treatment.
   MCP client configs are never read or changed.
 
 .DESCRIPTION
@@ -13,13 +14,15 @@
     3. MCP client configs are not touched: remove the 'rvt-mcp' entry from each
        client you configured yourself (see AGENTS.md).
     4. Server copies, discovery files (revit-YYYY.json) and the spill cache in
-       %LOCALAPPDATA%\RvtMcp\. A server copy that an MCP client is still
-       running is kept whole and reported; close that client and run again.
-       Everything else there - settings, locales\, ToolBaker data (bake.db +
-       sidecars, baked\), firm-profiles\, shared-parameters.txt, the
-       .migrated-from-bimwright marker, logs, journals, captures and anything
+       %LOCALAPPDATA%\Bimwright\rvt-mcp\ (and a leftover legacy
+       %LOCALAPPDATA%\RvtMcp\, if one still exists). A server copy that an MCP
+       client is still running is kept whole and reported; close that client
+       and run again. Everything else there - settings, locales\, ToolBaker
+       data (bake.db + sidecars, baked\), firm-profiles\, shared-parameters.txt,
+       the .migrated-from-bimwright marker, logs, journals, captures and anything
        unrecognized - is kept. -Purge deletes the whole folder; -Purge -KeepLogs
-       keeps logs.
+       keeps logs. The shared %LOCALAPPDATA%\Bimwright\ parent and other
+       bimwright product folders are never removed.
 
   Each step is independently skippable if the target does not exist. Failure mid-step
   does not abort the chain; exit code 1 is returned at the end if any step failed.
@@ -33,13 +36,14 @@
 .PARAMETER KeepLogs
   Only matters with -Purge (without it, logs are kept anyway). Preserves:
   - any `logs\` subdirectory (recursively)
-  - any loose `*.log` / `*.jsonl` files at the root of %LOCALAPPDATA%\RvtMcp\
+  - any loose `*.log` / `*.jsonl` files at the root of the product folder
 
 .PARAMETER Purge
-  Delete the whole %LOCALAPPDATA%\RvtMcp\ tree during step 4, including
-  settings, locales\, ToolBaker data (bake.db + sidecars, baked\),
-  firm-profiles\, shared-parameters.txt, the .migrated-from-bimwright marker,
-  journals, captures and logs. Combine with -KeepLogs to still keep logs.
+  Delete the whole %LOCALAPPDATA%\Bimwright\rvt-mcp\ tree during step 4 (and a
+  leftover %LOCALAPPDATA%\RvtMcp\ tree), including settings, locales\,
+  ToolBaker data (bake.db + sidecars, baked\), firm-profiles\,
+  shared-parameters.txt, the .migrated-from-bimwright marker, journals,
+  captures and logs. Combine with -KeepLogs to still keep logs.
 
 .EXAMPLE
   pwsh scripts/uninstall-all.ps1 -WhatIf
@@ -146,12 +150,15 @@ function Invoke-Step4-Discovery {
 
     # Server copies first: a copy an MCP client still runs cannot be deleted
     # (its exe is locked). Keep it whole and report it instead of half-deleting.
+    # Current layout uses server\; relocated legacy trees can still carry the
+    # nested rvt\server\ shape.
     $inUse = @()
-    $serverParent = Join-Path $Root 'rvt\server'
-    if (Test-Path -LiteralPath $serverParent) {
-        foreach ($dir in Get-ChildItem -LiteralPath $serverParent -Directory -Force) {
-            if ($PSCmdlet.ShouldProcess($dir.FullName, 'Remove server copy')) {
-                if (-not (Remove-ServerCopy $dir.FullName)) { $inUse += $dir.FullName }
+    foreach ($serverParent in @((Join-Path $Root 'server'), (Join-Path $Root 'rvt\server'))) {
+        if (Test-Path -LiteralPath $serverParent) {
+            foreach ($dir in Get-ChildItem -LiteralPath $serverParent -Directory -Force) {
+                if ($PSCmdlet.ShouldProcess($dir.FullName, 'Remove server copy')) {
+                    if (-not (Remove-ServerCopy $dir.FullName)) { $inUse += $dir.FullName }
+                }
             }
         }
     }
@@ -182,7 +189,7 @@ function Invoke-Step4-Discovery {
     # not recognize - stays. LiteralPath everywhere: names may contain [ ].
     $preserved = @()
     foreach ($e in Get-ChildItem -LiteralPath $Root -Force) {
-        if ($e.Name -eq 'rvt' -and $inUse.Count) {
+        if (($e.Name -eq 'rvt' -or $e.Name -eq 'server') -and $inUse.Count) {
             $preserved += $e.Name
             continue
         }
@@ -196,7 +203,7 @@ function Invoke-Step4-Discovery {
                 $remove = ($e.Extension -notin @('.log', '.jsonl'))
             }
         } else {
-            $remove = ($e.Name -in @('rvt', 'spill')) -or
+            $remove = ($e.Name -in @('rvt', 'server', 'spill')) -or
                 (-not $e.PSIsContainer -and $e.Name -match '^revit-\d{4}\.json$')
         }
         if (-not $remove) {
@@ -233,9 +240,9 @@ function Invoke-Step4-Discovery {
 }
 
 # --- Main ---
-$step4Plan = 'Step4: %LOCALAPPDATA%\RvtMcp\ server copies (kept while an MCP client still runs them), discovery files and spill cache (settings, translations, ToolBaker data, logs and captures are kept)'
+$step4Plan = 'Step4: %LOCALAPPDATA%\Bimwright\rvt-mcp\ server copies (kept while an MCP client still runs them), discovery files and spill cache (settings, translations, ToolBaker data, logs and captures are kept); a leftover %LOCALAPPDATA%\RvtMcp\ gets the same sweep'
 if ($Purge) {
-    $step4Plan = 'Step4 (-Purge): PERMANENTLY delete %LOCALAPPDATA%\RvtMcp\ including settings, translations, ToolBaker data, firm profiles, shared parameters, captures and logs'
+    $step4Plan = 'Step4 (-Purge): PERMANENTLY delete %LOCALAPPDATA%\Bimwright\rvt-mcp\ (and a leftover %LOCALAPPDATA%\RvtMcp\) including settings, translations, ToolBaker data, firm profiles, shared parameters, captures and logs; the Bimwright parent and sibling products are never touched'
     if ($KeepLogs) { $step4Plan += ' (logs kept)' }
 }
 $planned = @(
@@ -253,6 +260,8 @@ if (-not (Confirm-Sweep $planned)) {
 try {
     Invoke-Step1-Plugin
     Invoke-Step2-DotnetTool
+    Invoke-Step4-Discovery -Root (Join-Path $env:LOCALAPPDATA 'Bimwright\rvt-mcp')
+    # A leftover pre-rename %LOCALAPPDATA%\RvtMcp\ gets the same Keep/Purge sweep.
     Invoke-Step4-Discovery -Root (Join-Path $env:LOCALAPPDATA 'RvtMcp')
 } catch {
     Write-Warning ("[main] unexpected error - summary follows. Error: {0}" -f $_.Exception.Message)

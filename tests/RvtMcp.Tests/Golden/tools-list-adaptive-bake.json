@@ -656,7 +656,7 @@
     },
     {
       "name": "revit_capture_view_image",
-      "description_hash": "sha256:73d7afb52be35c8648fe58c865fc7e658ca4b0c42ac87274c227cc8b5b29ded3",
+      "description_hash": "sha256:9da54d5a44e2e2377acee767cf5f3283ee8882cf561b9eab05f2c650dc1c50ca",
       "inputSchema": {
         "properties": {
           "image_format": {
@@ -4044,7 +4044,7 @@
     },
     {
       "name": "revit_list_available_targets",
-      "description_hash": "sha256:5eb528c60c20d77f734777f978a88db67e9954fc15512989b218f203bb2b6e95",
+      "description_hash": "sha256:683c5a85d6407deb1e93928ac293e2aff551d444a4c88eb45b64513f4983d055",
       "inputSchema": {
         "properties": {},
         "required": [],

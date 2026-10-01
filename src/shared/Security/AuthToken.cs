@@ -67,7 +67,7 @@ namespace RvtMcp.Plugin
         {
             return Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RvtMcp");
+                "Bimwright", "rvt-mcp");
         }
 
         public static string DiscoveryFileName(string year)

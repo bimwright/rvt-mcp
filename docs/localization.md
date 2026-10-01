@@ -11,7 +11,7 @@ Resolution order, evaluated once per Revit session:
 1. `BIMWRIGHT_UI_LANGUAGE` environment variable (Windows user/machine env var
    read by the **Revit.exe process** — the `env` block in an MCP client config
    does *not* reach the plugin).
-2. `uiLanguage` in `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json` — written when you
+2. `uiLanguage` in `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json` — written when you
    pick a language in Settings → General → Language.
 3. `auto` → follow Revit's UI language (`ControlledApplication.Language`).
 
@@ -33,7 +33,7 @@ picked in one session applies to the other after its next restart (same as
 
 ## Fixing a translation yourself
 
-Override files live in `%LOCALAPPDATA%\RvtMcp\locales\`:
+Override files live in `%LOCALAPPDATA%\Bimwright\rvt-mcp\locales\`:
 
 ```
 locales\
@@ -85,7 +85,7 @@ the key was accepted, and tell the user it applied live.
 
 ## Caveats
 
-- `uninstall.ps1` keeps `%LOCALAPPDATA%\RvtMcp\locales\` and your overrides
+- `uninstall.ps1` keeps `%LOCALAPPDATA%\Bimwright\rvt-mcp\locales\` and your overrides
   unless run with `-Purge`, which deletes the whole folder.
 - MessageBox buttons (OK/Cancel/Yes/No) come from Windows and follow the OS
   language, not this setting.
@@ -116,7 +116,7 @@ Run once per release on at least the oldest and newest shells (Revit 2022 /
 
 **Overrides + hot reload**
 
-- [ ] With `en` active, create `%LOCALAPPDATA%\RvtMcp\locales\strings.en.json`
+- [ ] With `en` active, create `%LOCALAPPDATA%\Bimwright\rvt-mcp\locales\strings.en.json`
       with one changed key (e.g. `ribbon.history.text`) → ribbon updates within
       ~1s, no restart. (Under another locale the shipped translation still wins —
       en overrides are the fallback layer.)

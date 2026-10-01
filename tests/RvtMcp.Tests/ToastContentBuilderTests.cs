@@ -60,7 +60,7 @@ namespace RvtMcp.Tests
         {
             var capturesDir = System.IO.Path.Combine(
                 System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData),
-                "RvtMcp", "captures");
+                "Bimwright", "rvt-mcp", "captures");
             System.IO.Directory.CreateDirectory(capturesDir);
             var path = System.IO.Path.Combine(capturesDir, "toast-test-thumb.png");
             System.IO.File.WriteAllBytes(path, new byte[] { 0x89, 0x50, 0x4E, 0x47 });
@@ -177,7 +177,7 @@ namespace RvtMcp.Tests
         public void IsSafeImagePath_rejects_sibling_of_captures_directory()
         {
             var localAppData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
-            var siblingDir = System.IO.Path.Combine(localAppData, "RvtMcp", "capturesEvil");
+            var siblingDir = System.IO.Path.Combine(localAppData, "Bimwright", "rvt-mcp", "capturesEvil");
             System.IO.Directory.CreateDirectory(siblingDir);
             var path = System.IO.Path.Combine(siblingDir, "evil.png");
             System.IO.File.WriteAllBytes(path, new byte[] { 0x89, 0x50, 0x4E, 0x47 });

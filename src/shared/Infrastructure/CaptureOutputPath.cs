@@ -30,7 +30,7 @@ namespace RvtMcp.Plugin
                 var captures = PathAllowlist.CapturesDirectory;
                 return $"output_path contains unexpanded environment variables like %TEMP% or %LOCALAPPDATA%. " +
                        $"You must expand these to their absolute folder paths before calling this tool. " +
-                       $"Resolved allowlist roots: %TEMP% is '{temp}', and %LOCALAPPDATA%\\RvtMcp\\captures\\ is '{captures}'.";
+                       $"Resolved allowlist roots: %TEMP% is '{temp}', and %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\ is '{captures}'.";
             }
 
             if (path.StartsWith(@"\\", StringComparison.Ordinal) || path.StartsWith("//", StringComparison.Ordinal)) return "UNC paths are not allowed.";
@@ -47,7 +47,7 @@ namespace RvtMcp.Plugin
 
                 if (PathAllowlist.IsUnderTempOrCaptures(full)) return null;
 
-                return $"output_path must be inside %TEMP% ({temp}) or %LOCALAPPDATA%\\RvtMcp\\captures\\ ({captures}).";
+                return $"output_path must be inside %TEMP% ({temp}) or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\ ({captures}).";
             }
             catch (Exception ex)
             {

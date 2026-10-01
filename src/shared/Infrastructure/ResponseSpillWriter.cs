@@ -59,7 +59,7 @@ namespace RvtMcp.Plugin
         public ResponseSpillWriter()
             : this(System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RvtMcp",
+                "Bimwright", "rvt-mcp",
                 "spill"))
         {
         }

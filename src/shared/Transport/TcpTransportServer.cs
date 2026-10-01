@@ -270,7 +270,7 @@ namespace RvtMcp.Plugin
         {
             try
             {
-                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RvtMcp");
+                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bimwright", "rvt-mcp");
                 Directory.CreateDirectory(dir);
                 var logFile = Path.Combine(dir, "revit-mcp.log");
                 File.AppendAllText(logFile, $"[{DateTime.Now:HH:mm:ss}] [TcpTransportServer] {SecretMasker.Mask(message)}\n");

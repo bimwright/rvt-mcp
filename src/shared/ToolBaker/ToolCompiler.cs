@@ -182,7 +182,7 @@ public class BakedTool_{safeName} : IRevitCommand
 
                 var logDir = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "RvtMcp", "baked");
+                    "Bimwright", "rvt-mcp", "baked");
                 Directory.CreateDirectory(logDir);
                 var logPath = Path.Combine(logDir, "compile-refs.log");
 

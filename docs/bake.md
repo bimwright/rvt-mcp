@@ -19,7 +19,7 @@ Or set JSON config:
 }
 ```
 
-Config path: `%LOCALAPPDATA%\RvtMcp\rvtmcp.config.json`.
+Config path: `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`.
 
 `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` takes effect at the next MCP server start. If you change the flag while a Claude Code session is active, restart the MCP connection with disconnect -> reconnect via `/mcp` so `list_bake_suggestions`, `accept_bake_suggestion`, and `dismiss_bake_suggestion` appear.
 
@@ -65,20 +65,20 @@ rvt-mcp --persist-send-code-bodies-for 4h
 **Key Policies:**
 - **Default Privacy:** No journal writes occur unless `persistSendCodeBodies` is `true` AND `persistSendCodeBodiesUntil` is a valid UTC date in the future.
 - **TTL bounds:** Min 1 hour, default 4 hours, max 2 days. The CLI/Env clamps values automatically.
-- **Journal file:** written to `%LOCALAPPDATA%\RvtMcp\send-code-journal.jsonl`.
+- **Journal file:** written to `%LOCALAPPDATA%\Bimwright\rvt-mcp\send-code-journal.jsonl`.
 - **Rotation:** rotates at ~5MB.
 - **Retention:** deleted automatically 7 days after the persist window expires or is disabled.
 - **Redaction:** `BakeRedactor.RedactForBake` (redacts local paths, UNC paths, and sensitive tokens) is applied to the persisted code.
 
 ## Local Storage
 
-All adaptive-bake storage is local to the current Windows user under `%LOCALAPPDATA%\RvtMcp\`.
+All adaptive-bake storage is local to the current Windows user under `%LOCALAPPDATA%\Bimwright\rvt-mcp\`.
 
 Key files:
 
-- `%LOCALAPPDATA%\RvtMcp\usage.jsonl` - append-only local usage events.
-- `%LOCALAPPDATA%\RvtMcp\bake.db` - SQLite suggestions and accepted-tool registry.
-- `%LOCALAPPDATA%\RvtMcp\bake-audit.jsonl` - local suggestion and lifecycle audit events.
+- `%LOCALAPPDATA%\Bimwright\rvt-mcp\usage.jsonl` - append-only local usage events.
+- `%LOCALAPPDATA%\Bimwright\rvt-mcp\bake.db` - SQLite suggestions and accepted-tool registry.
+- `%LOCALAPPDATA%\Bimwright\rvt-mcp\bake-audit.jsonl` - local suggestion and lifecycle audit events.
 
 The server is the only writer for `bake.db`. The Revit plugin opens `bake.db` read-only, loads accepted tools into memory, and owns the runtime/ribbon surface.
 
