@@ -57,6 +57,8 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 **升级：** 用同样方式运行新版本的安装程序——无需先卸载，客户端只需重启。**卸载：** 在同一文件夹运行 `uninstall.ps1 -Yes` 会移除插件和 server（除非加 `-Purge`，设置会保留）；如需同时删除客户端条目，请先运行 `install.ps1 -Uninstall -Client auto`。更多内容（包括开发者安装和 NuGet）：[docs/install.md](docs/install.md)。
 
+**Claude Desktop MCPB（v1.0.0 候选版）：** 扩展启动从同一版本单独安装的 gateway。此方式请使用 `install.ps1 -Client none`，避免 Desktop 重复注册。参见 [MCPB 安装与设置](docs/install.md#claude-desktop-mcpb-v100-candidate)。
+
 ---
 
 ## 视频
@@ -113,6 +115,10 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 - **Ribbon：** 启动或停止连接，打开 **History** 搜索并重跑历史调用，切换完成 **Toast**（默认开启）。
 - **界面语言：** 插件 UI 支持 15 种语言，默认跟随 Revit 的界面语言；可在 ribbon 滑出面板的 **Language** 下拉框中更改。工具名与 payload 保持英文。见 [docs/localization.md](docs/localization.md)。
 
+### 模型修改提示（尚未发布）
+
+v1.0.0 发布候选版提供五个 MCP 提示。在客户端提示菜单中选择 `revit_change`（Claude Code：`/mcp__rvt-mcp__revit_change`），通过 `change` 指定修改要求：调查关联关系，逐项确认最小修改范围，在确认具体方案后写入，再读取结果并在对话中记录原因。需要 `query,meta`，不依赖 `send_code`；只读模式止于调查和建议。缺失或不完整的证据必须标为“未检查”。读取结果不代表完整捕获所有间接变化，对话记录也不是持久化变更数据库。提示用于指导代理，不是服务器强制执行的工作流锁。原有四个提示保持不变。
+
 ---
 
 ## 配置
@@ -146,7 +152,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 ## Permissions & auto mode — 自动执行权限
 
-这些 controls 已在 v1.0.0 开发分支实现。已发布的 v0.8.1 包尚不包含新 switch 和按工具筛选的 read-only 模式。`send_code` 与 `run_baked_tool` 必须直接调用；`batch_execute` 会拒绝它们。
+这些 controls 包含在尚未发布的 v1.0.0 候选版中。已发布的 v0.8.1 包尚不包含新 switch 和按工具筛选的 read-only 模式。`send_code` 与 `run_baked_tool` 必须直接调用；`batch_execute` 会拒绝它们。
 
 Annotations 描述每个工具对文档和文件的影响。临时 selection、active view 和 zoom 变化算作 read-only。`send_code` 没有 annotations：不要加入自动授权，并逐次确认代码执行。Claude Code 仅使用以下 read-only allow list；不要允许宽泛的 `mcp__rvt-mcp__*` wildcard。此列表对应 `--toolsets all`，所选 toolset 可能公开更少工具。
 

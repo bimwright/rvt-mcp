@@ -293,16 +293,18 @@ namespace RvtMcp.Server
 
 Multi-Revit: if >1 Revit may be open, call revit_list_available_targets THEN revit_switch_target. Years are 2022-2027, not R-codes. Defaults: query,create,view,meta. --toolsets all for export/clash. Do not retry clash/export after 60s timeout.
 
+Before model changes, use the revit_change prompt: survey, agree scope, record why.
+
 Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - query: get_current_view_info, ai_element_filter, get_element_details
-- create: create_grid, create_level, create_room
+- create: create_grid, create_room
 - modify: operate_element, set_element_parameter_values
 - delete: delete_element
 - view: create_view, capture_view_image
 - sheets: create_sheet, renumber_sheets
 - schedule: create_schedule, list_schedules
 - families: list_loaded_families, load_family_from_path
-- mep: create_duct, create_pipe, analyze_mep_network
+- mep: create_duct, analyze_mep_network
 - annotation: tag_elements, create_dimensions
 - graphics: create_view_filter, override_element_graphics
 - export: export_pdf, export_dwg, export_ifc, export_nwc
@@ -314,7 +316,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - organization: apply_view_template, save_selection
 - workflows: workflow_clash_review, workflow_model_audit
 - structural: create_structural_column, create_rebar_set
-- meta: open_model, send_code_to_revit, batch_execute, list_available_targets, switch_target
+- meta: open_model, send_code_to_revit, batch_execute
 - lint: find_untagged_elements, get_model_warnings_summary
 - toolbaker: list_baked_tools, run_baked_tool";
 

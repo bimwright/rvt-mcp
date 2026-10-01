@@ -15,6 +15,7 @@ namespace RvtMcp.Tests
 
         [Theory]
         [InlineData("getting_started")]
+        [InlineData("change")]
         [InlineData("model_audit")]
         [InlineData("pre_issue_check")]
         [InlineData("stairs")]
@@ -55,6 +56,86 @@ namespace RvtMcp.Tests
             ServerState.Config.Toolsets.Add(missingSet);
             Assert.True(ServerState.Config.ReadOnlyOrDefault);
             Assert.Contains("# Getting started", RevitPrompts.GettingStarted());
+        }
+
+        [Theory]
+        [InlineData(null, false, true)]
+        [InlineData("all", false, false)]
+        [InlineData("query,meta", false, false)]
+        [InlineData(null, true, false)]
+        [InlineData("all", true, false)]
+        [InlineData("query,meta", true, false)]
+        public void Change_renders_without_send_code_and_identifies_read_only_mode(
+            string toolsets, bool readOnly, bool sendCode)
+        {
+            ServerState.Config = new RvtMcpConfig
+            {
+                Toolsets = toolsets == null ? null : new List<string>(toolsets.Split(',')),
+                ReadOnly = readOnly,
+                EnableSendCode = sendCode
+            };
+            const string request = "Set Comments on element 123 to \"kiểm tra\".\nReason: coordination. {mode}";
+
+            var rendered = RevitPrompts.Change(request);
+
+            Assert.Contains("# Disciplined model change", rendered);
+            Assert.Contains("Requested change: " + request, rendered);
+            Assert.DoesNotContain("{change}", rendered);
+            Assert.Equal(readOnly, rendered.Contains("Session: READ-ONLY:"));
+            Assert.DoesNotContain("--toolsets", rendered);
+            Assert.DoesNotContain("not exposed right now", rendered);
+        }
+
+        [Theory]
+        [InlineData("query", "meta")]
+        [InlineData("meta", "query")]
+        public void Change_missing_core_toolset_replaces_body_without_removing_read_only(
+            string enabledSet, string missingSet)
+        {
+            ServerState.Config = new RvtMcpConfig
+            {
+                Toolsets = new List<string> { enabledSet }, ReadOnly = true, EnableSendCode = false
+            };
+
+            var notice = RevitPrompts.Change("Set Comments on element 123");
+
+            Assert.Contains("Missing: " + missingSet, notice);
+            Assert.Contains("--toolsets query,meta", notice);
+            Assert.DoesNotContain("--read-only", notice);
+            Assert.DoesNotContain("# Disciplined model change", notice);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" \t\r\n")]
+        public void Change_empty_request_asks_for_scope_instead_of_defaulting_to_all(string request)
+        {
+            var rendered = RevitPrompts.Change(request);
+
+            Assert.Contains("Requested change: Not specified. Ask me what change I want", rendered);
+            Assert.DoesNotContain("{change}", rendered);
+            Assert.DoesNotContain("Requested change: all", rendered);
+        }
+
+        [Fact]
+        public void Change_keeps_confirmation_coverage_and_readback_limits_explicit()
+        {
+            var rendered = RevitPrompts.Change("Set Comments on element 123");
+
+            Assert.Contains("Nothing is written before I confirm the concrete proposal", rendered);
+            Assert.Contains("There is no fixed element-count threshold", rendered);
+            Assert.Contains("A changed scope requires renewed confirmation", rendered);
+            Assert.Contains("not checked, never none", rendered);
+            Assert.Contains("not a complete inventory of every element changed indirectly", rendered);
+            Assert.Contains("never replay a possibly completed mutation", rendered);
+            Assert.Contains("at most 20 commands, with continueOnError=false", rendered);
+            Assert.Contains("Do not put arbitrary code, baked tools, nested batches", rendered);
+            Assert.Contains("Do not include a full model path", rendered);
+            Assert.Contains("not a server-enforced workflow lock", rendered);
+            Assert.DoesNotContain("<N>", rendered);
+            Assert.Equal(10, System.Text.RegularExpressions.Regex.Matches(rendered,
+                @"(?m)^\s*\| (Type / instances|Host / hosted elements|Join / attach|Connectors|Group / assembly|Rooms / spaces / areas|Tags / dimensions / keynotes|Views / sheets / schedules|Datums|Proximity) \|").Count);
         }
 
         [Fact]

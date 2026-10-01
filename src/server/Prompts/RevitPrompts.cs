@@ -14,6 +14,7 @@ namespace RvtMcp.Server.Prompts
     public class RevitPrompts
     {
         private static readonly string[] GettingStartedSets = { "query", "meta" };
+        private static readonly string[] ChangeSets = { "query", "meta" };
         private static readonly string[] ModelAuditSets = { "workflows", "families", "lint", "meta" };
         private static readonly string[] PreIssueSets = { "sheets", "view", "annotation", "lint", "meta" };
         // Spec §3: stairs needs meta (revit_get_current_target) even though send_code
@@ -27,6 +28,24 @@ namespace RvtMcp.Server.Prompts
         {
             return PromptBody.Render(
                 PromptBody.Load("getting_started"), GettingStartedSets, requiresSendCode: false);
+        }
+
+        [McpServerPrompt(Name = "revit_change"),
+         Description("Survey a requested model change, agree the smallest scope, confirm before writing, then read back and record why. Read-only sessions survey and propose only.")]
+        public static string Change(
+            [Description("The requested model change; include target elements and the reason when known")] string change)
+        {
+            return PromptBody.Render(
+                PromptBody.Load("change"), ChangeSets, requiresSendCode: false,
+                args: new Dictionary<string, string>
+                {
+                    ["mode"] = ServerState.Config?.ReadOnlyOrDefault == true
+                        ? "READ-ONLY: survey and propose only. Do not write or change the session configuration."
+                        : "Use only exposed tools. Writes require confirmation of the concrete proposal below.",
+                    ["change"] = string.IsNullOrWhiteSpace(change)
+                        ? "Not specified. Ask me what change I want before surveying or writing."
+                        : change
+                });
         }
 
         [McpServerPrompt(Name = "revit_model_audit"),

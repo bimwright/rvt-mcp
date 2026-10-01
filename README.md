@@ -57,6 +57,8 @@ One run sets up both sides: the add-in for every Revit 2022–2027 on the machin
 
 **Upgrade:** run the new release's installer the same way — no uninstall first; clients only need a restart. **Uninstall:** `uninstall.ps1 -Yes` in the same folder removes the add-ins and the server (settings stay unless you add `-Purge`); run `install.ps1 -Uninstall -Client auto` first to also remove the client entries. More, including developer and NuGet installs: [docs/install.md](docs/install.md).
 
+**Claude Desktop MCPB (v1.0.0 candidate):** the extension launches the separately installed gateway from the matching release. Use `install.ps1 -Client none` for this route to avoid a duplicate Desktop registration. See [MCPB installation and settings](docs/install.md#claude-desktop-mcpb-v100-candidate).
+
 ---
 
 ## Videos
@@ -129,9 +131,10 @@ Notifications are **on by default** and can be turned off. In **Settings → Toa
 
 ### Prompts
 
-Four ready-made workflows ship as MCP prompts — pick `/mcp__rvt-mcp__revit_<name>` (Claude Code) or the prompts menu (Claude Desktop), and the agent follows the script with the tools it already has:
+The v1.0.0 release candidate provides five MCP prompts — pick `/mcp__rvt-mcp__revit_<name>` (Claude Code) or the prompts menu (Claude Desktop), and the agent follows the script with the tools it already has:
 
 - `revit_getting_started` — orient in the open model (read-only, works on defaults).
+- `revit_change` — supply `change`: survey relationships, agree the smallest scope for this request, confirm the concrete proposal before writing, then read back and record the reason in the conversation. Needs `query,meta`; works without `send_code`. In read-only mode it stops at the survey/proposal. Missing or incomplete evidence stays "not checked"; readback is not a complete inventory of indirect changes, and the record is not a persistent change database.
 - `revit_model_audit` — health audit: warnings, families, dry-run purge candidates (needs `workflows,families,lint,meta`).
 - `revit_pre_issue_check` — checks resolved sheets before issue (needs `sheets,view,annotation,lint,meta`). Supply sheet numbers/IDs, an explicit number/name filter, or `all`; a named sheet set needs its member sheets. Sampled model warnings and incomplete checks are reported as **NOT VERIFIED**, not a sheet-level pass.
 - `revit_stairs` — guided stair creation through `send_code` (writes only after your confirmation). Includes the transaction/failure/cleanup template; no source checkout is needed.
@@ -173,7 +176,7 @@ After changing server flags, restart the MCP connection so the client picks up t
 
 ## Permissions & auto mode
 
-These controls are implemented on the development branch for v1.0.0. The published v0.8.1 package does not include the new switches or per-tool read-only filtering. `send_code` and `run_baked_tool` must be called directly; `batch_execute` rejects them.
+These controls are included in the v1.0.0 release candidate, which is not yet published. The published v0.8.1 package does not include the new switches or per-tool read-only filtering. `send_code` and `run_baked_tool` must be called directly; `batch_execute` rejects them.
 
 MCP annotations describe each tool's document/file effects. Transient selection, active-view and zoom changes count as read-only. `send_code` has no annotations: keep it out of automatic permissions and confirm each arbitrary-code call. For Claude Code, copy only the read-only allow list below; do not allow the broad `mcp__rvt-mcp__*` wildcard. The list covers `--toolsets all`; your selected toolsets may expose fewer tools.
 

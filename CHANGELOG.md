@@ -1,10 +1,10 @@
-﻿# Changelog
+# Changelog
 
 ## Release history
 
 | Version | Date | Available as |
 |---|---|---|
-| Unreleased | — | Source on `master` only |
+| v1.0.0 | Unreleased | Release candidate; not published |
 | v0.8.1 | 2026-09-27 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.8.1) (latest) |
 | v0.6.3 | 2026-09-25 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.3) |
 | v0.6.2 | 2026-09-22 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.2); NuGet `RvtMcp.Server` 0.6.2 |
@@ -22,8 +22,11 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
-## Unreleased
+## v1.0.0 — Unreleased
 
+- **Structured send-code toast results** — object and array results now produce compact JSON summaries instead of failing toast completion. Scalar/null handling and the 100-character summary limit are preserved.
+
+- **`revit_change` prompt** — surveys existing relationships, agrees a scope for each request, asks for confirmation of a concrete proposal before writing, then reads back the targets and records the user's reason in the conversation. Requires `query,meta`, not `send_code`; read-only sessions stop at survey/proposal. Missing or incomplete checks remain explicit, and readback does not claim exhaustive changed-element tracking. Adds a server-instructions pointer and a fifth prompt while preserving the original four. No persistent change database or server-enforced workflow lock.
 - **Permission and response-outcome fixes** — tools that replace or delete existing data now advertise `Destructive=true` with recovery guidance, including rebindings and takeoff-file overwrites. Repeated plugin/server response compaction preserves dry-run, rollback and unknown mutation outcomes. Takeoff exports through `output_path` retain successful completion when response detail is oversized; failed exports remain errors. Regression tests cover permission semantics, the two-stage guard and shared-config test isolation.
 - **Runtime switches for v1.0.0** — `--enable-send-code` / `--disable-send-code` control send_code independently of ToolBaker (default on). `--enable-call-log` / `--disable-call-log` control server and plugin call persistence (default off); send-code body journaling additionally requires its TTL opt-in. Authenticated server settings apply per request without changing the plugin's saved configuration.
 - **Per-tool read-only permissions** — all typed tools explicitly declare the four MCP hints; send_code carries no annotations. `--read-only` exposes the 92 read-only tools within the selected toolsets, excluding document/file writes while retaining transient UI operations. The four README allow lists are checked against the annotations. Arbitrary code and baked tools must be invoked directly, outside `batch_execute`.

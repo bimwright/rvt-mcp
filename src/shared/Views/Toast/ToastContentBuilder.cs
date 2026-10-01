@@ -201,7 +201,10 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private static ToastContent BuildSendCodeSuccess(string category, JObject result)
         {
-            var text = result?.Value<string>("result");
+            var value = result?["result"];
+            var text = value is JContainer
+                ? value.ToString(Newtonsoft.Json.Formatting.None)
+                : value?.Value<string>();
             var summary = string.IsNullOrWhiteSpace(text) ? L.T("toast.sendCode.finished") : Truncate(FirstLine(text), 100);
             return new ToastContent(category, summary, L.T("toast.sendCode.detail"));
         }

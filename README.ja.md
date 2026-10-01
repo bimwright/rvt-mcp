@@ -57,6 +57,8 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 **更新：** 新しいリリースのインストーラを同じ手順で実行します。先にアンインストールは不要で、クライアントは再起動だけで済みます。**アンインストール：** 同じフォルダで `uninstall.ps1 -Yes` を実行するとアドインとサーバが削除されます（`-Purge` を付けない限り設定は残ります）。クライアントのエントリも消すには、先に `install.ps1 -Uninstall -Client auto` を実行してください。開発者向け・NuGet を含む詳細：[docs/install.md](docs/install.md)。
 
+**Claude Desktop MCPB（v1.0.0 候補）：** 同じリリースから別途インストールした gateway を起動します。Desktop の重複登録を避けるため、この方法では `install.ps1 -Client none` を使います。[MCPB のインストールと設定](docs/install.md#claude-desktop-mcpb-v100-candidate)を参照してください。
+
 ---
 
 ## 動画
@@ -113,6 +115,10 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 - **リボン：** 接続の開始/停止、**History** で過去の呼び出しの検索と再実行、完了 **Toast** の切り替え（既定オン）。
 - **表示言語：** アドインの UI は 15 言語に対応し、Revit の UI 言語に従います。リボンのスライドアウトにある **Language** コンボで変更できます。ツール名とペイロードは英語のままです。[docs/localization.md](docs/localization.md)。
 
+### モデル変更プロンプト（未リリース）
+
+v1.0.0 リリース候補には 5 つの MCP プロンプトがあります。クライアントのプロンプトメニューで `revit_change`（Claude Code: `/mcp__rvt-mcp__revit_change`）を選び、`change` に変更内容を指定します。関連要素を調べ、要求ごとに最小限の範囲を合意し、具体的な案を確認してから変更し、結果を再取得して理由を会話に記録します。`query,meta` が必要で、`send_code` は不要です。読み取り専用モードでは調査と提案まで行います。不足・不完全な情報は「未確認」とし、再取得を間接的に変更された全要素の一覧とは扱いません。会話の記録は永続的な変更データベースではなく、プロンプトはサーバーが強制するワークフローロックでもありません。既存の 4 つのプロンプトは変更しません。
+
 ---
 
 ## 設定
@@ -146,7 +152,7 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 ## Permissions & auto mode — 自動実行の権限
 
-これらの controls は v1.0.0 向け開発ブランチに実装済みです。公開済み v0.8.1 パッケージには新しい switch とツール単位の read-only フィルターはありません。`send_code` と `run_baked_tool` は直接呼び出してください。`batch_execute` はこれらを拒否します。
+これらの controls は未公開の v1.0.0 リリース候補に含まれます。公開済み v0.8.1 パッケージには新しい switch とツール単位の read-only フィルターはありません。`send_code` と `run_baked_tool` は直接呼び出してください。`batch_execute` はこれらを拒否します。
 
 Annotations は各ツールのドキュメントとファイルへの影響を示します。一時的な選択、アクティブビュー、ズームは read-only に含まれます。`send_code` には annotations がありません。自動許可から外し、コード実行ごとに確認してください。Claude Code では下記の read-only allow list のみを使用し、広い `mcp__rvt-mcp__*` wildcard を許可しないでください。この一覧は `--toolsets all` に対応し、選択した toolset では公開数が減る場合があります。
 

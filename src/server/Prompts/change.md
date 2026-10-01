@@ -1,0 +1,48 @@
+# Disciplined model change   (argument: change = the requested model change)
+
+Goal: survey first, make the smallest agreed change, read back the result, and record why in this conversation. Nothing is written before I confirm the concrete proposal.
+Requested change: {change}
+Session: {mode}
+
+Before you start
+- Call revit_get_current_target. If no target is pinned or the target is ambiguous, call revit_list_available_targets, ask me which instance, then pin it with revit_switch_target. Call revit_get_current_view_info to confirm the active document. If no document is open, stop and ask; do not open one implicitly.
+- Resolve ambiguous or missing targets with me; never interpret an empty request as the whole model. Use explicit element IDs and distinguish instance edits, assigning a different type to instances, and editing a type definition (which affects all its instances).
+- Use my stated reason. If I have not provided one, ask; if I do not know, record "unknown". Do not invent a reason or a design requirement.
+
+Steps
+1. Resolve the target IDs with available query tools. Read revit_get_element_details and revit_get_element_parameters; for type edits, also read revit_get_type_parameters. Keep the relevant before values with their units. Agree the scope for this request: targets, intended properties, and expected related effects. There is no fixed element-count threshold; an unclear or expanding scope requires clarification.
+2. Survey all ten relations below. For each, report found N (IDs), none, or not checked (reason), with the checked scope and coverage. Follow all pages within that scope. Missing tools, failed calls, missing/undefined fields, truncated results and unsupported directions are not checked, never none. A partial list may report observed IDs, but its unchecked remainder must stay explicit. Check depth 1; follow depth 2 only for propagation through types, joins, connectors and groups, within the agreed survey scope.
+
+   | Relation | Existing tools and limits |
+   | --- | --- |
+   | Type / instances | revit_get_element_relationships identifies the type. revit_get_family_instances (if exposed) can list loadable-family instances; check limits and view scope. System-type instance coverage is not checked by these tools. |
+   | Host / hosted elements | revit_get_element_relationships supplies host and dependent IDs. Dependents are a flat list, not a complete classified inventory of hosted elements; an absent host field does not prove no host. |
+   | Join / attach | revit_analyze_structural_connections (if exposed) checks columns/framing joins only. Other geometry joins and attachments remain not checked. |
+   | Connectors | revit_get_mep_element_connectors (if exposed) reports connector data and connected element IDs. Undefined data or unsupported elements do not prove disconnection. |
+   | Group / assembly | revit_get_element_relationships, then revit_get_group_members / revit_get_assembly_members using the returned group/assembly IDs; finish member pages. One group's members do not establish all instances of its group type. |
+   | Rooms / spaces / areas | Boundary effects are not checked by this minimal workflow. |
+   | Tags / dimensions / keynotes | Annotation references are not checked; dependent IDs alone are insufficient. |
+   | Views / sheets / schedules | revit_find_schedule_elements (if exposed) checks a known schedule within its limits. Views, sheets and other schedules remain not checked; owner view is not every view displaying an element. |
+   | Datums | revit_get_element_details supplies available level data. Grids, reference planes and the full reverse dependency set of a datum remain not checked. |
+   | Proximity | revit_find_elements_in_volume (if exposed) can find candidates in a bounded volume around the targets. Bounding-box overlap is not proof of a clash or sufficient clearance. |
+
+   List blind spots separately: linked-model effects, construction schedule, cost, engineering calculations and design intent. Do not expand the survey to the whole model to fill a gap without agreement.
+3. Stop and discuss impact before proposing a plan if the change affects a type, group, level or grid, or expands beyond the agreed scope. Show affected IDs/counts and unresolved coverage; do not infer acceptance from silence.
+4. Propose the simplest option, reusing existing types and preferring typed tools. State exact targets, before -> intended after values, expected related effects, blind spots, verification steps and recovery (Revit Undo where supported). Give one line per rejected alternative. Wait for my confirmation of this proposal, including its unresolved checks. If the session is read-only, stop after the survey and proposal; do not write or enable tools. If a required write tool is absent, explain which tool/toolset is needed without changing configuration. A changed scope requires renewed confirmation.
+5. Apply only the confirmed change with exposed tools. If several supported model-edit commands can share one transaction group, use revit_batch_execute (if exposed), at most 20 commands, with continueOnError=false. Inner command names omit the revit_ prefix. Do not put arbitrary code, baked tools, nested batches, or operations outside that transaction model into a batch. Never promise one Undo across multiple batches or external-file writes. Use revit_send_code_to_revit only if exposed, no typed tool fits, and its concrete operation is confirmed; it is not required by this workflow.
+6. Read back the agreed targets and properties with the same query tools; compare before, intended and observed after values. Check related elements only within verified coverage. Distinguish dry-run, rollback, failure, unknown outcome and applied changes; inspect each batch result and rolledBack. After a timeout or ambiguous result, inspect current state before any further write; never replay a possibly completed mutation to obtain a fuller response. Stop on unexpected changes or incomplete verification and explain what remains unresolved.
+
+Report (change record in this conversation)
+- Request (my words) | Goal | Reason (mine, or "unknown")
+- Confirmed scope and option; rejected alternatives
+- Survey: relation | found / none / not checked | IDs | coverage and blind spots
+- Verification: target ID | property and units | before | intended after | observed after | verified / not verified
+- Operation outcome, observed related effects, and any unresolved differences. Readback is not a complete inventory of every element changed indirectly; do not claim that nothing else changed.
+- Remaining work for me: unresolved checks, sheets to review/reissue, engineering checks
+- Actor, time and document title when known; otherwise unknown. Do not include a full model path.
+
+Do not
+- Do not write before confirmation, invent a reason, expand the agreed scope, or tidy unrelated elements/warnings.
+- Do not bypass read-only mode, tool exposure, or the Revit transaction/Undo model.
+- Do not treat absent or incomplete evidence as a passed check. Do not claim engineering or issue readiness from this survey.
+- Do not claim this conversation record is a persistent change database or automatic tracking of actual changed elements. This prompt guides the agent; it is not a server-enforced workflow lock.

@@ -6,11 +6,42 @@ The quick path is in the [README](../README.md#install). This page has the detai
 
 Client machines should use the setup ZIP from [GitHub Releases](https://github.com/bimwright/rvt-mcp/releases/latest). It bundles a self-contained MCP server and Revit 2022–2027 plugins — no .NET SDK, NuGet global tool, or source clone. AI agents follow [AGENTS.md](../AGENTS.md).
 
-The installer detects Revit 2022–2027 (a year counts when its `Revit.exe` exists), installs the matching add-ins and the server at the fixed path `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe`, checks that the server starts and verifies the add-ins against the package. It also seeds `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json` with `"toolsets": ["all"]` when the file doesn't already set `toolsets` — so a fresh install exposes the full 226-tool surface, while your own `toolsets` choice survives upgrades (a bare `rvt-mcp.exe` without the file still defaults to `query,create,view,meta`). It then wires every MCP client it detects — `-Client <names>` wires only those, `-Client none` leaves client configs untouched, `-WhatIf` previews, and `-Uninstall -Client <names>` removes just the `rvt-mcp` entry. It applies [mcp-client-wiring.md](mcp-client-wiring.md): `.bak` backup before each edit, minimal text edits that keep JSONC comments, repointing of old versioned paths, and reporting (never replacing) of custom launchers and legacy `bimwright-rvt*` entries. Or register a stdio server named `rvt-mcp` by hand — or let your AI agent do it ([AGENTS.md](../AGENTS.md), Step 3).
+The installer detects Revit 2022–2027 (a year counts when its `Revit.exe` exists), installs the matching add-ins and the server at the fixed path `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe`, checks that the server starts and verifies the add-ins against the package. It also seeds `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json` with `"toolsets": ["all"]` when the file doesn't already set `toolsets` — so a fresh install exposes the full 227-tool surface, while your own `toolsets` choice survives upgrades (a bare `rvt-mcp.exe` without the file still defaults to `query,create,view,meta`). It then wires every MCP client it detects — `-Client <names>` wires only those, `-Client none` leaves client configs untouched, `-WhatIf` previews, and `-Uninstall -Client <names>` removes just the `rvt-mcp` entry. It applies [mcp-client-wiring.md](mcp-client-wiring.md): `.bak` backup before each edit, minimal text edits that keep JSONC comments, repointing of old versioned paths, and reporting (never replacing) of custom launchers and legacy `bimwright-rvt*` entries. Or register a stdio server named `rvt-mcp` by hand — or let your AI agent do it ([AGENTS.md](../AGENTS.md), Step 3).
 
 Do **not** install v0.5.0 or earlier ZIPs. Do **not** `dotnet tool install -g Bimwright.Rvt.Server` (legacy 0.1–0.3). Do **not** use NuGet instead of this ZIP on a Revit client machine — the tool package has no add-in.
 
 On a fresh machine, follow the [README verification steps](../README.md#install) after installing and registering the MCP client.
+
+## Claude Desktop MCPB (v1.0.0 candidate)
+
+This release candidate is not yet published. Use its matching Setup ZIP and
+`rvt-mcp-desktop-1.0.0.mcpb` when supplied together. The extension does not install
+Revit, the gateway or its add-ins.
+
+1. Close Revit and stop clients using the gateway. Preview the matching installer
+   with `install.ps1 -WhatIf -Client none`, then install with `install.ps1 -Client none`.
+   To wire other clients, name only those clients with `-Client`; leave Claude Desktop
+   to the extension. Existing Desktop config entries are preserved, so remove or
+   disable a previous manual `rvt-mcp` registration before enabling the extension.
+2. Install the MCPB through Claude Desktop's custom-extension interface. Use one
+   registration for this gateway. Start Revit with the matching add-in, then ask
+   for `revit_get_current_view_info`.
+3. The launcher checks the executable SHA-256 against the server in the matching
+   Setup ZIP. Its default path is
+   `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe`.
+   An override must point to those same executable bytes. Missing or mismatched
+   files stop with `rvt_mcp_setup_status`; there is no PATH/global-tool fallback.
+   This verifies the server file, not the add-in already loaded by Revit: update
+   the gateway and add-ins together and restart Revit.
+4. Defaults are all toolsets, full mode, send_code enabled, call logging disabled
+   and response guard enabled. The extension also exposes target year and optional
+   response-size thresholds. Empty values inherit server configuration; explicit
+   send_code, call-log and response-guard choices pass their CLI on/off flags.
+   Unchecked read-only sends no override, so read-only set elsewhere still applies.
+   Read-only always removes arbitrary code and baked-tool execution.
+5. Tools and prompts are discovered on connection. Upgrade the Setup and extension
+   together; a new server build needs the matching extension. Removing the
+   extension does not uninstall the gateway, add-ins or personal data.
 
 ## Upgrade
 

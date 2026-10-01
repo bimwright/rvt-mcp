@@ -1,7 +1,19 @@
 {
   "generated_by": "PromptsListSnapshotTests",
-  "prompt_count": 4,
+  "prompt_count": 5,
   "prompts": [
+    {
+      "name": "revit_change",
+      "description_hash": "sha256:605949a12368ea387879f25148f5c42494fb92c326a67f2677b150f2ed210f11",
+      "arguments": [
+        {
+          "name": "change",
+          "required": true,
+          "default": null,
+          "description_hash": "sha256:54167c07df02c21bc5767d4e42405cdc56783e0c9aad13febdfbaa4c859b0603"
+        }
+      ]
+    },
     {
       "name": "revit_getting_started",
       "description_hash": "sha256:19067ff5ae4a40c32ec8422141482604957a5832e51f9e89d282751b8255d431",

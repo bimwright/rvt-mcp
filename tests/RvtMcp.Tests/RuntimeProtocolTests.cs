@@ -14,6 +14,7 @@ using Newtonsoft.Json.Linq;
 using RvtMcp.Plugin;
 using RvtMcp.Server;
 using RvtMcp.Server.Memory;
+using RvtMcp.Server.Prompts;
 using Xunit;
 
 namespace RvtMcp.Tests
@@ -21,6 +22,79 @@ namespace RvtMcp.Tests
     [Collection("ServerStateConfig")]
     public class RuntimeProtocolTests
     {
+        [Theory]
+        [InlineData(null, false, true)]
+        [InlineData("all", false, true)]
+        [InlineData("query,meta", true, true)]
+        [InlineData("query", true, false)]
+        [InlineData("meta", false, false)]
+        public async Task Real_MCP_protocol_lists_and_renders_change_without_calling_Revit(
+            string toolsets, bool readOnly, bool rendersBody)
+        {
+            var original = ServerState.Config;
+            var originalSend = ToolGateway.SendOverride;
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var pipeName = "rvt-prompts-" + Guid.NewGuid().ToString("N");
+            using var input = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1,
+                PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+            using var output = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+            await Task.WhenAll(input.WaitForConnectionAsync(deadline.Token), output.ConnectAsync(deadline.Token));
+            try
+            {
+                ServerState.Config = new RvtMcpConfig
+                {
+                    Toolsets = toolsets == null ? null : new List<string>(toolsets.Split(',')),
+                    ReadOnly = readOnly, EnableSendCode = false
+                };
+                var calls = 0;
+                ToolGateway.SendOverride = (command, args, timeout) =>
+                {
+                    calls++;
+                    throw new InvalidOperationException("Rendering a prompt must not call Revit.");
+                };
+                var builder = Host.CreateApplicationBuilder();
+                builder.Logging.ClearProviders();
+                builder.Services.AddMcpServer().WithStreamServerTransport(input, input)
+                    .WithPrompts<RevitPrompts>();
+                using var host = builder.Build();
+                await host.StartAsync(deadline.Token);
+                await using var client = await McpClient.CreateAsync(
+                    new StreamClientTransport(output, output), cancellationToken: deadline.Token);
+
+                var prompts = await client.ListPromptsAsync(cancellationToken: deadline.Token);
+                Assert.Equal(new[] { "revit_change", "revit_getting_started", "revit_model_audit",
+                    "revit_pre_issue_check", "revit_stairs" }, prompts.Select(p => p.Name).OrderBy(n => n));
+                var change = Assert.Single(prompts, p => p.Name == "revit_change");
+                var argument = Assert.Single(change.ProtocolPrompt.Arguments);
+                Assert.Equal("change", argument.Name);
+                Assert.True(argument.Required);
+                const string request = "Set Comments on element 123: phối hợp";
+                var result = await client.GetPromptAsync("revit_change",
+                    new Dictionary<string, object> { ["change"] = request }, cancellationToken: deadline.Token);
+                var body = Assert.IsType<TextContentBlock>(Assert.Single(result.Messages).Content).Text;
+                if (rendersBody)
+                {
+                    Assert.Contains("Requested change: " + request, body);
+                    Assert.Equal(readOnly, body.Contains("Session: READ-ONLY:"));
+                }
+                else
+                {
+                    Assert.Contains("--toolsets query,meta", body);
+                    Assert.DoesNotContain("# Disciplined model change", body);
+                }
+                await Assert.ThrowsAnyAsync<ModelContextProtocol.McpException>(() =>
+                    client.GetPromptAsync("revit_change", cancellationToken: deadline.Token).AsTask());
+                Assert.Equal(0, calls);
+                await client.DisposeAsync();
+                await host.StopAsync(deadline.Token);
+            }
+            finally
+            {
+                ServerState.Config = original;
+                ToolGateway.SendOverride = originalSend;
+            }
+        }
+
         [Theory]
         [InlineData(false, false)]
         [InlineData(false, true)]

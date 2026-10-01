@@ -211,6 +211,46 @@ namespace RvtMcp.Tests
             Assert.Equal("Hello from script", vm.Summary);
         }
 
+        [Theory]
+        [InlineData("{\"result\":{\"marker\":\"probe\"}}", "{\"marker\":\"probe\"}")]
+        [InlineData("{\"result\":{\"items\":[1,null,true]}}", "{\"items\":[1,null,true]}")]
+        [InlineData("{\"result\":[1,2]}", "[1,2]")]
+        [InlineData("{\"result\":[{\"name\":\"Cột\"},null]}", "[{\"name\":\"Cột\"},null]")]
+        [InlineData("{\"result\":{}}", "{}")]
+        [InlineData("{\"result\":[]}", "[]")]
+        [InlineData("{\"result\":42}", "42")]
+        [InlineData("{\"result\":true}", "True")]
+        [InlineData("{\"result\":null}", "Script finished")]
+        [InlineData("{}", "Script finished")]
+        [InlineData("{\"result\":\"\"}", "Script finished")]
+        public void BuildCompleted_send_code_accepts_json_result_shapes(string resultJson, string expectedSummary)
+        {
+            var vm = ToastContentBuilder.BuildCompleted(
+                "send_code_to_revit", null, resultJson, true, null, 10, null);
+
+            Assert.True(vm.Success);
+            Assert.Equal("MCP · Script", vm.CategoryLabel);
+            Assert.Equal(expectedSummary, vm.Summary);
+            Assert.Equal("Custom C# executed in Revit", vm.Detail);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void BuildCompleted_send_code_bounds_structured_result_preview(bool array)
+        {
+            var value = new string('界', 200);
+            var json = array ? "[\"" + value + "\"]" : "{\"text\":\"" + value + "\"}";
+            var vm = ToastContentBuilder.BuildCompleted(
+                "send_code_to_revit", null, "{\"result\":" + json + "}", true, null, 10, null);
+
+            Assert.True(vm.Success);
+            Assert.InRange(vm.Summary.Length, 1, 100);
+            Assert.StartsWith(array ? "[\"界" : "{\"text\":\"界", vm.Summary);
+            Assert.DoesNotContain("\n", vm.Summary);
+            Assert.DoesNotContain("\r", vm.Summary);
+        }
+
         [Fact]
         public void BuildCompleted_uses_active_string_table_but_keeps_data_verbatim()
         {

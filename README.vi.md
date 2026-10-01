@@ -57,6 +57,8 @@ Một lần chạy cài cả hai phía: add-in cho mọi bản Revit 2022–2027
 
 **Cập nhật:** chạy installer của bản mới theo cùng cách — không cần gỡ trước; client chỉ cần khởi động lại. **Gỡ cài:** `uninstall.ps1 -Yes` trong cùng thư mục gỡ add-in và server (cài đặt được giữ, trừ khi thêm `-Purge`); chạy `install.ps1 -Uninstall -Client auto` trước nếu muốn xóa luôn entry trong client. Thêm, gồm cài developer và NuGet: [docs/install.md](docs/install.md).
 
+**Claude Desktop MCPB (ứng viên v1.0.0):** extension chạy gateway đã cài riêng từ cùng bản phát hành. Với cách này, dùng `install.ps1 -Client none` để tránh đăng ký trùng trong Desktop. Xem [cài MCPB và các setting](docs/install.md#claude-desktop-mcpb-v100-candidate).
+
 ---
 
 ## Video
@@ -127,6 +129,10 @@ Mỗi card ghi tên gateway và năm Revit (ví dụ `rvt-mcp 2022`), tên tool 
 
 Toast **bật mặc định** và có thể tắt. Trong **Settings → Toast**, chọn thời gian tự ẩn (10/20/30/60 giây; mặc định 20) và **Show branding** (**tắt mặc định**); bật branding sẽ hiện wordmark khi hover. Lựa chọn có hiệu lực ngay và được lưu qua các lần khởi động Revit; không cần bật brand để nhận thông báo hoạt động.
 
+### Prompt sửa model (chưa phát hành)
+
+Bản ứng viên v1.0.0 có năm MCP prompt. Chọn `revit_change` trong menu prompt của client (Claude Code: `/mcp__rvt-mcp__revit_change`) và truyền `change`: khảo sát quan hệ, chốt phạm vi nhỏ nhất cho từng yêu cầu, xác nhận phương án cụ thể trước khi ghi, rồi đọc lại và ghi lý do trong hội thoại. Cần `query,meta`, không cần `send_code`; chế độ read-only dừng ở khảo sát/đề xuất. Dữ liệu thiếu hoặc chưa đầy đủ phải ghi "không kiểm được". Đọc lại không phải danh sách đầy đủ mọi phần tử bị đổi gián tiếp; bản ghi trong hội thoại không phải cơ sở dữ liệu lưu bền. Prompt hướng dẫn agent, không phải khóa workflow do server cưỡng chế. Bốn prompt hiện có được giữ nguyên.
+
 ---
 
 ## Cấu hình
@@ -162,7 +168,7 @@ Toast **bật mặc định** và có thể tắt. Trong **Settings → Toast**,
 
 ## Permissions & auto mode — quyền chạy tự động
 
-Các controls này đã được triển khai trên nhánh phát triển cho v1.0.0. Gói v0.8.1 đã phát hành chưa có các switch mới và cách lọc read-only theo từng tool. Phải gọi `send_code` và `run_baked_tool` trực tiếp; `batch_execute` từ chối hai lệnh này.
+Các controls này có trong bản ứng viên v1.0.0, hiện chưa phát hành. Gói v0.8.1 đã phát hành chưa có các switch mới và cách lọc read-only theo từng tool. Phải gọi `send_code` và `run_baked_tool` trực tiếp; `batch_execute` từ chối hai lệnh này.
 
 Annotations mô tả tác động lên document/file của từng tool. Đổi selection, active view và zoom tạm thời được tính là read-only. `send_code` không có annotations: không đưa vào quyền tự động, và xác nhận từng lượt chạy code. Với Claude Code, chỉ sao chép allow list read-only bên dưới; không cho phép wildcard rộng `mcp__rvt-mcp__*`. List này ứng với `--toolsets all`; toolsets bạn chọn có thể công bố ít tool hơn.
 
