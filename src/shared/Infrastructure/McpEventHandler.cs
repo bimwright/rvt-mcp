@@ -169,7 +169,11 @@ namespace RvtMcp.Plugin
                         {
                             changes = capture.Snapshot(rolledBack);
                             try { history = capture.HistorySnapshot(app.ActiveUIDocument?.Document, rolledBack); }
-                            catch { historyMarker = new JObject { ["status"] = "capture_failed" }; }
+                            catch (Exception ex)
+                            {
+                                HistoryDiagnostics.Report("history_snapshot", ex, request.History?.Id, App.DebugLog);
+                                historyMarker = new JObject { ["status"] = "capture_failed" };
+                            }
                         }
                     }
                     sw.Stop();
@@ -189,7 +193,7 @@ namespace RvtMcp.Plugin
                     if (changes != null) envelope["changes"] = changes;
                     // Reserve the small receipt marker in the response budget before writing the capture.
                     if (history != null || historyMarker != null)
-                        envelope["history_transfer"] = historyMarker ?? new JObject { ["id"] = request.History.Id };
+                        envelope["history_transfer"] = historyMarker ?? ChangeHistoryTransfer.PublicationMarker(request.History.Id, history);
                     var preGuard = ResponseEnvelopeGuard.Apply(request.CommandName, request.ParamsJson,
                         envelope, runtimeConfig);
                     result.Data = preGuard["data"];
@@ -229,6 +233,7 @@ namespace RvtMcp.Plugin
                         request.CommandName, result.Success, handlerData, resultError, rejectError);
                     historyMarker = historyMarker ?? PublishHistory(request, history, outcome.Success, handlerData, app.Application.VersionNumber);
                     if (historyMarker != null) preGuard["history_transfer"] = historyMarker;
+                    else preGuard.Remove("history_transfer");
                     var response = preGuard.ToString(Formatting.None);
 
                     McpLogger.Log(request.CommandName, request.ParamsJson, outcome.Success,
@@ -356,12 +361,12 @@ namespace RvtMcp.Plugin
                     var values = JObject.FromObject(data);
                     history["parameterValues"] = new JObject { ["parameter"] = values["parameterName"], ["updated"] = values["updated"] };
                 }
-                new ChangeHistoryTransfer().Write(request.History.Id, history);
-                return new JObject { ["id"] = request.History.Id };
+                return new ChangeHistoryTransfer().Publish(request.History.Id, history);
             }
-            catch
+            catch (Exception ex)
             {
                 // History failure must never change or replay an already completed Revit operation.
+                HistoryDiagnostics.Report("history_publish", ex, request.History?.Id, App.DebugLog);
                 return new JObject { ["status"] = "capture_failed" };
             }
         }

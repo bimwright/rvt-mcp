@@ -22,6 +22,44 @@ namespace RvtMcp.Tests
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
+        public async System.Threading.Tasks.Task Active_history_query_resolves_identity_without_creating_storage(bool readOnly)
+        {
+            var originalSend = ToolGateway.SendOverride;
+            var key = new string('a', 64);
+            try
+            {
+                ServerState.Config = new RvtMcpConfig { ReadOnly = readOnly };
+                ToolGateway.SendOverride = (command, args, timeout) =>
+                {
+                    Assert.Equal("get_change_records", command);
+                    return System.Threading.Tasks.Task.FromResult(new JObject { ["modelKey"] = key });
+                };
+                var result = JObject.Parse(await ChangeHistoryTools.GetChangeRecords());
+                Assert.Equal(key, result.Value<string>("modelKey")); Assert.Empty(result["calls"]);
+                Assert.False(Directory.Exists(_root));
+                ToolGateway.SendOverride = (command, args, timeout) => throw new Exception("Explicit key must work offline.");
+                Assert.Empty(JObject.Parse(await ChangeHistoryTools.GetChangeRecords(key))["calls"]);
+                Assert.False(Directory.Exists(_root));
+            }
+            finally { ToolGateway.SendOverride = originalSend; }
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task Unsaved_active_history_query_reports_missing_identity_without_creating_storage()
+        {
+            var originalSend = ToolGateway.SendOverride;
+            try
+            {
+                ToolGateway.SendOverride = (command, args, timeout) => System.Threading.Tasks.Task.FromResult(new JObject());
+                Assert.Contains("no stable history identity", await ChangeHistoryTools.GetChangeRecords());
+                Assert.False(Directory.Exists(_root));
+            }
+            finally { ToolGateway.SendOverride = originalSend; }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
         public void Storage_failure_preserves_mutation_outcome_and_pending_data_without_paths(bool failed)
         {
             var payload = ChangeHistoryTests.Capture(); var id = payload.Value<string>("callId");
@@ -44,7 +82,7 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void Disabled_history_performs_no_transfer_io_and_keeps_existing_history_readable()
+        public async System.Threading.Tasks.Task Disabled_history_performs_no_transfer_io_and_keeps_existing_history_readable()
         {
             using var capture = new ChangeCaptureContext();
             ToolGateway.CaptureHistory(new JObject { ["history_transfer"] = new JObject { ["id"] = Guid.NewGuid().ToString("N") } }, null);
@@ -52,7 +90,7 @@ namespace RvtMcp.Tests
             var payload = ChangeHistoryTests.Capture(); ToolGateway.History.Ingest(payload);
             ServerState.Config = new RvtMcpConfig { EnableChangeHistory = false };
             var key = payload["activeModel"].Value<string>("key");
-            Assert.Single(JObject.Parse(ChangeHistoryTools.GetChangeRecords(key))["calls"]);
+            Assert.Single(JObject.Parse(await ChangeHistoryTools.GetChangeRecords(key))["calls"]);
             Assert.Contains("disabled", ChangeHistoryTools.RecordChange(key, "[]", "request", "goal"));
         }
 

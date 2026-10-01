@@ -25,6 +25,55 @@ namespace RvtMcp.Tests
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
+        public async Task MCP_reads_keep_their_response_without_history_io_even_while_recovery_is_blocked(bool readOnly)
+        {
+            var root = Path.Combine(Path.GetTempPath(), "rvt-read-protocol-" + Guid.NewGuid().ToString("N"));
+            var original = ServerState.Config; var originalSend = ToolGateway.SendOverride; var originalHistory = ToolGateway.History;
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            using var entered = new ManualResetEventSlim(); using var release = new ManualResetEventSlim();
+            var pipe = "rvt-read-" + Guid.NewGuid().ToString("N");
+            using var input = new NamedPipeServerStream(pipe, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+            using var output = new NamedPipeClientStream(".", pipe, PipeDirection.InOut, PipeOptions.Asynchronous);
+            await Task.WhenAll(input.WaitForConnectionAsync(deadline.Token), output.ConnectAsync(deadline.Token));
+            try
+            {
+                var config = new RvtMcpConfig { Toolsets = new List<string> { "query" }, ReadOnly = readOnly };
+                ServerState.Config = config; ToolGateway.History = new ChangeHistoryStore(root);
+                ToolGateway.SendOverride = (command, args, timeout) =>
+                {
+                    var payload = ChangeHistoryTests.Capture(); payload["documents"] = new JArray();
+                    var id = payload.Value<string>("callId");
+                    var envelope = new JObject { ["success"] = true, ["data"] = new JObject { ["view_name"] = "Sample" },
+                        ["history_transfer"] = ToolGateway.History.Transfer.Publish(id, payload) };
+                    ToolGateway.CaptureHistory(envelope, new ChangeHistoryRequest { Id = id, Session = payload.Value<string>("session") });
+                    return Task.FromResult(ToolGateway.InterpretResponse(envelope));
+                };
+                var builder = Host.CreateApplicationBuilder(); builder.Logging.ClearProviders();
+                builder.Services.AddSingleton<IHostedService>(new HistoryRecoveryService(token => { entered.Set(); release.Wait(token); }));
+                var mcp = builder.Services.AddMcpServer().WithStreamServerTransport(input, input);
+                mcp = RuntimeToolFilter.Register(mcp, config, new SessionContext(false, root));
+                Program.RegisterToolsets(mcp, ToolsetFilter.Resolve(config), config);
+                using var host = builder.Build(); await host.StartAsync(deadline.Token);
+                Assert.True(await Task.Run(() => entered.Wait(TimeSpan.FromSeconds(5))));
+                // Initialize and tools/call must work while storage recovery is blocked.
+                await using var client = await McpClient.CreateAsync(new StreamClientTransport(output, output), cancellationToken: deadline.Token);
+                var response = await client.CallToolAsync("revit_get_current_view_info", cancellationToken: deadline.Token);
+                Assert.False(response.IsError == true);
+                var data = JObject.Parse(((TextContentBlock)response.Content[0]).Text);
+                Assert.Equal("Sample", data.Value<string>("view_name")); Assert.Null(data["_history"]);
+                Assert.False(Directory.Exists(root)); Assert.False(release.IsSet);
+                release.Set(); await client.DisposeAsync(); await host.StopAsync(deadline.Token);
+            }
+            finally
+            {
+                release.Set(); ServerState.Config = original; ToolGateway.SendOverride = originalSend; ToolGateway.History = originalHistory;
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
         public async Task MCP_filter_delivers_and_journals_actual_gateway_changes_on_success_or_error(bool failed)
         {
             var root = Path.Combine(Path.GetTempPath(), "rvt-changes-" + Guid.NewGuid().ToString("N"));

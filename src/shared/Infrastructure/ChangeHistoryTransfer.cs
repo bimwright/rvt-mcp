@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json;
@@ -62,22 +63,56 @@ namespace RvtMcp.Plugin
             }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
         }
+        // The production publication seam: ordinary reads do no filesystem I/O.
+        public JObject Publish(string id, JObject payload)
+        {
+            var documents = payload?["documents"] as JArray;
+            var marker = PublicationMarker(id, payload);
+            if (marker?["id"] == null) return marker;
+            var known = new JArray(documents.OfType<JObject>().Where(d => d["model"] is JObject).Select(d => d.DeepClone()));
+            int skipped = documents.Count - known.Count;
+            var capture = (JObject)payload.DeepClone();
+            capture["documents"] = known;
+            capture["skippedDocuments"] = skipped;
+            Write(id, capture);
+            return marker;
+        }
+        public static JObject PublicationMarker(string id, JObject payload)
+        {
+            var documents = payload?["documents"] as JArray;
+            if (documents == null || documents.Count == 0) return null;
+            return documents.OfType<JObject>().Any(d => d["model"] is JObject)
+                ? new JObject { ["id"] = id }
+                : new JObject { ["status"] = "skipped_identity", ["skippedDocuments"] = documents.Count };
+        }
         public JObject Read(string id)
         {
             var path = FilePath(id);
             var info = new FileInfo(path);
             if (info.Length > MaxBytes || (info.Attributes & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidOperationException("Invalid history capture file.");
+                throw new InvalidDataException("Invalid history capture file.");
             var value = JObject.Parse(File.ReadAllText(path, Encoding.UTF8));
-            if (value.Value<string>("callId") != id) throw new InvalidOperationException("History capture identifier mismatch.");
+            if (value.Value<string>("callId") != id) throw new InvalidDataException("History capture identifier mismatch.");
             return value;
         }
         public void Remove(string id) { File.Delete(FilePath(id)); }
+        public void Quarantine(string id)
+        {
+            var source = FilePath(id);
+            var destination = Path.Combine(Path.GetDirectoryName(Root), "history-quarantine");
+            Directory.CreateDirectory(destination);
+            // Immutable evidence outside the retry queue. A racing consumer may already have moved it.
+            File.Move(source, Path.Combine(destination, id + "-" + Guid.NewGuid().ToString("N") + ".json"));
+        }
+        public System.Collections.Generic.IEnumerable<FileInfo> PendingFiles()
+        {
+            if (!Directory.Exists(Root)) yield break;
+            foreach (var file in Directory.EnumerateFiles(Root, "*.json"))
+                if (IsId(Path.GetFileNameWithoutExtension(file))) yield return new FileInfo(file);
+        }
         public string[] PendingIds()
         {
-            if (!Directory.Exists(Root)) return new string[0];
-            return System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Where(
-                System.Linq.Enumerable.Select(Directory.EnumerateFiles(Root, "*.json"), Path.GetFileNameWithoutExtension), IsId));
+            return PendingFiles().Select(f => Path.GetFileNameWithoutExtension(f.Name)).ToArray();
         }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -34,20 +35,30 @@ namespace RvtMcp.Server
             }
             catch (ArgumentException ex) { return "Error: " + ex.Message; }
             catch (JsonException) { return "Error: Invalid JSON in change record arguments."; }
-            catch { return "Error: Local change history is unavailable. No model operation was run; inspect local storage."; }
+            catch (Exception ex) { HistoryDiagnostics.Report("history_record", ex); return "Error: Local change history is unavailable. No model operation was run; inspect local storage."; }
         }
 
         [McpServerTool(Name = "revit_get_change_records", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), Description(
             "Query local per-model MCP change history by server-issued modelKey, optional elementId or uniqueId, ISO UTC date range and limit (1-100). " +
-            "Use modelKey from a recent _history receipt. Returns explicit unassigned/unknown reasons, coverage and authoritative before/after when available. " +
+            "Omit modelKey to query the active saved model; this resolves its identity without writing history files. Or use modelKey from a change receipt. Returns explicit unassigned/unknown reasons, coverage and authoritative before/after when available. " +
             "The public element list is capped at 200 per call; a targeted query can find other stored IDs. " +
             "Deleted UniqueIds may be unavailable. Missing rows do not prove an element was unchanged. " +
             "History describes observed MCP transactions, not whether changes were saved or later manually undone. Available even when recording is off.")]
-        public static string GetChangeRecords(string modelKey, long? elementId = null, string uniqueId = null, string from = null, string until = null, int limit = 50)
+        public static async Task<string> GetChangeRecords(string modelKey = null, long? elementId = null, string uniqueId = null, string from = null, string until = null, int limit = 50)
         {
-            try { return Store.Query(modelKey, elementId, uniqueId, from, until, limit).ToString(Formatting.None); }
+            try
+            {
+                if (modelKey == null)
+                {
+                    var context = await ToolGateway.SendToRevit("get_change_records", new { });
+                    modelKey = context.Value<string>("modelKey");
+                    if (!ChangeHistoryStore.IsModelKey(modelKey))
+                        return "Error: The active model has no stable history identity. Open a saved model or supply a previously returned modelKey.";
+                }
+                return Store.Query(modelKey, elementId, uniqueId, from, until, limit).ToString(Formatting.None);
+            }
             catch (ArgumentException ex) { return "Error: " + ex.Message; }
-            catch { return "Error: Local change history is unavailable. No model operation was run; inspect local storage."; }
+            catch (Exception ex) { HistoryDiagnostics.Report("history_query", ex); return "Error: Local change history or the active Revit context is unavailable. No model operation was run; check the connection and local storage."; }
         }
         private static ChangeHistoryStore Store => ToolGateway.History ??= new ChangeHistoryStore();
         private static JToken Structured(string json)

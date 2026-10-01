@@ -43,7 +43,8 @@ namespace RvtMcp.Server
             // A9 3-layer config precedence (JSON < env < CLI). AuthToken.Target + transport
             // mode (--http) stay as separate CLI parses for now; A3 toolsets gating uses
             // RvtMcpConfig.
-            LegacyDataMigration.MigrateOnce();
+            if (!LegacyDataMigration.TryMigrateOnce(Console.Error.WriteLine))
+            { Environment.ExitCode = 1; return; }
             AuthToken.CleanupLegacyDiscoveryFiles();
             var config = RvtMcpConfig.Load(args);
             config.ValidateResponseLimits();
@@ -72,7 +73,6 @@ namespace RvtMcp.Server
             var session = new Memory.SessionContext(config.EnableCallLogOrDefault);
             ToolGateway.Session = session;
             ToolGateway.History = new Memory.ChangeHistoryStore();
-            if (config.EnableChangeHistoryOrDefault) ToolGateway.History.RecoverPending();
             ToolGateway.UsageLogger = new UsageEventLogger(bakePaths, config);
             RevitResources.Session = session;
 
@@ -128,6 +128,7 @@ namespace RvtMcp.Server
         {
             var enabled = ToolsetFilter.Resolve(config);
             var builder = Host.CreateApplicationBuilder();
+            RegisterHistoryRecovery(builder.Services, config);
             // stdio MCP stdout must contain JSON-RPC only. ClearProviders() removes default
             // host logging, but the MCP SDK (and any transitive package) may re-add a Console
             // provider that writes to stdout. AddConsole with LogToStandardErrorThreshold=Trace
@@ -149,6 +150,7 @@ namespace RvtMcp.Server
         {
             var enabled = ToolsetFilter.Resolve(config);
             var builder = WebApplication.CreateBuilder();
+            RegisterHistoryRecovery(builder.Services, config);
             var mcp = builder.Services
                 .AddMcpServer(ConfigureMcpServerOptions)
                 .WithHttpTransport();
@@ -179,6 +181,12 @@ namespace RvtMcp.Server
             Console.Error.WriteLine($"[RvtMcp] SSE server listening on http://127.0.0.1:{port}");
             Console.Error.WriteLine($"[RvtMcp] Toolsets enabled: {string.Join(",", enabled.OrderBy(n => n))}");
             await app.RunAsync();
+        }
+
+        private static void RegisterHistoryRecovery(IServiceCollection services, RvtMcpConfig config)
+        {
+            if (config.EnableChangeHistoryOrDefault && !config.ReadOnlyOrDefault)
+                services.AddHostedService(_ => new Memory.HistoryRecoveryService(ToolGateway.History));
         }
 
         private static void PrintHelp()
@@ -610,6 +618,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 
             var id = $"req-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
             var history = config.EnableChangeHistoryOrDefault ? new ChangeHistoryRequest { Id = Guid.NewGuid().ToString("N"), Session = HistorySession } : null;
+            using var historyLease = history == null ? null : new Memory.HistoryCallLease(history.Id);
             var request = JsonConvert.SerializeObject(new { id, command, @params = parameters ?? new { }, token = _token, timeout_seconds = timeoutSeconds, runtime = config.ToRuntimeOptions(), history }, RequestJsonSettings);
 
             var tcs = new TaskCompletionSource<string>();
@@ -648,9 +657,12 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             if (marker?.Value<string>("id") == request.Id)
             {
                 try { receipt = (History ??= new Memory.ChangeHistoryStore()).Consume(request.Id); }
-                catch { receipt = new JObject { ["status"] = "storage_failed", ["callId"] = request.Id,
+                catch (Exception ex) { HistoryDiagnostics.Report("history_consume", ex, request.Id); receipt = new JObject { ["status"] = "storage_failed", ["callId"] = request.Id,
                     ["note"] = "Change history could not be recorded. The private capture remains pending for recovery. Do not repeat the model operation." }; }
             }
+            else if (marker?.Value<string>("status") == "skipped_identity")
+                receipt = new JObject { ["status"] = "skipped_identity", ["skippedDocuments"] = marker["skippedDocuments"],
+                    ["note"] = "Changed documents have no stable identity; history was skipped without writing pending files. Do not replay the model operation." };
             else if (marker != null || response["changes"] != null)
                 receipt = new JObject { ["status"] = "unavailable",
                     ["note"] = "Change history is unavailable for this operation. Check plugin compatibility or local storage; do not repeat the model operation." };

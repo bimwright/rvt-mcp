@@ -9,6 +9,7 @@ namespace RvtMcp.Tests
     [Collection("L10n")]
     public class ToastContentBuilderTests : IDisposable
     {
+        private readonly string _root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "rvt-toast-test-" + Guid.NewGuid().ToString("N"));
         public ToastContentBuilderTests()
         {
             L.ResetForTests();
@@ -16,7 +17,11 @@ namespace RvtMcp.Tests
             L.InitializeForTests(StringTable.Build("en", en, null, null));
         }
 
-        public void Dispose() => L.ResetForTests();
+        public void Dispose()
+        {
+            L.ResetForTests();
+            if (System.IO.Directory.Exists(_root)) System.IO.Directory.Delete(_root, true);
+        }
 
         [Fact]
         public void BuildCompleted_get_current_view_info_includes_view_name()
@@ -58,9 +63,7 @@ namespace RvtMcp.Tests
         [Fact]
         public void BuildCompleted_capture_view_image_sets_thumbnail_path()
         {
-            var capturesDir = System.IO.Path.Combine(
-                System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData),
-                "Bimwright", "rvt-mcp", "captures");
+            var capturesDir = System.IO.Path.Combine(_root, "captures");
             System.IO.Directory.CreateDirectory(capturesDir);
             var path = System.IO.Path.Combine(capturesDir, "toast-test-thumb.png");
             System.IO.File.WriteAllBytes(path, new byte[] { 0x89, 0x50, 0x4E, 0x47 });
@@ -176,15 +179,14 @@ namespace RvtMcp.Tests
         [Fact]
         public void IsSafeImagePath_rejects_sibling_of_captures_directory()
         {
-            var localAppData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
-            var siblingDir = System.IO.Path.Combine(localAppData, "Bimwright", "rvt-mcp", "capturesEvil");
+            var siblingDir = System.IO.Path.Combine(_root, "capturesEvil");
             System.IO.Directory.CreateDirectory(siblingDir);
             var path = System.IO.Path.Combine(siblingDir, "evil.png");
             System.IO.File.WriteAllBytes(path, new byte[] { 0x89, 0x50, 0x4E, 0x47 });
 
             try
             {
-                Assert.False(ToastContentBuilder.IsSafeImagePath(path));
+                Assert.False(ToastContentBuilder.IsSafeImagePath(path, System.IO.Path.Combine(_root, "temp"), System.IO.Path.Combine(_root, "captures")));
             }
             finally
             {

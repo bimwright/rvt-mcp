@@ -53,7 +53,7 @@ namespace RvtMcp.Plugin
             DebugLog("OnStartup: BEGIN");
 
             McpLogger.Initialize();
-            LegacyDataMigration.MigrateOnce();
+            if (!LegacyDataMigration.TryMigrateOnce(DebugLog)) return Result.Failed;
             SessionLog = new McpSessionLog();
             Config = RvtMcpConfig.Load(args: null);
             Localization.LocalizationHost.InitializePlugin(

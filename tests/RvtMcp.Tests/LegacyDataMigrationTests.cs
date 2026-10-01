@@ -15,15 +15,11 @@ public class LegacyDataMigrationTests
             var sibling = Path.Combine(tempLocal, "Bimwright", "ipt-mcp", "baked");
             Directory.CreateDirectory(sibling);
             File.WriteAllText(Path.Combine(sibling, "tool.json"), "{}");
-            var oldRoot = Path.Combine(tempLocal, "RvtMcp");
-            Directory.CreateDirectory(oldRoot);
-            File.WriteAllText(Path.Combine(oldRoot, "rvtmcp.config.json"), "{}");
 
             LegacyDataMigration.MigrateOnce(tempLocal);
 
             Assert.False(Directory.Exists(Path.Combine(tempLocal, "Bimwright", "rvt-mcp")));
             Assert.Equal("{}", File.ReadAllText(Path.Combine(sibling, "tool.json")));
-            Assert.True(File.Exists(Path.Combine(oldRoot, "rvtmcp.config.json")));
         }
         finally
         {
@@ -49,7 +45,7 @@ public class LegacyDataMigrationTests
             // Assert
             var newBaked = Path.Combine(tempLocal, "Bimwright", "rvt-mcp", "baked", "tool1.json");
             Assert.True(File.Exists(newBaked));
-            var marker = Path.Combine(tempLocal, "Bimwright", "rvt-mcp", ".migrated-from-bimwright");
+            var marker = Path.Combine(tempLocal, "Bimwright", "rvt-mcp", ".migrated-from-bimwright-v2");
             Assert.True(File.Exists(marker));
         }
         finally

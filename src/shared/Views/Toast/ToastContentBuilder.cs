@@ -275,7 +275,7 @@ namespace RvtMcp.Plugin.Views.Toast
             return string.Join(" · ", parts);
         }
 
-        internal static bool IsSafeImagePath(string path)
+        internal static bool IsSafeImagePath(string path, string tempDirectory = null, string capturesDirectory = null)
         {
             if (string.IsNullOrWhiteSpace(path))
                 return false;
@@ -293,7 +293,8 @@ namespace RvtMcp.Plugin.Views.Toast
                 if (ext != ".png" && ext != ".jpg" && ext != ".jpeg")
                     return false;
 
-                return PathAllowlist.IsUnderTempOrCaptures(full);
+                return PathAllowlist.IsUnderTempOrCaptures(full, tempDirectory ?? PathAllowlist.TempDirectory,
+                    capturesDirectory ?? PathAllowlist.CapturesDirectory);
             }
             catch
             {

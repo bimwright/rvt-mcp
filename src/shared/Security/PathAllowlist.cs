@@ -42,8 +42,9 @@ namespace RvtMcp.Plugin
 
         public static bool IsUnderTempOrCaptures(string fullPath)
         {
-            return IsUnderRoot(fullPath, TempDirectory)
-                || IsUnderRoot(fullPath, CapturesDirectory);
+            return IsUnderTempOrCaptures(fullPath, TempDirectory, CapturesDirectory);
         }
+        internal static bool IsUnderTempOrCaptures(string fullPath, string tempDirectory, string capturesDirectory)
+            => IsUnderRoot(fullPath, tempDirectory) || IsUnderRoot(fullPath, capturesDirectory);
     }
 }

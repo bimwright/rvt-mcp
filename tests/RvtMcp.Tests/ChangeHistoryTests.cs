@@ -143,12 +143,13 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void Unresolved_identity_retains_pending_capture_instead_of_merging_by_title()
+        public void Legacy_unresolved_identity_is_quarantined_instead_of_retried_or_merged_by_title()
         {
             var payload = Capture(); payload["documents"][0]["model"] = null;
             Store.Transfer.Write(payload.Value<string>("callId"), payload);
             Assert.Equal("partial", Store.Consume(payload.Value<string>("callId")).Value<string>("status"));
-            Assert.Single(Store.Transfer.PendingIds()); Assert.False(Directory.Exists(Path.Combine(_root, "projects")));
+            Assert.Empty(Store.Transfer.PendingIds()); Assert.False(Directory.Exists(Path.Combine(_root, "projects")));
+            Assert.Single(Directory.GetFiles(Path.Combine(_root, "history-quarantine")));
         }
 
         [Fact]

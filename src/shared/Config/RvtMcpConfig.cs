@@ -178,8 +178,9 @@ namespace RvtMcp.Plugin
         {
             if (runtime == null) return this;
             var result = (RvtMcpConfig)MemberwiseClone();
-            result.ReadOnly = runtime.ReadOnly ?? ReadOnly;
-            result.EnableSendCode = runtime.EnableSendCode ?? EnableSendCode;
+            // A client may tighten host policy, never relax it.
+            result.ReadOnly = ReadOnlyOrDefault || runtime.ReadOnlyOrDefault;
+            result.EnableSendCode = EnableSendCodeOrDefault && runtime.EnableSendCodeOrDefault;
             result.EnableCallLog = runtime.EnableCallLog ?? EnableCallLog;
             result.EnableChangeHistory = runtime.EnableChangeHistory ?? EnableChangeHistory;
             result.EnableResponseGuard = runtime.EnableResponseGuard ?? EnableResponseGuard;

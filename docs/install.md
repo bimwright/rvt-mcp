@@ -47,6 +47,20 @@ Revit, the gateway or its add-ins.
 
 Older installers used `%LOCALAPPDATA%\RvtMcp\`. The new installer moves that whole folder to `%LOCALAPPDATA%\Bimwright\rvt-mcp\`, flattens `rvt\server\` to `server\`, and preserves settings, ToolBaker data and other personal files. Close Revit and MCP clients using rvt-mcp before this migration. Known client commands are repointed only after the installed server and all selected add-ins pass verification; a caught failure restores the old folder and leaves those commands unchanged. If both product folders already exist, the installer stops without merging them. Use the server and add-ins from the same setup ZIP.
 
+Development runtimes also migrate legacy user data before loading configuration, so
+starting a newer server/add-in without the installer does not silently select an empty
+profile. They copy settings, ToolBaker data and known user-data folders from `RvtMcp`
+or the older shared `Bimwright` root, preserving sources. SQLite uses a consistent
+backup including committed WAL content. Partial copies can resume; differing existing
+files cause `MIGRATION_REQUIRED` and stop startup before fallback settings are loaded.
+Resolve the legacy/current conflict from backups before retrying. Existing current
+diagnostic `.log` files are kept, with legacy originals retained at their source.
+Completion markers are written only after successful migration.
+
+Runtime security settings combine with the Revit add-in's settings: read-only applies
+if either side enables it; `send_code` requires both sides to allow it. Client flags
+cannot weaken the policy configured in Revit.
+
 Updates are manual. Close all Revit windows and stop the MCP connection in your AI client, extract the new release ZIP into a separate folder, then run its `install.ps1 -WhatIf` followed by `install.ps1`. Upgrade the server and plugins together; restart Revit and the MCP client, then repeat the [checks in the README](../README.md#install). Do not uninstall first: upgrades replace plugins and the server in place.
 
 The server path never changes between versions, so MCP clients keep working and only need a restart; clients still running the previous copy keep it until they restart (the summary lists it under `In use`, and the next install removes it). Older add-in copies that carry RvtMcp's AddInId — Bimwright-era leftovers — are removed automatically, because Revit would otherwise load only one of them. A machine-wide copy under `%ProgramData%` stops the install (removing it needs admin rights).

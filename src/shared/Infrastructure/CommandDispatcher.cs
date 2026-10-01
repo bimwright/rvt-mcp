@@ -14,6 +14,7 @@ namespace RvtMcp.Plugin
             _runtimeCache = runtimeCache;
             Register(new Handlers.ShowMessageHandler());
             Register(new Handlers.GetCurrentViewHandler());
+            Register(new Handlers.GetChangeHistoryContextHandler());
             Register(new Handlers.GetSelectedElementsHandler());
             Register(new Handlers.GetFamilyTypesHandler());
             Register(new Handlers.AiElementFilterHandler());

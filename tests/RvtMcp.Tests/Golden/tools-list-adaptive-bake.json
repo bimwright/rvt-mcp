@@ -3863,7 +3863,7 @@
     },
     {
       "name": "revit_get_change_records",
-      "description_hash": "sha256:07cf3c2c8af8b3e2c8226cb92f6749aef723dc3b651308c1cfb50166094bfb71",
+      "description_hash": "sha256:c6dd03754825ef89b2b87459de7efbcfedc4fde640a322dad8a99271542171c1",
       "inputSchema": {
         "properties": {
           "elementId": {
@@ -3891,9 +3891,7 @@
             "type": "String"
           }
         },
-        "required": [
-          "modelKey"
-        ],
+        "required": [],
         "type": "object"
       },
       "annotations": {

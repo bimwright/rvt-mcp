@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Diagnostics;
+using System.Threading;
 using Microsoft.Data.Sqlite;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -57,21 +59,55 @@ CREATE INDEX IF NOT EXISTS change_calls_date ON change_calls(at);");
         public JObject Consume(string id)
         {
             var payload = Transfer.Read(id);
+            return Consume(id, payload);
+        }
+        private JObject Consume(string id, JObject payload)
+        {
             var result = Ingest(payload);
-            if (result.Value<string>("status") != "partial") Transfer.Remove(id);
+            // Old captures may contain unresolvable documents. Preserve them once outside
+            // the retry queue; re-reading cannot manufacture a stable identity.
+            if ((payload["documents"] as JArray)?.OfType<JObject>().Any(d => !(d["model"] is JObject)) == true)
+                Transfer.Quarantine(id);
+            else Transfer.Remove(id);
             return result;
         }
-        public void RecoverPending()
+        public void RecoverPending(CancellationToken cancellationToken = default, int maxFiles = 16, TimeSpan? minimumAge = null)
         {
-            string[] pending;
-            try { pending = Transfer.PendingIds(); }
-            catch { Console.Error.WriteLine("[RvtMcp] Pending change history storage is unavailable."); return; }
-            foreach (var id in pending)
+            if (maxFiles < 1 || maxFiles > 16) throw new ArgumentOutOfRangeException(nameof(maxFiles));
+            var timer = Stopwatch.StartNew();
+            long bytes = 0;
+            int visited = 0;
+            try
             {
-                try { Consume(id); }
-                catch (FileNotFoundException) { } // Another server may have consumed the same receipt.
-                catch (Exception) { Console.Error.WriteLine("[RvtMcp] Pending change history could not be recorded; retained for recovery."); }
+                foreach (var file in Transfer.PendingFiles())
+                {
+                    if (cancellationToken.IsCancellationRequested || visited++ >= maxFiles || timer.Elapsed > TimeSpan.FromSeconds(5)) break;
+                    var id = Path.GetFileNameWithoutExtension(file.Name);
+                    try
+                    {
+                        var age = DateTime.UtcNow - file.LastWriteTimeUtc;
+                        if (age < (minimumAge ?? TimeSpan.Zero)) continue;
+                        if (file.Length > ChangeHistoryTransfer.MaxBytes || age > TimeSpan.FromDays(7))
+                        { Transfer.Quarantine(id); continue; }
+                        bytes += file.Length;
+                        if (bytes > 256L * 1024 * 1024) break;
+                        // Do not steal receipts from a live gateway awaiting its response.
+                        if (HistoryCallLease.IsActive(id)) continue;
+                        var payload = Transfer.Read(id);
+                        Consume(id, payload);
+                    }
+                    catch (FileNotFoundException) { } // A different consumer won the race.
+                    catch (Exception ex) when (ex is JsonException || ex is ArgumentException || ex is InvalidDataException || ex is InvalidOperationException)
+                    {
+                        HistoryDiagnostics.Report("history_quarantine", ex, id);
+                        try { Transfer.Quarantine(id); }
+                        catch (FileNotFoundException) { }
+                        catch (Exception moveError) { HistoryDiagnostics.Report("history_quarantine_move", moveError, id); }
+                    }
+                    catch (Exception ex) { HistoryDiagnostics.Report("history_recovery_retry", ex, id); }
+                }
             }
+            catch (Exception ex) { HistoryDiagnostics.Report("history_recovery_scan", ex); }
         }
         public JObject Ingest(JObject payload)
         {
@@ -82,7 +118,7 @@ CREATE INDEX IF NOT EXISTS change_calls_date ON change_calls(at);");
             var docs = payload["documents"] as JArray ?? throw new ArgumentException("Invalid change capture documents.");
             if (docs.Count > 8) throw new ArgumentException("Too many changed documents.");
             var models = new JArray();
-            var unresolved = 0;
+            var unresolved = payload.Value<int?>("skippedDocuments") ?? 0;
             foreach (var item in docs.OfType<JObject>())
             {
                 var model = item["model"] as JObject;
@@ -135,7 +171,8 @@ ON CONFLICT(model_key) DO UPDATE SET metadata_json=$json,last_seen=$at;",
                 ["modelKey"] = IsModelKey(active?.Value<string>("key")) ? active.Value<string>("key") : null,
                 ["models"] = models,
                 ["complete"] = payload.Value<bool?>("complete") == true && unresolved == 0,
-                ["note"] = unresolved > 0 ? "Some changed documents have no stable model identity. Their pending capture remains local; do not replay the model operation."
+                ["skippedDocuments"] = unresolved,
+                ["note"] = unresolved > 0 ? "Some changed documents have no stable model identity and were skipped. Do not replay the model operation."
                     : "History records observed MCP changes, not Save/Sync or later manual Undo."
             };
         }

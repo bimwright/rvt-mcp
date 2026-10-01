@@ -7,8 +7,8 @@ this feature. Existing 1.0.0 candidate bundles do not acquire it automatically.
 The metadata covers typed tools, `send_code_to_revit`, `batch_execute` and baked tools
 through the common command dispatcher. It is not a new tool and does not grant write
 permission. Events outside the command scope, including subsequent manual Undo, are
-not captured. Read commands do not acquire `_changes`; with history enabled they may
-return `_history` containing the active model's opaque key.
+not captured. Ordinary reads acquire neither `_changes` nor `_history` and publish
+no history files, including in read-only mode.
 
 ```json
 {"_changes":{"complete":true,"documents":[{
@@ -74,12 +74,23 @@ unavailable. Read-only commands do not create change-call rows.
 The `_history` receipt contains `status`, a server-issued `callId` when changes were
 captured, the active `modelKey`, and changed `models` with their own keys. Preserve
 these IDs before readback calls. A missing/failed receipt is not proof of recording.
-`partial`, `unavailable` and `storage_failed` are separate from the model operation's
+`partial`, `skipped_identity`, `unavailable` and `storage_failed` are separate from the model operation's
 success: the model may already have changed. Never replay it to obtain history.
 
-Private captures that reached disk survive a server/database failure and are
-ingested idempotently on the next enabled server startup. Unresolved model identities
-remain pending. A failure before the capture reaches disk cannot be recovered by
+Only commands with observed changes publish private captures. Documents without a
+stable identity are skipped before file creation; mixed captures record known models
+and report `partial` with `skippedDocuments`. No-identity captures report
+`skipped_identity` without creating a pending file.
+
+Private captures that reached disk survive a server/database failure. An enabled,
+non-read-only server recovers them idempotently in a background worker, starting after
+two seconds and repeating about once a minute. Initialization does not wait for recovery.
+Each pass visits at most 16 files and reads at most 256 MiB, with a five-second budget
+checked between files; a single file operation can take longer. Calls still awaiting
+their gateway response are left alone. Invalid, unresolved legacy, oversized or older
+than seven-day captures move to `history-quarantine`, outside the retry queue. Quarantine
+preserves evidence for manual inspection and is not automatically replayed or deleted.
+Transient storage failures stay pending for retry. A failure before a capture reaches disk cannot be recovered by
 this mechanism. History does not confirm Save/Sync and is not updated by subsequent
 manual Undo or model edits outside MCP.
 
@@ -92,8 +103,10 @@ Two `meta` tools use the opaque model key; neither accepts a model path:
   as unknown. Optional `alternativesJson`, `surveyJson` and `remainingWorkJson` accept
   JSON objects/arrays. Text is redacted, limited to 32,768 input characters overall
   and 4,096 characters per string; truncation is explicit.
-- `revit_get_change_records(modelKey, elementId?, uniqueId?, from?, until?, limit=50)`
+- `revit_get_change_records(modelKey?, elementId?, uniqueId?, from?, until?, limit=50)`
   returns local calls and their reasons. Dates are interpreted in UTC; limit is 1–100.
+  Omit `modelKey` to resolve the active saved model without writing history files.
+  Supplying an existing key also works without a Revit connection.
   `reasonStatus` distinguishes `unassigned`, `unknown` and `recorded`. Each returned
   call shows at most 200 elements; filter by a specific ID to query others in the DB.
   `hasMore` indicates more matching calls. Missing rows do not prove no change.

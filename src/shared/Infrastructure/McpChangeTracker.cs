@@ -66,7 +66,7 @@ namespace RvtMcp.Plugin
                 }
             }
 
-            private static JObject Identity(Document doc)
+            internal static JObject Identity(Document doc)
             {
                 if (doc == null) return null;
                 try
@@ -96,7 +96,11 @@ namespace RvtMcp.Plugin
                     }
                     return identity;
                 }
-                catch { return null; } // Never assign a title-based identity when the authoritative identity is unavailable.
+                catch (Exception ex)
+                {
+                    HistoryDiagnostics.Report("history_identity", ex, log: App.DebugLog);
+                    return null;
+                } // Never assign a title-based identity when the authoritative identity is unavailable.
             }
 
             public JObject HistorySnapshot(Document activeDocument, bool batchRolledBack = false)
@@ -113,6 +117,7 @@ namespace RvtMcp.Plugin
                             ["elements"] = pair.Value.HistoryElements()
                         });
                     }
+                if (documents.Count == 0) return null;
                 return new JObject { ["activeModel"] = Identity(activeDocument), ["documents"] = documents,
                     ["complete"] = batchRolledBack || !Incomplete };
             }
