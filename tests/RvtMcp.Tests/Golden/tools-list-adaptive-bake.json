@@ -4,7 +4,7 @@
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
-      "description_hash": "sha256:dc52ef18317faea02b06b410763be06477441fcc5724a99aa98a123d7f375f16",
+      "description_hash": "sha256:01ff9116636831cda618c993abd0080c51e4d781e92fed72f8e8d3171f9b5535",
       "inputSchema": {
         "properties": {
           "id": {
@@ -29,6 +29,12 @@
           "name"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -49,6 +55,12 @@
           "linkInstanceId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -67,6 +79,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -107,6 +125,12 @@
           "field"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -143,6 +167,12 @@
           "category"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -173,6 +203,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -191,6 +227,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -205,6 +247,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -231,6 +279,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -249,6 +303,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -263,6 +323,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -285,6 +351,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -309,6 +381,12 @@
           "filterId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -334,6 +412,12 @@
           "keynote"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -364,6 +448,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -392,6 +482,12 @@
           "templateId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -416,6 +512,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -456,6 +558,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -484,6 +592,12 @@
           "revisionId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -522,6 +636,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -562,11 +682,17 @@
           "levelName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_batch_execute",
-      "description_hash": "sha256:868ab4d56acd1fa318eb89745ca1ba916f51353e95809ebf2025336c57aeb1ef",
+      "description_hash": "sha256:404f8b08d6972af1d698f5d52a9148d261dbe1d65b4b03e583bac87f917bd637",
       "inputSchema": {
         "properties": {
           "commands": {
@@ -586,11 +712,17 @@
           "commands"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_batch_export_sheets",
-      "description_hash": "sha256:76dbca11418476dfd1b8a5efbb1a64ba642a3208934a8483b3cb7c61b9092751",
+      "description_hash": "sha256:ceacacf7f9bf73268a2849b710f6a94642c9bd9896566ba884d6421cb6116354",
       "inputSchema": {
         "properties": {
           "format": {
@@ -615,6 +747,12 @@
           "format"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -652,11 +790,17 @@
           "categories"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_capture_view_image",
-      "description_hash": "sha256:9da54d5a44e2e2377acee767cf5f3283ee8882cf561b9eab05f2c650dc1c50ca",
+      "description_hash": "sha256:78e4ea6917e1359031eeabb98d68a0b1589126f99eedc2afa2521e0d2ad65b40",
       "inputSchema": {
         "properties": {
           "image_format": {
@@ -678,6 +822,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -699,6 +849,12 @@
           "typeId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -736,6 +892,12 @@
           "categoriesB"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -754,6 +916,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -779,6 +947,12 @@
           "parameterName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -799,6 +973,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -819,6 +999,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -849,6 +1035,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -878,6 +1070,12 @@
           "elementId2"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -917,6 +1115,12 @@
           "z"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -966,6 +1170,12 @@
           "y"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1023,6 +1233,12 @@
           "endZ"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1067,6 +1283,12 @@
           "maxY"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1120,6 +1342,12 @@
           "endZ"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1159,6 +1387,12 @@
           "endY"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1187,6 +1421,12 @@
           "references"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1252,6 +1492,12 @@
           "endZ"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1276,6 +1522,12 @@
           "points"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1325,6 +1577,12 @@
           "y_mm"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1349,6 +1607,12 @@
           "wall_id"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1384,6 +1648,12 @@
           "endY"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1404,6 +1674,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1424,6 +1700,12 @@
           "elevation"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1463,6 +1745,12 @@
           "z"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1511,6 +1799,12 @@
           "endY"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1551,6 +1845,12 @@
           "name"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1572,6 +1872,12 @@
           "connectors"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1637,6 +1943,12 @@
           "endZ"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1658,6 +1970,12 @@
           "sheetName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1696,6 +2014,12 @@
           "y"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1730,6 +2054,12 @@
           "categories"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1796,6 +2126,12 @@
           "end_z_mm"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1867,6 +2203,12 @@
           "origin_z_mm"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1899,6 +2241,12 @@
           "description"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1932,6 +2280,12 @@
           "y"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1960,6 +2314,12 @@
           "points"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -1998,6 +2358,12 @@
           "fields"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2051,6 +2417,12 @@
           "dataTypeId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2080,6 +2452,12 @@
           "sheetName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2117,6 +2495,12 @@
           "y"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2176,6 +2560,12 @@
           "end_y_mm"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2222,6 +2612,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2273,6 +2669,12 @@
           "end_y_mm"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2302,6 +2704,12 @@
           "points"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2344,6 +2752,12 @@
           "y"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2368,6 +2782,12 @@
           "viewType"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2393,6 +2813,12 @@
           "categories"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2414,6 +2840,12 @@
           "viewIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2446,6 +2878,12 @@
           "templateName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2462,6 +2900,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2484,6 +2928,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2512,6 +2962,12 @@
           "templateId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2521,6 +2977,12 @@
         "properties": {},
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -2545,11 +3007,17 @@
           "elementId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
       "name": "revit_dismiss_bake_suggestion",
-      "description_hash": "sha256:d2eb8f27892ec29e2bc0abf78b7e8e732314517ead7282d147f2e584c1487a2a",
+      "description_hash": "sha256:21f827e5c809df254eff1ef06819c7b604363d003fd651e7bbc42468a53d6d4d",
       "inputSchema": {
         "properties": {
           "action": {
@@ -2566,6 +3034,12 @@
           "action"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2591,6 +3065,12 @@
           "newTypeName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2615,6 +3095,12 @@
           "newName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2659,6 +3145,12 @@
           "newSheetNumber"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2680,11 +3172,17 @@
           "newName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_export_dgn",
-      "description_hash": "sha256:edd107717417cf9127aca95cf949389122cedbde2777d6c1a12648fbcc6e7db9",
+      "description_hash": "sha256:c0d1800d83b0f7cac10733f75b9dd82f5d4707717bab271a970819edd9f01294",
       "inputSchema": {
         "properties": {
           "fileNamePrefix": {
@@ -2704,11 +3202,17 @@
           "outputFolder"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_export_dwf",
-      "description_hash": "sha256:36ce771527fce27079e3534621e5d041ee2f0cc8e4d9c21ea82884cebd045047",
+      "description_hash": "sha256:41a6bd4ef8abdc16b1fc5cace782fcfe5789899eb0c99bc0872da78446580fe4",
       "inputSchema": {
         "properties": {
           "fileName": {
@@ -2732,11 +3236,17 @@
           "outputFolder"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_export_dwg",
-      "description_hash": "sha256:277cff393471b6a83cb6c4312c2a669a50fd136025fece53af7779e0a50c20b7",
+      "description_hash": "sha256:b9da84803d407edac9e0d06deb8908fc0eec9d30c3f806fcf297a90740e2765e",
       "inputSchema": {
         "properties": {
           "fileNamePrefix": {
@@ -2760,11 +3270,17 @@
           "outputFolder"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_export_elements_data",
-      "description_hash": "sha256:66c13828a4af484c2d47917b3712bba01e6fe60dcdaf567a0ee2854be30e3ba0",
+      "description_hash": "sha256:58635d34469ce38a38d7c7086f384c9dcb745bae8b95d3ff3f0ce5e294c74c7b",
       "inputSchema": {
         "properties": {
           "category": {
@@ -2789,11 +3305,17 @@
           "outputPath"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_export_family_to_path",
-      "description_hash": "sha256:bf23140df0eb4d7e4c1344696aaeea35ed38b6de3280f532ecc1e0520213c952",
+      "description_hash": "sha256:6b480f34f4c834fc4fb8d1bff97ed39968f72526a28af72e59795fc2117c6891",
       "inputSchema": {
         "properties": {
           "familyId": {
@@ -2817,11 +3339,17 @@
           "outputPath"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_export_fbx",
-      "description_hash": "sha256:09826c6a31969a9f8ec430a44740967213014c0b77ae6d2ee8d2637d3cad03d0",
+      "description_hash": "sha256:d0e1b63fddef950ff3d69cfd9cd1d35d12f32b016f333a0a5c6055f1989715a6",
       "inputSchema": {
         "properties": {
           "fileName": {
@@ -2842,11 +3370,17 @@
           "fileName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_export_gbxml",
-      "description_hash": "sha256:fc994b4805e4e2c7e107568446c55a59e9e9bfd6e01741b89cfb5b106770ed3d",
+      "description_hash": "sha256:faa8fe0d6afd64187a4633980bf56f41393746621fd99f251729ac84cb3068ff",
       "inputSchema": {
         "properties": {
           "fileName": {
@@ -2863,11 +3397,17 @@
           "fileName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_export_ifc",
-      "description_hash": "sha256:cda2c24a9ce113d490ecaba3edbe0f2e900b355668b48b1eea9a7d5e4375d380",
+      "description_hash": "sha256:d8d46c7c3b0dd7cb0c2dc6a6b894b87e8ad5fb1228b76cebeaa59963dc4d629f",
       "inputSchema": {
         "properties": {
           "fileName": {
@@ -2888,11 +3428,17 @@
           "fileName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_export_image",
-      "description_hash": "sha256:32bc6e307cec82fb1ea7d569a4bb0595207d7f60fc82b7c90f755eec68a564c7",
+      "description_hash": "sha256:90bdec31af3d28d779e11544b660c435b29f785bacc0b7988a2e56c0d79b2066",
       "inputSchema": {
         "properties": {
           "imageFormat": {
@@ -2916,11 +3462,17 @@
           "outputPath"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_export_nwc",
-      "description_hash": "sha256:a1e3b40c8bfc90409749cd1a272fa3d3bd210416b0e59b8db8596eecfbdcc235",
+      "description_hash": "sha256:7d5b98e127487450f83ef2b53a6fe3f1b7f0936883da52610d61e18cbbc0fce7",
       "inputSchema": {
         "properties": {
           "exportScopeViewId": {
@@ -2941,11 +3493,17 @@
           "fileName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_export_pdf",
-      "description_hash": "sha256:8f363692ed68e1883885b2fa47c3ea8138799dde777a475d2b0a60c51fa1cb79",
+      "description_hash": "sha256:db436c5fe20b3396690fe232d72f7e3e78fadd6746ba4919b396e7b23bd111b0",
       "inputSchema": {
         "properties": {
           "combine": {
@@ -2969,6 +3527,12 @@
           "outputFolder"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -2983,11 +3547,17 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_export_schedule_csv",
-      "description_hash": "sha256:afc5e824c1a4481d4f66e02a4ee32f424cc9635c1dc5100613c4d2dde9ea77a7",
+      "description_hash": "sha256:b4e94efae56b7dc4367cda9da8a27f51cc5e357928fb2d243cd04f73a96f5431",
       "inputSchema": {
         "properties": {
           "delimiter": {
@@ -3011,6 +3581,12 @@
           "outputPath"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -3029,6 +3605,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -3063,6 +3645,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3085,6 +3673,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3113,6 +3707,12 @@
           "category"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3143,6 +3743,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3167,6 +3773,12 @@
           "category"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3191,6 +3803,12 @@
           "category"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3215,6 +3833,12 @@
           "assemblyId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3229,6 +3853,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3238,6 +3868,12 @@
         "properties": {},
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3247,6 +3883,12 @@
         "properties": {},
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3271,6 +3913,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3291,6 +3939,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3307,6 +3961,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3335,6 +3995,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3355,6 +4021,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3375,6 +4047,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3405,6 +4083,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3429,6 +4113,12 @@
           "groupId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3445,6 +4135,12 @@
           "linkInstanceId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3473,6 +4169,12 @@
           "linkInstanceId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3499,6 +4201,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3527,6 +4235,12 @@
           "category"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3557,6 +4271,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -3573,6 +4293,12 @@
           "elementId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3595,6 +4321,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3621,6 +4353,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3643,6 +4381,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3652,6 +4396,12 @@
         "properties": {},
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3676,6 +4426,12 @@
           "roomId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3700,6 +4456,12 @@
           "roomId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3722,6 +4484,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3752,6 +4520,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3770,6 +4544,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3788,6 +4568,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3806,6 +4592,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3828,6 +4620,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3854,6 +4652,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3880,6 +4684,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3898,6 +4708,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3916,6 +4732,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -3956,6 +4778,12 @@
           "path"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -3988,6 +4816,12 @@
           "path"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -4014,6 +4848,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4040,6 +4880,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4049,6 +4895,12 @@
         "properties": {},
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4071,6 +4923,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -4093,6 +4951,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4115,6 +4979,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4153,6 +5023,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4171,6 +5047,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4193,6 +5075,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4211,6 +5099,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4229,6 +5123,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4255,6 +5155,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4285,6 +5191,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4303,6 +5215,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4312,6 +5230,12 @@
         "properties": {},
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4346,6 +5270,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4360,6 +5290,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4382,6 +5318,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4391,6 +5333,12 @@
         "properties": {},
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4405,6 +5353,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4435,6 +5389,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4461,6 +5421,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4479,6 +5445,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4505,6 +5477,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4539,6 +5517,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4561,6 +5545,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4579,6 +5569,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4609,6 +5605,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4623,6 +5625,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4659,6 +5667,12 @@
           "path"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -4689,6 +5703,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4714,6 +5734,12 @@
           "elementId2"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -4746,6 +5772,12 @@
           "path"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -4779,6 +5811,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -4823,6 +5861,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -4860,6 +5904,12 @@
           "yMm"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -4888,6 +5938,12 @@
           "viewId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -4927,11 +5983,17 @@
           "z"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
       "name": "revit_publish_coordinates_to_link",
-      "description_hash": "sha256:0fcffeed77ed40daedd62d0dff713aafbc765afee259f83594f5fe35040788db",
+      "description_hash": "sha256:05ce2545541ffb950bedfb8250ee4ce7474f71585fda24c58bbc2d85cbf96dd9",
       "inputSchema": {
         "properties": {
           "confirm": {
@@ -4951,6 +6013,12 @@
           "linkInstanceId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -4973,6 +6041,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5027,11 +6101,17 @@
           "view3dId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
       "name": "revit_reload_link",
-      "description_hash": "sha256:0fa265b6ecf84eca053bbdd5ef8114560a8dae58aa1e9794721192f119d0a2e5",
+      "description_hash": "sha256:11e93a06f7e40115b3a130402970122ad6b9de6faeea6698f0a8ffad6bc97710",
       "inputSchema": {
         "properties": {
           "linkInstanceId": {
@@ -5049,6 +6129,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5073,6 +6159,12 @@
           "filterId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5103,6 +6195,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5124,6 +6222,12 @@
           "newName"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5158,6 +6262,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5191,11 +6301,17 @@
           "toTypeId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_run_baked_tool",
-      "description_hash": "sha256:cabbf50d60712c43ba573c5146dc70bc27d6e8b5a6c579cf26813b1fea12ca3b",
+      "description_hash": "sha256:99eba48531af06e3b050e5667a7645170f00ab38eb79badb556e5a64f6aeaf38",
       "inputSchema": {
         "properties": {
           "name": {
@@ -5215,6 +6331,12 @@
           "name"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5251,6 +6373,12 @@
           "name"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5277,6 +6405,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -5318,6 +6452,12 @@
           "hidden"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5348,6 +6488,12 @@
           "value"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5380,6 +6526,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5424,6 +6576,12 @@
           "filterId"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5486,6 +6644,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5536,6 +6700,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5578,6 +6748,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5620,6 +6796,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5662,6 +6844,12 @@
           "value"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5699,6 +6887,12 @@
           "northSouth"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5733,6 +6927,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5777,6 +6977,12 @@
           "action"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5797,6 +7003,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5825,6 +7037,12 @@
           "parameters"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5858,6 +7076,12 @@
           "value"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5892,6 +7116,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5922,6 +7152,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5942,6 +7178,12 @@
           "scale"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -5974,6 +7216,12 @@
           "element_ids"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -6000,6 +7248,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -6014,6 +7268,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -6034,6 +7294,12 @@
           "version"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -6064,6 +7330,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6104,6 +7376,12 @@
           "category"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6113,6 +7391,12 @@
         "properties": {},
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6122,6 +7406,12 @@
         "properties": {},
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6162,6 +7452,12 @@
           "elementIds"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6184,6 +7480,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6210,11 +7512,17 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_unload_link",
-      "description_hash": "sha256:3015ac0e50e116abf1ab235c480ec8316a72f967c11d71dc04496f2c255fb37c",
+      "description_hash": "sha256:b42b49a239dd3465b6248adcc7b19585f5677b222de1f6c736de669dbfa32d5f",
       "inputSchema": {
         "properties": {
           "linkInstanceId": {
@@ -6232,6 +7540,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6261,6 +7575,12 @@
           "changes"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6283,6 +7603,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6332,11 +7658,17 @@
           "category_b"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
       "name": "revit_workflow_data_roundtrip",
-      "description_hash": "sha256:1a27a7144c317e3c059b88d0d4157ddf11c57a31247def72813bdd9ec7f943bb",
+      "description_hash": "sha256:b81a300ad308f168f721d602be6dd8f3cea464bc433895888173a2a402db4e89",
       "inputSchema": {
         "properties": {
           "category": {
@@ -6377,6 +7709,12 @@
           "export_path"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6411,6 +7749,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -6447,6 +7791,12 @@
           "target"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6489,6 +7839,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6517,6 +7873,12 @@
           "sheets"
         ],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6555,6 +7917,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -6589,6 +7957,12 @@
         },
         "required": [],
         "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     }
   ]

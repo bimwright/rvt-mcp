@@ -40,6 +40,17 @@
     <Compile Include="..\shared\ToolBaker\BakedToolRecord.cs" Link="Shared\BakedToolRecord.cs" />
     <Compile Include="..\shared\ToolBaker\BakedToolRuntimeSource.cs" Link="Shared\BakedToolRuntimeSource.cs" />
     <Compile Include="..\shared\Infrastructure\LegacyDataMigration.cs" Link="Shared\LegacyDataMigration.cs" />
+    <Compile Include="..\shared\Infrastructure\ToolReadPolicy.cs" Link="Shared\ToolReadPolicy.cs" />
+    <Compile Include="..\shared\Infrastructure\ResponseSizeGuard.cs" Link="Shared\ResponseSizeGuard.cs" />
+    <Compile Include="..\shared\Infrastructure\ResponseSizePolicyCatalog.cs" Link="Shared\ResponseSizePolicyCatalog.cs" />
+    <Compile Include="..\shared\Infrastructure\MutationResponseCompactor.cs" Link="Shared\MutationResponseCompactor.cs" />
+    <Compile Include="..\shared\Infrastructure\ResponseSpillWriter.cs" Link="Shared\ResponseSpillWriter.cs" />
+    <Compile Include="..\shared\Infrastructure\ResponseSpillPolicy.cs" Link="Shared\ResponseSpillPolicy.cs" />
+    <Compile Include="..\shared\Infrastructure\ResponseSpillProcessor.cs" Link="Shared\ResponseSpillProcessor.cs" />
+    <Compile Include="..\shared\Infrastructure\ResponseEnvelopeGuard.cs" Link="Shared\ResponseEnvelopeGuard.cs" />
+    <Compile Include="..\shared\Views\Toast\ToolActivityClassifier.cs" Link="Shared\ToolActivityClassifier.cs" />
+    <Compile Include="..\shared\Security\McpResponsePrivacy.cs" Link="Shared\McpResponsePrivacy.cs" />
+    <Compile Include="..\shared\Security\ErrorSanitizer.cs" Link="Shared\ErrorSanitizer.cs" />
     <Compile Include="..\shared\ToolCatalog\ToolCatalogModels.cs" Link="Shared\ToolCatalogModels.cs" />
   </ItemGroup>
 

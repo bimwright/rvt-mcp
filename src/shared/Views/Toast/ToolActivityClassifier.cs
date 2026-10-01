@@ -15,7 +15,10 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             "batch_execute",
             "send_code_to_revit",
-            "run_baked_tool"
+            "run_baked_tool",
+            "capture_view_image", "get_material_takeoff", "compute_room_finishes",
+            "list_bake_suggestions", "open_model",
+            "accept_bake_suggestion", "dismiss_bake_suggestion"
         };
 
         private static readonly string[] WritePrefixes =
@@ -61,6 +64,8 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             if (string.IsNullOrWhiteSpace(commandName))
                 return ToolActivityKind.Read;
+
+            if (ToolReadPolicy.IsReadOnly(commandName)) return ToolActivityKind.Read;
 
             if (ExactWriteCommands.Contains(commandName))
                 return ToolActivityKind.Write;

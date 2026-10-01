@@ -16,6 +16,7 @@ namespace RvtMcp.Plugin
         public string Id { get; set; }
         public string CommandName { get; set; }
         public string ParamsJson { get; set; }
+        public RvtMcpConfig RuntimeOptions { get; set; }
         public TaskCompletionSource<string> Tcs { get; set; }
     }
 
@@ -56,15 +57,19 @@ namespace RvtMcp.Plugin
                     continue;
 
                 var sw = Stopwatch.StartNew();
+                var runtimeConfig = new RvtMcpConfig();
                 try
                 {
+                    runtimeConfig = RvtMcpConfig.LoadReadOnly().WithRuntimeOptions(request.RuntimeOptions);
+                    var rejection = ToolReadPolicy.Rejection(request.CommandName, runtimeConfig.ReadOnlyOrDefault, runtimeConfig.EnableSendCodeOrDefault);
+                    if (rejection != null) throw new InvalidOperationException(rejection);
                     var command = _dispatcher.GetCommand(request.CommandName);
                     if (command == null)
                     {
                         sw.Stop();
                         var unknownError = McpResponsePrivacy.RedactErrorForResponse($"Unknown command: {request.CommandName}");
                         McpLogger.Log(request.CommandName, request.ParamsJson, false,
-                                      sw.ElapsedMilliseconds, unknownError);
+                                      sw.ElapsedMilliseconds, unknownError, enabled: runtimeConfig.EnableCallLogOrDefault);
                         _sessionLog?.Add(new McpCallEntry
                         {
                             ToolName = request.CommandName,
@@ -107,7 +112,7 @@ namespace RvtMcp.Plugin
                         sw.Stop();
                         var validationError = McpResponsePrivacy.RedactErrorForResponse(validation.Error);
                         McpLogger.Log(request.CommandName, request.ParamsJson, false,
-                                      sw.ElapsedMilliseconds, validationError);
+                                      sw.ElapsedMilliseconds, validationError, enabled: runtimeConfig.EnableCallLogOrDefault);
                         _sessionLog?.Add(new McpCallEntry
                         {
                             ToolName = request.CommandName,
@@ -158,15 +163,11 @@ namespace RvtMcp.Plugin
                         id = request.Id,
                         success = result.Success,
                         data = result.Data,
-                        error = result.Error
+                        error = McpResponsePrivacy.RedactErrorForResponse(NoDocumentGuidance.ForAgent(result.Error))
                     });
-                    var spillOutcome = new ResponseSpillProcessor(new ResponseSpillWriter()).Process(
-                        request.CommandName,
-                        request.ParamsJson,
-                        result.Success,
-                        result.Data,
-                        preSpillResponse);
-                    result.Data = spillOutcome.Data;
+                    var preGuard = ResponseEnvelopeGuard.Apply(request.CommandName, request.ParamsJson,
+                        JObject.Parse(preSpillResponse), runtimeConfig);
+                    result.Data = preGuard["data"];
 
                     // responseData is the redacted view used ONLY for session log + summary.
                     // The wire response (below) uses result.Data raw so the agent sees real values.
@@ -194,89 +195,9 @@ namespace RvtMcp.Plugin
                         : responseResultJson;
 
                     var resultError = McpResponsePrivacy.RedactErrorForResponse(result.Error);
-                    var wireError = McpResponsePrivacy.RedactErrorForResponse(
-                        NoDocumentGuidance.ForAgent(result.Error));
-
-                    var response = JsonConvert.SerializeObject(new
-                    {
-                        id = request.Id,
-                        success = result.Success,
-                        data = result.Data,
-                        error = wireError
-                    });
-
-                    var size = ResponseSizeGuard.Evaluate(
-                        commandName: request.CommandName,
-                        serializedPayload: response,
-                        topLevelKeyCount: (result.Data as Newtonsoft.Json.Linq.JObject)?.Count ?? 0,
-                        narrowingHint: ResponseSizePolicyCatalog.GetNarrowingHint(request.CommandName));
-                    if (size.Warning != null)
-                        Console.Error.WriteLine(size.Warning);
-
-                    string rejectError = null;
-                    if (size.Reject)
-                    {
-                        var mutationCompleted = result.Success
-                            && ResponseSizePolicyCatalog.ShouldPreserveSuccessfulMutation(
-                                request.CommandName,
-                                request.ParamsJson,
-                                ToolActivityClassifier.Classify(request.CommandName) == ToolActivityKind.Write);
-                        if (mutationCompleted)
-                        {
-                            var compacted = MutationResponseCompactor.Compact(result.Data, size.ByteCount);
-                            if (ResponseSizePolicyCatalog.IsMutationOutcomeIndeterminate(request.CommandName))
-                                compacted["mutation_applied"] = JValue.CreateNull();
-                            response = JsonConvert.SerializeObject(new
-                            {
-                                id = request.Id,
-                                success = true,
-                                data = compacted,
-                                error = (string)null,
-                                warning = compacted.Value<string>("warning")
-                            });
-
-                            // Defensive fallback: compaction itself must never breach the hard cap.
-                            var compactSize = ResponseSizeGuard.Evaluate(
-                                request.CommandName,
-                                response,
-                                compacted.Count);
-                            if (compactSize.Reject)
-                            {
-                                response = JsonConvert.SerializeObject(new
-                                {
-                                    id = request.Id,
-                                    success = true,
-                                    data = new
-                                    {
-                                        success = true,
-                                        mutation_applied = compacted["mutation_applied"],
-                                        response_compacted = true,
-                                        original_byte_count = size.ByteCount
-                                    },
-                                    error = (string)null,
-                                    warning = "Command completed successfully; oversized response detail was omitted. Inspect the summary before another call."
-                                });
-                            }
-                        }
-                        else
-                        {
-                            rejectError = size.RejectError;
-                            response = JsonConvert.SerializeObject(new
-                            {
-                                id = request.Id,
-                                success = false,
-                                error = rejectError
-                            });
-                        }
-                    }
-                    else if (size.AgentWarning != null)
-                    {
-                        var warnedResponse = JObject.Parse(response);
-                        warnedResponse["warning"] = size.AgentWarning;
-                        var candidate = warnedResponse.ToString(Formatting.None);
-                        if (System.Text.Encoding.UTF8.GetByteCount(candidate) <= ResponseSizeGuard.EnforcementBudgetBytes)
-                            response = candidate;
-                    }
+                    var response = preGuard.ToString(Formatting.None);
+                    string rejectError = result.Success && !preGuard.Value<bool>("success")
+                        ? preGuard.Value<string>("error") : null;
 
                     // Toast, History and mcp-calls.jsonl report one outcome, judged after the
                     // size guard so a rejected response is not recorded as a success.
@@ -284,9 +205,9 @@ namespace RvtMcp.Plugin
                         request.CommandName, result.Success, handlerData, resultError, rejectError);
 
                     McpLogger.Log(request.CommandName, request.ParamsJson, outcome.Success,
-                                  sw.ElapsedMilliseconds, outcome.Error, codeSnippet, resultJson);
+                                  sw.ElapsedMilliseconds, outcome.Error, codeSnippet, resultJson, runtimeConfig.EnableCallLogOrDefault);
 
-                    SendCodeJournalGate.OnSendCodeLogged(request.CommandName, request.ParamsJson, codeSnippet, outcome.Success, sw.ElapsedMilliseconds, outcome.Error, resultJson);
+                    SendCodeJournalGate.OnSendCodeLogged(request.CommandName, request.ParamsJson, codeSnippet, outcome.Success, sw.ElapsedMilliseconds, outcome.Error, resultJson, runtimeConfig);
 
                     _sessionLog?.Add(new McpCallEntry
                     {
@@ -325,7 +246,7 @@ namespace RvtMcp.Plugin
                     sw.Stop();
                     var exError = McpResponsePrivacy.RedactErrorForResponse(ex.Message);
                     McpLogger.Log(request.CommandName, request.ParamsJson, false,
-                                  sw.ElapsedMilliseconds, exError);
+                                  sw.ElapsedMilliseconds, exError, enabled: runtimeConfig.EnableCallLogOrDefault);
 
                     string codeSnippetEx = null;
                     if (request.CommandName == "send_code_to_revit")
@@ -333,7 +254,7 @@ namespace RvtMcp.Plugin
                         try { codeSnippetEx = JObject.Parse(request.ParamsJson)?.Value<string>("code"); }
                         catch { }
                     }
-                    SendCodeJournalGate.OnSendCodeLogged(request.CommandName, request.ParamsJson, codeSnippetEx, false, sw.ElapsedMilliseconds, exError, null);
+                    SendCodeJournalGate.OnSendCodeLogged(request.CommandName, request.ParamsJson, codeSnippetEx, false, sw.ElapsedMilliseconds, exError, null, runtimeConfig);
 
                     _sessionLog?.Add(new McpCallEntry
                     {

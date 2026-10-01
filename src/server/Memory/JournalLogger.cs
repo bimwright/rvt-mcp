@@ -10,19 +10,21 @@ namespace RvtMcp.Server.Memory
         private readonly object _lock = new object();
         private string _currentDate;
         private string _currentPath;
+        private readonly bool _enabled;
 
         public string JournalDir => _journalDir;
 
-        public JournalLogger()
+        public JournalLogger(bool enabled = false, string journalDir = null)
         {
-            _journalDir = Path.Combine(
+            _enabled = enabled;
+            _journalDir = journalDir ?? Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Bimwright", "rvt-mcp", "journal");
-            Directory.CreateDirectory(_journalDir);
         }
 
         public void Log(JournalEntry entry)
         {
+            if (!_enabled) return;
             lock (_lock)
             {
                 var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
@@ -34,6 +36,7 @@ namespace RvtMcp.Server.Memory
 
                 try
                 {
+                    Directory.CreateDirectory(_journalDir);
                     var line = JsonConvert.SerializeObject(entry, Formatting.None);
                     File.AppendAllText(_currentPath, line + "\n");
                 }
@@ -70,6 +73,7 @@ namespace RvtMcp.Server.Memory
         {
             lock (_lock)
             {
+                if (!Directory.Exists(_journalDir)) return Array.Empty<string>();
                 var files = Directory.GetFiles(_journalDir, "*.jsonl");
                 var dates = new string[files.Length];
                 for (int i = 0; i < files.Length; i++)

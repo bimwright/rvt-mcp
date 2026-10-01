@@ -13,6 +13,8 @@ namespace RvtMcp.Tests
 
             Assert.Contains("Toast notifications: ON", text);
             Assert.Contains("ToolBaker tools: ON", text);
+            Assert.Contains("send_code: ON", text);
+            Assert.Contains("Call log: OFF", text);
             Assert.Contains("Adaptive bake suggestions: OFF", text);
             Assert.Contains("Cache send_code bodies (for bake clusters): OFF", text);
             Assert.Contains("Persist send_code journal (TTL): OFF", text);
@@ -25,6 +27,7 @@ namespace RvtMcp.Tests
             var until = DateTimeOffset.UtcNow.AddHours(4).ToString("o");
             var config = new RvtMcpConfig
             {
+                EnableCallLog = true,
                 EnableAdaptiveBake = true,
                 CacheSendCodeBodies = true,
                 PersistSendCodeBodies = true,

@@ -6,6 +6,6 @@ namespace RvtMcp.Tests
     /// Tests that mutate the static <c>ServerState.Config</c> share global state —
     /// running them in the same xunit collection keeps them sequential.
     /// </summary>
-    [CollectionDefinition("ServerStateConfig")]
+    [CollectionDefinition("ServerStateConfig", DisableParallelization = true)]
     public class ServerStateConfigCollection { }
 }

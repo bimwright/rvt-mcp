@@ -108,41 +108,20 @@ namespace RvtMcp.Tests
         // --- --read-only shortcut -----------------------------------------
 
         [Fact]
-        public void Resolve_ReadOnly_StripsCreateModifyDelete()
+        public void Resolve_ReadOnly_PreservesRequestedToolsetsForPerToolFiltering()
         {
             var set = ToolsetFilter.Resolve(new RvtMcpConfig
             {
-                Toolsets = new List<string> { "all" },
-                ReadOnly = true,
+                Toolsets = new List<string> { "all" }, ReadOnly = true
             });
-            Assert.DoesNotContain("create", set);
-            Assert.DoesNotContain("modify", set);
-            Assert.DoesNotContain("delete", set);
-            Assert.DoesNotContain("schedule", set);
-            Assert.DoesNotContain("toolbaker", set);
-            Assert.DoesNotContain("sheets", set);
-            Assert.DoesNotContain("materials", set);
-            Assert.DoesNotContain("annotation", set);
-            Assert.DoesNotContain("rooms", set);
-            Assert.DoesNotContain("links", set);
-            Assert.DoesNotContain("parameters", set);
-            Assert.DoesNotContain("organization", set);
-            Assert.DoesNotContain("workflows", set);
-            // Non-write toolsets survive
-            Assert.Contains("query", set);
-            Assert.Contains("view", set);
-            Assert.Contains("geometry", set);
-            Assert.DoesNotContain("export", set);
+            Assert.Equal(ToolsetFilter.KnownToolsets.OrderBy(s => s), set.OrderBy(s => s));
         }
 
         [Fact]
-        public void Resolve_ReadOnlyWithDefaults_LeavesOnlyReadSafeDefaults()
+        public void Resolve_ReadOnlyWithDefaults_PreservesDefaultToolsets()
         {
             var set = ToolsetFilter.Resolve(new RvtMcpConfig { ReadOnly = true });
-            // Default = query+create+view+meta. ReadOnly strips write-capable create.
-            Assert.Equal(
-                new[] { "meta", "query", "view" },
-                set.OrderBy(s => s).ToArray());
+            Assert.Equal(ToolsetFilter.DefaultOn.OrderBy(s => s), set.OrderBy(s => s));
         }
 
         [Fact]

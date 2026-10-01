@@ -22,16 +22,18 @@ namespace RvtMcp.Tests
             Directory.CreateDirectory(_tempDir);
             SendCodeJournal.LocalAppDataOverride = _tempDir;
             McpLogger.LocalAppDataOverride = _tempDir;
-            McpLogger.Initialize();
+            McpLogger.Initialize(enabled: true);
 
             _activeConfig = new RvtMcpConfig
             {
+                EnableCallLog = true,
                 PersistSendCodeBodies = true,
                 PersistSendCodeBodiesUntil = DateTimeOffset.UtcNow.AddDays(1).ToString("o")
             };
 
             _inactiveConfig = new RvtMcpConfig
             {
+                EnableCallLog = true,
                 PersistSendCodeBodies = false
             };
         }

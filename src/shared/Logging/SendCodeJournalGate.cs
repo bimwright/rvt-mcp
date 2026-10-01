@@ -11,14 +11,15 @@ namespace RvtMcp.Plugin
             bool success,
             long durationMs,
             string resultError,
-            string resultJson)
+            string resultJson,
+            RvtMcpConfig runtimeConfig = null)
         {
             if (commandName != "send_code_to_revit")
                 return;
 
             try
             {
-                var cfg = RvtMcpConfig.Load(args: null);
+                var cfg = runtimeConfig ?? RvtMcpConfig.LoadReadOnly();
                 SendCodeJournal.TryAppend(
                     cfg,
                     McpLogger.CurrentSessionId,

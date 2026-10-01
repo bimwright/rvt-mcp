@@ -31,7 +31,8 @@ namespace RvtMcp.Plugin
                 ["workflow_data_roundtrip"] = ResponseSpillFormat.Ndjson
             };
 
-        public static ResponseSpillDecision Evaluate(string? commandName, string? paramsJson, int compactResponseBytes)
+        public static ResponseSpillDecision Evaluate(string? commandName, string? paramsJson, int compactResponseBytes,
+            int budgetBytes = ResponseSizeGuard.EnforcementBudgetBytes, bool automaticSpill = true)
         {
             var command = commandName ?? string.Empty;
             var output = ReadOutputMode(paramsJson);
@@ -48,7 +49,7 @@ namespace RvtMcp.Plugin
 
             if ((string.Equals(command, "send_code_to_revit", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(command, "run_baked_tool", StringComparison.OrdinalIgnoreCase))
-                && compactResponseBytes > ResponseSizeGuard.EnforcementBudgetBytes)
+                && automaticSpill && compactResponseBytes > budgetBytes)
             {
                 return new ResponseSpillDecision
                 {

@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using ModelContextProtocol.Server;
 
 namespace RvtMcp.Server.Prompts
 {
@@ -43,7 +45,8 @@ namespace RvtMcp.Server.Prompts
             string body,
             string[] requiredToolsets,
             bool requiresSendCode,
-            IReadOnlyDictionary<string, string> args = null)
+            IReadOnlyDictionary<string, string> args = null,
+            string[] requiredTools = null)
         {
             if (body == null)
                 return "This prompt's body was not found in the installed server build.";
@@ -57,6 +60,16 @@ namespace RvtMcp.Server.Prompts
                 return MissingToolsetsNotice(missing, enabled, ServerState.Config?.ReadOnlyOrDefault == true);
             if (requiresSendCode && !Program.IncludeSendCode(enabled, ServerState.Config))
                 return SendCodeOffNotice();
+            if (requiredTools != null)
+            {
+                var exposed = Program.ResolveRegisteredToolMethods(enabled, ServerState.Config)
+                    .Select(method => method.GetCustomAttribute<McpServerToolAttribute>().Name).ToHashSet(StringComparer.Ordinal);
+                var missingTools = requiredTools.Where(name => !exposed.Contains(name)).ToArray();
+                if (missingTools.Length > 0)
+                    return "This prompt needs tools that are not exposed: " + string.Join(", ", missingTools)
+                        + ". --read-only hides tools that can change documents or files, even when this prompt only requests dry-run. "
+                        + "Keep the protection and use the available read-only audit tools directly, or change the session mode before invoking this prompt.";
+            }
             return ApplyArgs(body, args);
         }
 
@@ -79,7 +92,7 @@ namespace RvtMcp.Server.Prompts
                 "Add them to the server command line, e.g.:  --toolsets " + string.Join(",", merged) + "\n" +
                 "(or --toolsets all), then restart the MCP connection so the client picks up the new tool list." +
                 (readOnly && missing.Any(t => ToolsetFilter.WriteCapable.Contains(t, StringComparer.OrdinalIgnoreCase))
-                    ? "\nThe server also runs with --read-only, which re-strips the required write-capable toolsets. " +
+                    ? "\nThe server also runs with --read-only, which hides individual write-capable tools within these toolsets. " +
                       "Keep that protection unless you explicitly authorize enabling those toolsets; only then remove --read-only and restart."
                     : string.Empty);
         }
@@ -88,7 +101,7 @@ namespace RvtMcp.Server.Prompts
         {
             return
                 "This prompt works through revit_send_code_to_revit, which is not exposed right now.\n" +
-                "send_code is removed when the server runs with --read-only or --disable-toolbaker,\n" +
+                "send_code is removed when the server runs with --read-only or --disable-send-code,\n" +
                 "or when neither the 'meta' nor 'toolbaker' toolset is enabled.\n" +
                 "Remove those flags or enable the toolset, then restart the MCP connection.";
         }

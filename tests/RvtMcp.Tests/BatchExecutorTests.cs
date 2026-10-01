@@ -8,6 +8,25 @@ namespace RvtMcp.Tests
 {
     public class BatchExecutorTests
     {
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Send_code_cannot_bypass_its_own_MCP_switch_through_a_batch(bool continueOnError)
+        {
+            var invoked = false;
+            var outcome = BatchExecutor.Run(new JArray(new JObject
+            {
+                ["command"] = "send_code_to_revit", ["params"] = new JObject { ["code"] = "return 1;" }
+            }), continueOnError, (name, parameters) =>
+            {
+                invoked = true;
+                return BatchExecutor.InvokeResult.Ok(new { });
+            });
+            Assert.False(invoked);
+            Assert.True(outcome.AnyFailed);
+            Assert.Contains("call send_code_to_revit directly", Newtonsoft.Json.JsonConvert.SerializeObject(outcome.Results));
+        }
+
         // Scripted dispatcher: dict of commandName → (params → InvokeResult)
         private static Func<string, string, BatchExecutor.InvokeResult> Dispatch(
             Dictionary<string, Func<string, BatchExecutor.InvokeResult>> scripts) =>

@@ -31,6 +31,13 @@ namespace RvtMcp.Plugin
         public const string EnvPersistSendCodeBodies     = "BIMWRIGHT_PERSIST_SEND_CODE_BODIES";
         public const string EnvPersistSendCodeBodiesTtl  = "BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL";
         public const string EnvUiLanguage                = "BIMWRIGHT_UI_LANGUAGE";
+        public const string EnvEnableSendCode = "BIMWRIGHT_ENABLE_SEND_CODE";
+        public const string EnvEnableCallLog = "BIMWRIGHT_ENABLE_CALL_LOG";
+        public const string EnvEnableResponseGuard = "BIMWRIGHT_ENABLE_RESPONSE_GUARD";
+        public const string EnvResponseWarnBytes = "BIMWRIGHT_RESPONSE_WARN_BYTES";
+        public const string EnvResponseStrongWarnBytes = "BIMWRIGHT_RESPONSE_STRONG_WARN_BYTES";
+        public const string EnvResponseBudgetBytes = "BIMWRIGHT_RESPONSE_BUDGET_BYTES";
+        public const string EnvMaxResponseBytes = "BIMWRIGHT_MAX_RESPONSE_BYTES";
 
         public const bool DefaultReadOnly                  = false;
         public const bool DefaultAllowLanBind              = false;
@@ -51,6 +58,27 @@ namespace RvtMcp.Plugin
 
         [JsonProperty("readOnly")]
         public bool? ReadOnly { get; set; }
+
+        [JsonProperty("enableSendCode")]
+        public bool? EnableSendCode { get; set; }
+
+        [JsonProperty("enableCallLog")]
+        public bool? EnableCallLog { get; set; }
+
+        [JsonProperty("enableResponseGuard")]
+        public bool? EnableResponseGuard { get; set; }
+
+        [JsonProperty("responseWarnBytes")]
+        public int? ResponseWarnBytes { get; set; }
+
+        [JsonProperty("responseStrongWarnBytes")]
+        public int? ResponseStrongWarnBytes { get; set; }
+
+        [JsonProperty("responseBudgetBytes")]
+        public int? ResponseBudgetBytes { get; set; }
+
+        [JsonProperty("maxResponseBytes")]
+        public int? MaxResponseBytes { get; set; }
 
         [JsonProperty("allowLanBind")]
         public bool? AllowLanBind { get; set; }
@@ -100,6 +128,61 @@ namespace RvtMcp.Plugin
         public string UiLanguage { get; set; }
 
         public bool ReadOnlyOrDefault              => ReadOnly           ?? DefaultReadOnly;
+        public bool EnableSendCodeOrDefault => !ReadOnlyOrDefault && (EnableSendCode ?? true);
+        public bool EnableCallLogOrDefault => EnableCallLog ?? false;
+        public bool EnableResponseGuardOrDefault => EnableResponseGuard ?? true;
+        public int ResponseWarnBytesOrDefault => PositiveBytes(ResponseWarnBytes, 64 * 1024, "responseWarnBytes");
+        public int ResponseStrongWarnBytesOrDefault => PositiveBytes(ResponseStrongWarnBytes, 256 * 1024, "responseStrongWarnBytes");
+        public int ResponseBudgetBytesOrDefault => PositiveBytes(ResponseBudgetBytes, 700 * 1024, "responseBudgetBytes");
+        public int MaxResponseBytesOrDefault => PositiveBytes(MaxResponseBytes, 1024 * 1024, "maxResponseBytes");
+
+        private static int PositiveBytes(int? value, int fallback, string name)
+        {
+            if (value.HasValue && value.Value < 1024)
+                throw new ArgumentException(name + " must be at least 1024 bytes.");
+            return value ?? fallback;
+        }
+
+        public void ValidateResponseLimits()
+        {
+            if (ResponseWarnBytesOrDefault > ResponseStrongWarnBytesOrDefault
+                || ResponseStrongWarnBytesOrDefault > ResponseBudgetBytesOrDefault
+                || ResponseBudgetBytesOrDefault > MaxResponseBytesOrDefault)
+                throw new ArgumentException("Response limits must satisfy warn <= strong warning <= budget <= transport cap.");
+        }
+
+        // Only session controls cross the authenticated server/plugin boundary. Host UI
+        // and code-body retention settings remain owned by the plugin's local config.
+        public RvtMcpConfig ToRuntimeOptions()
+        {
+            return new RvtMcpConfig
+            {
+                ReadOnly = ReadOnlyOrDefault,
+                EnableSendCode = EnableSendCodeOrDefault,
+                EnableCallLog = EnableCallLogOrDefault,
+                EnableResponseGuard = EnableResponseGuardOrDefault,
+                ResponseWarnBytes = ResponseWarnBytesOrDefault,
+                ResponseStrongWarnBytes = ResponseStrongWarnBytesOrDefault,
+                ResponseBudgetBytes = ResponseBudgetBytesOrDefault,
+                MaxResponseBytes = MaxResponseBytesOrDefault
+            };
+        }
+
+        public RvtMcpConfig WithRuntimeOptions(RvtMcpConfig runtime)
+        {
+            if (runtime == null) return this;
+            var result = (RvtMcpConfig)MemberwiseClone();
+            result.ReadOnly = runtime.ReadOnly ?? ReadOnly;
+            result.EnableSendCode = runtime.EnableSendCode ?? EnableSendCode;
+            result.EnableCallLog = runtime.EnableCallLog ?? EnableCallLog;
+            result.EnableResponseGuard = runtime.EnableResponseGuard ?? EnableResponseGuard;
+            result.ResponseWarnBytes = runtime.ResponseWarnBytes ?? ResponseWarnBytes;
+            result.ResponseStrongWarnBytes = runtime.ResponseStrongWarnBytes ?? ResponseStrongWarnBytes;
+            result.ResponseBudgetBytes = runtime.ResponseBudgetBytes ?? ResponseBudgetBytes;
+            result.MaxResponseBytes = runtime.MaxResponseBytes ?? MaxResponseBytes;
+            result.ValidateResponseLimits();
+            return result;
+        }
         public bool AllowLanBindOrDefault          => AllowLanBind       ?? DefaultAllowLanBind;
         public bool EnableToolbakerOrDefault       => EnableToolbaker    ?? DefaultEnableToolbaker;
         public bool EnableAdaptiveBakeOrDefault    => EnableAdaptiveBake ?? DefaultEnableAdaptiveBake;
@@ -246,6 +329,14 @@ namespace RvtMcp.Plugin
             var readOnly = ParseBool(lookup(EnvReadOnly));
             if (readOnly.HasValue) config.ReadOnly = readOnly;
 
+            config.EnableSendCode = ParseBool(lookup(EnvEnableSendCode)) ?? config.EnableSendCode;
+            config.EnableCallLog = ParseBool(lookup(EnvEnableCallLog)) ?? config.EnableCallLog;
+            config.EnableResponseGuard = ParseBool(lookup(EnvEnableResponseGuard)) ?? config.EnableResponseGuard;
+            config.ResponseWarnBytes = ParseBytes(lookup(EnvResponseWarnBytes), EnvResponseWarnBytes) ?? config.ResponseWarnBytes;
+            config.ResponseStrongWarnBytes = ParseBytes(lookup(EnvResponseStrongWarnBytes), EnvResponseStrongWarnBytes) ?? config.ResponseStrongWarnBytes;
+            config.ResponseBudgetBytes = ParseBytes(lookup(EnvResponseBudgetBytes), EnvResponseBudgetBytes) ?? config.ResponseBudgetBytes;
+            config.MaxResponseBytes = ParseBytes(lookup(EnvMaxResponseBytes), EnvMaxResponseBytes) ?? config.MaxResponseBytes;
+
             var allowLan = ParseBool(lookup(EnvAllowLanBind));
             if (allowLan.HasValue) config.AllowLanBind = allowLan;
 
@@ -333,6 +424,16 @@ namespace RvtMcp.Plugin
                     case "--read-only":
                         config.ReadOnly = true;
                         break;
+                    case "--enable-send-code": config.EnableSendCode = true; break;
+                    case "--disable-send-code": config.EnableSendCode = false; break;
+                    case "--enable-call-log": config.EnableCallLog = true; break;
+                    case "--disable-call-log": config.EnableCallLog = false; break;
+                    case "--enable-response-guard": config.EnableResponseGuard = true; break;
+                    case "--disable-response-guard": config.EnableResponseGuard = false; break;
+                    case "--response-warn-bytes": config.ResponseWarnBytes = ReadBytes(args, ref i); break;
+                    case "--response-strong-warn-bytes": config.ResponseStrongWarnBytes = ReadBytes(args, ref i); break;
+                    case "--response-budget-bytes": config.ResponseBudgetBytes = ReadBytes(args, ref i); break;
+                    case "--max-response-bytes": config.MaxResponseBytes = ReadBytes(args, ref i); break;
                     case "--allow-lan-bind":
                         config.AllowLanBind = true;
                         break;
@@ -398,6 +499,22 @@ namespace RvtMcp.Plugin
                         break;
                 }
             }
+        }
+
+        private static int ReadBytes(string[] args, ref int index)
+        {
+            var flag = args[index];
+            if (index + 1 >= args.Length)
+                throw new ArgumentException(flag + " requires a byte count.");
+            return ParseBytes(args[++index], flag) ?? throw new ArgumentException(flag + " requires a byte count.");
+        }
+
+        private static int? ParseBytes(string value, string name)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            if (!int.TryParse(value, out var bytes) || bytes < 1024)
+                throw new ArgumentException(name + " must be an integer of at least 1024 bytes.");
+            return bytes;
         }
 
         internal static bool? ParseBool(string value)

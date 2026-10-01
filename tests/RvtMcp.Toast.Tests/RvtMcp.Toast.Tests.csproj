@@ -15,6 +15,7 @@
     <Compile Include="../../src/shared/Views/Toast/ToastContentBuilder.cs" Link="ToastContentBuilder.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastThumbnailLoader.cs" Link="ToastThumbnailLoader.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToolActivityClassifier.cs" Link="ToolActivityClassifier.cs" />
+    <Compile Include="../../src/shared/Infrastructure/ToolReadPolicy.cs" Link="ToolReadPolicy.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToolNameFormatter.cs" Link="ToolNameFormatter.cs" />
     <Compile Include="../../src/shared/Security/PathAllowlist.cs" Link="PathAllowlist.cs" />
     <Compile Include="../../src/shared/Views/BrandAssets.cs" Link="BrandAssets.cs" />

@@ -78,7 +78,7 @@ Video cộng đồng giới thiệu rvt-mcp. Cách cài trong video có thể c�
 | `--toolsets all` | **227** | Full catalog |
 | `all` + adaptive bake | **230** | Thêm 3 tool vòng đời suggestion |
 
-Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 42 tool. `--read-only` gỡ mọi toolset write-capable (kể cả `create`) bất kể nguồn nào.
+Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 42 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline.
 
 | Toolset | Phạm vi |
 |---------|---------|
@@ -108,7 +108,7 @@ Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp
 
 ### send_code, ToolBaker, ribbon và ngôn ngữ
 
-- **`revit_send_code_to_revit`** (bật mặc định) compile và chạy body C# trong Revit khi không có typed tool phù hợp; `--read-only` hoặc `--disable-toolbaker` sẽ gỡ nó. Xem [docs/send-code.md](docs/send-code.md), và [docs/stairs-workflow.md](docs/stairs-workflow.md) cho cầu thang.
+- **`revit_send_code_to_revit`** (bật mặc định) compile và chạy body C# trong Revit khi không có typed tool phù hợp; `--read-only` hoặc `--disable-send-code` sẽ gỡ nó. Xem [docs/send-code.md](docs/send-code.md), và [docs/stairs-workflow.md](docs/stairs-workflow.md) cho cầu thang.
 - **ToolBaker:** `revit_list_baked_tools` / `revit_run_baked_tool` cần `--toolsets toolbaker`. Adaptive bake (`--enable-adaptive-bake`, mặc định tắt) gợi ý tool từ các lời gọi lặp lại; không có gì được thêm cho tới khi bạn accept. Bake compile ngay trong Revit — không cần Visual Studio. Xem [docs/bake.md](docs/bake.md).
 - **Ribbon:** bật/tắt kết nối, mở **History** để tìm và chạy lại các lời gọi trước, và bật/tắt **Toast** hoàn thành (mặc định bật).
 - **Ngôn ngữ giao diện:** UI của add-in có 15 ngôn ngữ và theo ngôn ngữ giao diện của Revit; đổi bằng nút **Language** trong slide-out của ribbon — nút mở **Settings → tab General → nhóm Language** (`BIMWRIGHT_UI_LANGUAGE` vẫn thắng). Tên tool và payload vẫn là tiếng Anh. Xem [docs/localization.md](docs/localization.md).
@@ -138,6 +138,13 @@ Toast **bật mặc định** và có thể tắt. Trong **Settings → Toast**,
 | Năm target | `--target 2024` | `BIMWRIGHT_TARGET` | `target` |
 | Toolsets | `--toolsets query,create` | `BIMWRIGHT_TOOLSETS` | `toolsets` |
 | Read-only | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
+| send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |
+| Call log | `--enable-call-log` / `--disable-call-log` | `BIMWRIGHT_ENABLE_CALL_LOG` | `enableCallLog` |
+| Response guard | `--enable-response-guard` / `--disable-response-guard` | `BIMWRIGHT_ENABLE_RESPONSE_GUARD` | `enableResponseGuard` |
+| Warn bytes | `--response-warn-bytes` | `BIMWRIGHT_RESPONSE_WARN_BYTES` | `responseWarnBytes` |
+| Strong warn bytes | `--response-strong-warn-bytes` | `BIMWRIGHT_RESPONSE_STRONG_WARN_BYTES` | `responseStrongWarnBytes` |
+| Budget bytes | `--response-budget-bytes` | `BIMWRIGHT_RESPONSE_BUDGET_BYTES` | `responseBudgetBytes` |
+| Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | LAN bind (plugin) | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | ToolBaker surface | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
@@ -152,6 +159,124 @@ Toast **bật mặc định** và có thể tắt. Trong **Settings → Toast**,
 Đổi cờ server xong: restart kết nối MCP để client nhận tool list mới.
 
 ---
+
+## Permissions & auto mode — quyền chạy tự động
+
+Các controls này đã được triển khai trên nhánh phát triển cho v1.0.0. Gói v0.8.1 đã phát hành chưa có các switch mới và cách lọc read-only theo từng tool. Phải gọi `send_code` và `run_baked_tool` trực tiếp; `batch_execute` từ chối hai lệnh này.
+
+Annotations mô tả tác động lên document/file của từng tool. Đổi selection, active view và zoom tạm thời được tính là read-only. `send_code` không có annotations: không đưa vào quyền tự động, và xác nhận từng lượt chạy code. Với Claude Code, chỉ sao chép allow list read-only bên dưới; không cho phép wildcard rộng `mcp__rvt-mcp__*`. List này ứng với `--toolsets all`; toolsets bạn chọn có thể công bố ít tool hơn.
+
+<details>
+<summary>Allow list read-only (sinh từ annotations)</summary>
+
+<!-- BEGIN READ_ONLY_ALLOWLIST -->
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__rvt-mcp__revit_activate_view",
+      "mcp__rvt-mcp__revit_ai_element_filter",
+      "mcp__rvt-mcp__revit_analyze_geometry_complexity",
+      "mcp__rvt-mcp__revit_analyze_mep_network",
+      "mcp__rvt-mcp__revit_analyze_model_statistics",
+      "mcp__rvt-mcp__revit_analyze_sheet_layout",
+      "mcp__rvt-mcp__revit_analyze_structural_connections",
+      "mcp__rvt-mcp__revit_analyze_usage_patterns",
+      "mcp__rvt-mcp__revit_analyze_view_naming_patterns",
+      "mcp__rvt-mcp__revit_audit_families",
+      "mcp__rvt-mcp__revit_clash_detection",
+      "mcp__rvt-mcp__revit_compute_element_area",
+      "mcp__rvt-mcp__revit_compute_element_volume",
+      "mcp__rvt-mcp__revit_detect_firm_profile",
+      "mcp__rvt-mcp__revit_detect_system_elements",
+      "mcp__rvt-mcp__revit_find_elements_in_volume",
+      "mcp__rvt-mcp__revit_find_mep_disconnects",
+      "mcp__rvt-mcp__revit_find_overlapping_elements",
+      "mcp__rvt-mcp__revit_find_schedule_elements",
+      "mcp__rvt-mcp__revit_find_undimensioned_elements",
+      "mcp__rvt-mcp__revit_find_untagged_elements",
+      "mcp__rvt-mcp__revit_get_assembly_members",
+      "mcp__rvt-mcp__revit_get_available_family_types",
+      "mcp__rvt-mcp__revit_get_current_target",
+      "mcp__rvt-mcp__revit_get_current_view_info",
+      "mcp__rvt-mcp__revit_get_element_bounding_box",
+      "mcp__rvt-mcp__revit_get_element_centroid",
+      "mcp__rvt-mcp__revit_get_element_details",
+      "mcp__rvt-mcp__revit_get_element_geometry",
+      "mcp__rvt-mcp__revit_get_element_parameters",
+      "mcp__rvt-mcp__revit_get_element_relationships",
+      "mcp__rvt-mcp__revit_get_family_instances",
+      "mcp__rvt-mcp__revit_get_group_members",
+      "mcp__rvt-mcp__revit_get_link_coordinate_system",
+      "mcp__rvt-mcp__revit_get_link_elements",
+      "mcp__rvt-mcp__revit_get_material_properties",
+      "mcp__rvt-mcp__revit_get_material_quantities",
+      "mcp__rvt-mcp__revit_get_mep_element_connectors",
+      "mcp__rvt-mcp__revit_get_model_warnings_summary",
+      "mcp__rvt-mcp__revit_get_panel_schedule",
+      "mcp__rvt-mcp__revit_get_print_settings",
+      "mcp__rvt-mcp__revit_get_project_coordinate_system",
+      "mcp__rvt-mcp__revit_get_room_boundaries",
+      "mcp__rvt-mcp__revit_get_room_openings",
+      "mcp__rvt-mcp__revit_get_schedulable_fields",
+      "mcp__rvt-mcp__revit_get_schedule_data",
+      "mcp__rvt-mcp__revit_get_schedule_definition",
+      "mcp__rvt-mcp__revit_get_schedule_formulas",
+      "mcp__rvt-mcp__revit_get_selected_elements",
+      "mcp__rvt-mcp__revit_get_structural_loads",
+      "mcp__rvt-mcp__revit_get_system_inventory",
+      "mcp__rvt-mcp__revit_get_titleblock_parameters",
+      "mcp__rvt-mcp__revit_get_type_parameters",
+      "mcp__rvt-mcp__revit_get_view_visibility",
+      "mcp__rvt-mcp__revit_list_areas",
+      "mcp__rvt-mcp__revit_list_assemblies",
+      "mcp__rvt-mcp__revit_list_available_targets",
+      "mcp__rvt-mcp__revit_list_baked_tools",
+      "mcp__rvt-mcp__revit_list_export_settings",
+      "mcp__rvt-mcp__revit_list_family_types_in_family",
+      "mcp__rvt-mcp__revit_list_groups",
+      "mcp__rvt-mcp__revit_list_keynotes",
+      "mcp__rvt-mcp__revit_list_linked_cad",
+      "mcp__rvt-mcp__revit_list_linked_models",
+      "mcp__rvt-mcp__revit_list_loaded_families",
+      "mcp__rvt-mcp__revit_list_materials",
+      "mcp__rvt-mcp__revit_list_mep_systems",
+      "mcp__rvt-mcp__revit_list_phases",
+      "mcp__rvt-mcp__revit_list_project_parameter_bindings",
+      "mcp__rvt-mcp__revit_list_project_parameters",
+      "mcp__rvt-mcp__revit_list_rebar",
+      "mcp__rvt-mcp__revit_list_recent_models",
+      "mcp__rvt-mcp__revit_list_revisions",
+      "mcp__rvt-mcp__revit_list_rooms",
+      "mcp__rvt-mcp__revit_list_saved_selections",
+      "mcp__rvt-mcp__revit_list_schedules",
+      "mcp__rvt-mcp__revit_list_shared_parameters",
+      "mcp__rvt-mcp__revit_list_sheets",
+      "mcp__rvt-mcp__revit_list_titleblocks",
+      "mcp__rvt-mcp__revit_list_view_filters",
+      "mcp__rvt-mcp__revit_list_view_templates",
+      "mcp__rvt-mcp__revit_list_worksets",
+      "mcp__rvt-mcp__revit_load_selection",
+      "mcp__rvt-mcp__revit_measure_distance_between_elements",
+      "mcp__rvt-mcp__revit_project_point_onto_face",
+      "mcp__rvt-mcp__revit_raycast_from_point",
+      "mcp__rvt-mcp__revit_select_elements",
+      "mcp__rvt-mcp__revit_show_element_in_view",
+      "mcp__rvt-mcp__revit_show_message",
+      "mcp__rvt-mcp__revit_suggest_view_name_corrections",
+      "mcp__rvt-mcp__revit_switch_target",
+      "mcp__rvt-mcp__revit_workflow_model_audit"
+    ]
+  }
+}
+```
+<!-- END READ_ONLY_ALLOWLIST -->
+
+</details>
+
+send_code mặc định **bật**, độc lập với ToolBaker; call-log mặc định **tắt**. CLI ưu tiên hơn environment, rồi đến JSON. Cấu hình server đã xác thực được truyền sang plugin riêng cho từng request. Khi call-log tắt, server journal, plugin `mcp-calls.jsonl` và journal body send-code đều không ghi; History trong bộ nhớ vẫn hoạt động. Journal body cần đồng thời bật call-log và opt-in TTL riêng. `usage.jsonl` của ToolBaker là luồng riêng, theo cấu hình adaptive-bake.
+
+Response guard mặc định **bật**: cảnh báo tại 65536 byte UTF-8, cảnh báo mạnh trên 262144, budget 716800 và transport cap 1048576 byte. Server đo cả JSON escaping, content và metadata MCP. Kết quả đọc quá lớn trả `RESPONSE_TOO_LARGE` cùng cách thu hẹp; lệnh ghi đã hoàn tất trả tóm tắt. Output code tùy ý được spill ra file cục bộ với `mutation_applied: null`; đọc file đó, không chạy lại lệnh. Tắt guard vẫn giữ transport cap. Các ngưỡng phải là số nguyên >=1024, theo `warn <= strong <= budget <= max`; khi giảm budget, giảm các ngưỡng cảnh báo tương ứng.
 
 ## Supported Revit versions
 
@@ -169,7 +294,7 @@ Chỉ Revit desktop đầy đủ; Revit Viewer không được hỗ trợ. CI bu
 
 - Mặc định local: loopback TCP hoặc named pipe local, kèm auth token theo session trong các file discovery dưới `%LOCALAPPDATA%\Bimwright\rvt-mcp\`.
 - Argument tool được schema-check trước khi handler chạy; lỗi trả về model được sanitize.
-- `send_code` chạy C# tùy ý trong process Revit — mạnh và rủi ro. Dùng `--read-only` hoặc `--disable-toolbaker` nếu không chấp nhận được.
+- `send_code` chạy C# tùy ý trong process Revit — mạnh và rủi ro. Dùng `--read-only` hoặc `--disable-send-code` nếu không chấp nhận được.
 - Adaptive bake, body cache và journal send_code đều opt-in và nằm dưới profile user; mặc định không ghi raw body send_code vào log dài hạn.
 
 Thêm: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).

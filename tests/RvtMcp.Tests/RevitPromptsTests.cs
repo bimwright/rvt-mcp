@@ -210,6 +210,16 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void ModelAudit_does_not_instruct_read_only_clients_to_call_hidden_dry_run_tools()
+        {
+            ServerState.Config = new RvtMcpConfig { ReadOnly = true, Toolsets = new List<string> { "all" } };
+            var rendered = RevitPrompts.ModelAudit();
+            Assert.Contains("not exposed: revit_purge_unused", rendered);
+            Assert.Contains("--read-only", rendered);
+            Assert.DoesNotContain("# Model audit", rendered);
+        }
+
+        [Fact]
         public void Stairs_returns_enable_notice_when_meta_off_even_with_toolbaker()
         {
             // send_code stays available via the toolbaker set, but the body's step-0

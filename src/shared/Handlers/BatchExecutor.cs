@@ -82,6 +82,16 @@ namespace RvtMcp.Plugin.Handlers
                     continue;
                 }
 
+                // Arbitrary code must use its own MCP tool and session switch, not an
+                // annotated batch tool that could bypass send_code exposure controls.
+                if (string.Equals(cmdName, "send_code_to_revit", StringComparison.OrdinalIgnoreCase))
+                {
+                    outcome.Results.Add(new { index = i, ok = false, error = "send_code_to_revit cannot be invoked through batch_execute; call send_code_to_revit directly." });
+                    outcome.AnyFailed = true;
+                    if (!continueOnError) return outcome;
+                    continue;
+                }
+
                 if (isBakedCommand != null && isBakedCommand(cmdName))
                 {
                     outcome.Results.Add(new { index = i, ok = false, error = BakedCommandNotSupportedMessage(cmdName) });

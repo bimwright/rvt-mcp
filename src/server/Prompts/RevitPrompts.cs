@@ -36,6 +36,7 @@ namespace RvtMcp.Server.Prompts
         {
             return PromptBody.Render(
                 PromptBody.Load("model_audit"), ModelAuditSets, requiresSendCode: false,
+                requiredTools: new[] { "revit_workflow_model_audit", "revit_audit_families", "revit_get_model_warnings_summary", "revit_purge_unused" },
                 args: new Dictionary<string, string>
                 {
                     ["scope"] = string.IsNullOrWhiteSpace(scope) ? "all" : scope

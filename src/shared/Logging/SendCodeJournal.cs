@@ -25,7 +25,7 @@ namespace RvtMcp.Plugin
                     var utc = now ?? DateTimeOffset.UtcNow;
                     var root = RootDir;
                     Directory.CreateDirectory(root);
-                    var isActive = config != null && config.IsPersistSendCodeBodiesActive(utc);
+                    var isActive = config != null && config.EnableCallLogOrDefault && config.IsPersistSendCodeBodiesActive(utc);
                     MaybePurge(root, isActive, utc);
                     return true;
                 });
@@ -43,6 +43,7 @@ namespace RvtMcp.Plugin
             string resultJson,
             DateTimeOffset? now = null)
         {
+            if (config?.EnableCallLogOrDefault != true) return false;
             try
             {
                 return McpLogger.WithFileLock(JournalPath, () => AppendUnderLock(

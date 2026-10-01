@@ -47,7 +47,9 @@ namespace RvtMcp.Server
 
             var activeTypes = Program.ResolveRegisteredToolTypes(enabled, config);
             var allTypes = ResolveFullRegistryTypes();
-            var entries = Describe(activeTypes);
+            var activeNames = new HashSet<string>(Program.ResolveRegisteredToolMethods(enabled, config)
+                .Select(method => method.GetCustomAttribute<McpServerToolAttribute>().Name), StringComparer.Ordinal);
+            var entries = Describe(activeTypes).Where(entry => activeNames.Contains(entry.McpName)).ToArray();
             var duplicate = entries
                 .GroupBy(entry => entry.McpName, StringComparer.Ordinal)
                 .FirstOrDefault(group => group.Count() > 1);

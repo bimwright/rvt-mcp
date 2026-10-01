@@ -78,7 +78,7 @@ Community videos of rvt-mcp at work. Install steps shown in a video can be older
 | `--toolsets all` | **227** | Full catalog |
 | `all` + adaptive bake | **230** | Adds 3 suggestion-lifecycle tools |
 
-Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 42-tool surface. `--read-only` drops every write-capable toolset (including `create`) regardless of source.
+Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 42-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline.
 
 | Toolset | What it covers |
 |---------|----------------|
@@ -108,7 +108,7 @@ Counts exclude your personal baked tools. The installer writes the seeded defaul
 
 ### send_code, ToolBaker, ribbon and languages
 
-- **`revit_send_code_to_revit`** (on by default) compiles and runs a C# body inside Revit when no typed tool fits; `--read-only` or `--disable-toolbaker` removes it. See [docs/send-code.md](docs/send-code.md), and [docs/stairs-workflow.md](docs/stairs-workflow.md) for stairs.
+- **`revit_send_code_to_revit`** (on by default) compiles and runs a C# body inside Revit when no typed tool fits; `--read-only` or `--disable-send-code` removes it. See [docs/send-code.md](docs/send-code.md), and [docs/stairs-workflow.md](docs/stairs-workflow.md) for stairs.
 - **ToolBaker:** `revit_list_baked_tools` / `revit_run_baked_tool` need `--toolsets toolbaker`. Adaptive bake (`--enable-adaptive-bake`, off by default) suggests tools from repeated calls; nothing is added until you accept one. Bake compiles inside Revit — no Visual Studio needed. See [docs/bake.md](docs/bake.md).
 - **Ribbon:** start or stop the connection, open **History** to search and re-run past calls, and switch completion **Toasts** (on by default).
 - **UI languages:** the add-in UI comes in 15 languages and follows Revit's UI language; change it with the **Language** button in the ribbon slide-out — it opens **Settings → General → Language** (`BIMWRIGHT_UI_LANGUAGE` still wins). Tool names and payloads stay English. See [docs/localization.md](docs/localization.md).
@@ -149,6 +149,13 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwr
 | Target year | `--target 2024` | `BIMWRIGHT_TARGET` | `target` |
 | Toolsets | `--toolsets query,create` | `BIMWRIGHT_TOOLSETS` | `toolsets` |
 | Read-only | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
+| send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |
+| Call log | `--enable-call-log` / `--disable-call-log` | `BIMWRIGHT_ENABLE_CALL_LOG` | `enableCallLog` |
+| Response guard | `--enable-response-guard` / `--disable-response-guard` | `BIMWRIGHT_ENABLE_RESPONSE_GUARD` | `enableResponseGuard` |
+| Warn bytes | `--response-warn-bytes` | `BIMWRIGHT_RESPONSE_WARN_BYTES` | `responseWarnBytes` |
+| Strong warn bytes | `--response-strong-warn-bytes` | `BIMWRIGHT_RESPONSE_STRONG_WARN_BYTES` | `responseStrongWarnBytes` |
+| Budget bytes | `--response-budget-bytes` | `BIMWRIGHT_RESPONSE_BUDGET_BYTES` | `responseBudgetBytes` |
+| Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | LAN bind (plugin) | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | ToolBaker surface | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
@@ -163,6 +170,124 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwr
 After changing server flags, restart the MCP connection so the client picks up the new tool list.
 
 ---
+
+## Permissions & auto mode
+
+These controls are implemented on the development branch for v1.0.0. The published v0.8.1 package does not include the new switches or per-tool read-only filtering. `send_code` and `run_baked_tool` must be called directly; `batch_execute` rejects them.
+
+MCP annotations describe each tool's document/file effects. Transient selection, active-view and zoom changes count as read-only. `send_code` has no annotations: keep it out of automatic permissions and confirm each arbitrary-code call. For Claude Code, copy only the read-only allow list below; do not allow the broad `mcp__rvt-mcp__*` wildcard. The list covers `--toolsets all`; your selected toolsets may expose fewer tools.
+
+<details>
+<summary>Read-only allow list (generated from annotations)</summary>
+
+<!-- BEGIN READ_ONLY_ALLOWLIST -->
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__rvt-mcp__revit_activate_view",
+      "mcp__rvt-mcp__revit_ai_element_filter",
+      "mcp__rvt-mcp__revit_analyze_geometry_complexity",
+      "mcp__rvt-mcp__revit_analyze_mep_network",
+      "mcp__rvt-mcp__revit_analyze_model_statistics",
+      "mcp__rvt-mcp__revit_analyze_sheet_layout",
+      "mcp__rvt-mcp__revit_analyze_structural_connections",
+      "mcp__rvt-mcp__revit_analyze_usage_patterns",
+      "mcp__rvt-mcp__revit_analyze_view_naming_patterns",
+      "mcp__rvt-mcp__revit_audit_families",
+      "mcp__rvt-mcp__revit_clash_detection",
+      "mcp__rvt-mcp__revit_compute_element_area",
+      "mcp__rvt-mcp__revit_compute_element_volume",
+      "mcp__rvt-mcp__revit_detect_firm_profile",
+      "mcp__rvt-mcp__revit_detect_system_elements",
+      "mcp__rvt-mcp__revit_find_elements_in_volume",
+      "mcp__rvt-mcp__revit_find_mep_disconnects",
+      "mcp__rvt-mcp__revit_find_overlapping_elements",
+      "mcp__rvt-mcp__revit_find_schedule_elements",
+      "mcp__rvt-mcp__revit_find_undimensioned_elements",
+      "mcp__rvt-mcp__revit_find_untagged_elements",
+      "mcp__rvt-mcp__revit_get_assembly_members",
+      "mcp__rvt-mcp__revit_get_available_family_types",
+      "mcp__rvt-mcp__revit_get_current_target",
+      "mcp__rvt-mcp__revit_get_current_view_info",
+      "mcp__rvt-mcp__revit_get_element_bounding_box",
+      "mcp__rvt-mcp__revit_get_element_centroid",
+      "mcp__rvt-mcp__revit_get_element_details",
+      "mcp__rvt-mcp__revit_get_element_geometry",
+      "mcp__rvt-mcp__revit_get_element_parameters",
+      "mcp__rvt-mcp__revit_get_element_relationships",
+      "mcp__rvt-mcp__revit_get_family_instances",
+      "mcp__rvt-mcp__revit_get_group_members",
+      "mcp__rvt-mcp__revit_get_link_coordinate_system",
+      "mcp__rvt-mcp__revit_get_link_elements",
+      "mcp__rvt-mcp__revit_get_material_properties",
+      "mcp__rvt-mcp__revit_get_material_quantities",
+      "mcp__rvt-mcp__revit_get_mep_element_connectors",
+      "mcp__rvt-mcp__revit_get_model_warnings_summary",
+      "mcp__rvt-mcp__revit_get_panel_schedule",
+      "mcp__rvt-mcp__revit_get_print_settings",
+      "mcp__rvt-mcp__revit_get_project_coordinate_system",
+      "mcp__rvt-mcp__revit_get_room_boundaries",
+      "mcp__rvt-mcp__revit_get_room_openings",
+      "mcp__rvt-mcp__revit_get_schedulable_fields",
+      "mcp__rvt-mcp__revit_get_schedule_data",
+      "mcp__rvt-mcp__revit_get_schedule_definition",
+      "mcp__rvt-mcp__revit_get_schedule_formulas",
+      "mcp__rvt-mcp__revit_get_selected_elements",
+      "mcp__rvt-mcp__revit_get_structural_loads",
+      "mcp__rvt-mcp__revit_get_system_inventory",
+      "mcp__rvt-mcp__revit_get_titleblock_parameters",
+      "mcp__rvt-mcp__revit_get_type_parameters",
+      "mcp__rvt-mcp__revit_get_view_visibility",
+      "mcp__rvt-mcp__revit_list_areas",
+      "mcp__rvt-mcp__revit_list_assemblies",
+      "mcp__rvt-mcp__revit_list_available_targets",
+      "mcp__rvt-mcp__revit_list_baked_tools",
+      "mcp__rvt-mcp__revit_list_export_settings",
+      "mcp__rvt-mcp__revit_list_family_types_in_family",
+      "mcp__rvt-mcp__revit_list_groups",
+      "mcp__rvt-mcp__revit_list_keynotes",
+      "mcp__rvt-mcp__revit_list_linked_cad",
+      "mcp__rvt-mcp__revit_list_linked_models",
+      "mcp__rvt-mcp__revit_list_loaded_families",
+      "mcp__rvt-mcp__revit_list_materials",
+      "mcp__rvt-mcp__revit_list_mep_systems",
+      "mcp__rvt-mcp__revit_list_phases",
+      "mcp__rvt-mcp__revit_list_project_parameter_bindings",
+      "mcp__rvt-mcp__revit_list_project_parameters",
+      "mcp__rvt-mcp__revit_list_rebar",
+      "mcp__rvt-mcp__revit_list_recent_models",
+      "mcp__rvt-mcp__revit_list_revisions",
+      "mcp__rvt-mcp__revit_list_rooms",
+      "mcp__rvt-mcp__revit_list_saved_selections",
+      "mcp__rvt-mcp__revit_list_schedules",
+      "mcp__rvt-mcp__revit_list_shared_parameters",
+      "mcp__rvt-mcp__revit_list_sheets",
+      "mcp__rvt-mcp__revit_list_titleblocks",
+      "mcp__rvt-mcp__revit_list_view_filters",
+      "mcp__rvt-mcp__revit_list_view_templates",
+      "mcp__rvt-mcp__revit_list_worksets",
+      "mcp__rvt-mcp__revit_load_selection",
+      "mcp__rvt-mcp__revit_measure_distance_between_elements",
+      "mcp__rvt-mcp__revit_project_point_onto_face",
+      "mcp__rvt-mcp__revit_raycast_from_point",
+      "mcp__rvt-mcp__revit_select_elements",
+      "mcp__rvt-mcp__revit_show_element_in_view",
+      "mcp__rvt-mcp__revit_show_message",
+      "mcp__rvt-mcp__revit_suggest_view_name_corrections",
+      "mcp__rvt-mcp__revit_switch_target",
+      "mcp__rvt-mcp__revit_workflow_model_audit"
+    ]
+  }
+}
+```
+<!-- END READ_ONLY_ALLOWLIST -->
+
+</details>
+
+send_code defaults **on**, independently of ToolBaker; call-log defaults **off**. CLI overrides environment variables, which override JSON. Authenticated server settings override plugin settings for that request only. Call-log off suppresses the server journal, plugin `mcp-calls.jsonl` and send-code body journal; in-memory History remains available. Body journaling needs both call-log on and its separate TTL opt-in. ToolBaker `usage.jsonl` is separate and follows adaptive-bake settings.
+
+The response guard defaults **on**: UTF-8 warnings at 65536 bytes, strong warnings above 262144, a 716800-byte budget and a 1048576-byte transport cap. JSON escaping and MCP content/metadata are measured at the server. Oversized reads return `RESPONSE_TOO_LARGE` with narrowing guidance; completed writes return a compact summary. Arbitrary code output spills to a local file with `mutation_applied: null`; inspect the file instead of rerunning the command. Turning the guard off leaves the transport cap active. Byte limits must be integers >=1024, ordered `warn <= strong <= budget <= max`; adjust lower thresholds when lowering the budget.
 
 ## Supported Revit versions
 
@@ -180,7 +305,7 @@ Full Revit desktop only; Revit Viewer is not a supported target. CI builds all s
 
 - Local by default: loopback TCP or a local named pipe, with a per-session auth token in the discovery files under `%LOCALAPPDATA%\Bimwright\rvt-mcp\`.
 - Tool arguments are schema-checked before handlers run; errors returned to the model are sanitized.
-- `send_code` runs arbitrary C# in the Revit process — powerful and risky. Use `--read-only` or `--disable-toolbaker` if that is unacceptable.
+- `send_code` runs arbitrary C# in the Revit process — powerful and risky. Use `--read-only` or `--disable-send-code` if that is unacceptable.
 - Adaptive bake, body cache and send_code journals are opt-in and stay under your user profile; defaults do not write raw send_code bodies to long-lived logs.
 
 More: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).

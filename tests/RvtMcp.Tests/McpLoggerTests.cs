@@ -104,7 +104,7 @@ namespace RvtMcp.Tests
             try
             {
                 McpLogger.LocalAppDataOverride = root;
-                McpLogger.Initialize();
+                McpLogger.Initialize(enabled: true);
 
                 McpLogger.Log(
                     "send_code_to_revit",
@@ -141,7 +141,7 @@ namespace RvtMcp.Tests
                 File.WriteAllText(Path.Combine(dir, "mcp-calls.jsonl"), "raw send_code_to_revit body");
 
                 McpLogger.LocalAppDataOverride = root;
-                McpLogger.Initialize();
+                McpLogger.Initialize(enabled: true);
 
                 Assert.False(File.Exists(Path.Combine(dir, "mcp-calls.jsonl")));
                 Assert.Empty(Directory.GetFiles(dir, "mcp-calls-*.jsonl"));
@@ -167,7 +167,7 @@ namespace RvtMcp.Tests
                 File.WriteAllText(Path.Combine(dir, "mcp-calls-20260426-010101.jsonl"), "raw send_code_to_revit body");
 
                 McpLogger.LocalAppDataOverride = root;
-                McpLogger.Initialize();
+                McpLogger.Initialize(enabled: true);
 
                 Assert.Empty(Directory.GetFiles(dir, "mcp-calls-*.jsonl"));
                 Assert.Equal("5", File.ReadAllText(Path.Combine(dir, "mcp-calls.version")));
@@ -192,7 +192,7 @@ namespace RvtMcp.Tests
                 File.WriteAllText(Path.Combine(dir, "mcp-calls-20260426-010101.jsonl"), "raw send_code_to_revit body");
 
                 McpLogger.LocalAppDataOverride = root;
-                McpLogger.Initialize();
+                McpLogger.Initialize(enabled: true);
 
                 Assert.Empty(Directory.GetFiles(dir, "mcp-calls-*.jsonl"));
                 Assert.Equal("5", File.ReadAllText(Path.Combine(dir, "mcp-calls.version")));

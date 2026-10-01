@@ -131,6 +131,7 @@ namespace RvtMcp.Plugin
                     Id = request.Value<string>("id"),
                     CommandName = request.Value<string>("command"),
                     ParamsJson = request["params"]?.ToString() ?? "{}",
+                    RuntimeOptions = request["runtime"]?.ToObject<RvtMcpConfig>(),
                     Tcs = tcs
                 };
 

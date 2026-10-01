@@ -78,7 +78,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 | `--toolsets all` | **227** | 完整目录 |
 | `all` + adaptive bake | **230** | 再加 3 个 suggestion 生命周期工具 |
 
-数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 42 个工具。无论来源如何，`--read-only` 都会去掉所有可写 toolset（含 `create`）。
+数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 42 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除。
 
 | Toolset | 覆盖 |
 |---------|------|
@@ -108,7 +108,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 ### send_code、ToolBaker、ribbon 与界面语言
 
-- **`revit_send_code_to_revit`**（默认开启）在没有合适 typed 工具时，于 Revit 内编译并运行 C# 正文；`--read-only` 或 `--disable-toolbaker` 会移除它。见 [docs/send-code.md](docs/send-code.md)；楼梯见 [docs/stairs-workflow.md](docs/stairs-workflow.md)。
+- **`revit_send_code_to_revit`**（默认开启）在没有合适 typed 工具时，于 Revit 内编译并运行 C# 正文；`--read-only` 或 `--disable-send-code` 会移除它。见 [docs/send-code.md](docs/send-code.md)；楼梯见 [docs/stairs-workflow.md](docs/stairs-workflow.md)。
 - **ToolBaker：** `revit_list_baked_tools` / `revit_run_baked_tool` 需要 `--toolsets toolbaker`。Adaptive bake（`--enable-adaptive-bake`，默认关闭）会根据重复调用建议工具；在你 accept 之前不会添加任何东西。Bake 在 Revit 内编译，不需要 Visual Studio。见 [docs/bake.md](docs/bake.md)。
 - **Ribbon：** 启动或停止连接，打开 **History** 搜索并重跑历史调用，切换完成 **Toast**（默认开启）。
 - **界面语言：** 插件 UI 支持 15 种语言，默认跟随 Revit 的界面语言；可在 ribbon 滑出面板的 **Language** 下拉框中更改。工具名与 payload 保持英文。见 [docs/localization.md](docs/localization.md)。
@@ -124,6 +124,13 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 | 目标年份 | `--target 2024` | `BIMWRIGHT_TARGET` | `target` |
 | Toolsets | `--toolsets query,create` | `BIMWRIGHT_TOOLSETS` | `toolsets` |
 | 只读 | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
+| send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |
+| Call log | `--enable-call-log` / `--disable-call-log` | `BIMWRIGHT_ENABLE_CALL_LOG` | `enableCallLog` |
+| Response guard | `--enable-response-guard` / `--disable-response-guard` | `BIMWRIGHT_ENABLE_RESPONSE_GUARD` | `enableResponseGuard` |
+| Warn bytes | `--response-warn-bytes` | `BIMWRIGHT_RESPONSE_WARN_BYTES` | `responseWarnBytes` |
+| Strong warn bytes | `--response-strong-warn-bytes` | `BIMWRIGHT_RESPONSE_STRONG_WARN_BYTES` | `responseStrongWarnBytes` |
+| Budget bytes | `--response-budget-bytes` | `BIMWRIGHT_RESPONSE_BUDGET_BYTES` | `responseBudgetBytes` |
+| Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | LAN 绑定（插件） | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | ToolBaker 表面 | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
@@ -136,6 +143,124 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 改 server 标志后请重启 MCP 连接，以便客户端拿到新工具列表。
 
 ---
+
+## Permissions & auto mode — 自动执行权限
+
+这些 controls 已在 v1.0.0 开发分支实现。已发布的 v0.8.1 包尚不包含新 switch 和按工具筛选的 read-only 模式。`send_code` 与 `run_baked_tool` 必须直接调用；`batch_execute` 会拒绝它们。
+
+Annotations 描述每个工具对文档和文件的影响。临时 selection、active view 和 zoom 变化算作 read-only。`send_code` 没有 annotations：不要加入自动授权，并逐次确认代码执行。Claude Code 仅使用以下 read-only allow list；不要允许宽泛的 `mcp__rvt-mcp__*` wildcard。此列表对应 `--toolsets all`，所选 toolset 可能公开更少工具。
+
+<details>
+<summary>从 annotations 生成的 read-only allow list</summary>
+
+<!-- BEGIN READ_ONLY_ALLOWLIST -->
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__rvt-mcp__revit_activate_view",
+      "mcp__rvt-mcp__revit_ai_element_filter",
+      "mcp__rvt-mcp__revit_analyze_geometry_complexity",
+      "mcp__rvt-mcp__revit_analyze_mep_network",
+      "mcp__rvt-mcp__revit_analyze_model_statistics",
+      "mcp__rvt-mcp__revit_analyze_sheet_layout",
+      "mcp__rvt-mcp__revit_analyze_structural_connections",
+      "mcp__rvt-mcp__revit_analyze_usage_patterns",
+      "mcp__rvt-mcp__revit_analyze_view_naming_patterns",
+      "mcp__rvt-mcp__revit_audit_families",
+      "mcp__rvt-mcp__revit_clash_detection",
+      "mcp__rvt-mcp__revit_compute_element_area",
+      "mcp__rvt-mcp__revit_compute_element_volume",
+      "mcp__rvt-mcp__revit_detect_firm_profile",
+      "mcp__rvt-mcp__revit_detect_system_elements",
+      "mcp__rvt-mcp__revit_find_elements_in_volume",
+      "mcp__rvt-mcp__revit_find_mep_disconnects",
+      "mcp__rvt-mcp__revit_find_overlapping_elements",
+      "mcp__rvt-mcp__revit_find_schedule_elements",
+      "mcp__rvt-mcp__revit_find_undimensioned_elements",
+      "mcp__rvt-mcp__revit_find_untagged_elements",
+      "mcp__rvt-mcp__revit_get_assembly_members",
+      "mcp__rvt-mcp__revit_get_available_family_types",
+      "mcp__rvt-mcp__revit_get_current_target",
+      "mcp__rvt-mcp__revit_get_current_view_info",
+      "mcp__rvt-mcp__revit_get_element_bounding_box",
+      "mcp__rvt-mcp__revit_get_element_centroid",
+      "mcp__rvt-mcp__revit_get_element_details",
+      "mcp__rvt-mcp__revit_get_element_geometry",
+      "mcp__rvt-mcp__revit_get_element_parameters",
+      "mcp__rvt-mcp__revit_get_element_relationships",
+      "mcp__rvt-mcp__revit_get_family_instances",
+      "mcp__rvt-mcp__revit_get_group_members",
+      "mcp__rvt-mcp__revit_get_link_coordinate_system",
+      "mcp__rvt-mcp__revit_get_link_elements",
+      "mcp__rvt-mcp__revit_get_material_properties",
+      "mcp__rvt-mcp__revit_get_material_quantities",
+      "mcp__rvt-mcp__revit_get_mep_element_connectors",
+      "mcp__rvt-mcp__revit_get_model_warnings_summary",
+      "mcp__rvt-mcp__revit_get_panel_schedule",
+      "mcp__rvt-mcp__revit_get_print_settings",
+      "mcp__rvt-mcp__revit_get_project_coordinate_system",
+      "mcp__rvt-mcp__revit_get_room_boundaries",
+      "mcp__rvt-mcp__revit_get_room_openings",
+      "mcp__rvt-mcp__revit_get_schedulable_fields",
+      "mcp__rvt-mcp__revit_get_schedule_data",
+      "mcp__rvt-mcp__revit_get_schedule_definition",
+      "mcp__rvt-mcp__revit_get_schedule_formulas",
+      "mcp__rvt-mcp__revit_get_selected_elements",
+      "mcp__rvt-mcp__revit_get_structural_loads",
+      "mcp__rvt-mcp__revit_get_system_inventory",
+      "mcp__rvt-mcp__revit_get_titleblock_parameters",
+      "mcp__rvt-mcp__revit_get_type_parameters",
+      "mcp__rvt-mcp__revit_get_view_visibility",
+      "mcp__rvt-mcp__revit_list_areas",
+      "mcp__rvt-mcp__revit_list_assemblies",
+      "mcp__rvt-mcp__revit_list_available_targets",
+      "mcp__rvt-mcp__revit_list_baked_tools",
+      "mcp__rvt-mcp__revit_list_export_settings",
+      "mcp__rvt-mcp__revit_list_family_types_in_family",
+      "mcp__rvt-mcp__revit_list_groups",
+      "mcp__rvt-mcp__revit_list_keynotes",
+      "mcp__rvt-mcp__revit_list_linked_cad",
+      "mcp__rvt-mcp__revit_list_linked_models",
+      "mcp__rvt-mcp__revit_list_loaded_families",
+      "mcp__rvt-mcp__revit_list_materials",
+      "mcp__rvt-mcp__revit_list_mep_systems",
+      "mcp__rvt-mcp__revit_list_phases",
+      "mcp__rvt-mcp__revit_list_project_parameter_bindings",
+      "mcp__rvt-mcp__revit_list_project_parameters",
+      "mcp__rvt-mcp__revit_list_rebar",
+      "mcp__rvt-mcp__revit_list_recent_models",
+      "mcp__rvt-mcp__revit_list_revisions",
+      "mcp__rvt-mcp__revit_list_rooms",
+      "mcp__rvt-mcp__revit_list_saved_selections",
+      "mcp__rvt-mcp__revit_list_schedules",
+      "mcp__rvt-mcp__revit_list_shared_parameters",
+      "mcp__rvt-mcp__revit_list_sheets",
+      "mcp__rvt-mcp__revit_list_titleblocks",
+      "mcp__rvt-mcp__revit_list_view_filters",
+      "mcp__rvt-mcp__revit_list_view_templates",
+      "mcp__rvt-mcp__revit_list_worksets",
+      "mcp__rvt-mcp__revit_load_selection",
+      "mcp__rvt-mcp__revit_measure_distance_between_elements",
+      "mcp__rvt-mcp__revit_project_point_onto_face",
+      "mcp__rvt-mcp__revit_raycast_from_point",
+      "mcp__rvt-mcp__revit_select_elements",
+      "mcp__rvt-mcp__revit_show_element_in_view",
+      "mcp__rvt-mcp__revit_show_message",
+      "mcp__rvt-mcp__revit_suggest_view_name_corrections",
+      "mcp__rvt-mcp__revit_switch_target",
+      "mcp__rvt-mcp__revit_workflow_model_audit"
+    ]
+  }
+}
+```
+<!-- END READ_ONLY_ALLOWLIST -->
+
+</details>
+
+send_code 默认 **开启**，独立于 ToolBaker；call-log 默认 **关闭**。优先级为 CLI > 环境变量 > JSON。经过认证的 server 设置按 request 覆盖 plugin 设置。关闭 call-log 时，server journal、plugin `mcp-calls.jsonl` 和 send-code 正文 journal 不写入；内存 History 仍可用。正文 journal 需要同时开启 call-log 和独立的 TTL opt-in。ToolBaker `usage.jsonl` 为另一类记录，由 adaptive-bake 设置控制。
+
+Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高于 262144，budget 为 716800，transport cap 为 1048576 byte。server 测量 JSON 转义、MCP content 和 metadata。过大的读取结果返回 `RESPONSE_TOO_LARGE` 和缩小查询的提示；已完成写入返回精简摘要。任意代码输出保存到本机文件，返回 `mutation_applied: null`；查看该文件，不要重新执行命令。关闭 guard 仍保留 transport cap。阈值必须为整数 >=1024，并满足 `warn <= strong <= budget <= max`；降低 budget 时也要调整较低阈值。
 
 ## Supported Revit versions
 
@@ -153,7 +278,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 - 默认本地：loopback TCP 或本机 named pipe，`%LOCALAPPDATA%\Bimwright\rvt-mcp\` 下的 discovery 文件含每会话 auth token。
 - 工具参数在 handler 运行前做 schema 校验；返回模型的错误经过脱敏。
-- `send_code` 可在 Revit 进程中运行任意 C# — 强大且有风险。无法接受时请使用 `--read-only` 或 `--disable-toolbaker`。
+- `send_code` 可在 Revit 进程中运行任意 C# — 强大且有风险。无法接受时请使用 `--read-only` 或 `--disable-send-code`。
 - Adaptive bake、body cache 与 send_code journal 均为 opt-in，留在用户配置目录下；默认不把原始 send_code 正文写入长期日志。
 
 更多：[SECURITY.md](SECURITY.md)、[docs/bake.md](docs/bake.md)。

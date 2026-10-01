@@ -22,8 +22,6 @@
     <Compile Include="..\..\src\shared\Infrastructure\RecentFileList.cs" Link="Shared\RecentFileList.cs" />
     <Compile Include="..\..\src\shared\Handlers\MepMembershipPolicy.cs" Link="Shared\MepMembershipPolicy.cs" />
     <Compile Include="..\..\src\shared\Handlers\OpenModelLocalPolicy.cs" Link="Shared\OpenModelLocalPolicy.cs" />
-    <Compile Include="..\..\src\shared\Security\ErrorSanitizer.cs" Link="Shared\ErrorSanitizer.cs" />
-    <Compile Include="..\..\src\shared\Security\McpResponsePrivacy.cs" Link="Shared\McpResponsePrivacy.cs" />
     <Compile Include="..\..\src\shared\Security\PathAllowlist.cs" Link="Shared\PathAllowlist.cs" />
     <Compile Include="..\..\src\shared\Logging\McpLogger.cs" Link="Shared\McpLogger.cs" />
     <Compile Include="..\..\src\shared\Logging\McpSessionLog.cs" Link="Shared\McpSessionLog.cs" />
@@ -32,7 +30,6 @@
     <Compile Include="..\..\src\shared\Logging\SessionLogHistoryLoader.cs" Link="Shared\SessionLogHistoryLoader.cs" />
     <Compile Include="..\..\src\shared\Logging\SummaryGenerator.cs" Link="Shared\SummaryGenerator.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\ActivityAggregator.cs" Link="Shared\ActivityAggregator.cs" />
-    <Compile Include="..\..\src\shared\Views\Toast\ToolActivityClassifier.cs" Link="Shared\ToolActivityClassifier.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\ToolNameFormatter.cs" Link="Shared\ToolNameFormatter.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\ToastContentBuilder.cs" Link="Shared\ToastContentBuilder.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\McpToastViewModel.cs" Link="Shared\McpToastViewModel.cs" />
@@ -40,13 +37,7 @@
     <Compile Include="..\..\src\shared\Infrastructure\CaptureOutputResolver.cs" Link="Shared\CaptureOutputResolver.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\CaptureOutputPath.cs" Link="Shared\CaptureOutputPath.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\SchemaValidator.cs" Link="Shared\SchemaValidator.cs" />
-    <Compile Include="..\..\src\shared\Infrastructure\ResponseSizeGuard.cs" Link="Shared\ResponseSizeGuard.cs" />
-    <Compile Include="..\..\src\shared\Infrastructure\ResponseSizePolicyCatalog.cs" Link="Shared\ResponseSizePolicyCatalog.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\ResponsePaging.cs" Link="Shared\ResponsePaging.cs" />
-    <Compile Include="..\..\src\shared\Infrastructure\MutationResponseCompactor.cs" Link="Shared\MutationResponseCompactor.cs" />
-    <Compile Include="..\..\src\shared\Infrastructure\ResponseSpillWriter.cs" Link="Shared\ResponseSpillWriter.cs" />
-    <Compile Include="..\..\src\shared\Infrastructure\ResponseSpillPolicy.cs" Link="Shared\ResponseSpillPolicy.cs" />
-    <Compile Include="..\..\src\shared\Infrastructure\ResponseSpillProcessor.cs" Link="Shared\ResponseSpillProcessor.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\RequestWait.cs" Link="Shared\RequestWait.cs" />
     <Compile Include="..\..\src\shared\Config\StatusPrivacySection.cs" Link="Shared\StatusPrivacySection.cs" />
     <Compile Include="..\..\src\shared\Handlers\BatchExecutor.cs" Link="Shared\BatchExecutor.cs" />

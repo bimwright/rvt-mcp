@@ -14,9 +14,10 @@ namespace RvtMcp.Server
 
         public static string BlockIfReadOnly(string toolName)
         {
-            if (!IsReadOnly) return null;
+            if (!IsReadOnly || ToolReadPolicy.IsReadOnly(toolName)) return null;
             return JsonConvert.SerializeObject(new
             {
+                success = false,
                 error = "read_only_mode",
                 tool = toolName,
                 message = $"Tool '{toolName}' is disabled because the server is running with --read-only."

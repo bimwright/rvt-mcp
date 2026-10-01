@@ -17,13 +17,16 @@ namespace RvtMcp.Tests
             Directory.CreateDirectory(_tempDir);
             SendCodeJournal.LocalAppDataOverride = _tempDir;
             McpLogger.LocalAppDataOverride = _tempDir;
-            McpLogger.Initialize();
+            McpLogger.Initialize(enabled: true);
 
             _tempConfigPath = Path.Combine(_tempDir, "rvtmcp.config.json");
             // SendCodeJournalGate calls RvtMcpConfig.Load(args: null) with no path —
             // the override keeps this test off the user's real config file.
             RvtMcpConfig.ConfigFilePathOverride = _tempConfigPath;
             RvtMcpConfig.SavePersistSendCodeBodies(true, DateTimeOffset.UtcNow.AddHours(2), _tempConfigPath);
+            var config = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(_tempConfigPath));
+            config["enableCallLog"] = true;
+            File.WriteAllText(_tempConfigPath, config.ToString());
         }
 
         public void Dispose()

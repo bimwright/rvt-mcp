@@ -10,6 +10,8 @@ namespace RvtMcp.Plugin
     {
         private static string _logPath;
         private static string _sessionId;
+        private static bool _enabled;
+        private static readonly object InitializationLock = new object();
         public static string CurrentSessionId => _sessionId;
         /// <summary>Path of the active mcp-calls.jsonl, or null when logging is disabled.</summary>
         internal static string CurrentLogPath => _logPath;
@@ -22,15 +24,26 @@ namespace RvtMcp.Plugin
         private const int MaxLoggedErrorLength = 4 * 1024;
         internal static string LocalAppDataOverride { get; set; }
 
-        public static void Initialize()
+        public static void Initialize(bool enabled = false)
+        {
+            _enabled = enabled;
+            _logPath = null;
+            _sessionId = DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" +
+                         Guid.NewGuid().ToString("N").Substring(0, 4);
+            if (enabled)
+            {
+                try { lock (InitializationLock) EnsureLogFile(); }
+                catch { _logPath = null; }
+            }
+        }
+
+        private static void EnsureLogFile()
         {
             var dir = Path.Combine(
                 LocalAppDataOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Bimwright", "rvt-mcp");
             Directory.CreateDirectory(dir);
             _logPath = Path.Combine(dir, "mcp-calls.jsonl");
-            _sessionId = DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" +
-                          Guid.NewGuid().ToString("N").Substring(0, 4);
 
             try { WithFileLock(_logPath, () => { RotateIfNeeded(dir); return true; }); }
             catch { _logPath = null; } // logging failure must not prevent add-in startup
@@ -122,11 +135,16 @@ namespace RvtMcp.Plugin
 
         public static void Log(string toolName, string paramsJson, bool success,
                                 long durationMs, string errorMsg = null,
-                                string code = null, string resultJson = null)
+                                string code = null, string resultJson = null, bool? enabled = null)
         {
-            if (_logPath == null) return;
+            if (!(enabled ?? _enabled)) return;
             try
             {
+                lock (InitializationLock)
+                {
+                    if (_logPath == null) EnsureLogFile();
+                }
+                if (_logPath == null) return;
                 var safePayload = BuildLogSafePayload(toolName, paramsJson, code);
 
                 var entry = new

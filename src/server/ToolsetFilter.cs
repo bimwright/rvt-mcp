@@ -53,12 +53,7 @@ namespace RvtMcp.Server
             // Drop unknown tokens silently (misspelling shouldn't crash the server)
             set.IntersectWith(KnownToolsets);
 
-            // --read-only shortcut: strip every write-capable toolset regardless of
-            // whether it was requested explicitly, via "all", or via defaults.
-            if (config != null && config.ReadOnlyOrDefault)
-            {
-                foreach (var w in WriteCapable) set.Remove(w);
-            }
+            // Read-only is applied to individual annotated methods during registration.
 
             if (config != null && !config.EnableToolbakerOrDefault)
                 set.Remove("toolbaker");

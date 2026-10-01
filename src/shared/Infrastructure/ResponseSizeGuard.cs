@@ -63,7 +63,7 @@ namespace RvtMcp.Plugin
             {
                 decision.Reject = true;
                 decision.RejectError =
-                    $"Response exceeded the {maxBytes}-byte response budget ({byteCount} bytes) for command={commandName} " +
+                    $"RESPONSE_TOO_LARGE: Response exceeded the {maxBytes}-byte response budget ({byteCount} bytes) for command={commandName} " +
                     $"top_level_keys={topLevelKeyCount}. {hint} " +
                     "Do not retry the same unscoped request.";
                 return decision;

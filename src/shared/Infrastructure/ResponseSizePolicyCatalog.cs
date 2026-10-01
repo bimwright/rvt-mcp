@@ -170,10 +170,14 @@ namespace RvtMcp.Plugin
         {
             if (string.Equals(commandName, "export_room_data", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(commandName, "export_shared_parameter_file", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(commandName, "workflow_model_audit", StringComparison.OrdinalIgnoreCase))
+                || string.Equals(commandName, "get_material_takeoff", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(commandName, "compute_room_finishes", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(commandName, "workflow_takeoff_report", StringComparison.OrdinalIgnoreCase))
             {
-                return false;
+                try { return string.Equals(JObject.Parse(paramsJson ?? "{}").Value<string>("output"), "file", StringComparison.OrdinalIgnoreCase); }
+                catch { return false; }
             }
+            if (string.Equals(commandName, "workflow_model_audit", StringComparison.OrdinalIgnoreCase)) return false;
 
             return classifiedAsWrite || HasUiSideEffect(commandName, paramsJson);
         }

@@ -94,10 +94,10 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void Disable_toolbaker_hides_send_code_even_with_meta()
+        public void Send_code_has_an_independent_switch_from_toolbaker()
         {
             var captured = CaptureToolsList(new RvtMcpConfig { EnableToolbaker = false });
-            Assert.DoesNotContain("\"name\": \"revit_send_code_to_revit\"", captured);
+            Assert.Contains("\"name\": \"revit_send_code_to_revit\"", captured);
             Assert.Contains("\"name\": \"revit_batch_execute\"", captured);
         }
 
@@ -197,7 +197,8 @@ namespace RvtMcp.Tests
 
             var tools = toolClasses
                 .SelectMany(cls => cls.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance)
-                    .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null))
+                    .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null)
+                    .Where(m => !config.ReadOnlyOrDefault || m.GetCustomAttribute<McpServerToolAttribute>()!.ReadOnly))
                 .Select(ToToolMetadata)
                 .ToArray();
 
@@ -230,7 +231,7 @@ namespace RvtMcp.Tests
                 })
                 .ToArray();
 
-            return new
+            var metadata = Newtonsoft.Json.Linq.JObject.FromObject(new
             {
                 name,
                 description_hash = SnapshotSerializer.HashDescription(description),
@@ -240,7 +241,11 @@ namespace RvtMcp.Tests
                     properties = parameters.ToDictionary(p => p.name!, p => new { type = p.type, description = p.description }),
                     required = parameters.Where(p => p.required).Select(p => p.name).ToArray()
                 }
-            };
+            });
+            var annotations = McpServerTool.Create(method, (object)null).ProtocolTool.Annotations;
+            if (annotations != null) metadata["annotations"] = Newtonsoft.Json.Linq.JObject.Parse(
+                System.Text.Json.JsonSerializer.Serialize(annotations, ModelContextProtocol.McpJsonUtilities.DefaultOptions));
+            return metadata;
         }
 
         private static string ToSnakeCase(string pascal)
