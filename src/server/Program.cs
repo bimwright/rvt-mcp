@@ -627,6 +627,14 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             var responseLine = await tcs.Task;
             var response = JObject.Parse(responseLine);
             var paramsJson = parameters != null ? JsonConvert.SerializeObject(parameters, RequestJsonSettings) : null;
+            UsageLogger?.RecordToolCall(command, paramsJson, response.Value<bool>("success"));
+            return InterpretResponse(response);
+        }
+
+        internal static JObject InterpretResponse(JObject response)
+        {
+            var changes = ChangeSummary.ForAgent(response["changes"]);
+            ChangeCaptureContext.Record(changes);
 
             if (response.Value<bool>("success"))
             {
@@ -634,13 +642,12 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 var responseWarning = response.Value<string>("warning");
                 if (!string.IsNullOrWhiteSpace(responseWarning))
                     data["_response_warning"] = responseWarning;
-                UsageLogger?.RecordToolCall(command, paramsJson, true);
+                if (changes != null) data["_changes"] = changes;
                 return data;
             }
             else
             {
                 var error = response.Value<string>("error") ?? "Unknown error from Revit";
-                UsageLogger?.RecordToolCall(command, paramsJson, false);
                 throw new InvalidOperationException(error);
             }
         }

@@ -16,12 +16,17 @@ namespace RvtMcp.Server
             => mcp.WithRequestFilters(filters => filters.AddCallToolFilter(next => async (request, ct) =>
             {
                 var clock = System.Diagnostics.Stopwatch.StartNew();
-                var result = await next(request, ct);
-                return Apply(request.Params, result, config, session, durationMs: clock.ElapsedMilliseconds);
+                using (var capture = new ChangeCaptureContext())
+                {
+                    var result = await next(request, ct);
+                    return Apply(request.Params, result, config, session, durationMs: clock.ElapsedMilliseconds,
+                        changes: capture.Changes);
+                }
             }));
 
         internal static CallToolResult Apply(CallToolRequestParams request, CallToolResult result,
-            RvtMcpConfig config, SessionContext session = null, ResponseSpillWriter writer = null, long durationMs = 0)
+            RvtMcpConfig config, SessionContext session = null, ResponseSpillWriter writer = null, long durationMs = 0,
+            JObject changes = null)
         {
             var name = request?.Name ?? "";
             var command = name.StartsWith("revit_", StringComparison.Ordinal) ? name.Substring(6) : name;
@@ -88,10 +93,33 @@ namespace RvtMcp.Server
                     }
                 }
             }
+            changes = ChangeSummary.ForAgent(changes);
+            if (changes != null)
+            {
+                JObject data;
+                var currentText = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
+                try { data = JObject.Parse(currentText ?? "{}"); }
+                catch { data = new JObject { [result.IsError == true ? "error" : "result"] = currentText }; }
+                data["_changes"] = changes;
+                result = TextResult(data, result.IsError == true);
+                if (Encoding.UTF8.GetByteCount(Serialize(result)) > limit)
+                {
+                    data["_changes"] = ChangeSummary.Omitted();
+                    result = TextResult(data, result.IsError == true);
+                    if (Encoding.UTF8.GetByteCount(Serialize(result)) > limit)
+                        result = TextResult(new JObject
+                        {
+                            ["success"] = result.IsError != true,
+                            ["response_compacted"] = true,
+                            ["mutation_applied"] = JValue.CreateNull(),
+                            ["_changes"] = ChangeSummary.Omitted()
+                        }, result.IsError == true);
+                }
+            }
             text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
             if (IsFailure(text, command)) result.IsError = true;
             session?.RecordCall(command, arguments, result.IsError != true, durationMs,
-                error: result.IsError == true ? text : null, resultJson: text);
+                error: result.IsError == true ? text : null, resultJson: text, changes: changes);
             return result;
         }
 

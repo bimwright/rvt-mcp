@@ -14,9 +14,11 @@ namespace RvtMcp.Server.Memory
         public string Error { get; set; }
         public string Params { get; set; }
         public string Result { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public JObject Changes { get; set; }
 
         public static JournalEntry Create(string tool, string paramsJson, bool success,
-            long durationMs, string error = null, string resultJson = null)
+            long durationMs, string error = null, string resultJson = null, JObject changes = null)
         {
             return new JournalEntry
             {
@@ -26,7 +28,9 @@ namespace RvtMcp.Server.Memory
                 DurationMs = durationMs,
                 Error = RedactAndTruncate(error, 2048),
                 Params = RedactParams(tool, paramsJson),
-                Result = RedactResult(tool, resultJson)
+                Result = RedactResult(tool, resultJson),
+                Changes = changes == null ? null : JObject.Parse(BakeRedactor.RedactForBake(
+                    ChangeSummary.ForAgent(changes).ToString(Formatting.None)))
             };
         }
 

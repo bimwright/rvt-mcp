@@ -137,6 +137,8 @@ Bản ứng viên v1.0.0 có năm MCP prompt. Chọn `revit_change` trong menu p
 
 ## Cấu hình
 
+Bản development có thể trả `_changes` với ID phần tử thực đổi, gồm tác động gián tiếp và trạng thái chưa đầy đủ/bị cắt. Xem [ghi nhận thay đổi](docs/change-tracking.md) về giới hạn và rollback; các gói ứng viên đã tạo chưa chứa phần này.
+
 Ưu tiên, cao thắng: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`.
 
 | Setting | CLI | Env | JSON |

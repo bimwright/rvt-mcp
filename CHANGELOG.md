@@ -24,6 +24,8 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## v1.0.0 — Unreleased
 
+- **MCP-scoped element changes (development)** — `DocumentChanged` capture adds `_changes` for committed additions, modifications and deletions, including indirect/internal elements. Responses group IDs by document and cap each list at 200 while retaining counts. Ordinary reads remain unchanged. Known batch rollback returns no changes; arbitrary group rollback reports incomplete coverage rather than guessing. Paths are not collected, and the optional call journal stores `Changes` separately from truncated result text. No persistent reason database is introduced. Installed-client acceptance is pending.
+
 - **Structured send-code toast results** — object and array results now produce compact JSON summaries instead of failing toast completion. Scalar/null handling and the 100-character summary limit are preserved.
 
 - **`revit_change` prompt** — surveys existing relationships, agrees a scope for each request, asks for confirmation of a concrete proposal before writing, then reads back the targets and records the user's reason in the conversation. Requires `query,meta`, not `send_code`; read-only sessions stop at survey/proposal. Missing or incomplete checks remain explicit, and readback does not claim exhaustive changed-element tracking. Adds a server-instructions pointer and a fifth prompt while preserving the original four. No persistent change database or server-enforced workflow lock.

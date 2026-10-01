@@ -16,6 +16,12 @@ namespace RvtMcp.Plugin
             var budget = config.EnableResponseGuardOrDefault
                 ? config.ResponseBudgetBytesOrDefault : config.MaxResponseBytesOrDefault;
             var response = (JObject)envelope.DeepClone();
+            if (response["changes"] is JObject)
+            {
+                response["changes"] = ChangeSummary.ForAgent(response["changes"]);
+                if (Encoding.UTF8.GetByteCount(response["changes"].ToString(Formatting.None)) > budget / 4)
+                    response["changes"] = ChangeSummary.Omitted();
+            }
             var operationError = ResponseSizePolicyCatalog.GetOperationError(command, response["data"] as JObject);
             if (operationError != null)
             {

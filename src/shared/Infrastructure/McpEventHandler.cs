@@ -58,6 +58,7 @@ namespace RvtMcp.Plugin
 
                 var sw = Stopwatch.StartNew();
                 var runtimeConfig = new RvtMcpConfig();
+                JObject changes = null;
                 try
                 {
                     runtimeConfig = RvtMcpConfig.LoadReadOnly().WithRuntimeOptions(request.RuntimeOptions);
@@ -151,7 +152,18 @@ namespace RvtMcp.Plugin
                         break;
                     }
 
-                    var result = command.Execute(app, request.ParamsJson);
+                    CommandResult result;
+                    using (var capture = McpChangeTracker.Begin())
+                    {
+                        bool rolledBack = false;
+                        try
+                        {
+                            result = command.Execute(app, request.ParamsJson);
+                            rolledBack = request.CommandName == "batch_execute"
+                                && result.Data != null && JObject.FromObject(result.Data).Value<bool>("rolledBack");
+                        }
+                        finally { changes = capture.Snapshot(rolledBack); }
+                    }
                     sw.Stop();
                     // Spill may replace result.Data; the outcome is judged on the handler's own data.
                     var handlerData = result.Data;
@@ -165,8 +177,10 @@ namespace RvtMcp.Plugin
                         data = result.Data,
                         error = McpResponsePrivacy.RedactErrorForResponse(NoDocumentGuidance.ForAgent(result.Error))
                     });
+                    var envelope = JObject.Parse(preSpillResponse);
+                    if (changes != null) envelope["changes"] = changes;
                     var preGuard = ResponseEnvelopeGuard.Apply(request.CommandName, request.ParamsJson,
-                        JObject.Parse(preSpillResponse), runtimeConfig);
+                        envelope, runtimeConfig);
                     result.Data = preGuard["data"];
 
                     // responseData is the redacted view used ONLY for session log + summary.
@@ -266,13 +280,19 @@ namespace RvtMcp.Plugin
                         Summary = SummaryGenerator.Generate(request.CommandName, request.ParamsJson,
                                                              null, false, exError)
                     });
-                    var errorResponse = JsonConvert.SerializeObject(new
+                    var errorEnvelope = JObject.FromObject(new
                     {
                         id = request.Id,
                         success = false,
                         error = exError
                     });
-                    request.Tcs.TrySetResult(errorResponse);
+                    if (changes != null) errorEnvelope["changes"] = changes;
+                    if (changes != null)
+                    {
+                        try { errorEnvelope = ResponseEnvelopeGuard.Apply(request.CommandName, request.ParamsJson, errorEnvelope, runtimeConfig); }
+                        catch { errorEnvelope["changes"] = ChangeSummary.Omitted(); }
+                    }
+                    request.Tcs.TrySetResult(errorEnvelope.ToString(Formatting.None));
                     try
                     {
                         _toastNotifier?.OnCompleted(

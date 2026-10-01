@@ -23,6 +23,57 @@ namespace RvtMcp.Tests
     public class RuntimeProtocolTests
     {
         [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task MCP_filter_delivers_and_journals_actual_gateway_changes_on_success_or_error(bool failed)
+        {
+            var root = Path.Combine(Path.GetTempPath(), "rvt-changes-" + Guid.NewGuid().ToString("N"));
+            var original = ServerState.Config;
+            var originalSend = ToolGateway.SendOverride;
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var pipeName = "rvt-changes-" + Guid.NewGuid().ToString("N");
+            using var input = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+            using var output = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+            await Task.WhenAll(input.WaitForConnectionAsync(deadline.Token), output.ConnectAsync(deadline.Token));
+            try
+            {
+                var config = new RvtMcpConfig { Toolsets = new List<string> { "meta" }, EnableCallLog = true };
+                ServerState.Config = config;
+                var session = new SessionContext(true, root);
+                ToolGateway.SendOverride = async (command, args, timeout) =>
+                {
+                    await Task.Yield();
+                    var a = new DocumentChangeAccumulator(); a.Observe(12, "modified", "Walls");
+                    return ToolGateway.InterpretResponse(new JObject
+                    {
+                        ["success"] = !failed, ["data"] = new JObject { ["executed"] = true },
+                        ["error"] = failed ? "failure after commit" : null,
+                        ["changes"] = new JObject { ["complete"] = true, ["documents"] = new JArray(a.Snapshot("Sample")) }
+                    });
+                };
+                var builder = Host.CreateApplicationBuilder(); builder.Logging.ClearProviders();
+                var mcp = builder.Services.AddMcpServer().WithStreamServerTransport(input, input);
+                mcp = RuntimeToolFilter.Register(mcp, config, session);
+                Program.RegisterToolsets(mcp, ToolsetFilter.Resolve(config), config);
+                using var host = builder.Build(); await host.StartAsync(deadline.Token);
+                await using var client = await McpClient.CreateAsync(new StreamClientTransport(output, output), cancellationToken: deadline.Token);
+                var response = await client.CallToolAsync("revit_send_code_to_revit",
+                    new Dictionary<string, object> { ["code"] = "return null;" }, cancellationToken: deadline.Token);
+                Assert.Equal(failed, response.IsError == true);
+                var data = JObject.Parse(((TextContentBlock)response.Content[0]).Text);
+                Assert.Equal(12, data["_changes"]["documents"][0]["modified"]["ids"][0].Value<int>());
+                var entry = Assert.Single(session.Journal.ReadDay(DateTime.UtcNow.ToString("yyyy-MM-dd")));
+                Assert.Equal(12, entry.Changes["documents"][0]["modified"]["ids"][0].Value<int>());
+                await client.DisposeAsync(); await host.StopAsync(deadline.Token);
+            }
+            finally
+            {
+                ServerState.Config = original; ToolGateway.SendOverride = originalSend;
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
+        }
+
+        [Theory]
         [InlineData(null, false, true)]
         [InlineData("all", false, true)]
         [InlineData("query,meta", true, true)]

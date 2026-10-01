@@ -145,6 +145,8 @@ If a prompt's toolsets aren't enabled, it answers with the exact `--toolsets` li
 
 ## Configuration
 
+Development builds can report committed element IDs in `_changes`, including indirect effects and explicit incomplete/truncated coverage. See [change tracking](docs/change-tracking.md) for limits and rollback behavior; existing packaged candidates are unchanged.
+
 Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`.
 
 | Setting | CLI | Env | JSON |

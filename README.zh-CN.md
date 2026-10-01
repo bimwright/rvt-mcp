@@ -123,6 +123,8 @@ v1.0.0 发布候选版提供五个 MCP 提示。在客户端提示菜单中选�
 
 ## 配置
 
+开发版可通过 `_changes` 返回已提交修改的元素 ID，包括间接影响，并明确标记不完整或截断情况。限制和回滚行为见[变更记录](docs/change-tracking.md)。现有候选安装包尚未包含此功能。
+
 优先级从高到低：**CLI → env（`BIMWRIGHT_*`）→** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`。
 
 | 设置 | CLI | Env | JSON |

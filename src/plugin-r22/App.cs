@@ -71,6 +71,7 @@ namespace RvtMcp.Plugin
             ToastNotifier = new McpToastNotifier(toastHost, () => ToastEnabled);
             _handler = new McpEventHandler(_dispatcher, SessionLog, ToastNotifier);
             _externalEvent = ExternalEvent.Create(_handler);
+            application.ControlledApplication.DocumentChanged += McpChangeTracker.OnDocumentChanged;
             DebugLog("OnStartup: Dispatcher + EventHandler + ExternalEvent OK");
 
             CreateAndStartTransport();
@@ -89,6 +90,7 @@ namespace RvtMcp.Plugin
 
         public Result OnShutdown(UIControlledApplication application)
         {
+            application.ControlledApplication.DocumentChanged -= McpChangeTracker.OnDocumentChanged;
             application.Idling -= OnIdling;
             Localization.LocalizationHost.ShutdownPlugin();
             _historyWindow?.Close();

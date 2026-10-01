@@ -123,6 +123,8 @@ v1.0.0 リリース候補には 5 つの MCP プロンプトがあります。�
 
 ## 設定
 
+開発版では `_changes` にコミットされた要素 ID と間接的な変更を返し、不完全・省略の状態を明示します。制限とロールバックについては [変更の記録](docs/change-tracking.md) を参照してください。既存の候補パッケージにはまだ含まれていません。
+
 優先度（高い方が勝つ）：**CLI → env（`BIMWRIGHT_*`）→** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`。
 
 | 設定 | CLI | Env | JSON |

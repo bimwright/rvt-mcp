@@ -33,6 +33,7 @@ Steps
 6. Read back the agreed targets and properties with the same query tools; compare before, intended and observed after values. Check related elements only within verified coverage. Distinguish dry-run, rollback, failure, unknown outcome and applied changes; inspect each batch result and rolledBack. After a timeout or ambiguous result, inspect current state before any further write; never replay a possibly completed mutation to obtain a fuller response. Stop on unexpected changes or incomplete verification and explain what remains unresolved.
 
 Report (change record in this conversation)
+- If a response includes _changes, compare each document's added/modified/deleted IDs with the agreed scope. Check complete, status and truncated before claiming coverage; null counts mean unknown, not zero. These are committed element events, not a parameter diff or proof of engineering correctness. An absent _changes does not prove no change when the outcome or plugin capability is unknown. Keep readback for the actual values; do not replay a write to recover omitted IDs.
 - Request (my words) | Goal | Reason (mine, or "unknown")
 - Confirmed scope and option; rejected alternatives
 - Survey: relation | found / none / not checked | IDs | coverage and blind spots
