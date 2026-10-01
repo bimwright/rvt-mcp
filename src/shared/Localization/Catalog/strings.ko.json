@@ -232,5 +232,13 @@
   "settings.general.listener": "MCP listener",
   "settings.general.restart": "Restart the listener with a new port",
   "settings.general.listenerFailed": "The MCP listener could not be started.",
-  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s."
+  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s.",
+  "update.title": "rvt-mcp 업데이트 가능",
+  "update.message": "rvt-mcp의 새 버전({latest})을 사용할 수 있습니다. 아래 프롬프트를 복사해 AI 에이전트에 붙여 넣으면 업데이트할 수 있습니다.",
+  "update.installed": "설치됨: {current}",
+  "update.copyPrompt": "프롬프트 복사",
+  "update.copied": "복사됨 ✓",
+  "update.openRelease": "릴리스 페이지 열기",
+  "update.skip": "이 버전 건너뛰기",
+  "update.close": "닫기"
 }

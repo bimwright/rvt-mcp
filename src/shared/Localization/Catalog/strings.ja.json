@@ -232,5 +232,13 @@
   "settings.general.listener": "MCP listener",
   "settings.general.restart": "Restart the listener with a new port",
   "settings.general.listenerFailed": "The MCP listener could not be started.",
-  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s."
+  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s.",
+  "update.title": "rvt-mcp の更新があります",
+  "update.message": "rvt-mcp の新しいバージョン（{latest}）があります。下のプロンプトをコピーして AI エージェントに貼り付けると更新できます。",
+  "update.installed": "インストール済み：{current}",
+  "update.copyPrompt": "プロンプトをコピー",
+  "update.copied": "コピーしました ✓",
+  "update.openRelease": "リリースページを開く",
+  "update.skip": "このバージョンをスキップ",
+  "update.close": "閉じる"
 }

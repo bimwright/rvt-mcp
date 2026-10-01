@@ -232,5 +232,13 @@
   "settings.general.listener": "MCP listener",
   "settings.general.restart": "Restart the listener with a new port",
   "settings.general.listenerFailed": "The MCP listener could not be started.",
-  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s."
+  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s.",
+  "update.title": "K dispozici je aktualizace rvt-mcp",
+  "update.message": "Je k dispozici nová verze rvt-mcp ({latest}). Zkopírujte níže uvedený prompt a vložte ho svému AI agentovi, který vás provede aktualizací.",
+  "update.installed": "Nainstalováno: {current}",
+  "update.copyPrompt": "Kopírovat prompt",
+  "update.copied": "Zkopírováno ✓",
+  "update.openRelease": "Otevřít stránku vydání",
+  "update.skip": "Přeskočit tuto verzi",
+  "update.close": "Zavřít"
 }

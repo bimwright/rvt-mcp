@@ -3,7 +3,7 @@
     <TargetFramework>net8.0-windows7.0</TargetFramework>
     <RootNamespace>RvtMcp.Plugin</RootNamespace>
     <AssemblyName>RvtMcp.Plugin</AssemblyName>
-    <Version>0.8.1</Version>
+    <Version>0.8.2</Version>
     <GenerateTargetPlatformAttribute>false</GenerateTargetPlatformAttribute>
     <NuGetAuditMode>all</NuGetAuditMode>
     <UseWPF>true</UseWPF>

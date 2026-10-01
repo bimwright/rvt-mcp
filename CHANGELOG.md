@@ -24,7 +24,10 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
-No changes on `master` since v0.8.1 yet.
+### v0.8.2 (in progress) - Update notice
+
+- **Revit add-in:** on startup, checks `https://api.github.com/repos/bimwright/rvt-mcp/releases/latest` in the background, at most once every 24 h (5 s timeout, errors ignored, prereleases ignored). The result is cached in `%LOCALAPPDATA%\RvtMcp\update-check.json`. When a newer stable release exists, a small modeless card appears in the bottom-right corner with **Copy prompt** (a ready-to-paste prompt for your AI agent with the installed version, the latest version and the release URL), **Open release page**, **Skip this version** (remembered) and **Close**. Set `BIMWRIGHT_DISABLE_UPDATE_CHECK=1` to turn the check off.
+- **MCP server:** when the cached check knows a newer, not-skipped release, the `initialize` instructions start with a one-line update notice, and `revit_list_available_targets` / `revit_get_current_target` results carry an `update_available` object (`null` when up to date). The server itself never calls the network for this.
 
 ## v0.8.1 - Two-sided installer, revit_open_model, and a Settings window
 
