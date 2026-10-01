@@ -27,9 +27,13 @@ namespace RvtMcp.Plugin
 
         public sealed class Scope : IDisposable
         {
-            private readonly Dictionary<Document, DocumentChangeAccumulator> _documents = new Dictionary<Document, DocumentChangeAccumulator>();
-            private readonly Dictionary<Document, string> _titles = new Dictionary<Document, string>();
-            private readonly Dictionary<Document, JObject> _identities = new Dictionary<Document, JObject>();
+            private sealed class CapturedDocument
+            {
+                public readonly DocumentChangeAccumulator Changes = new DocumentChangeAccumulator();
+                public string Title;
+                public JObject Identity;
+            }
+            private readonly Dictionary<Document, CapturedDocument> _documents = new Dictionary<Document, CapturedDocument>();
             private readonly bool _history;
             internal bool Incomplete;
             internal Scope(bool history) { _history = history; }
@@ -38,13 +42,13 @@ namespace RvtMcp.Plugin
             {
                 if (e.Operation == UndoOperation.TransactionRolledBack) return;
                 var doc = e.GetDocument();
-                if (!_documents.TryGetValue(doc, out var changes))
+                if (!_documents.TryGetValue(doc, out var captured))
                 {
                     if (_documents.Count >= 8) { Incomplete = true; return; }
-                    _documents[doc] = changes = new DocumentChangeAccumulator();
-                    _titles[doc] = doc.Title;
-                    if (_history) _identities[doc] = Identity(doc);
+                    _documents[doc] = captured = new CapturedDocument
+                    { Title = doc.Title, Identity = _history ? Identity(doc) : null };
                 }
+                var changes = captured.Changes;
                 if (e.Operation != UndoOperation.TransactionCommitted)
                 {
                     changes.MarkIncomplete("A group rollback or undo occurred; final element changes cannot be reconstructed from this event.");
@@ -108,13 +112,15 @@ namespace RvtMcp.Plugin
                 if (!_history) return null;
                 var documents = new JArray();
                 if (!batchRolledBack)
-                    foreach (var pair in _documents)
+                    // Do not hash/access a Document here: arbitrary code can close it
+                    // before returning. All metadata was captured while it was valid.
+                    foreach (var captured in _documents.Values)
                     {
-                        var summary = pair.Value.Snapshot(_titles[pair.Key]);
+                        var summary = captured.Changes.Snapshot(captured.Title);
                         if (summary != null) documents.Add(new JObject
                         {
-                            ["model"] = _identities[pair.Key], ["summary"] = summary,
-                            ["elements"] = pair.Value.HistoryElements()
+                            ["model"] = captured.Identity, ["summary"] = summary,
+                            ["elements"] = captured.Changes.HistoryElements()
                         });
                     }
                 if (documents.Count == 0) return null;
@@ -127,9 +133,9 @@ namespace RvtMcp.Plugin
                 // batch_execute owns a single outer group and guarantees all its commands were rolled back.
                 if (batchRolledBack) return null;
                 var documents = new JArray();
-                foreach (var pair in _documents)
+                foreach (var captured in _documents.Values)
                 {
-                    var item = pair.Value.Snapshot(_titles[pair.Key]);
+                    var item = captured.Changes.Snapshot(captured.Title);
                     if (item?.Value<string>("status") == "incomplete") Incomplete = true;
                     if (item != null) documents.Add(item);
                 }

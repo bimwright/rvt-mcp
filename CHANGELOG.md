@@ -24,6 +24,8 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## v1.0.0 — Unreleased
 
+- **Closed-document change capture** — capture summaries use metadata collected during transactions, so a command that closes its temporary project or EditFamily document before returning does not dereference an invalid Revit document.
+
 - **History review fixes (development)** — ordinary reads no longer publish pending captures or add `_history`. Unsaved/unresolved documents are skipped before writing; legacy invalid captures are quarantined and bounded recovery runs in the background. `revit_get_change_records` can resolve the active saved model without a receipt from a read. Server options cannot relax plugin read-only/send-code policy. Runtime data migration now covers old product folders, resumes partial copies, preserves SQLite WAL data and reports conflicts before loading fallback settings. History failures emit redacted diagnostics; Toast tests use isolated temporary folders.
 
 - **Local change history (development)** — per-model SQLite stores captured MCP calls and all tracked IDs separately from the public 200-ID cap. `revit_record_change` binds the user's reason to explicit server-issued call IDs; `revit_get_change_records` queries IDs, UniqueIds and dates with unknown/unassigned reasons visible. History defaults on independently of call logs and has JSON/env/CLI off switches. Private model identities stay local; pending captures support idempotent recovery after server/storage failures. Capture bounds, unavailable identities and storage failures remain explicit. No Save/Sync or later manual Undo tracking is claimed; newly packaged client acceptance is pending.
