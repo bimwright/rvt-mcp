@@ -9,6 +9,49 @@ namespace RvtMcp.Tests
 {
     public class BakeCompilerPolicyTests
     {
+        [Theory]
+        [InlineData("UIApplication", "Autodesk.Revit.UI")]
+        [InlineData("Transaction", "Autodesk.Revit.DB")]
+        public void Validate_AllowsPublicRevitTypeShadowedByInternalGlobalTypes(string typeName, string namespaceName)
+        {
+            var references = References();
+            MetadataReference Fixture(string name, string source)
+            {
+                var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create(
+                    name,
+                    new[] { Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(source) },
+                    references,
+                    new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+                using var image = new System.IO.MemoryStream();
+                var emitted = compilation.Emit(image);
+                Assert.True(emitted.Success, string.Join("\n", emitted.Diagnostics));
+                return MetadataReference.CreateFromImage(image.ToArray());
+            }
+
+            // Revit 2027 assemblies contain inaccessible global names that shadow the public API.
+            var api = Fixture("RevitPublicFixture", $@"
+internal class {typeName} {{ }}
+namespace {namespaceName} {{ public class {typeName} {{ }} }}");
+            var native = Fixture("RevitNativeFixture", $"internal class {typeName} {{ }}");
+            var source = $@"
+using {namespaceName};
+public class BakedTool_public_api
+{{
+    public object Run() {{ return new {typeName}(); }}
+}}";
+            var allReferences = references.Concat(new[] { api, native }).ToArray();
+            var compiler = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create(
+                "BakedPublicFixture",
+                new[] { Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(source) },
+                allReferences,
+                new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            Assert.DoesNotContain(compiler.GetDiagnostics(), d => d.Severity == DiagnosticSeverity.Error);
+
+            var result = BakeCompilerPolicy.Validate(source, allReferences);
+
+            Assert.True(result.Allowed, result.Error);
+        }
+
         [Fact]
         public void Validate_RejectsDirectProcessStart()
         {

@@ -151,7 +151,8 @@ namespace RvtMcp.Plugin.ToolBaker
                 referenceArray,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithAllowUnsafe(true));
 
-            var model = compilation.GetSemanticModel(syntaxTree, ignoreAccessibility: true);
+            // Match the compiler's binding: Revit has internal global names that shadow its public API.
+            var model = compilation.GetSemanticModel(syntaxTree, ignoreAccessibility: false);
 
             var usingResult = ValidateUsingDirectives(root, model, compilation);
             if (!usingResult.Allowed)

@@ -24,6 +24,8 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## v1.0.0 — Unreleased
 
+- **ToolBaker on Revit 2027** — compiler policy now respects type accessibility, matching normal C# compilation. Internal global Revit types no longer shadow public API names such as `UIApplication` and `Transaction`; the API allowlist and blocked operations are unchanged.
+
 - **MCP-scoped element changes (development)** — `DocumentChanged` capture adds `_changes` for committed additions, modifications and deletions, including indirect/internal elements. Responses group IDs by document and cap each list at 200 while retaining counts. Ordinary reads remain unchanged. Known batch rollback returns no changes; arbitrary group rollback reports incomplete coverage rather than guessing. Paths are not collected, and the optional call journal stores `Changes` separately from truncated result text. No persistent reason database is introduced. Installed-client acceptance is pending.
 
 - **Structured send-code toast results** — object and array results now produce compact JSON summaries instead of failing toast completion. Scalar/null handling and the 100-character summary limit are preserved.
