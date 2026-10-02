@@ -103,6 +103,22 @@ namespace RvtMcp.Plugin
         [JsonProperty("showBranding")]
         public bool? ShowBranding { get; set; }
 
+        /// <summary>Toast corner, horizontal: "left" (default) or "right". Unknown values mean left.</summary>
+        [JsonProperty("toastHorizontalAlign")]
+        public JToken ToastHorizontalAlign { get; set; }
+
+        /// <summary>Toast corner, vertical: "top" (default) or "bottom". Unknown values mean top.</summary>
+        [JsonProperty("toastVerticalAlign")]
+        public JToken ToastVerticalAlign { get; set; }
+
+        /// <summary>Allow dragging the card by its title row. Off by default.</summary>
+        [JsonProperty("toastDragEnabled")]
+        public JToken ToastDragEnabled { get; set; }
+
+        /// <summary>Saved drag offset <c>{ "x", "y" }</c> in DIPs, relative to the chosen corner.</summary>
+        [JsonProperty("toastDragOffset")]
+        public JToken ToastDragOffset { get; set; }
+
         /// <summary>Idle duration for the single activity toast. Settings accepts 10, 20, 30, or 60 seconds.</summary>
         [JsonProperty("toastIdleSeconds")]
         public int? ToastIdleSeconds { get; set; }
@@ -197,6 +213,8 @@ namespace RvtMcp.Plugin
         public bool CacheSendCodeBodiesOrDefault  => CacheSendCodeBodies ?? DefaultCacheSendCodeBodies;
         public bool EnableToastOrDefault          => EnableToast       ?? DefaultEnableToast;
         public bool ShowBrandingOrDefault         => ShowBranding      ?? DefaultShowBranding;
+        public ToastPositionOptions ToastPositionOrDefault => ReadToastPosition(
+            ToastHorizontalAlign, ToastVerticalAlign, ToastDragEnabled, ToastDragOffset);
         public int ToastIdleSecondsOrDefault      => NormalizeToastIdleSeconds(ToastIdleSeconds);
         public int PersistSendCodeBodiesHoursOrDefault => NormalizePersistSendCodeBodiesHours(PersistSendCodeBodiesHours);
 
@@ -608,6 +626,55 @@ namespace RvtMcp.Plugin
             return TryUpdateConfig(configFilePath, root => root["showBranding"] = show, out error);
         }
 
+        /// <summary>
+        /// Lenient read of the toast position keys: a missing, mistyped or non-finite value
+        /// falls back to its default instead of failing the configuration.
+        /// </summary>
+        internal static ToastPositionOptions ReadToastPosition(JToken horizontal, JToken vertical, JToken drag, JToken offset)
+        {
+            bool Is(JToken token, string value) =>
+                token != null && token.Type == JTokenType.String && (string)token == value;
+            var box = offset as JObject;
+            return new ToastPositionOptions(
+                Is(horizontal, "right"),
+                Is(vertical, "bottom"),
+                drag != null && drag.Type == JTokenType.Boolean && (bool)drag,
+                ReadFinite(box?["x"]),
+                ReadFinite(box?["y"]));
+        }
+
+        private static double? ReadFinite(JToken token)
+        {
+            if (token == null || (token.Type != JTokenType.Integer && token.Type != JTokenType.Float))
+                return null;
+            try
+            {
+                var number = token.Value<double>();
+                return ToastPositionOptions.Finite(number) ? number : (double?)null;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>Persist only the toast position keys; every other key is kept.</summary>
+        public static bool TrySaveToastPosition(ToastPositionOptions options, out string error, string configFilePath = null)
+        {
+            if (options == null) options = new ToastPositionOptions();
+            return TryUpdateConfig(configFilePath, root =>
+            {
+                root["toastHorizontalAlign"] = options.Right ? "right" : "left";
+                root["toastVerticalAlign"] = options.Bottom ? "bottom" : "top";
+                root["toastDragEnabled"] = options.DragEnabled;
+                if (options.HasOffset)
+                    root["toastDragOffset"] = new JObject
+                    {
+                        ["x"] = options.OffsetX.GetValueOrDefault(),
+                        ["y"] = options.OffsetY.GetValueOrDefault()
+                    };
+                else
+                    root.Remove("toastDragOffset");
+            }, out error);
+        }
+
         public static bool TrySaveToastIdleSeconds(int seconds, out string error, string configFilePath = null)
         {
             var normalized = NormalizeToastIdleSeconds(seconds);
@@ -863,7 +930,17 @@ namespace RvtMcp.Plugin
             }
         }
 
+        private static readonly object ConfigWriteGate = new object();
+
+        // Settings and the toast thread (drag release) can both save: serialize the
+        // read-modify-write so one cannot overwrite the other's key.
         private static bool TryUpdateConfig(string configFilePath, Action<JObject> update, out string error)
+        {
+            lock (ConfigWriteGate)
+                return TryUpdateConfigCore(configFilePath, update, out error);
+        }
+
+        private static bool TryUpdateConfigCore(string configFilePath, Action<JObject> update, out string error)
         {
             error = null;
             string tempPath = null;

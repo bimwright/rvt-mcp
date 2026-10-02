@@ -19,6 +19,7 @@
   <ItemGroup>
     <Compile Include="../../src/shared/Views/Toast/ToastActivityEntry.cs" Link="ToastActivityEntry.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastActivityLog.cs" Link="ToastActivityLog.cs" />
+    <Compile Include="../../src/shared/Views/Toast/ToastPlacement.cs" Link="ToastPlacement.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\SendCodeSourceBuilder.cs" Link="Shared\SendCodeSourceBuilder.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\NoDocumentGuidance.cs" Link="Shared\NoDocumentGuidance.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\RecentFileList.cs" Link="Shared\RecentFileList.cs" />

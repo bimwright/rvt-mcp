@@ -267,10 +267,10 @@ internal static class RecentActivityVisualTests
                     var title = VisualChildren<TextBlock>(card).Single(t => t.Text == entries[i].Title);
                     var bodyBottom = body.TransformToAncestor(card).Transform(new Point(0, body.ActualHeight)).Y;
                     if (body.TextWrapping != TextWrapping.NoWrap || body.TextTrimming != TextTrimming.CharacterEllipsis
-                        || !Equals(body.ToolTip, entries[i].Body) || body.ActualHeight < 14
+                        || !Equals(body.ToolTip, entries[i].TooltipText) || body.ActualHeight < 14
                         || bodyBottom > card.ActualHeight - card.BorderThickness.Bottom - card.Padding.Bottom + .1
                         || title.ActualHeight < 15)
-                        throw new Exception("Compact cards must show title plus one unclipped result line, with full result in the tooltip.");
+                        throw new Exception("Compact cards must show title plus one unclipped result line, with the full outcome in the tooltip.");
                 }
             }
             finally { window.CloseImmediate(); }

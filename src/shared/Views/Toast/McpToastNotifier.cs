@@ -40,6 +40,18 @@ namespace RvtMcp.Plugin.Views.Toast
 
         public void SetShowBranding(bool show) => _host.SetShowBranding(show);
 
+        /// <summary>Current corner, drag and offset preferences. See <see cref="McpToastHost.PositionOptions"/>.</summary>
+        public ToastPositionOptions PositionOptions => _host.PositionOptions;
+
+        public void SetPositionOptions(ToastPositionOptions options) => _host.SetPositionOptions(options);
+
+        /// <summary>Raised after a drag release was saved (true) or the save failed (false).</summary>
+        public event Action<bool> PositionSaved
+        {
+            add { _host.PositionSaved += value; }
+            remove { _host.PositionSaved -= value; }
+        }
+
         /// <summary>
         /// Card title shown on every card regardless of the branding flag —
         /// distinguishes toasts when several Revit processes serve different agents.

@@ -31,6 +31,16 @@ internal static class Program
                 for (var i = 0; i < 20; i++) LiveTailVisualTests.CheckIncomingDuringMotionAndClosedState();
                 return 0;
             }
+            if (args.Length == 1 && args[0] == "--arrival")
+            {
+                ArrivalVisualTests.Run();
+                return 0;
+            }
+            if (args.Length == 1 && args[0] == "--position")
+            {
+                PositionVisualTests.Run();
+                return 0;
+            }
             if (args.Length == 1 && args[0] == "--demo")
                 return ToastPreview.Run();
             if (args.Length == 1 && args[0] == "--activity")
@@ -56,6 +66,8 @@ internal static class Program
             HoverRegressionTests.Run();
             RecentActivityVisualTests.Run();
             LiveTailVisualTests.Run();
+            PositionVisualTests.Run();
+            ArrivalVisualTests.Run();
             TimelineVisualTests.Run();
             CheckSingleActivityCard();
             CheckStatusAndClickLifecycle();

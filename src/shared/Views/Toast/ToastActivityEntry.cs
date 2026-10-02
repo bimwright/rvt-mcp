@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using RvtMcp.Plugin;
+using RvtMcp.Plugin.Localization;
 
 namespace RvtMcp.Plugin.Views.Toast
 {
@@ -38,6 +39,20 @@ namespace RvtMcp.Plugin.Views.Toast
         /// <summary>Captured when this outcome is recorded, never when the user hovers.</summary>
         public DateTimeOffset CompletedAt { get; }
         public string LocalTimeText => CompletedAt.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+
+        /// <summary>Hover copy uses only the bounded, sanitized outcome, never the wire payload.</summary>
+        public string TooltipText
+        {
+            get
+            {
+                var status = L.T(Success ? "toast.activity.success" : "toast.activity.failed");
+                var duration = DurationMs.HasValue
+                    ? " · " + DurationMs.Value.ToString(CultureInfo.CurrentCulture) + " ms"
+                    : string.Empty;
+                return Title + (string.IsNullOrEmpty(Body) ? string.Empty : "\n" + Body)
+                    + "\n" + status + " · " + LocalTimeText + duration;
+            }
+        }
 
         internal static string Redact(string value)
         {

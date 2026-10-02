@@ -14,7 +14,6 @@ namespace RvtMcp.Plugin.Views.Toast
     /// </summary>
     internal sealed class McpToastManager
     {
-        private const double EdgeMargin = 16;
         private const int TickMilliseconds = 100;
 
         private readonly Dispatcher _dispatcher;
@@ -27,6 +26,12 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly DispatcherTimer _timer;
         private McpToastWindow _window;
         private IntPtr _ownerHandle;
+        private readonly Func<ToastPositionOptions> _positionOptions;
+        private readonly Action<ToastPositionOptions> _positionChanged;
+        private readonly Func<Tuple<ToastBounds, ToastBounds>> _geometry;
+        private readonly Func<Point> _cursorPosition;
+        private double _compactHeight;
+        private bool _growUp;
 
         /// <param name="isFrameUsable">
         /// Returns whether the owner frame can display an activity card. The callback is
@@ -48,7 +53,11 @@ namespace RvtMcp.Plugin.Views.Toast
             Action<long> onClick = null,
             Func<bool> showBranding = null,
             Func<string> instanceIdentity = null,
-            Func<bool> motionEnabled = null)
+            Func<bool> motionEnabled = null,
+            Func<ToastPositionOptions> positionOptions = null,
+            Action<ToastPositionOptions> positionChanged = null,
+            Func<Tuple<ToastBounds, ToastBounds>> geometry = null,
+            Func<Point> cursorPosition = null)
         {
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             _aggregator = aggregator ?? throw new ArgumentNullException(nameof(aggregator));
@@ -57,6 +66,10 @@ namespace RvtMcp.Plugin.Views.Toast
             _showBranding = showBranding ?? (() => true);
             _instanceIdentity = instanceIdentity ?? (() => null);
             _motionEnabled = motionEnabled;
+            _positionOptions = positionOptions ?? (() => new ToastPositionOptions());
+            _positionChanged = positionChanged;
+            _geometry = geometry;
+            _cursorPosition = cursorPosition;
 
             _timer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
             {
@@ -77,6 +90,17 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             EnsureDispatcher();
             _window?.SetShowBranding(_showBranding());
+        }
+
+        /// <summary>Re-anchor the open card after the corner, drag or offset preference changed.</summary>
+        public void ApplyPosition()
+        {
+            EnsureDispatcher();
+            if (_window == null)
+                return;
+            _window.CancelHeaderDrag();
+            _growUp = _positionOptions().Bottom;
+            PositionWindow(_window, animate: true);
         }
 
         /// <summary>
@@ -118,6 +142,9 @@ namespace RvtMcp.Plugin.Views.Toast
 
             if (_aggregator.Tick(frameUsable))
                 Render();
+            // Follow the owner when it moves or resizes, except while the user is dragging.
+            if (_window != null && !_window.IsDragging && !_window.IsPositionAnimating)
+                PositionWindow(_window);
         }
 
         /// <summary>
@@ -134,6 +161,7 @@ namespace RvtMcp.Plugin.Views.Toast
 
             if (window != null)
             {
+                window.SizeChanged -= OnWindowSizeChanged;
                 try { window.CloseImmediate(); }
                 catch { }
             }
@@ -213,10 +241,19 @@ namespace RvtMcp.Plugin.Views.Toast
                 OnPointerEntered,
                 OnPointerLeft,
                 motionEnabled: _motionEnabled,
+                cursorPosition: _cursorPosition,
                 instanceIdentity: _instanceIdentity());
 
             _window = window;
             window.SetShowBranding(_showBranding());
+            var surface = (FrameworkElement)window.Content;
+            surface.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            _compactHeight = surface.DesiredSize.Height;
+            _growUp = _positionOptions().Bottom;
+            window.PrepareExpansion = extra => PrepareExpansion(window, extra);
+            window.ConstrainDrag = point => ConstrainDrag(window, point);
+            window.DragCompleted = point => SaveDrag(window, point);
+            window.SizeChanged += OnWindowSizeChanged;
             AttachOwner(window);
 
             // WPF initializes Window.Top/Left to NaN. Set finite coordinates before Show
@@ -273,6 +310,7 @@ namespace RvtMcp.Plugin.Views.Toast
             if (!ReferenceEquals(_window, window) || window.CardId != cardId)
                 return;
 
+            window.SizeChanged -= OnWindowSizeChanged;
             _window = null;
             _aggregator.CardClosed(cardId);
             StopTimerIfNoWindow();
@@ -309,6 +347,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 return;
 
             _window = null;
+            window.SizeChanged -= OnWindowSizeChanged;
             try { window.CloseImmediate(); }
             catch { }
             StopTimerIfNoWindow();
@@ -357,25 +396,114 @@ namespace RvtMcp.Plugin.Views.Toast
             }
         }
 
-        private void PositionWindow(McpToastWindow window)
+        private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
         {
-            var owner = GetValidOwnerHandle();
-            double left = EdgeMargin;
-            double top = EdgeMargin;
+            if (ReferenceEquals(sender, _window) && !_window.IsDragging)
+                PositionWindow(_window);
+        }
 
+        /// <summary>Owner rectangle and the work area of the monitor holding it, both in DIPs.</summary>
+        private Tuple<ToastBounds, ToastBounds> GetGeometry()
+        {
+            if (_geometry != null)
+                return _geometry();
+
+            var owner = GetValidOwnerHandle();
+            var work = SystemParameters.WorkArea;
+            var ownerBounds = new ToastBounds(0, 0, work.Width, work.Height);
+            var workBounds = new ToastBounds(work.Left, work.Top, work.Width, work.Height);
             if (owner != IntPtr.Zero && GetWindowRect(owner, out var rect))
             {
-                GetOwnerDpiScale(owner, out var dpiX, out var dpiY);
-                left = rect.Left * dpiX + EdgeMargin;
-                top = rect.Top * dpiY + EdgeMargin;
+                GetOwnerDpiScale(owner, out var x, out var y);
+                ownerBounds = new ToastBounds(rect.Left * x, rect.Top * y,
+                    (rect.Right - rect.Left) * x, (rect.Bottom - rect.Top) * y);
+                var monitor = MonitorFromWindow(owner, 2);
+                var info = new MONITORINFO { Size = Marshal.SizeOf(typeof(MONITORINFO)) };
+                if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref info))
+                    workBounds = new ToastBounds(info.Work.Left * x, info.Work.Top * y,
+                        (info.Work.Right - info.Work.Left) * x, (info.Work.Bottom - info.Work.Top) * y);
             }
-
-            // Guard both the native and fallback paths. Invalid DPI/rect data must never
-            // leak NaN or infinity into WPF dependency properties.
-            if (!IsFinite(left)) left = EdgeMargin;
-            if (!IsFinite(top)) top = EdgeMargin;
-            window.SetPosition(top, left);
+            return Tuple.Create(ownerBounds, workBounds);
         }
+
+        private static double WindowWidth(McpToastWindow window) =>
+            window.ActualWidth > 0 ? window.ActualWidth : ((FrameworkElement)window.Content).DesiredSize.Width;
+
+        private static double WindowHeight(McpToastWindow window) =>
+            window.ActualHeight > 0 ? window.ActualHeight : ((FrameworkElement)window.Content).DesiredSize.Height;
+
+        private void PositionWindow(McpToastWindow window, bool animate = false)
+        {
+            if (window.IsDragging)
+                return;
+
+            var options = _positionOptions();
+            window.SetPositionPreferences(options.DragEnabled, options.Right, _growUp);
+            var geometry = GetGeometry();
+            var width = WindowWidth(window);
+            var height = WindowHeight(window);
+            var basis = _compactHeight > 0 ? _compactHeight : height;
+
+            // Anchor with the compact height so the fixed edge stays put while the card
+            // grows; growing upward then lifts the top by the extra height. Non-finite
+            // owner/DPI data is replaced by the work-area corner inside Clamp.
+            var anchor = ToastPlacement.Clamp(ToastPlacement.Anchor(geometry.Item1, width, basis, options), geometry.Item2);
+            var bounds = ToastPlacement.Clamp(new ToastBounds(anchor.Left,
+                anchor.Top - (_growUp ? height - basis : 0), width, height), geometry.Item2);
+
+            // Height may still be animating when a corner changes. Retarget the move
+            // from its current position instead of cancelling it with a jump.
+            if (animate || window.IsPositionAnimating)
+                window.MoveTo(bounds.Top, bounds.Left);
+            else if (!IsFinite(window.Top) || !IsFinite(window.Left)
+                || Math.Abs(window.Top - bounds.Top) > .1 || Math.Abs(window.Left - bounds.Left) > .1)
+                window.SetPosition(bounds.Top, bounds.Left);
+        }
+
+        private void PrepareExpansion(McpToastWindow window, double extra)
+        {
+            if (!ReferenceEquals(window, _window) || window.IsDragging || window.HasExpandedRows)
+                return;
+            var geometry = GetGeometry();
+            var current = new ToastBounds(window.Left, window.Top, WindowWidth(window), WindowHeight(window));
+            _growUp = ToastPlacement.GrowUp(current, geometry.Item2, extra, _positionOptions().Bottom);
+            PositionWindow(window);
+        }
+
+        private Point ConstrainDrag(McpToastWindow window, Point point)
+        {
+            var bounds = ToastPlacement.Clamp(new ToastBounds(point.X, point.Y, WindowWidth(window), WindowHeight(window)), GetGeometry().Item2);
+            return new Point(bounds.Left, bounds.Top);
+        }
+
+        private void SaveDrag(McpToastWindow window, Point point)
+        {
+            if (!ReferenceEquals(window, _window))
+                return;
+            var options = _positionOptions();
+            // Dragging collapses details; thumbnail/branding may still occupy space.
+            _compactHeight = WindowHeight(window);
+            _growUp = options.Bottom;
+            var anchor = ToastPlacement.Anchor(GetGeometry().Item1, WindowWidth(window), _compactHeight,
+                new ToastPositionOptions(options.Right, options.Bottom));
+            _positionChanged?.Invoke(options.WithOffset(point.X - anchor.Left, point.Y - anchor.Top));
+            PositionWindow(window);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MONITORINFO
+        {
+            public int Size;
+            public RECT Monitor;
+            public RECT Work;
+            public uint Flags;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
 
         private IntPtr GetValidOwnerHandle()
         {

@@ -111,6 +111,21 @@ namespace RvtMcp.Plugin.Views.Toast
         private bool _handlersDetached;
         private bool _showBranding = true;
         private ActivitySnapshot _lastSnapshot;
+        private DockPanel _dragHeader;
+        private bool _dragEnabled;
+        private bool _alignRight;
+        private bool _growUp;
+        private bool _dragPending;
+        private bool _dragStarted;
+        private Point _dragPointerStart;
+        private Point _dragWindowStart;
+        private int _positionGeneration;
+        internal bool IsDragging => _dragPending;
+        internal bool HasExpandedRows => _detailsRevealed || _thumbnailShown;
+        internal bool IsPositionAnimating { get; private set; }
+        internal Action<double> PrepareExpansion { get; set; }
+        internal Func<Point, Point> ConstrainDrag { get; set; }
+        internal Action<Point> DragCompleted { get; set; }
 
         public McpToastViewModel ViewModel { get; private set; }
 
@@ -194,6 +209,11 @@ namespace RvtMcp.Plugin.Views.Toast
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var header = new DockPanel { LastChildFill = true };
+            _dragHeader = header;
+            header.PreviewMouseLeftButtonDown += OnHeaderMouseDown;
+            PreviewMouseMove += OnDragMouseMove;
+            PreviewMouseLeftButtonUp += OnDragMouseUp;
+            LostMouseCapture += OnDragCaptureLost;
 
             _iconText = new TextBlock
             {
@@ -426,7 +446,7 @@ namespace RvtMcp.Plugin.Views.Toast
             };
             _mouseLeaveHandler = (_, __) =>
             {
-                if (!PointerPositionChanged())
+                if (_dragPending || !PointerPositionChanged())
                     return;
                 _activityPointerLeft?.Invoke(_cardId);
                 _brandPointerOver = false;
@@ -478,7 +498,7 @@ namespace RvtMcp.Plugin.Views.Toast
             var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
 
             _slideTransform.BeginAnimation(TranslateTransform.XProperty,
-                new DoubleAnimation(-24, 0, duration) { EasingFunction = ease });
+                new DoubleAnimation(_alignRight ? 24 : -24, 0, duration) { EasingFunction = ease });
             _scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty,
                 new DoubleAnimation(0.96, 1, duration) { EasingFunction = ease });
             _scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty,
@@ -486,13 +506,145 @@ namespace RvtMcp.Plugin.Views.Toast
             BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, duration) { EasingFunction = ease });
         }
 
+        internal void SetPositionPreferences(bool dragEnabled, bool alignRight, bool growUp)
+        {
+            _dragEnabled = dragEnabled;
+            _alignRight = alignRight;
+            _growUp = growUp;
+            _root.RenderTransformOrigin = new Point(alignRight ? 1 : 0, growUp ? 1 : 0);
+            _dragHeader.Cursor = dragEnabled ? Cursors.SizeAll : Cursors.Hand;
+            if (!dragEnabled) CancelHeaderDrag();
+        }
+
+        internal void MoveTo(double top, double left)
+        {
+            var fromTop = Top;
+            var fromLeft = Left;
+            SetPosition(top, left);
+            if (!_motionEnabled() || !IsVisible) return;
+            var generation = ++_positionGeneration;
+            IsPositionAnimating = true;
+            var duration = TimeSpan.FromMilliseconds(260);
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var move = new DoubleAnimation(fromTop, top, duration) { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
+            move.Completed += (_, __) => { if (generation == _positionGeneration) IsPositionAnimating = false; };
+            BeginAnimation(TopProperty, move);
+            BeginAnimation(LeftProperty, new DoubleAnimation(fromLeft, left, duration) { EasingFunction = ease, FillBehavior = FillBehavior.Stop });
+        }
+
         public void SetPosition(double top, double left)
         {
+            if (double.IsNaN(top) || double.IsInfinity(top) || double.IsNaN(left) || double.IsInfinity(left)) return;
+            ++_positionGeneration;
+            IsPositionAnimating = false;
             // A previous animation's held value must not override a direct reflow.
             BeginAnimation(TopProperty, null);
             BeginAnimation(LeftProperty, null);
             Top = top;
             Left = left;
+        }
+
+        private void OnHeaderMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!_dragEnabled || _isClosing || IsWithin(e.OriginalSource as DependencyObject, _closeHost)) return;
+            BeginHeaderDrag(_cursorPosition());
+            if (_dragPending) e.Handled = true;
+        }
+
+        private static bool IsWithin(DependencyObject child, DependencyObject ancestor)
+        {
+            while (child != null)
+            {
+                if (ReferenceEquals(child, ancestor)) return true;
+                child = child is Visual ? VisualTreeHelper.GetParent(child) : LogicalTreeHelper.GetParent(child);
+            }
+            return false;
+        }
+
+        internal void BeginHeaderDrag(Point screenPoint)
+        {
+            if (!_dragEnabled || _isClosing || !IsCursorPointValid(screenPoint)) return;
+            SetPosition(Top, Left);
+            _dragPointerStart = screenPoint;
+            _dragWindowStart = new Point(Left, Top);
+            // Capture may synchronously route synthetic move/lost-capture events.
+            // Do not expose a pending gesture until capture has actually succeeded.
+            if (!CaptureMouse()) return;
+            _dragPending = true;
+            _dragStarted = false;
+            CancelDetailsRevealTimer();
+            CancelDetailsHideTimer();
+            _activityPointerEntered?.Invoke(_cardId);
+        }
+
+        private Vector ScreenDelta(Point screenPoint)
+        {
+            var delta = screenPoint - _dragPointerStart;
+            var source = PresentationSource.FromVisual(this);
+            return source?.CompositionTarget != null ? source.CompositionTarget.TransformFromDevice.Transform(delta) : delta;
+        }
+
+        internal void ContinueHeaderDrag(Point screenPoint)
+        {
+            if (!_dragPending || !IsCursorPointValid(screenPoint)) return;
+            var delta = ScreenDelta(screenPoint);
+            if (!_dragStarted)
+            {
+                if (!ToastPlacement.DragThreshold(delta.X, delta.Y,
+                    SystemParameters.MinimumHorizontalDragDistance, SystemParameters.MinimumVerticalDragDistance)) return;
+                _dragStarted = true;
+                HideDetails(immediate: true);
+                HideBrand(immediate: true);
+                UpdateLayout();
+            }
+            var point = new Point(_dragWindowStart.X + delta.X, _dragWindowStart.Y + delta.Y);
+            if (ConstrainDrag != null) point = ConstrainDrag(point);
+            SetPosition(point.Y, point.X);
+        }
+
+        private void OnDragMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_dragPending) return;
+            if (e.LeftButton != MouseButtonState.Pressed) { CancelHeaderDrag(); return; }
+            ContinueHeaderDrag(_cursorPosition());
+            e.Handled = true;
+        }
+
+        internal bool FinishHeaderDrag()
+        {
+            if (!_dragPending) return false;
+            var dragged = _dragStarted;
+            _dragPending = _dragStarted = false;
+            if (IsMouseCaptured) ReleaseMouseCapture();
+            if (dragged) DragCompleted?.Invoke(new Point(Left, Top));
+            ReconcileDragPointer();
+            return dragged;
+        }
+
+        private void OnDragMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (FinishHeaderDrag()) e.Handled = true;
+        }
+
+        internal void CancelHeaderDrag()
+        {
+            if (!_dragPending) return;
+            _dragPending = _dragStarted = false;
+            if (IsMouseCaptured) ReleaseMouseCapture();
+            ReconcileDragPointer();
+        }
+
+        private void OnDragCaptureLost(object sender, MouseEventArgs e) => CancelHeaderDrag();
+
+        private void ReconcileDragPointer()
+        {
+            if (!IsMouseOver) _activityPointerLeft?.Invoke(_cardId);
+            else
+            {
+                _brandPointerOver = _brandPointerMoved = true;
+                ScheduleBrandReveal();
+                ScheduleDetailsReveal();
+            }
         }
 
         /// <summary>Reconcile the visible activity card without replaying enter animation.</summary>
@@ -555,7 +707,7 @@ namespace RvtMcp.Plugin.Views.Toast
         /// </summary>
         private void ScheduleBrandReveal()
         {
-            if (!_showBranding || !_brandPointerOver || _closedCallbackRaised || _isClosing)
+            if (_dragPending || !_showBranding || !_brandPointerOver || _closedCallbackRaised || _isClosing)
                 return;
             if (_brandRevealed && !_brandHiding)
                 return;
@@ -587,7 +739,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private void ScheduleDetailsReveal()
         {
             CancelDetailsHideTimer();
-            if (!_brandPointerOver || !_brandPointerMoved || _closedCallbackRaised || _isClosing
+            if (_dragPending || !_brandPointerOver || !_brandPointerMoved || _closedCallbackRaised || _isClosing
                 || _lastSnapshot == null || _lastSnapshot.IsStatus || _lastSnapshot.RecentEntries.Count == 0)
                 return;
             if (_detailsRevealed)
@@ -620,7 +772,11 @@ namespace RvtMcp.Plugin.Views.Toast
                 return;
             var newReading = !_detailsRevealed;
             if (newReading)
+            {
+                PrepareExpansion?.Invoke(157);
+                _detailsShift.Y = _growUp ? 6 : -6;
                 _detailsPanel.SetEntries(snapshot.RecentEntries);
+            }
             // New results refresh this view separately. A reversal/height retarget must
             // preserve its scroll position; only a genuinely new hover starts at the tail.
             _detailsRevealed = true;
@@ -703,7 +859,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _detailsPanel.BeginAnimation(OpacityProperty,
                 new DoubleAnimation(_detailsPanel.Opacity, 0, duration) { EasingFunction = ease });
             _detailsShift.BeginAnimation(TranslateTransform.YProperty,
-                new DoubleAnimation(_detailsShift.Y, -6, duration) { EasingFunction = ease });
+                new DoubleAnimation(_detailsShift.Y, _growUp ? 6 : -6, duration) { EasingFunction = ease });
         }
 
         private void SettleDetailsClosed()
@@ -715,7 +871,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _detailsRow.Visibility = Visibility.Collapsed;
             _detailsPanel.Opacity = 0;
             _detailsPanel.SetEntries(ToastActivityLog.Freeze(null));
-            _detailsShift.Y = -6;
+            _detailsShift.Y = _growUp ? 6 : -6;
             _detailsRevealed = _detailsHiding = false;
         }
 
@@ -931,6 +1087,9 @@ namespace RvtMcp.Plugin.Views.Toast
             CancelDetailsHideTimer();
             var duration = TimeSpan.FromMilliseconds(220);
             var ease = new QuadraticEase { EasingMode = EasingMode.EaseIn };
+            CancelHeaderDrag();
+            _slideTransform.BeginAnimation(TranslateTransform.XProperty,
+                new DoubleAnimation(_slideTransform.X, _alignRight ? 24 : -24, duration) { EasingFunction = ease });
             var fade = new DoubleAnimation(Opacity, 0, duration) { EasingFunction = ease };
             fade.Completed += (_, __) =>
             {
@@ -997,7 +1156,12 @@ namespace RvtMcp.Plugin.Views.Toast
             _titleText.ToolTip = _titleText.Text;
             _titleText.TextWrapping = TextWrapping.NoWrap;
             _titleText.TextTrimming = TextTrimming.CharacterEllipsis;
-            _toolText.ToolTip = _toolText.Text;
+            _toolText.ToolTip = snapshot.IsStatus
+                ? _toolText.Text + "\n" + _bodyText.Text
+                : snapshot.RecentEntries.Count > 0
+                    ? snapshot.RecentEntries[snapshot.RecentEntries.Count - 1].TooltipText
+                    : ToastActivityEntry.Compact(snapshot.Title, ToastActivityEntry.TitleLimit)
+                        + "\n" + ToastActivityEntry.Compact(snapshot.Body, ToastActivityEntry.BodyLimit);
         }
 
         /// <summary>
@@ -1066,6 +1230,7 @@ namespace RvtMcp.Plugin.Views.Toast
         /// <summary>No capture → capture: the frame grows from nothing while it fades in.</summary>
         private void RevealThumbnail(BitmapSource bitmap, bool animate)
         {
+            PrepareExpansion?.Invoke(ThumbnailRowHeight);
             var generation = ++_thumbnailStateGeneration;
             _thumbnailShown = true;
             _thumbnailSwapGeneration++;
@@ -1298,6 +1463,18 @@ namespace RvtMcp.Plugin.Views.Toast
             if (_handlersDetached)
                 return;
             _handlersDetached = true;
+            CancelHeaderDrag();
+            _dragHeader.PreviewMouseLeftButtonDown -= OnHeaderMouseDown;
+            PreviewMouseMove -= OnDragMouseMove;
+            PreviewMouseLeftButtonUp -= OnDragMouseUp;
+            LostMouseCapture -= OnDragCaptureLost;
+            PrepareExpansion = null;
+            ConstrainDrag = null;
+            DragCompleted = null;
+            BeginAnimation(TopProperty, null);
+            BeginAnimation(LeftProperty, null);
+            IsPositionAnimating = false;
+            ++_positionGeneration;
 
             if (_closeHost != null)
             {
@@ -1331,6 +1508,9 @@ namespace RvtMcp.Plugin.Views.Toast
             // late animation completion from retaining a closed window or re-entering the
             // manager after a force-close.
             BeginAnimation(OpacityProperty, null);
+            _slideTransform.BeginAnimation(TranslateTransform.XProperty, null);
+            _scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            _scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
             _brandSweep.BeginAnimation(TranslateTransform.XProperty, null);
             _shineSweep.BeginAnimation(TranslateTransform.XProperty, null);
             _successCount.StopAnimation();

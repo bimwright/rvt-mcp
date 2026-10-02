@@ -14,6 +14,7 @@
     <Compile Include="../../src/shared/Views/Settings/SettingsText.cs" Link="Settings\SettingsText.cs" />
     <Compile Include="../../src/shared/Views/Settings/SettingsWindow.cs" Link="Settings\SettingsWindow.cs" />
     <Compile Include="../../src/shared/Views/Settings/ToolRow.cs" Link="Settings\ToolRow.cs" />
+    <Compile Include="../../src/shared/Config/ToastPositionOptions.cs" Link="ToastPositionOptions.cs" />
     <Compile Include="../../src/shared/Views/BrandAssets.cs" Link="BrandAssets.cs" />
     <Compile Include="../../src/shared/Views/BimwrightStyles.cs" Link="BimwrightStyles.cs" />
     <Compile Include="../../src/shared/Views/ScrollBarFadeBehavior.cs" Link="ScrollBarFadeBehavior.cs" />

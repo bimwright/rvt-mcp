@@ -54,6 +54,10 @@ namespace RvtMcp.Plugin.Views.Settings
         private ComboBox _journalHours;
         private CheckBox _toastEnabled;
         private CheckBox _showBranding;
+        private ComboBox _toastHorizontal;
+        private ComboBox _toastVertical;
+        private CheckBox _toastDrag;
+        private Button _toastReset;
         private ComboBox _toastIdle;
         private DataGrid _toolsGrid;
         private TextBlock _toolsCounts;
@@ -283,6 +287,19 @@ namespace RvtMcp.Plugin.Views.Settings
             _showBranding = Switch(brandLabel);
             _showBranding.Checked += (_, __) => { if (!_syncingControls) _viewModel.SetShowBranding(true); };
             _showBranding.Unchecked += (_, __) => { if (!_syncingControls) _viewModel.SetShowBranding(false); };
+            var horizontalLabel = RowLabel("settings.toast.horizontal", "Horizontal alignment");
+            _toastHorizontal = PositionChoice(horizontalLabel, "settings.toast.left", "Left", "settings.toast.right", "Right");
+            _toastHorizontal.SelectionChanged += (_, __) => { if (!_syncingControls) OnToastCornerChanged(); };
+            var verticalLabel = RowLabel("settings.toast.vertical", "Vertical alignment");
+            _toastVertical = PositionChoice(verticalLabel, "settings.toast.top", "Top", "settings.toast.bottom", "Bottom");
+            _toastVertical.SelectionChanged += (_, __) => { if (!_syncingControls) OnToastCornerChanged(); };
+            var dragLabel = RowLabel("settings.toast.drag", "Allow dragging the card");
+            _toastDrag = Switch(dragLabel);
+            _toastDrag.Checked += (_, __) => { if (!_syncingControls) _viewModel.SetToastPosition(_viewModel.ToastPosition.WithDrag(true)); };
+            _toastDrag.Unchecked += (_, __) => { if (!_syncingControls) _viewModel.SetToastPosition(_viewModel.ToastPosition.WithDrag(false)); };
+            _toastReset = new Button { MinWidth = 120, Padding = new Thickness(10, 3, 10, 3) };
+            LocalizedButton(_toastReset, "settings.toast.reset", "Reset position");
+            _toastReset.Click += (_, __) => _viewModel.SetToastPosition(_viewModel.ToastPosition.WithOffset(null, null));
             var idleLabel = RowLabel("settings.toast.idle", "Idle duration");
             _toastIdle = new ComboBox { Width = 120, ItemsSource = ToastIdleOptions, ItemStringFormat = "{0} s" };
             NameFromLabel(_toastIdle, idleLabel);
@@ -293,10 +310,41 @@ namespace RvtMcp.Plugin.Views.Settings
             page.Children.Add(Card(
                 Row(enabledLabel, RowCaption("settings.toast.enabled.help", "Takes effect immediately."), _toastEnabled, "enableToast"),
                 Row(brandLabel, RowCaption("settings.toast.brand.help", "Appears when you point at the activity card. Applies immediately and is remembered after Revit restarts."), _showBranding, "showBranding"),
+                Row(horizontalLabel,
+                    RowCaption("settings.toast.position.help", "Applies and saves immediately. Changing a corner clears the saved drag position."),
+                    _toastHorizontal, "toastPosition"),
+                Row(verticalLabel, null, _toastVertical),
+                Row(dragLabel,
+                    RowCaption("settings.toast.drag.help", "Drag the title row to move the card. Turning this off keeps the saved position; turning it on restores it."),
+                    _toastDrag),
+                Row(RowLabel("settings.toast.reset", "Reset position"), null, _toastReset),
                 Row(idleLabel,
                     RowCaption("settings.toast.idle.help", "Hides the card when no new results arrive. Hover to keep it open. Applies from the next activity."),
                     _toastIdle, "toastIdleSeconds")));
             return page;
+        }
+
+        /// <summary>Two-way choice (first/second) whose captions follow the UI language.</summary>
+        private ComboBox PositionChoice(TextBlock label, string firstKey, string firstFallback, string secondKey, string secondFallback)
+        {
+            var first = new ComboBoxItem();
+            var second = new ComboBoxItem();
+            var choice = new ComboBox { Width = 120 };
+            choice.Items.Add(first);
+            choice.Items.Add(second);
+            NameFromLabel(choice, label);
+            _localizedText.Add(() =>
+            {
+                first.Content = SettingsText.Text(firstKey, firstFallback);
+                second.Content = SettingsText.Text(secondKey, secondFallback);
+            });
+            return choice;
+        }
+
+        private void OnToastCornerChanged()
+        {
+            _viewModel.SetToastPosition(_viewModel.ToastPosition.WithCorner(
+                _toastHorizontal.SelectedIndex == 1, _toastVertical.SelectedIndex == 1));
         }
 
         private UIElement BuildTools()
@@ -699,6 +747,12 @@ namespace RvtMcp.Plugin.Views.Settings
                 _toastEnabled.IsChecked = _viewModel.ToastEnabled;
                 _showBranding.IsChecked = _viewModel.ShowBranding;
                 _showBranding.IsEnabled = _viewModel.ToastEnabled;
+                var position = _viewModel.ToastPosition ?? new ToastPositionOptions();
+                _toastHorizontal.SelectedIndex = position.Right ? 1 : 0;
+                _toastVertical.SelectedIndex = position.Bottom ? 1 : 0;
+                _toastDrag.IsChecked = position.DragEnabled;
+                _toastHorizontal.IsEnabled = _toastVertical.IsEnabled = _toastDrag.IsEnabled = _viewModel.ToastEnabled;
+                _toastReset.IsEnabled = _viewModel.ToastEnabled && position.HasOffset;
                 _toastIdle.SelectedItem = _viewModel.ToastIdleSeconds;
                 _toastIdle.IsEnabled = _viewModel.ToastEnabled;
                 _cacheSendCodeBodies.IsChecked = _viewModel.CacheSendCodeBodies;

@@ -127,9 +127,11 @@ A toast reports a tool result, **not progress inside a running tool or completio
 
 Each card names the gateway and Revit year (for example `rvt-mcp 2022`), the latest tool, and the Success · Failed · Capture counts. A capture preview stays on the card for at least 5 seconds.
 
-In the development build, deliberate hover opens an activity timeline showing the newest three results, each with its local completion time (`HH:mm:ss`). Scroll up for earlier calls in that card. Incoming results follow the bottom; while you read older calls, your position stays put. Click inside the timeline to read without closing it; clicking the rest of the card opens History. This works with branding off. Summaries are bounded and redacted, stay in memory only, and clear when the card closes. Script objects/arrays show counts; an incomplete survey remains explicitly incomplete. Server-local tools do not gain toast coverage from this UI change.
+Deliberate hover opens an activity timeline showing the newest three results, each with its local completion time (`HH:mm:ss`). Scroll up for earlier calls in that card. Incoming results follow the bottom with a short glide-in (the rows rise, the new row fades in and its outcome dot pops; none of this with reduced motion); while you read older calls, your position stays put. Click inside the timeline to read without closing it; clicking the rest of the card opens History. This works with branding off. Summaries are bounded and redacted, stay in memory only, and clear when the card closes. Script objects/arrays show counts; an incomplete survey remains explicitly incomplete. Server-local tools do not gain toast coverage from this UI change.
 
 Notifications are **on by default** and can be turned off. In **Settings → Toast**, choose the idle duration (10/20/30/60 seconds; default 20) and **Show branding** (**off by default**), which shows the wordmark on hover. The choice applies immediately and is saved across Revit restarts; users do not need to display branding to get activity feedback.
+
+**Position:** choose **Horizontal alignment** (Left/Right) and **Vertical alignment** (Top/Bottom) independently in **Settings → Toast**; the default is top-left. Changes apply to the open card and are saved immediately, and changing a corner clears any saved drag position. Turn on **Allow dragging the card** to move it by its title row; a plain click still opens History. Turning drag off keeps the saved position, turning it on restores it, and **Reset position** clears it. The position is stored relative to the Revit window and kept inside the monitor's work area. A card anchored at the bottom grows upward, and falls back to the other side when there is no room. Motion follows the Windows animation setting. A failed save is shown under the setting while the choice stays active for the session. Hovering the latest-tool line or a timeline row shows the sanitized result, Success/Failed, the completion time and the measured duration when available. Coordination between toasts of several Autodesk applications is not part of this.
 
 ### Prompts
 
@@ -148,9 +150,9 @@ If a prompt's toolsets aren't enabled, it answers with the exact `--toolsets` li
 
 ## Configuration
 
-Development builds report `_changes` and local per-model `_history`. History defaults on independently of call logs; use `--disable-change-history` to disable recording. The `meta` tools `revit_record_change`, `revit_get_change_records` and `revit_resolve_history_identity` attach reasons to explicit call IDs, query stored changes and record the owner's history choice after a copy or Save As. See [change tracking](docs/change-tracking.md) for privacy, limits and recovery; existing packaged candidates are unchanged.
+Since v1.0.0 the server reports `_changes` and local per-model `_history`. History defaults on independently of call logs; use `--disable-change-history` to disable recording. The `meta` tools `revit_record_change`, `revit_get_change_records` and `revit_resolve_history_identity` attach reasons to explicit call IDs, query stored changes and record the owner's history choice after a copy or Save As. See [change tracking](docs/change-tracking.md) for privacy, limits and recovery.
 
-Development builds add `revit_survey_change_impact` in `query`: a bounded, read-only survey of ten relationship groups, including with send-code disabled. `scopeThreshold` is required for each request; view/schedule iteration is opt-in through `maxViews > 0`. Partial results remain explicit and parameter observations are not trusted history snapshots. See [change-impact survey](docs/change-survey.md). Existing packaged candidates do not yet include it.
+`revit_survey_change_impact` is a tool in `query`: a bounded, read-only survey of ten relationship groups, including with send-code disabled. `scopeThreshold` is required for each request; view/schedule iteration is opt-in through `maxViews > 0`. Partial results remain explicit and parameter observations are not trusted history snapshots. See [change-impact survey](docs/change-survey.md).
 
 Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`.
 
@@ -176,6 +178,7 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwr
 | Completion toast (default on) | ribbon **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
 | Toast branding (default off, saved) | Settings → Toast → **Show branding** | — | `showBranding` |
 | Toast idle duration (default 20 s) | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
+| Toast position (default top-left, no drag; saved) | Settings → Toast → **Horizontal / Vertical alignment**, **Allow dragging the card**, **Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | UI language (add-in) | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
 
 After changing server flags, restart the MCP connection so the client picks up the new tool list.

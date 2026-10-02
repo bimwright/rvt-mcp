@@ -34,6 +34,7 @@ internal sealed class FakeSettings : ISettingsPresentation
     public bool IsLanguageWriteDisabled => false;
     public bool ToastEnabled { get; private set; } = true;
     public bool ShowBranding { get; private set; }
+    public RvtMcp.Plugin.ToastPositionOptions ToastPosition { get; private set; } = new RvtMcp.Plugin.ToastPositionOptions();
     public int ToastIdleSeconds { get => _idle; set { _idle = value; Changed(); } }
     public bool CacheSendCodeBodies { get => _cache; set { _cache = value; Changed(); } }
     public bool PersistSendCodeBodies { get => _persist; set { _persist = value; Changed(); } }
@@ -58,6 +59,19 @@ internal sealed class FakeSettings : ISettingsPresentation
     public void SetShowBranding(bool show)
     {
         ShowBranding = show;
+        Changed();
+    }
+
+    public void SetToastPosition(RvtMcp.Plugin.ToastPositionOptions options)
+    {
+        ToastPosition = options;
+        Changed();
+    }
+
+    /// <summary>Stands in for a drag release saved on the toast thread.</summary>
+    public void StoreDraggedOffset(double x, double y)
+    {
+        ToastPosition = ToastPosition.WithOffset(x, y);
         Changed();
     }
 

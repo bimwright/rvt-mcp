@@ -68,6 +68,7 @@ namespace RvtMcp.Plugin
             DebugLog("OnStartup: BakedToolRegistry loaded");
             var toastHost = new McpToastHost(() => Config?.ToastIdleSecondsOrDefault ?? RvtMcpConfig.DefaultToastIdleSeconds);
             toastHost.SetShowBranding(Config.ShowBrandingOrDefault);
+            toastHost.SetPositionOptions(Config.ToastPositionOrDefault);
             ToastNotifier = new McpToastNotifier(toastHost, () => ToastEnabled);
             _handler = new McpEventHandler(_dispatcher, SessionLog, ToastNotifier);
             _externalEvent = ExternalEvent.Create(_handler);

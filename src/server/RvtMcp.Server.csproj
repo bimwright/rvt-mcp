@@ -34,6 +34,7 @@
   <!-- Shared config (A9) — pulled in as source so server binary has zero extra deps -->
   <ItemGroup>
     <Compile Include="..\shared\Config\RvtMcpConfig.cs" Link="Shared\RvtMcpConfig.cs" />
+    <Compile Include="..\shared\Config\ToastPositionOptions.cs" Link="Shared\ToastPositionOptions.cs" />
     <Compile Include="..\shared\Logging\PersistSendCodeTtl.cs" Link="Shared\PersistSendCodeTtl.cs" />
     <Compile Include="..\shared\Security\BakeRedactor.cs" Link="Shared\BakeRedactor.cs" />
     <Compile Include="..\shared\Security\SecretMasker.cs" Link="Shared\SecretMasker.cs" />

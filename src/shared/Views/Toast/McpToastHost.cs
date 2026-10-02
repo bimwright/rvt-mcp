@@ -33,7 +33,30 @@ namespace RvtMcp.Plugin.Views.Toast
         private Func<bool> _frameUsable = () => true;
         private Action<long> _activityClick = _ => { };
         private volatile bool _showBranding;
+        private volatile ToastPositionOptions _positionOptions = new ToastPositionOptions();
         private volatile string _instanceIdentity;
+
+        /// <summary>Raised on the toast thread after a drag release was saved; the argument is the save result.</summary>
+        public event Action<bool> PositionSaved;
+
+        /// <summary>Corner, drag and offset preferences. App restores the saved ones at startup.</summary>
+        public ToastPositionOptions PositionOptions => _positionOptions;
+
+        public void SetPositionOptions(ToastPositionOptions options)
+        {
+            _positionOptions = options ?? new ToastPositionOptions();
+            PostToManager(manager => manager.ApplyPosition());
+        }
+
+        private void SaveDraggedPosition(ToastPositionOptions options)
+        {
+            _positionOptions = options;
+            string error;
+            var saved = RvtMcpConfig.TrySaveToastPosition(options, out error);
+            if (!saved)
+                App.DebugLog("Toast position save failed: " + error);
+            PositionSaved?.Invoke(saved);
+        }
 
         /// <summary>
         /// Wordmark and product prefix on the activity card. Off by default.
@@ -94,7 +117,8 @@ namespace RvtMcp.Plugin.Views.Toast
                 if (hostDispatcher != null)
                 {
                     _dispatcher = hostDispatcher;
-                    _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding, () => _instanceIdentity);
+                    _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding, () => _instanceIdentity,
+                        positionOptions: () => _positionOptions, positionChanged: SaveDraggedPosition);
                     if (_ownerHandle != IntPtr.Zero)
                         _manager.SetOwnerHandle(_ownerHandle);
                     _usesDedicatedThread = false;
@@ -118,7 +142,8 @@ namespace RvtMcp.Plugin.Views.Toast
                         }
 
                         _dispatcher = Dispatcher.CurrentDispatcher;
-                        _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding, () => _instanceIdentity);
+                        _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding, () => _instanceIdentity,
+                        positionOptions: () => _positionOptions, positionChanged: SaveDraggedPosition);
                         if (_ownerHandle != IntPtr.Zero)
                             _manager.SetOwnerHandle(_ownerHandle);
                     }

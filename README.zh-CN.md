@@ -123,9 +123,9 @@ v1.0.0 发布候选版提供五个 MCP 提示。在客户端提示菜单中选�
 
 ## 配置
 
-开发版返回 `_changes` 和按模型保存的本地历史 `_history`。历史默认开启，与 call log 独立；使用 `--disable-change-history` 停止记录。`meta` 中的 `revit_record_change` 将原因关联到明确的 call ID，`revit_get_change_records` 用于查询历史。隐私、限制与恢复方式见[变更记录](docs/change-tracking.md)。现有候选安装包尚未包含此功能。
+自 v1.0.0 起，服务器返回 `_changes` 和按模型保存的本地历史 `_history`。历史默认开启，与 call log 独立；使用 `--disable-change-history` 停止记录。`meta` 中的 `revit_record_change` 将原因关联到明确的 call ID，`revit_get_change_records` 用于查询历史。隐私、限制与恢复方式见[变更记录](docs/change-tracking.md)。
 
-开发版在 `query` 中新增只读工具 `revit_survey_change_impact`，禁用 send-code 时仍可使用。每次请求必须提供 `scopeThreshold`；仅在明确设置 `maxViews > 0` 时扫描视图和明细表。不完整结果必须保留说明，参数观察值不是可信的历史快照。参见[变更影响调查](docs/change-survey.md)。现有候选安装包尚未包含此工具。
+`revit_survey_change_impact` 是 `query` 中的只读工具，禁用 send-code 时仍可使用。每次请求必须提供 `scopeThreshold`；仅在明确设置 `maxViews > 0` 时扫描视图和明细表。不完整结果必须保留说明，参数观察值不是可信的历史快照。参见[变更影响调查](docs/change-survey.md)。
 
 优先级从高到低：**CLI → env（`BIMWRIGHT_*`）→** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`。
 
@@ -149,6 +149,7 @@ v1.0.0 发布候选版提供五个 MCP 提示。在客户端提示菜单中选�
 | 持久化 send_code journal | `--persist-send-code-bodies` / `--no-…` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES=1` | `persistSendCodeBodies` |
 | Journal TTL | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | 完成 toast（默认开启） | ribbon **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
+| toast 位置（默认左上、不可拖动，已保存） | Settings → Toast → **Horizontal / Vertical alignment**、**Allow dragging the card**、**Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | 界面语言（插件） | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
 
 改 server 标志后请重启 MCP 连接，以便客户端拿到新工具列表。

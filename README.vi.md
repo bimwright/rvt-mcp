@@ -127,9 +127,11 @@ Toast báo **kết quả từng tool**, không phải thanh tiến độ bên tr
 
 Mỗi card ghi tên gateway và năm Revit (ví dụ `rvt-mcp 2022`), tên tool vừa chạy, và bộ đếm Success · Failed · Capture. Ảnh chụp được giữ trên card ít nhất 5 giây.
 
-Ở bản đang phát triển, hover có chủ ý mở timeline với ba kết quả gần nhất và giờ hoàn tất local (`HH:mm:ss`). Cuộn lên để xem các lần gọi trước trong cùng card. Khi ở cuối, kết quả mới hiện ngay; khi đọc phía trên, vị trí được giữ nguyên. Bấm trong timeline để đọc mà không đóng card; bấm phần còn lại mở History. Tính năng hoạt động cả khi branding tắt. Tóm tắt được giới hạn và che thông tin nhạy cảm, chỉ giữ trong RAM và xóa khi card đóng. Object/array của script hiện số lượng; khảo sát chưa đủ vẫn ghi rõ chưa đủ. Thay đổi UI này không bổ sung toast cho tool chạy thuần server.
+Hover có chủ ý mở timeline với ba kết quả gần nhất và giờ hoàn tất local (`HH:mm:ss`). Cuộn lên để xem các lần gọi trước trong cùng card. Khi ở cuối, kết quả mới trượt vào ngắn (các dòng đẩy lên, dòng mới hiện dần, chấm kết quả nảy lên; tắt animation thì hiện thẳng); khi đọc phía trên, vị trí được giữ nguyên. Bấm trong timeline để đọc mà không đóng card; bấm phần còn lại mở History. Tính năng hoạt động cả khi branding tắt. Tóm tắt được giới hạn và che thông tin nhạy cảm, chỉ giữ trong RAM và xóa khi card đóng. Object/array của script hiện số lượng; khảo sát chưa đủ vẫn ghi rõ chưa đủ. Thay đổi UI này không bổ sung toast cho tool chạy thuần server.
 
 Toast **bật mặc định** và có thể tắt. Trong **Settings → Toast**, chọn thời gian tự ẩn (10/20/30/60 giây; mặc định 20) và **Show branding** (**tắt mặc định**); bật branding sẽ hiện wordmark khi hover. Lựa chọn có hiệu lực ngay và được lưu qua các lần khởi động Revit; không cần bật brand để nhận thông báo hoạt động.
+
+**Vị trí:** trong **Settings → Toast**, chọn riêng **Horizontal alignment** (Trái/Phải) và **Vertical alignment** (Trên/Dưới); mặc định là trên-trái. Thay đổi áp dụng ngay cho card đang hiện và được lưu ngay; đổi góc sẽ xóa vị trí kéo đã lưu. Bật **Allow dragging the card** để kéo card bằng hàng tiêu đề; bấm thường vẫn mở History. Tắt kéo thì giữ vị trí đã lưu, bật lại sẽ khôi phục, còn **Reset position** xóa vị trí đó. Vị trí được lưu tương đối so với cửa sổ Revit và luôn nằm trong vùng làm việc của màn hình. Card neo ở dưới sẽ mở rộng lên trên, và chuyển sang phía còn lại khi không đủ chỗ. Chuyển động theo tùy chọn animation của Windows. Lưu thất bại sẽ báo ngay dưới setting, lựa chọn vẫn có hiệu lực trong phiên. Rê chuột lên dòng tool mới nhất hoặc một dòng timeline sẽ hiện kết quả đã lọc thông tin nhạy cảm, Success/Failed, giờ hoàn tất và thời lượng đo được (nếu có). Việc phối hợp toast giữa nhiều ứng dụng Autodesk không thuộc phạm vi này.
 
 ### Prompt sửa model (chưa phát hành)
 
@@ -139,9 +141,9 @@ Bản ứng viên v1.0.0 có năm MCP prompt. Chọn `revit_change` trong menu p
 
 ## Cấu hình
 
-Bản development trả `_changes` và `_history` theo model. Lịch sử cục bộ mặc định bật, độc lập với call log; dùng `--disable-change-history` để tắt ghi. Ba tool `meta`: `revit_record_change` gắn lý do với nhóm call ID cụ thể, `revit_get_change_records` tra cứu thay đổi, `revit_resolve_history_identity` ghi lựa chọn tiếp nối hoặc tách lịch sử sau copy/Save As. Xem [ghi nhận thay đổi](docs/change-tracking.md) về riêng tư, giới hạn và phục hồi; các gói ứng viên đã tạo chưa chứa phần này.
+Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cục bộ mặc định bật, độc lập với call log; dùng `--disable-change-history` để tắt ghi. Ba tool `meta`: `revit_record_change` gắn lý do với nhóm call ID cụ thể, `revit_get_change_records` tra cứu thay đổi, `revit_resolve_history_identity` ghi lựa chọn tiếp nối hoặc tách lịch sử sau copy/Save As. Xem [ghi nhận thay đổi](docs/change-tracking.md) về riêng tư, giới hạn và phục hồi.
 
-Bản development thêm `revit_survey_change_impact` trong `query`: khảo sát chỉ đọc 10 nhóm quan hệ, dùng được khi tắt send-code. Mỗi yêu cầu cần `scopeThreshold`; chỉ quét view/schedule khi `maxViews > 0`. Kết quả thiếu phải hiện rõ; giá trị quan sát chưa phải snapshot tin cậy cho history. Xem [khảo sát ảnh hưởng](docs/change-survey.md). Các gói ứng viên cũ chưa chứa tool này.
+`revit_survey_change_impact` là tool trong `query`: khảo sát chỉ đọc 10 nhóm quan hệ, dùng được khi tắt send-code. Mỗi yêu cầu cần `scopeThreshold`; chỉ quét view/schedule khi `maxViews > 0`. Kết quả thiếu phải hiện rõ; giá trị quan sát chưa phải snapshot tin cậy cho history. Xem [khảo sát ảnh hưởng](docs/change-survey.md).
 
 Ưu tiên, cao thắng: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`.
 
@@ -167,6 +169,7 @@ Bản development thêm `revit_survey_change_impact` trong `query`: khảo sát 
 | Toast hoàn thành (mặc định bật) | ribbon **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
 | Brand trên toast (mặc định tắt, có lưu) | Settings → Toast → **Show branding** | — | `showBranding` |
 | Thời gian toast tự ẩn (mặc định 20 giây) | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
+| Vị trí toast (mặc định trên-trái, không kéo; có lưu) | Settings → Toast → **Horizontal / Vertical alignment**, **Allow dragging the card**, **Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | Ngôn ngữ UI (add-in) | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
 
 Đổi cờ server xong: restart kết nối MCP để client nhận tool list mới.

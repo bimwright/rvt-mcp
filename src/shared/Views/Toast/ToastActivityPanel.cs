@@ -27,6 +27,12 @@ namespace RvtMcp.Plugin.Views.Toast
         private DispatcherTimer _scrollFadeTimer;
         private bool _scrollExpanded;
         private int _scrollFadeGeneration;
+        private int _arrivalGeneration;
+        private readonly List<FrameworkElement> _arrivalTargets = new List<FrameworkElement>();
+        private Border _arrivalDot;
+
+        /// <summary>True while a newly arrived row is still sliding/fading in.</summary>
+        internal bool IsArrivalAnimating { get; private set; }
 
         public ToastActivityPanel(Func<bool> motionEnabled = null)
         {
@@ -71,6 +77,7 @@ namespace RvtMcp.Plugin.Views.Toast
 
         internal void SetEntries(IReadOnlyList<ToastActivityEntry> entries)
         {
+            CancelArrival();
             Entries = entries;
             _heading.Text = L.T("toast.activity.recent", ("count", entries.Count));
             _list.ItemsSource = entries;
@@ -101,12 +108,127 @@ namespace RvtMcp.Plugin.Views.Toast
             SetEntries(entries);
             _list.UpdateLayout();
             if (followTail)
+            {
                 ScrollToLatest();
+                PlayArrival((_scrollViewer?.VerticalOffset ?? 0) - offset);
+            }
             else
             {
                 _scrollViewer.ScrollToVerticalOffset(offset);
                 _list.UpdateLayout();
+                // The reader keeps their place; only hint, through the scroll bar, that the list grew.
+                RevealScrollCue();
             }
+        }
+
+        /// <summary>
+        /// A new result follows the tail: the rows glide up by the distance the list just scrolled,
+        /// and the new row fades in while its outcome dot pops. Nothing here changes layout, the
+        /// scroll offset or the card size, so it is purely a transform/opacity overlay that is
+        /// removed when it ends or when anything else touches the list.
+        /// </summary>
+        private void PlayArrival(double scrolled)
+        {
+            if (!_motionEnabled() || !IsVisible || Entries.Count == 0)
+                return;
+            var last = _list.ItemContainerGenerator.ContainerFromIndex(Entries.Count - 1) as FrameworkElement;
+            if (last == null)
+                return;
+
+            var generation = ++_arrivalGeneration;
+            // Rows were at +scrolled before the jump; with nothing to scroll (list still growing) the new row
+            // only rises a few DIPs.
+            var shift = Math.Min(Math.Max(scrolled, 0), EntryHeight * VisibleEntryCount);
+            var duration = TimeSpan.FromMilliseconds(260);
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            IsArrivalAnimating = true;
+
+            for (var i = 0; i < Entries.Count; i++)
+            {
+                var row = _list.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+                if (row == null)
+                    continue;
+                var isNew = ReferenceEquals(row, last);
+                var from = isNew ? (shift > 0.5 ? shift : 10) : shift;
+                if (from < 0.5)
+                    continue;
+                var move = new TranslateTransform(0, from);
+                row.RenderTransform = move;
+                _arrivalTargets.Add(row);
+                var slide = new DoubleAnimation(from, 0, duration) { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
+                if (isNew)
+                {
+                    slide.Completed += (_, __) =>
+                    {
+                        if (generation == _arrivalGeneration)
+                            CancelArrival();
+                    };
+                    row.Opacity = 0;
+                    row.BeginAnimation(OpacityProperty,
+                        new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease, FillBehavior = FillBehavior.Stop });
+                }
+                move.BeginAnimation(TranslateTransform.YProperty, slide);
+            }
+
+            // Outcome dot: a short overshoot pop so the new result reads as "just landed".
+            var dot = FindTagged(last, "OutcomeNode") as Border;
+            if (dot != null)
+            {
+                var scale = new ScaleTransform(0.3, 0.3);
+                dot.RenderTransformOrigin = new Point(0.5, 0.5);
+                dot.RenderTransform = scale;
+                _arrivalDot = dot;
+                var pop = new DoubleAnimation(0.3, 1, TimeSpan.FromMilliseconds(320))
+                {
+                    EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.8 },
+                    FillBehavior = FillBehavior.Stop
+                };
+                scale.BeginAnimation(ScaleTransform.ScaleXProperty, pop);
+                scale.BeginAnimation(ScaleTransform.ScaleYProperty, pop);
+            }
+        }
+
+        /// <summary>Remove every arrival transform/clock and restore the resting state.</summary>
+        internal void CancelArrival()
+        {
+            ++_arrivalGeneration;
+            foreach (var row in _arrivalTargets)
+            {
+                row.BeginAnimation(OpacityProperty, null);
+                row.Opacity = 1;
+                if (row.RenderTransform is TranslateTransform move)
+                    move.BeginAnimation(TranslateTransform.YProperty, null);
+                row.RenderTransform = Transform.Identity;
+            }
+            _arrivalTargets.Clear();
+            if (_arrivalDot != null)
+            {
+                if (_arrivalDot.RenderTransform is ScaleTransform scale)
+                {
+                    scale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+                    scale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+                }
+                _arrivalDot.RenderTransform = Transform.Identity;
+                _arrivalDot = null;
+            }
+            IsArrivalAnimating = false;
+        }
+
+        private static FrameworkElement FindTagged(DependencyObject root, string tag)
+        {
+            if (root == null)
+                return null;
+            var count = VisualTreeHelper.GetChildrenCount(root);
+            for (var i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(root, i);
+                if (child is FrameworkElement element && Equals(element.Tag, tag))
+                    return element;
+                var found = FindTagged(child, tag);
+                if (found != null)
+                    return found;
+            }
+            return null;
         }
 
         /// <summary>Start a new hover at the tail, or continue following after new results.</summary>
@@ -136,6 +258,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private void OnLoaded(object sender, RoutedEventArgs e) => EnsureScrollViewer();
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
+            CancelArrival();
             StopScrollCue();
             if (_scrollViewer != null) _scrollViewer.ScrollChanged -= OnScrollChanged;
             _scrollViewer = null;
@@ -268,6 +391,7 @@ namespace RvtMcp.Plugin.Views.Toast
             card.SetValue(Border.BorderBrushProperty, McpToastTheme.ActivityBorder);
             card.SetBinding(System.Windows.Automation.AutomationProperties.NameProperty, new Binding("Title"));
             card.SetBinding(System.Windows.Automation.AutomationProperties.HelpTextProperty, new Binding("Body"));
+            card.SetBinding(FrameworkElement.ToolTipProperty, new Binding("TooltipText"));
             row.AppendChild(card);
             var content = new FrameworkElementFactory(typeof(StackPanel));
             card.AppendChild(content);
@@ -283,7 +407,7 @@ namespace RvtMcp.Plugin.Views.Toast
             title.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
             title.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
             title.SetBinding(TextBlock.TextProperty, new Binding("Title"));
-            title.SetBinding(FrameworkElement.ToolTipProperty, new Binding("Title"));
+            title.SetBinding(FrameworkElement.ToolTipProperty, new Binding("TooltipText"));
             line.AppendChild(title);
             var body = Text(11, McpToastTheme.TextSecondary);
             body.SetValue(TextBlock.TextWrappingProperty, TextWrapping.NoWrap);
@@ -291,7 +415,7 @@ namespace RvtMcp.Plugin.Views.Toast
             body.SetValue(FrameworkElement.MaxHeightProperty, 16.0);
             body.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 1, 0, 0));
             body.SetBinding(TextBlock.TextProperty, new Binding("Body"));
-            body.SetBinding(FrameworkElement.ToolTipProperty, new Binding("Body"));
+            body.SetBinding(FrameworkElement.ToolTipProperty, new Binding("TooltipText"));
             content.AppendChild(body);
             return new DataTemplate(typeof(ToastActivityEntry)) { VisualTree = row };
         }

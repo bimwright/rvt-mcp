@@ -123,9 +123,9 @@ v1.0.0 リリース候補には 5 つの MCP プロンプトがあります。�
 
 ## 設定
 
-開発版は `_changes` とモデル別のローカル履歴 `_history` を返します。履歴は call log と独立して既定で有効です。記録を止めるには `--disable-change-history` を指定します。`meta` の `revit_record_change` は明示した call ID に理由を関連付け、`revit_get_change_records` は履歴を検索します。プライバシー、制限、復旧は [変更の記録](docs/change-tracking.md) を参照してください。既存の候補パッケージにはまだ含まれていません。
+v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 `_history` を返します。履歴は call log と独立して既定で有効です。記録を止めるには `--disable-change-history` を指定します。`meta` の `revit_record_change` は明示した call ID に理由を関連付け、`revit_get_change_records` は履歴を検索します。プライバシー、制限、復旧は [変更の記録](docs/change-tracking.md) を参照してください。
 
-開発版は `query` に読み取り専用の `revit_survey_change_impact` を追加します。send-code が無効でも使用できます。要求ごとに `scopeThreshold` が必要で、ビュー／集計表の走査は `maxViews > 0` の明示指定時のみ行います。不完全な結果と履歴用の信頼済みスナップショットの違いは [変更影響調査](docs/change-survey.md) を参照してください。既存の配布候補にはまだ含まれていません。
+`revit_survey_change_impact` は `query` にある読み取り専用ツールです。send-code が無効でも使用できます。要求ごとに `scopeThreshold` が必要で、ビュー／集計表の走査は `maxViews > 0` の明示指定時のみ行います。不完全な結果と履歴用の信頼済みスナップショットの違いは [変更影響調査](docs/change-survey.md) を参照してください。
 
 優先度（高い方が勝つ）：**CLI → env（`BIMWRIGHT_*`）→** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`。
 
@@ -149,6 +149,7 @@ v1.0.0 リリース候補には 5 つの MCP プロンプトがあります。�
 | send_code journal 永続化 | `--persist-send-code-bodies` / `--no-…` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES=1` | `persistSendCodeBodies` |
 | Journal TTL | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | 完了トースト（既定オン） | リボン **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
+| トーストの位置（既定は左上・ドラッグなし、保存あり） | Settings → Toast → **Horizontal / Vertical alignment**、**Allow dragging the card**、**Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | UI 言語（アドイン） | リボン **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
 
 サーバ側フラグ変更後は MCP 接続を再起動し、クライアントが新しいツール一覧を取るようにしてください。
