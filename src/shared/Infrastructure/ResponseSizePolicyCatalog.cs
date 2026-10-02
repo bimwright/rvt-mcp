@@ -24,6 +24,7 @@ namespace RvtMcp.Plugin
             ["get_type_parameters"] = "Retry with fewer `elementIds` or `typeIds`.",
             ["list_project_parameters"] = "Retry with `includeCategories=false`.",
             ["get_element_relationships"] = "Retry with fewer `elementIds` or `includeDependents=false`.",
+            ["survey_change_impact"] = "Use fewer `elementIds`, a smaller `maxIdsPerRelation`, or `depth=1`; omitted evidence remains explicit. View iteration is opt-in through `maxViews`.",
             ["list_groups"] = "Retry with a narrower `groupKind` and `includeMembers=false`.",
             ["list_schedules"] = "Retry with `categoryFilter` and `namePattern`.",
             ["get_schedule_definition"] = "Retry with one exact `scheduleId`.",

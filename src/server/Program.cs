@@ -834,6 +834,42 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
+        [McpServerTool(Name = "revit_survey_change_impact", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false)]
+        [System.ComponentModel.Description("Survey ten relationship groups for explicit active-document targets before proposing a change. Returns found/none/not_checked, coverage, exact/lower-bound counts and stopFlags; never an authorization to write. Linked contents and engineering correctness are not covered. Views/schedules are not scanned unless maxViews > 0; native view calls can exceed the soft time budget. Observational parameters are not trusted history baselines.")]
+        public static async Task<string> SurveyChangeImpact(
+            [System.ComponentModel.Description("1-25 active-document element IDs; never an implicit whole-model scope.")] long[] elementIds,
+            [System.ComponentModel.Description("Required scope threshold agreed for this request, 1-200000. Counts target/propagation candidates, not predicted modifications. No fixed default.")] int scopeThreshold,
+            [System.ComponentModel.Description("instance|type|unknown. Type means editing a type definition; assigning a different type to instances is instance.")] string changeKind = "unknown",
+            [System.ComponentModel.Description("1 or 2. Depth2 expands type/group/join/physical-connector neighbors only.")] int depth = 1,
+            [System.ComponentModel.Description("sheets|all; applies only when maxViews > 0.")] string viewScope = "sheets",
+            [System.ComponentModel.Description("Optional explicit phase ID (0 can be valid); otherwise use a valid active-view phase, never the last project phase.")] long? phaseId = null,
+            [System.ComponentModel.Description("Optional IDs of up to 100 views within viewScope. Does not implicitly enable view scanning.")] long[] viewIds = null,
+            [System.ComponentModel.Description("Bounding-box candidate padding in millimeters, 0-10000; this is not clash detection.")] double proximityPaddingMm = 100,
+            [System.ComponentModel.Description("Returned ID/evidence preview cap per group, 1-200; counts remain independent of this cap.")] int maxIdsPerRelation = 100,
+            [System.ComponentModel.Description("Soft elapsed-time budget, 1-30000 ms. Stops between native API calls; cannot preempt a native call.")] int budgetMs = 10000,
+            [System.ComponentModel.Description("0-100. Default 0 skips view/schedule iteration. Set a positive value only for an explicitly scoped presentation survey.")] int maxViews = 0,
+            [System.ComponentModel.Description("Shared scan-work cap, 1-200000; exhausted coverage remains partial.")] int maxScannedElements = 50000,
+            [System.ComponentModel.Description("Distinct discovered-node cap per relation and propagation scope, 1-20000.")] int maxGraphNodes = 10000)
+        {
+            try
+            {
+                var request = new JObject
+                {
+                    ["elementIds"] = elementIds == null ? JValue.CreateNull() : new JArray(elementIds),
+                    ["scopeThreshold"] = scopeThreshold, ["changeKind"] = changeKind, ["depth"] = depth,
+                    ["viewScope"] = viewScope, ["proximityPaddingMm"] = proximityPaddingMm,
+                    ["maxIdsPerRelation"] = maxIdsPerRelation, ["budgetMs"] = budgetMs,
+                    ["maxViews"] = maxViews, ["maxScannedElements"] = maxScannedElements, ["maxGraphNodes"] = maxGraphNodes
+                };
+                if (phaseId.HasValue) request["phaseId"] = phaseId.Value;
+                if (viewIds != null) request["viewIds"] = new JArray(viewIds);
+                RvtMcp.Plugin.Survey.SurveyOptions.Parse(request);
+                var result = await ToolGateway.SendToRevit("survey_change_impact", request);
+                return JsonConvert.SerializeObject(result, Formatting.Indented);
+            }
+            catch (Exception ex) { return $"Error: {ex.Message}"; }
+        }
+
         [McpServerTool(Name = "revit_list_groups", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List model/detail/attached groups with type, owner view, parent, and optional member ids.")]
         public static async Task<string> ListGroups(string groupKind = "all", bool includeMembers = false)
         {

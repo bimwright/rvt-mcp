@@ -25,6 +25,7 @@ namespace RvtMcp.Plugin
             Register(new Handlers.GetTypeParametersHandler());
             Register(new Handlers.ListProjectParametersHandler());
             Register(new Handlers.GetElementRelationshipsHandler());
+            Register(new Handlers.SurveyChangeImpactHandler());
             Register(new Handlers.ListGroupsHandler());
             Register(new Handlers.GetGroupMembersHandler());
             Register(new Handlers.ListAssembliesHandler());

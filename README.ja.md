@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-230%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-231%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -75,12 +75,12 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 | モード | Tools | 注記 |
 |--------|------:|------|
-| 新規インストール | **230** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
-| 素の `rvt-mcp.exe` | **45** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **230** | フルカタログ |
-| `all` + adaptive bake | **233** | 提案ライフサイクル 3 ツールを追加 |
+| 新規インストール | **231** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
+| 素の `rvt-mcp.exe` | **46** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **231** | フルカタログ |
+| `all` + adaptive bake | **234** | 提案ライフサイクル 3 ツールを追加 |
 
-件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 45 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。
+件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 46 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。
 
 | Toolset | 範囲 |
 |---------|------|
@@ -124,6 +124,8 @@ v1.0.0 リリース候補には 5 つの MCP プロンプトがあります。�
 ## 設定
 
 開発版は `_changes` とモデル別のローカル履歴 `_history` を返します。履歴は call log と独立して既定で有効です。記録を止めるには `--disable-change-history` を指定します。`meta` の `revit_record_change` は明示した call ID に理由を関連付け、`revit_get_change_records` は履歴を検索します。プライバシー、制限、復旧は [変更の記録](docs/change-tracking.md) を参照してください。既存の候補パッケージにはまだ含まれていません。
+
+開発版は `query` に読み取り専用の `revit_survey_change_impact` を追加します。send-code が無効でも使用できます。要求ごとに `scopeThreshold` が必要で、ビュー／集計表の走査は `maxViews > 0` の明示指定時のみ行います。不完全な結果と履歴用の信頼済みスナップショットの違いは [変更影響調査](docs/change-survey.md) を参照してください。既存の配布候補にはまだ含まれていません。
 
 優先度（高い方が勝つ）：**CLI → env（`BIMWRIGHT_*`）→** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`。
 
@@ -258,6 +260,7 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
       "mcp__rvt-mcp__revit_show_element_in_view",
       "mcp__rvt-mcp__revit_show_message",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
+      "mcp__rvt-mcp__revit_survey_change_impact",
       "mcp__rvt-mcp__revit_switch_target",
       "mcp__rvt-mcp__revit_workflow_model_audit"
     ]

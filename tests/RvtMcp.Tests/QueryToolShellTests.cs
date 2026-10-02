@@ -30,7 +30,8 @@ namespace RvtMcp.Tests
             "revit_list_assemblies",
             "revit_list_groups",
             "revit_list_project_parameters",
-            "revit_list_worksets"
+            "revit_list_worksets",
+            "revit_survey_change_impact"
         };
 
         [Fact]

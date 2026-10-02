@@ -24,6 +24,8 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## v1.0.0 — Unreleased
 
+- **Typed change-impact survey (development)** — `revit_survey_change_impact` in `query` reports ten bounded relationship groups with explicit incomplete coverage, exact/lower-bound counts and discussion flags. Works with read-only and send-code disabled. Each request needs `scopeThreshold`; view/schedule iteration defaults to off and requires `maxViews > 0`. Native calls cannot be preempted by the soft time budget. No persistent survey/history snapshot is created. `revit_change` now uses this tool. Tool counts: default **46**, `--toolsets all` **231**, adaptive bake **234**; matching plugin/server builds are required and existing packaged candidates are unchanged.
+
 - **History identity continuity (development)** — proven Windows file aliases and renames can follow the same history. Revit lineage only suggests a choice for copies/Save As; `revit_resolve_history_identity` records the owner's explicit continuation or independent history. Existing databases and reason ownership stay intact, links are reversible, and legacy keys can be listed with `revit_get_change_records(listModels=true)`. Ordinary reads remain unchanged. Tool counts: default **45**, `--toolsets all` **230**, adaptive bake **233**. Matching plugin/server builds are required; existing Setup/MCPB candidates are unchanged.
 
 - **Closed-document change capture** — capture summaries use metadata collected during transactions, so a command that closes its temporary project or EditFamily document before returning does not dereference an invalid Revit document.

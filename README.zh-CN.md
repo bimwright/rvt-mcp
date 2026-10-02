@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-230%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-231%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -75,12 +75,12 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
-| 全新安装 | **230** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
-| 裸 `rvt-mcp.exe` | **45** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **230** | 完整目录 |
-| `all` + adaptive bake | **233** | 再加 3 个 suggestion 生命周期工具 |
+| 全新安装 | **231** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
+| 裸 `rvt-mcp.exe` | **46** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **231** | 完整目录 |
+| `all` + adaptive bake | **234** | 再加 3 个 suggestion 生命周期工具 |
 
-数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 45 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除。
+数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 46 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除。
 
 | Toolset | 覆盖 |
 |---------|------|
@@ -124,6 +124,8 @@ v1.0.0 发布候选版提供五个 MCP 提示。在客户端提示菜单中选�
 ## 配置
 
 开发版返回 `_changes` 和按模型保存的本地历史 `_history`。历史默认开启，与 call log 独立；使用 `--disable-change-history` 停止记录。`meta` 中的 `revit_record_change` 将原因关联到明确的 call ID，`revit_get_change_records` 用于查询历史。隐私、限制与恢复方式见[变更记录](docs/change-tracking.md)。现有候选安装包尚未包含此功能。
+
+开发版在 `query` 中新增只读工具 `revit_survey_change_impact`，禁用 send-code 时仍可使用。每次请求必须提供 `scopeThreshold`；仅在明确设置 `maxViews > 0` 时扫描视图和明细表。不完整结果必须保留说明，参数观察值不是可信的历史快照。参见[变更影响调查](docs/change-survey.md)。现有候选安装包尚未包含此工具。
 
 优先级从高到低：**CLI → env（`BIMWRIGHT_*`）→** `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json`。
 
@@ -258,6 +260,7 @@ Annotations 描述每个工具对文档和文件的影响。临时 selection、a
       "mcp__rvt-mcp__revit_show_element_in_view",
       "mcp__rvt-mcp__revit_show_message",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
+      "mcp__rvt-mcp__revit_survey_change_impact",
       "mcp__rvt-mcp__revit_switch_target",
       "mcp__rvt-mcp__revit_workflow_model_audit"
     ]

@@ -125,6 +125,12 @@ namespace RvtMcp.Tests
 
             Assert.Contains("Nothing is written before I confirm the concrete proposal", rendered);
             Assert.Contains("There is no fixed element-count threshold", rendered);
+            Assert.Contains("revit_survey_change_impact", rendered);
+            Assert.Contains("scopeThreshold agreed for this request", rendered);
+            Assert.Contains("maxViews=0", rendered);
+            Assert.Contains("view_scan_not_requested_set_maxViews", rendered);
+            Assert.Contains("lower bound, not a complete inventory", rendered);
+            Assert.Contains("not a trusted snapshot token", rendered);
             Assert.Contains("A changed scope requires renewed confirmation", rendered);
             Assert.Contains("not checked, never none", rendered);
             Assert.Contains("not a complete inventory of every element changed indirectly", rendered);

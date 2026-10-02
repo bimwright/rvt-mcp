@@ -99,6 +99,7 @@ namespace RvtMcp.Plugin
             "show_element_in_view",
             "show_message",
             "suggest_view_name_corrections",
+            "survey_change_impact",
             "switch_target",
             "workflow_model_audit",
         };

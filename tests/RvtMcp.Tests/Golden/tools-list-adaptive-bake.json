@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 233,
+  "tool_count": 234,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -7404,6 +7404,77 @@
           }
         },
         "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "revit_survey_change_impact",
+      "description_hash": "sha256:1c1f8caa1c335eb1d31251c60295f1e04f9dc4388777237d3464e17689a6d407",
+      "inputSchema": {
+        "properties": {
+          "budgetMs": {
+            "description": "Soft elapsed-time budget, 1-30000 ms. Stops between native API calls; cannot preempt a native call.",
+            "type": "Int32"
+          },
+          "changeKind": {
+            "description": "instance|type|unknown. Type means editing a type definition; assigning a different type to instances is instance.",
+            "type": "String"
+          },
+          "depth": {
+            "description": "1 or 2. Depth2 expands type/group/join/physical-connector neighbors only.",
+            "type": "Int32"
+          },
+          "elementIds": {
+            "description": "1-25 active-document element IDs; never an implicit whole-model scope.",
+            "type": "Int64[]"
+          },
+          "maxGraphNodes": {
+            "description": "Distinct discovered-node cap per relation and propagation scope, 1-20000.",
+            "type": "Int32"
+          },
+          "maxIdsPerRelation": {
+            "description": "Returned ID/evidence preview cap per group, 1-200; counts remain independent of this cap.",
+            "type": "Int32"
+          },
+          "maxScannedElements": {
+            "description": "Shared scan-work cap, 1-200000; exhausted coverage remains partial.",
+            "type": "Int32"
+          },
+          "maxViews": {
+            "description": "0-100. Default 0 skips view/schedule iteration. Set a positive value only for an explicitly scoped presentation survey.",
+            "type": "Int32"
+          },
+          "phaseId": {
+            "description": "Optional explicit phase ID (0 can be valid); otherwise use a valid active-view phase, never the last project phase.",
+            "type": "Nullable`1"
+          },
+          "proximityPaddingMm": {
+            "description": "Bounding-box candidate padding in millimeters, 0-10000; this is not clash detection.",
+            "type": "Double"
+          },
+          "scopeThreshold": {
+            "description": "Required scope threshold agreed for this request, 1-200000. Counts target/propagation candidates, not predicted modifications. No fixed default.",
+            "type": "Int32"
+          },
+          "viewIds": {
+            "description": "Optional IDs of up to 100 views within viewScope. Does not implicitly enable view scanning.",
+            "type": "Int64[]"
+          },
+          "viewScope": {
+            "description": "sheets|all; applies only when maxViews > 0.",
+            "type": "String"
+          }
+        },
+        "required": [
+          "elementIds",
+          "scopeThreshold"
+        ],
         "type": "object"
       },
       "annotations": {
