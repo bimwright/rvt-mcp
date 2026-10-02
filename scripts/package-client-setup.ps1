@@ -211,9 +211,14 @@ if (Test-Path $setupZip) {
 }
 Compress-Archive -Path (Join-Path $stageRoot '*') -DestinationPath $setupZip -Force
 
+# Checksum sidecar for the GitHub Release: "<sha256>  <file name>", the same form as the family's .mcpb files.
+$setupHash = Get-Sha256Lower -Path $setupZip
+Set-Content -LiteralPath "$setupZip.sha256" -Value ("{0}  {1}" -f $setupHash, (Split-Path -Leaf $setupZip)) -Encoding ascii -NoNewline
+
 Write-Host ""
 Write-Host "=== client setup package summary ==="
 Write-Host ("Output : {0}" -f $setupZip)
+Write-Host ("SHA-256: {0}  ({1})" -f $setupHash, (Split-Path -Leaf "$setupZip.sha256"))
 Write-Host ("Server : {0}" -f (Get-RelativePackagePath -Root $stageRoot -Path $friendlyServerExe))
 Write-Host ("Plugins: {0}" -f ($pluginManifest.Count))
 Write-Host ("Files  : {0}" -f ($fileManifest.Count + 1))

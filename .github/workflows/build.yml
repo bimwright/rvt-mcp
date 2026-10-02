@@ -134,7 +134,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rvtmcp-client-setup
-          path: build/client-setup/RvtMcp.Setup-*-win-x64.zip
+          path: |
+            build/client-setup/RvtMcp.Setup-*-win-x64.zip
+            build/client-setup/RvtMcp.Setup-*-win-x64.zip.sha256
           retention-days: 14
 
   tests:
