@@ -192,5 +192,28 @@ namespace RvtMcp.Tests
             foreach (ViewportAlignMode mode in Enum.GetValues(typeof(ViewportAlignMode)))
                 Assert.Equal(mode != ViewportAlignMode.CenterOnSheet, ViewportLayoutMath.NeedsReference(mode));
         }
+
+        // Measured on Revit 2027 (Snowdon sample): a viewport bound to a saved position was moved
+        // inside a committed transaction and put back at regeneration, so the commit alone proves nothing.
+        [Theory]
+        [InlineData(5, 5, "applied")]
+        [InlineData(1, 1, "applied")]
+        [InlineData(5, 0, "not_applied")]
+        [InlineData(1, 0, "not_applied")]
+        [InlineData(5, 3, "partially_applied")]
+        [InlineData(2, 1, "partially_applied")]
+        public void Apply_outcome_reflects_how_many_moves_Revit_kept(int planned, int held, string expected)
+        {
+            Assert.Equal(expected, ViewportLayoutMath.ClassifyApply(planned, held));
+        }
+
+        [Theory]
+        [InlineData(-1, 0)]
+        [InlineData(2, 3)]
+        [InlineData(2, -1)]
+        public void Apply_outcome_rejects_counts_that_cannot_happen(int planned, int held)
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => ViewportLayoutMath.ClassifyApply(planned, held));
+        }
     }
 }

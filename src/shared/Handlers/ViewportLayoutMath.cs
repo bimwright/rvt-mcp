@@ -166,5 +166,18 @@ namespace RvtMcp.Plugin.Handlers
         {
             return (frame.CenterX - group.CenterX, frame.CenterY - group.CenterY);
         }
+
+        /// <summary>
+        /// What Revit kept after a move was committed: every planned viewport at its target, only some,
+        /// or none. Revit can undo a move at regeneration (for example a saved position), so the
+        /// commit succeeding does not mean the viewport moved.
+        /// </summary>
+        public static string ClassifyApply(int plannedCount, int heldCount)
+        {
+            if (plannedCount < 0 || heldCount < 0 || heldCount > plannedCount)
+                throw new ArgumentOutOfRangeException(nameof(heldCount), "heldCount must be between 0 and plannedCount.");
+            if (heldCount == plannedCount) return "applied";
+            return heldCount == 0 ? "not_applied" : "partially_applied";
+        }
     }
 }

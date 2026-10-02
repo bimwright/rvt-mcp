@@ -126,12 +126,14 @@ namespace RvtMcp.Plugin.Handlers
             {
                 if (s.Pinned)
                     blocked.Add(s.ViewportId + " (pinned)");
+                else if (s.SavedPosition != null)
+                    blocked.Add(s.ViewportId + " (bound to saved position '" + s.SavedPosition + "')");
                 else if (!s.Used.HasValue)
                     blocked.Add(s.ViewportId + " (" + (s.Warnings.Count > 0 ? string.Join(", ", s.Warnings) : "no usable rectangle") + ")");
             }
             if (blocked.Count > 0)
                 return CommandResult.Fail("Cannot move viewport(s): " + string.Join("; ", blocked)
-                    + ". Unpin them or leave them out of viewport_ids. Nothing was changed.");
+                    + ". Unpin them, or clear their saved position in Revit (Revit puts a viewport back at its saved position), or leave them out of viewport_ids. Nothing was changed.");
 
             // Plan
             SheetRect? frame = null;
@@ -187,29 +189,57 @@ namespace RvtMcp.Plugin.Handlers
                 }
             }
 
-            // Read back what Revit actually holds.
+            // Read back what Revit actually holds. A committed transaction does not prove the viewport
+            // moved: Revit can put it back at regeneration, so each move is judged on the read-back.
             var after = new Dictionary<long, ViewportSnapshot>();
+            var failed = new List<object>();
             maxErrorMm = 0.0;
             foreach (var m in moves)
             {
                 var read = ViewportSheetSupport.Read(doc, m.Before.Viewport);
                 after[m.Before.ViewportId] = read;
-                if (m.Changed && read.Used.HasValue)
+                if (!m.Changed) continue;
+
+                double? errorMm = null;
+                if (read.Used.HasValue)
                 {
                     var expected = m.Before.Used.Value.Translated(m.Dx, m.Dy);
-                    var error = new[]
+                    errorMm = new[]
                     {
                         Math.Abs(read.Used.Value.MinX - expected.MinX), Math.Abs(read.Used.Value.MaxX - expected.MaxX),
                         Math.Abs(read.Used.Value.MinY - expected.MinY), Math.Abs(read.Used.Value.MaxY - expected.MaxY)
                     }.Max() * ViewportSheetSupport.FeetToMm;
-                    if (error > maxErrorMm) maxErrorMm = error;
+                    if (errorMm.Value > maxErrorMm) maxErrorMm = errorMm.Value;
                 }
+
+                if (!errorMm.HasValue || errorMm.Value > VerifyToleranceMm)
+                    failed.Add(new
+                    {
+                        viewport_id = m.Before.ViewportId,
+                        view_name = m.Before.ViewName,
+                        position_error_mm = errorMm.HasValue ? (double?)Math.Round(errorMm.Value, 4) : null,
+                        saved_position = read.SavedPosition
+                    });
             }
 
+            var plannedCount = changed.Count;
+            var heldCount = plannedCount - failed.Count;
+            var status = ViewportLayoutMath.ClassifyApply(plannedCount, heldCount);
+
+            if (status == "not_applied")
+                return CommandResult.Fail("Revit did not keep any of the " + plannedCount + " planned move(s); the viewports are where they were"
+                    + " (largest position error " + Math.Round(maxErrorMm, 4) + " mm). Check the sheet for something that re-positions viewports,"
+                    + " such as a saved position or an add-in.");
+
+            if (status == "partially_applied")
+                return CommandResult.Ok(BuildResult(sheet, modeText, reference, frame, moves, after,
+                    applied: false, dryRun: false, status: status, heldCount: heldCount, failed: failed,
+                    note: "Revit kept " + heldCount + " of " + plannedCount + " moves; failed_viewports lists the ones it put back."
+                        + " The moves that held are one Revit Undo step. Check the sheet."));
+
             return CommandResult.Ok(BuildResult(sheet, modeText, reference, frame, moves, after,
-                applied: true, dryRun: false,
-                note: "Applied as one Revit Undo step. Read back max_position_error_mm = " + Math.Round(maxErrorMm, 4)
-                    + (maxErrorMm <= VerifyToleranceMm ? " (verified)." : " (exceeds " + VerifyToleranceMm + " mm; check the sheet).")));
+                applied: true, dryRun: false, status: status, heldCount: heldCount, failed: failed,
+                note: "Applied as one Revit Undo step. Read back max_position_error_mm = " + Math.Round(maxErrorMm, 4) + " (verified)."));
         }
 
         private static Move NewMove(ViewportSnapshot before, double dx, double dy)
@@ -226,7 +256,8 @@ namespace RvtMcp.Plugin.Handlers
         private static object BuildResult(
             ViewSheet sheet, string mode, ViewportSnapshot reference, SheetRect? frame,
             List<Move> moves, Dictionary<long, ViewportSnapshot> after,
-            bool applied, bool dryRun, string note)
+            bool applied, bool dryRun, string note,
+            string status = null, int heldCount = 0, List<object> failed = null)
         {
             var items = moves.Select(m =>
             {
@@ -252,6 +283,7 @@ namespace RvtMcp.Plugin.Handlers
             {
                 dry_run = dryRun,
                 applied,
+                status = status ?? (dryRun ? "dry_run" : "nothing_to_move"),
                 mode,
                 sheet_id = RevitCompat.GetId(sheet.Id),
                 sheet_number = sheet.SheetNumber,
@@ -261,9 +293,10 @@ namespace RvtMcp.Plugin.Handlers
                 reference_viewport_id = reference?.ViewportId,
                 reference_rect_sheet_mm = ViewportSheetSupport.RectDto(reference?.Used),
                 frame_sheet_mm = ViewportSheetSupport.RectDto(frame),
-                moved_count = applied ? moves.Count(m => m.Changed) : 0,
+                moved_count = heldCount,
                 planned_move_count = moves.Count(m => m.Changed),
                 unchanged_count = moves.Count(m => !m.Changed),
+                failed_viewports = failed ?? new List<object>(),
                 moves = items,
                 note
             };

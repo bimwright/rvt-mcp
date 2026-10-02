@@ -17,6 +17,8 @@ namespace RvtMcp.Plugin.Handlers
         public double Scale { get; set; }
         public string Rotation { get; set; }
         public bool Pinned { get; set; }
+        /// <summary>Name of the saved position the viewport is bound to; null when none (or before Revit 2026).</summary>
+        public string SavedPosition { get; set; }
         public bool CropActive { get; set; }
         public bool CropVisible { get; set; }
         public double BoxCenterX { get; set; }
@@ -132,6 +134,30 @@ namespace RvtMcp.Plugin.Handlers
             return rects.Count == 0 ? (SheetRect?)null : ViewportLayoutMath.Union(rects);
         }
 
+        /// <summary>
+        /// The saved position a viewport is bound to. Revit re-applies it at regeneration, so a move of
+        /// such a viewport is silently undone. Saved positions exist from Revit 2026; earlier versions
+        /// have no such parameter and report none.
+        /// </summary>
+        public static string ReadSavedPosition(Document doc, Viewport vp, List<string> warnings)
+        {
+#if REVIT2026 || REVIT2027_OR_GREATER
+            try
+            {
+                var id = vp.get_Parameter(BuiltInParameter.VIEW_POSITION)?.AsElementId();
+                if (id == null || id == ElementId.InvalidElementId) return null;
+                return doc.GetElement(id)?.Name ?? "(unnamed)";
+            }
+            catch (Exception)
+            {
+                warnings.Add("saved_position_unreadable");
+                return null;
+            }
+#else
+            return null;
+#endif
+        }
+
         public static ViewportSnapshot Read(Document doc, Viewport vp)
         {
             var snap = new ViewportSnapshot
@@ -141,6 +167,7 @@ namespace RvtMcp.Plugin.Handlers
                 Pinned = vp.Pinned,
                 Rotation = vp.Rotation.ToString()
             };
+            snap.SavedPosition = ReadSavedPosition(doc, vp, snap.Warnings);
 
             var view = doc.GetElement(vp.ViewId) as View;
             if (view == null)
@@ -256,6 +283,7 @@ namespace RvtMcp.Plugin.Handlers
                 scale = s.Scale,
                 rotation = s.Rotation,
                 pinned = s.Pinned,
+                saved_position = s.SavedPosition,
                 crop_active = s.CropActive,
                 crop_visible = s.CropVisible,
                 box_center_sheet_mm = new { x = Mm(s.BoxCenterX), y = Mm(s.BoxCenterY) },
