@@ -7,7 +7,7 @@ MCP client (Claude Code / Cursor / …)
         │  stdio (NDJSON)
         ▼
 RvtMcp.Server  (.NET 8 console app, global tool)
-        │  TCP (R22–R24)  OR  Named Pipe (R25–R27) — NDJSON + token auth
+        │  TCP (2022–2024)  OR  Named Pipe (2025–2027) — NDJSON + token auth
         ▼
 RvtMcp.Plugin  (Revit add-in DLL, one per year)
         │  ExternalEvent.Raise()
@@ -17,7 +17,7 @@ Revit API  (UIApplication / Document)
 
 **Server** is an MCP server. It talks stdio to the client, translates each tool call into a JSON envelope, and forwards it over a local transport to whichever Revit plugin is running. Server is a plain `.NET tool` — no GUI, no Revit reference.
 
-**Plugin** is an `IExternalApplication` loaded by Revit. It runs a TCP listener (R22–R24) or a Named Pipe server (R25–R27) on a background thread, enqueues requests, and marshals them onto the Revit UI thread via `ExternalEvent.Raise()`. Each request opens its own `Transaction` when it needs one; `batch_execute` wraps many into one `TransactionGroup`.
+**Plugin** is an `IExternalApplication` loaded by Revit. It runs a TCP listener (Revit 2022–2024) or a Named Pipe server (Revit 2025–2027) on a background thread, enqueues requests, and marshals them onto the Revit UI thread via `ExternalEvent.Raise()`. Each request opens its own `Transaction` when it needs one; `batch_execute` wraps many into one `TransactionGroup`.
 
 ## Discovery
 

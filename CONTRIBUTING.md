@@ -7,8 +7,8 @@ Thanks for your interest. Bimwright is a solo-maintained project shipping its fi
 ### Prereqs
 
 - Windows 10/11 (Revit is Windows-only).
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) — required for the server and R25/R26 plugins.
-- [.NET 10 SDK (preview)](https://dotnet.microsoft.com/download/dotnet/10.0) — required for the R27 plugin. Skip if you're not building R27.
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) — required for the server and the Revit 2025/2026 plugins.
+- [.NET 10 SDK (preview)](https://dotnet.microsoft.com/download/dotnet/10.0) — required for the Revit 2027 plugin. Skip if you're not building it.
 - Visual Studio 2022+ or JetBrains Rider (optional — `dotnet build` from CLI works).
 - One or more Revit installations (2022–2027) for runtime testing.
 
