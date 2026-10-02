@@ -57,7 +57,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 **更新：** 新しいリリースのインストーラを同じ手順で実行します。先にアンインストールは不要で、クライアントは再起動だけで済みます。**アンインストール：** 同じフォルダで `uninstall.ps1 -Yes` を実行するとアドインとサーバが削除されます（`-Purge` を付けない限り設定は残ります）。クライアントのエントリも消すには、先に `install.ps1 -Uninstall -Client auto` を実行してください。開発者向け・NuGet を含む詳細：[docs/install.md](docs/install.md)。
 
-**Claude Desktop MCPB（v1.0.0 候補）：** 同じリリースから別途インストールした gateway を起動します。Desktop の重複登録を避けるため、この方法では `install.ps1 -Client none` を使います。[MCPB のインストールと設定](docs/install.md#claude-desktop-mcpb-v100-candidate)を参照してください。
+**Claude Desktop MCPB（v1.0.0）：** 同じリリースから別途インストールした gateway を起動します。Desktop の重複登録を避けるため、この方法では `install.ps1 -Client none` を使います。[MCPB のインストールと設定](docs/install.md#claude-desktop-mcpb)を参照してください。
 
 ---
 
@@ -115,9 +115,16 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 - **リボン：** 接続の開始/停止、**History** で過去の呼び出しの検索と再実行、完了 **Toast** の切り替え（既定オン）。
 - **表示言語：** アドインの UI は 15 言語に対応し、Revit の UI 言語に従います。リボンのスライドアウトにある **Language** コンボで変更できます。ツール名とペイロードは英語のままです。[docs/localization.md](docs/localization.md)。
 
-### モデル変更プロンプト（未リリース）
+### プロンプト
 
-v1.0.0 リリース候補には 5 つの MCP プロンプトがあります。クライアントのプロンプトメニューで `revit_change`（Claude Code: `/mcp__rvt-mcp__revit_change`）を選び、`change` に変更内容を指定します。関連要素を調べ、要求ごとに最小限の範囲を合意し、具体的な案を確認してから変更し、結果を再取得して理由を会話に記録します。`query,meta` が必要で、`send_code` は不要です。読み取り専用モードでは調査と提案まで行います。不足・不完全な情報は「未確認」とし、再取得を間接的に変更された全要素の一覧とは扱いません。会話の記録は永続的な変更データベースではなく、プロンプトはサーバーが強制するワークフローロックでもありません。既存の 4 つのプロンプトは変更しません。
+v1.0.0 には 6 つの MCP プロンプトがあります。クライアントのプロンプトメニュー（Claude Code: `/mcp__rvt-mcp__revit_<name>`）から選ぶと、エージェントは手持ちのツールでスクリプトに沿って進めます。
+
+- `revit_getting_started` — 開いているモデルの把握（読み取り専用、既定の設定で動作）。
+- `revit_drawing_layout` — `request` を指定：1 枚のシートのビューポートを整列します。まずシート座標の実位置を読み取り（`revit_get_viewport_geometry`）、整列方法を合意し、ドライラン計画を示し（`revit_align_viewports`）、確認後にのみ移動して、結果を再取得します。`query,sheets,view,meta` が必要です。読み取り専用モードでは報告と提案のみです。
+- `revit_change` — `change` を指定：関連要素を調べ、要求ごとに最小限の範囲を合意し、具体的な案を確認してから変更し、結果を再取得して理由を会話に記録します。`query,meta` が必要で、`send_code` は不要です。読み取り専用モードでは調査と提案まで行います。不足・不完全な情報は「未確認」とし、再取得を間接的に変更された全要素の一覧とは扱いません。会話の記録は永続的な変更データベースではなく、プロンプトはサーバーが強制するワークフローロックでもありません。
+- `revit_model_audit` — モデルの健全性監査：警告、ファミリ、ドライランの purge 候補（`workflows,families,lint,meta` が必要）。
+- `revit_pre_issue_check` — 発行前に対象シートを確認します（`sheets,view,annotation,lint,meta` が必要）。シート番号/ID、明示的な番号/名前フィルター、または `all` を指定します。名前付きシートセットにはメンバーシートが必要です。サンプリングされたモデル警告や不完全な確認は、シート単位の合格ではなく **NOT VERIFIED** と報告されます。
+- `revit_stairs` — `send_code` による階段作成のガイド（確認後にのみ書き込み）。トランザクション/失敗/後片付けのテンプレートを含み、ソースチェックアウトは不要です。
 
 ---
 
@@ -142,6 +149,7 @@ v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 
 | Strong warn bytes | `--response-strong-warn-bytes` | `BIMWRIGHT_RESPONSE_STRONG_WARN_BYTES` | `responseStrongWarnBytes` |
 | Budget bytes | `--response-budget-bytes` | `BIMWRIGHT_RESPONSE_BUDGET_BYTES` | `responseBudgetBytes` |
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
+| spill ファイルの保持時間（既定 36 時間） | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
 | LAN バインド（プラグイン） | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | ToolBaker 面 | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
@@ -158,7 +166,7 @@ v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 
 
 ## Permissions & auto mode — 自動実行の権限
 
-これらの controls は未公開の v1.0.0 リリース候補に含まれます。公開済み v0.8.1 パッケージには新しい switch とツール単位の read-only フィルターはありません。`send_code` と `run_baked_tool` は直接呼び出してください。`batch_execute` はこれらを拒否します。
+これらの controls は v1.0.0 から利用できます。v0.8.1 パッケージには新しい switch とツール単位の read-only フィルターはありません。`send_code` と `run_baked_tool` は直接呼び出してください。`batch_execute` はこれらを拒否します。
 
 Annotations は各ツールのドキュメントとファイルへの影響を示します。一時的な選択、アクティブビュー、ズームは read-only に含まれます。`send_code` には annotations がありません。自動許可から外し、コード実行ごとに確認してください。Claude Code では下記の read-only allow list のみを使用し、広い `mcp__rvt-mcp__*` wildcard を許可しないでください。この一覧は `--toolsets all` に対応し、選択した toolset では公開数が減る場合があります。
 
@@ -329,17 +337,17 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 
 ---
 
-## bimwright
+## bimwright ファミリー
 
 AI アシスタントと BIM・CAD アプリケーションをつなぐオープンソースのツール。
 
 **bimwright** は **BIM** と **wright** を組み合わせた名前です。wright は、ものを作る人や建てる人を表す古い英語で、*shipwright*（船大工）などに使われます。
 
-- [rvt-mcp](https://github.com/bimwright/rvt-mcp) — Revit  
-- [dwg-mcp](https://github.com/bimwright/dwg-mcp) — AutoCAD  
-- [nwd-mcp](https://github.com/bimwright/nwd-mcp) — Navisworks  
-- [ipt-mcp](https://github.com/bimwright/ipt-mcp) — Inventor  
-- [bim-wiki](https://github.com/bimwright/bim-wiki) — ベトナム語優先 BIM ナレッジ  
+- [**rvt-mcp**](https://github.com/bimwright/rvt-mcp) — Autodesk® Revit®
+- [**dwg-mcp**](https://github.com/bimwright/dwg-mcp) — Autodesk® AutoCAD®
+- [**nwd-mcp**](https://github.com/bimwright/nwd-mcp) — Autodesk® Navisworks®
+- [**ipt-mcp**](https://github.com/bimwright/ipt-mcp) — Autodesk® Inventor®
+- [**bim-wiki**](https://github.com/bimwright/bim-wiki) — ベトナム語優先の BIM 知識ベース
 
 ---
 

@@ -57,7 +57,7 @@ Một lần chạy cài cả hai phía: add-in cho mọi bản Revit 2022–2027
 
 **Cập nhật:** chạy installer của bản mới theo cùng cách — không cần gỡ trước; client chỉ cần khởi động lại. **Gỡ cài:** `uninstall.ps1 -Yes` trong cùng thư mục gỡ add-in và server (cài đặt được giữ, trừ khi thêm `-Purge`); chạy `install.ps1 -Uninstall -Client auto` trước nếu muốn xóa luôn entry trong client. Thêm, gồm cài developer và NuGet: [docs/install.md](docs/install.md).
 
-**Claude Desktop MCPB (ứng viên v1.0.0):** extension chạy gateway đã cài riêng từ cùng bản phát hành. Với cách này, dùng `install.ps1 -Client none` để tránh đăng ký trùng trong Desktop. Xem [cài MCPB và các setting](docs/install.md#claude-desktop-mcpb-v100-candidate).
+**Claude Desktop MCPB (v1.0.0):** extension chạy gateway đã cài riêng từ cùng bản phát hành. Với cách này, dùng `install.ps1 -Client none` để tránh đăng ký trùng trong Desktop. Xem [cài MCPB và các setting](docs/install.md#claude-desktop-mcpb).
 
 ---
 
@@ -133,9 +133,16 @@ Toast **bật mặc định** và có thể tắt. Trong **Settings → Toast**,
 
 **Vị trí:** trong **Settings → Toast**, chọn riêng **Horizontal alignment** (Trái/Phải) và **Vertical alignment** (Trên/Dưới); mặc định là trên-trái. Thay đổi áp dụng ngay cho card đang hiện và được lưu ngay; đổi góc sẽ xóa vị trí kéo đã lưu. Bật **Allow dragging the card** để kéo card bằng hàng tiêu đề; bấm thường vẫn mở History. Tắt kéo thì giữ vị trí đã lưu, bật lại sẽ khôi phục, còn **Reset position** xóa vị trí đó. Vị trí được lưu tương đối so với cửa sổ Revit và luôn nằm trong vùng làm việc của màn hình. Card neo ở dưới sẽ mở rộng lên trên, và chuyển sang phía còn lại khi không đủ chỗ. Chuyển động theo tùy chọn animation của Windows. Lưu thất bại sẽ báo ngay dưới setting, lựa chọn vẫn có hiệu lực trong phiên. Rê chuột lên dòng tool mới nhất hoặc một dòng timeline sẽ hiện kết quả đã lọc thông tin nhạy cảm, Success/Failed, giờ hoàn tất và thời lượng đo được (nếu có). Việc phối hợp toast giữa nhiều ứng dụng Autodesk không thuộc phạm vi này.
 
-### Prompt sửa model (chưa phát hành)
+### Prompt
 
-Bản ứng viên v1.0.0 có năm MCP prompt. Chọn `revit_change` trong menu prompt của client (Claude Code: `/mcp__rvt-mcp__revit_change`) và truyền `change`: khảo sát quan hệ, chốt phạm vi nhỏ nhất cho từng yêu cầu, xác nhận phương án cụ thể trước khi ghi, rồi đọc lại và ghi lý do trong hội thoại. Cần `query,meta`, không cần `send_code`; chế độ read-only dừng ở khảo sát/đề xuất. Dữ liệu thiếu hoặc chưa đầy đủ phải ghi "không kiểm được". Đọc lại không phải danh sách đầy đủ mọi phần tử bị đổi gián tiếp; bản ghi trong hội thoại không phải cơ sở dữ liệu lưu bền. Prompt hướng dẫn agent, không phải khóa workflow do server cưỡng chế. Bốn prompt hiện có được giữ nguyên.
+v1.0.0 có sáu MCP prompt — chọn `/mcp__rvt-mcp__revit_<name>` (Claude Code) hoặc menu prompt (Claude Desktop); agent làm theo kịch bản bằng các tool sẵn có:
+
+- `revit_getting_started` — làm quen với model đang mở (chỉ đọc, chạy được với cấu hình mặc định).
+- `revit_drawing_layout` — truyền `request`: sắp xếp viewport của một sheet. Đọc vị trí thật trong không gian sheet trước (`revit_get_viewport_geometry`), thống nhất cách căn với bạn, hiện kế hoạch chạy thử (`revit_align_viewports`), chỉ di chuyển sau khi bạn xác nhận, rồi đọc lại. Cần `query,sheets,view,meta`. Chế độ read-only chỉ báo cáo và đề xuất.
+- `revit_change` — truyền `change`: khảo sát quan hệ, chốt phạm vi nhỏ nhất cho từng yêu cầu, xác nhận phương án cụ thể trước khi ghi, rồi đọc lại và ghi lý do trong hội thoại. Cần `query,meta`, không cần `send_code`; chế độ read-only dừng ở khảo sát/đề xuất. Dữ liệu thiếu hoặc chưa đầy đủ phải ghi "không kiểm được". Đọc lại không phải danh sách đầy đủ mọi phần tử bị đổi gián tiếp; bản ghi trong hội thoại không phải cơ sở dữ liệu lưu bền. Prompt hướng dẫn agent, không phải khóa workflow do server cưỡng chế.
+- `revit_model_audit` — kiểm tra sức khỏe model: cảnh báo, family, ứng viên purge ở chế độ chạy thử (cần `workflows,families,lint,meta`).
+- `revit_pre_issue_check` — kiểm tra các sheet đã xác định trước khi phát hành (cần `sheets,view,annotation,lint,meta`). Truyền số/ID sheet, bộ lọc số/tên rõ ràng, hoặc `all`; sheet set có tên cần các sheet thành viên. Cảnh báo model chỉ lấy mẫu và kiểm tra chưa đầy đủ được báo là **NOT VERIFIED**, không phải đạt ở mức sheet.
+- `revit_stairs` — tạo thang có hướng dẫn qua `send_code` (chỉ ghi sau khi bạn xác nhận). Gồm mẫu transaction/xử lý lỗi/dọn dẹp; không cần source checkout.
 
 ---
 
@@ -160,6 +167,7 @@ Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cụ
 | Strong warn bytes | `--response-strong-warn-bytes` | `BIMWRIGHT_RESPONSE_STRONG_WARN_BYTES` | `responseStrongWarnBytes` |
 | Budget bytes | `--response-budget-bytes` | `BIMWRIGHT_RESPONSE_BUDGET_BYTES` | `responseBudgetBytes` |
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
+| Thời gian giữ file spill (mặc định 36 giờ) | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
 | LAN bind (plugin) | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | ToolBaker surface | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
@@ -178,7 +186,7 @@ Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cụ
 
 ## Permissions & auto mode — quyền chạy tự động
 
-Các controls này có trong bản ứng viên v1.0.0, hiện chưa phát hành. Gói v0.8.1 đã phát hành chưa có các switch mới và cách lọc read-only theo từng tool. Phải gọi `send_code` và `run_baked_tool` trực tiếp; `batch_execute` từ chối hai lệnh này.
+Các controls này có từ v1.0.0. Gói v0.8.1 chưa có các switch mới và cách lọc read-only theo từng tool. Phải gọi `send_code` và `run_baked_tool` trực tiếp; `batch_execute` từ chối hai lệnh này.
 
 Annotations mô tả tác động lên document/file của từng tool. Đổi selection, active view và zoom tạm thời được tính là read-only. `send_code` không có annotations: không đưa vào quyền tự động, và xác nhận từng lượt chạy code. Với Claude Code, chỉ sao chép allow list read-only bên dưới; không cho phép wildcard rộng `mcp__rvt-mcp__*`. List này ứng với `--toolsets all`; toolsets bạn chọn có thể công bố ít tool hơn.
 
@@ -295,7 +303,7 @@ Annotations mô tả tác động lên document/file của từng tool. Đổi s
 
 send_code mặc định **bật**, độc lập với ToolBaker; call-log mặc định **tắt**. CLI ưu tiên hơn environment, rồi đến JSON. Cấu hình server đã xác thực được truyền sang plugin riêng cho từng request. Khi call-log tắt, server journal, plugin `mcp-calls.jsonl` và journal body send-code đều không ghi; History trong bộ nhớ vẫn hoạt động. Journal body cần đồng thời bật call-log và opt-in TTL riêng. `usage.jsonl` của ToolBaker là luồng riêng, theo cấu hình adaptive-bake.
 
-Response guard mặc định **bật**: cảnh báo tại 65536 byte UTF-8, cảnh báo mạnh trên 262144, budget 716800 và transport cap 1048576 byte. Server đo cả JSON escaping, content và metadata MCP. Kết quả đọc quá lớn trả `RESPONSE_TOO_LARGE` cùng cách thu hẹp; lệnh ghi đã hoàn tất trả tóm tắt. Output code tùy ý được spill ra file cục bộ với `mutation_applied: null`; đọc file đó, không chạy lại lệnh. Tắt guard vẫn giữ transport cap. Các ngưỡng phải là số nguyên >=1024, theo `warn <= strong <= budget <= max`; khi giảm budget, giảm các ngưỡng cảnh báo tương ứng.
+Response guard mặc định **bật**: cảnh báo tại 65536 byte UTF-8, cảnh báo mạnh trên 262144, budget 716800 và transport cap 1048576 byte. Server đo cả JSON escaping, content và metadata MCP. Kết quả đọc quá lớn trả `RESPONSE_TOO_LARGE` cùng cách thu hẹp; lệnh ghi đã hoàn tất trả tóm tắt. Output code tùy ý được spill ra file cục bộ với `mutation_applied: null`; đọc file đó, không chạy lại lệnh. File spill được giữ 36 giờ theo mặc định (`--spill-retention-hours`, 1-8760; giá trị không hợp lệ dùng 36) và không có giới hạn số file nào xóa file còn trẻ hơn. Tắt guard vẫn giữ transport cap. Các ngưỡng phải là số nguyên >=1024, theo `warn <= strong <= budget <= max`; khi giảm budget, giảm các ngưỡng cảnh báo tương ứng.
 
 ## Supported Revit versions
 
@@ -349,7 +357,7 @@ Mã nguồn, báo lỗi, ví dụ tái hiện và đề xuất giúp cải thi�
 
 ---
 
-## bimwright
+## Họ bimwright
 
 Các công cụ mã nguồn mở kết nối trợ lý AI với ứng dụng BIM và CAD.
 
@@ -357,11 +365,11 @@ Tên **bimwright** ghép **BIM** với **wright**, một từ tiếng Anh cổ c
 
 Xem [cách đặt tên các gateway](https://github.com/bimwright/.github/blob/master/profile/README.vi.md#cách-đặt-tên).
 
-- [rvt-mcp](https://github.com/bimwright/rvt-mcp) — Revit  
-- [dwg-mcp](https://github.com/bimwright/dwg-mcp) — AutoCAD  
-- [nwd-mcp](https://github.com/bimwright/nwd-mcp) — Navisworks  
-- [ipt-mcp](https://github.com/bimwright/ipt-mcp) — Inventor  
-- [bim-wiki](https://github.com/bimwright/bim-wiki) — Kho BIM ưu tiên tiếng Việt  
+- [**rvt-mcp**](https://github.com/bimwright/rvt-mcp) — Autodesk® Revit®
+- [**dwg-mcp**](https://github.com/bimwright/dwg-mcp) — Autodesk® AutoCAD®
+- [**nwd-mcp**](https://github.com/bimwright/nwd-mcp) — Autodesk® Navisworks®
+- [**ipt-mcp**](https://github.com/bimwright/ipt-mcp) — Autodesk® Inventor®
+- [**bim-wiki**](https://github.com/bimwright/bim-wiki) — Kho kiến thức BIM ưu tiên tiếng Việt
 
 ---
 

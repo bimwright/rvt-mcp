@@ -57,7 +57,7 @@ One run sets up both sides: the add-in for every Revit 2022–2027 on the machin
 
 **Upgrade:** run the new release's installer the same way — no uninstall first; clients only need a restart. **Uninstall:** `uninstall.ps1 -Yes` in the same folder removes the add-ins and the server (settings stay unless you add `-Purge`); run `install.ps1 -Uninstall -Client auto` first to also remove the client entries. More, including developer and NuGet installs: [docs/install.md](docs/install.md).
 
-**Claude Desktop MCPB (v1.0.0 candidate):** the extension launches the separately installed gateway from the matching release. Use `install.ps1 -Client none` for this route to avoid a duplicate Desktop registration. See [MCPB installation and settings](docs/install.md#claude-desktop-mcpb-v100-candidate).
+**Claude Desktop MCPB (v1.0.0):** the extension launches the separately installed gateway from the matching release. Use `install.ps1 -Client none` for this route to avoid a duplicate Desktop registration. See [MCPB installation and settings](docs/install.md#claude-desktop-mcpb).
 
 ---
 
@@ -135,7 +135,7 @@ Notifications are **on by default** and can be turned off. In **Settings → Toa
 
 ### Prompts
 
-The v1.0.0 release candidate provides six MCP prompts — pick `/mcp__rvt-mcp__revit_<name>` (Claude Code) or the prompts menu (Claude Desktop), and the agent follows the script with the tools it already has:
+v1.0.0 provides six MCP prompts — pick `/mcp__rvt-mcp__revit_<name>` (Claude Code) or the prompts menu (Claude Desktop), and the agent follows the script with the tools it already has:
 
 - `revit_getting_started` — orient in the open model (read-only, works on defaults).
 - `revit_drawing_layout` — supply `request`: arrange the viewports of one sheet. Reads real sheet-space positions first (`revit_get_viewport_geometry`), agrees the alignment with you, shows a dry-run plan (`revit_align_viewports`), moves only after you confirm, then reads back. Needs `query,sheets,view,meta`. In read-only mode it reports and proposes only.
@@ -169,6 +169,7 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwr
 | Strong warn bytes | `--response-strong-warn-bytes` | `BIMWRIGHT_RESPONSE_STRONG_WARN_BYTES` | `responseStrongWarnBytes` |
 | Budget bytes | `--response-budget-bytes` | `BIMWRIGHT_RESPONSE_BUDGET_BYTES` | `responseBudgetBytes` |
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
+| Spill retention (default 36 h) | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
 | LAN bind (plugin) | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | ToolBaker surface | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
@@ -187,7 +188,7 @@ After changing server flags, restart the MCP connection so the client picks up t
 
 ## Permissions & auto mode
 
-These controls are included in the v1.0.0 release candidate, which is not yet published. The published v0.8.1 package does not include the new switches or per-tool read-only filtering. `send_code` and `run_baked_tool` must be called directly; `batch_execute` rejects them.
+These controls arrive in v1.0.0. The v0.8.1 package does not include the new switches or per-tool read-only filtering. `send_code` and `run_baked_tool` must be called directly; `batch_execute` rejects them.
 
 MCP annotations describe each tool's document/file effects. Transient selection, active-view and zoom changes count as read-only. `send_code` has no annotations: keep it out of automatic permissions and confirm each arbitrary-code call. For Claude Code, copy only the read-only allow list below; do not allow the broad `mcp__rvt-mcp__*` wildcard. The list covers `--toolsets all`; your selected toolsets may expose fewer tools.
 
@@ -304,7 +305,7 @@ MCP annotations describe each tool's document/file effects. Transient selection,
 
 send_code defaults **on**, independently of ToolBaker; call-log defaults **off**. CLI overrides environment variables, which override JSON. Authenticated server settings override plugin settings for that request only. Call-log off suppresses the server journal, plugin `mcp-calls.jsonl` and send-code body journal; in-memory History remains available. Body journaling needs both call-log on and its separate TTL opt-in. ToolBaker `usage.jsonl` is separate and follows adaptive-bake settings.
 
-The response guard defaults **on**: UTF-8 warnings at 65536 bytes, strong warnings above 262144, a 716800-byte budget and a 1048576-byte transport cap. JSON escaping and MCP content/metadata are measured at the server. Oversized reads return `RESPONSE_TOO_LARGE` with narrowing guidance; completed writes return a compact summary. Arbitrary code output spills to a local file with `mutation_applied: null`; inspect the file instead of rerunning the command. Turning the guard off leaves the transport cap active. Byte limits must be integers >=1024, ordered `warn <= strong <= budget <= max`; adjust lower thresholds when lowering the budget.
+The response guard defaults **on**: UTF-8 warnings at 65536 bytes, strong warnings above 262144, a 716800-byte budget and a 1048576-byte transport cap. JSON escaping and MCP content/metadata are measured at the server. Oversized reads return `RESPONSE_TOO_LARGE` with narrowing guidance; completed writes return a compact summary. Arbitrary code output spills to a local file with `mutation_applied: null`; inspect the file instead of rerunning the command. A spill file is kept 36 hours by default (`--spill-retention-hours`, 1-8760; an invalid value uses 36) and no file-count cap deletes a younger file. Turning the guard off leaves the transport cap active. Byte limits must be integers >=1024, ordered `warn <= strong <= budget <= max`; adjust lower thresholds when lowering the budget.
 
 ## Supported Revit versions
 
@@ -358,7 +359,7 @@ Code, bug reports, reproducible examples and proposals help improve rvt-mcp. Tha
 
 ---
 
-## bimwright
+## The bimwright family
 
 Open-source tools connecting AI assistants to BIM and CAD applications.
 
@@ -366,11 +367,11 @@ The name **bimwright** combines **BIM** with **wright**, an old word for a maker
 
 See [how the gateway names are chosen](https://github.com/bimwright/.github/blob/master/profile/README.md#naming).
 
-- [rvt-mcp](https://github.com/bimwright/rvt-mcp) — Revit  
-- [dwg-mcp](https://github.com/bimwright/dwg-mcp) — AutoCAD  
-- [nwd-mcp](https://github.com/bimwright/nwd-mcp) — Navisworks  
-- [ipt-mcp](https://github.com/bimwright/ipt-mcp) — Inventor  
-- [bim-wiki](https://github.com/bimwright/bim-wiki) — Vietnamese-first BIM notes  
+- [**rvt-mcp**](https://github.com/bimwright/rvt-mcp) — Autodesk® Revit®
+- [**dwg-mcp**](https://github.com/bimwright/dwg-mcp) — Autodesk® AutoCAD®
+- [**nwd-mcp**](https://github.com/bimwright/nwd-mcp) — Autodesk® Navisworks®
+- [**ipt-mcp**](https://github.com/bimwright/ipt-mcp) — Autodesk® Inventor®
+- [**bim-wiki**](https://github.com/bimwright/bim-wiki) — Vietnamese-first BIM knowledge base
 
 ---
 

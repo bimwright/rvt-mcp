@@ -12,10 +12,9 @@ Do **not** install v0.5.0 or earlier ZIPs. Do **not** `dotnet tool install -g Bi
 
 On a fresh machine, follow the [README verification steps](../README.md#install) after installing and registering the MCP client.
 
-## Claude Desktop MCPB (v1.0.0 candidate)
+## Claude Desktop MCPB
 
-This release candidate is not yet published. Use its matching Setup ZIP and
-`rvt-mcp-desktop-1.0.0.mcpb` when supplied together. The extension does not install
+Use the Setup ZIP and `rvt-mcp-desktop-1.0.0.mcpb` from the same v1.0.0 release. The extension does not install
 Revit, the gateway or its add-ins.
 
 1. Close Revit and stop clients using the gateway. Preview the matching installer
