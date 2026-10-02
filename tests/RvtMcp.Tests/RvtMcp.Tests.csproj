@@ -24,6 +24,7 @@
     <Compile Include="..\..\src\shared\Infrastructure\RecentFileList.cs" Link="Shared\RecentFileList.cs" />
     <Compile Include="..\..\src\shared\Handlers\MepMembershipPolicy.cs" Link="Shared\MepMembershipPolicy.cs" />
     <Compile Include="..\..\src\shared\Handlers\OpenModelLocalPolicy.cs" Link="Shared\OpenModelLocalPolicy.cs" />
+    <Compile Include="..\..\src\shared\Handlers\ViewportLayoutMath.cs" Link="Shared\ViewportLayoutMath.cs" />
     <Compile Include="..\..\src\shared\Security\PathAllowlist.cs" Link="Shared\PathAllowlist.cs" />
     <Compile Include="..\..\src\shared\Logging\McpLogger.cs" Link="Shared\McpLogger.cs" />
     <Compile Include="..\..\src\shared\Logging\McpSessionLog.cs" Link="Shared\McpSessionLog.cs" />

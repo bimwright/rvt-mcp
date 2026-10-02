@@ -161,6 +161,8 @@
   "revit_assign_revision_to_sheet": "Assign or remove a revision on sheets",
   "revit_list_revisions": "List project revisions and optionally their assigned sheets",
   "revit_renumber_sheets": "Bulk renumber/rename sheets with collision preflights and cyclic swap support",
+  "revit_get_viewport_geometry": "Read viewport positions on a sheet in sheet-space millimetres: visible crop rectangle, outline, scale, rotation, pinned and crop flags",
+  "revit_align_viewports": "Align viewports on a sheet to a reference viewport or centre them on the sheet, in sheet-space millimetres; dry run by default",
   "revit_list_materials": "List and filter materials in the active document",
   "revit_get_material_properties": "Get detailed properties of a material by ID or name",
   "revit_create_material": "Create a new material with optional graphics parameters",

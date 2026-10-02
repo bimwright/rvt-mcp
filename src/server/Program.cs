@@ -313,7 +313,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - modify: operate_element, set_element_parameter_values
 - delete: delete_element
 - view: create_view, capture_view_image
-- sheets: create_sheet, renumber_sheets
+- sheets: create_sheet, renumber_sheets, align_viewports, viewport_geometry
 - schedule: create_schedule, list_schedules
 - families: list_loaded_families, load_family_from_path
 - mep: create_duct, analyze_mep_network
@@ -686,8 +686,29 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             else
             {
                 var error = response.Value<string>("error") ?? "Unknown error from Revit";
-                throw new InvalidOperationException(error);
+                throw new InvalidOperationException(UnknownCommandGuidance(error, CurrentRevitVersion) ?? error);
             }
+        }
+
+        /// <summary>
+        /// A plugin that predates a tool answers "Unknown command: &lt;name&gt;". Say what that means and what to do,
+        /// because the same server can reach several Revit years that carry different add-in builds.
+        /// Returns null when the text is not that error.
+        /// </summary>
+        internal static string UnknownCommandGuidance(string error, string revitYear)
+        {
+            const string prefix = "Unknown command: ";
+            if (string.IsNullOrWhiteSpace(error) || !error.StartsWith(prefix, StringComparison.Ordinal))
+                return null;
+
+            var command = error.Substring(prefix.Length).Trim();
+            if (command.Length == 0 || command.Any(char.IsWhiteSpace))
+                return null;
+
+            var year = string.IsNullOrWhiteSpace(revitYear) ? "this Revit" : "Revit " + revitYear;
+            return $"The add-in loaded in {year} does not know the command '{command}'. It is most likely an older build than this server. "
+                 + "Install the add-in from the same release as the server for that Revit year and restart Revit. "
+                 + "If another Revit year already has the newer add-in, call revit_list_available_targets and then revit_switch_target with that year.";
         }
 
         /// <summary>
@@ -3290,6 +3311,43 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                     replace,
                     prefix,
                     suffix,
+                    dry_run = dryRun
+                });
+                return JsonConvert.SerializeObject(result, Formatting.Indented);
+            }
+            catch (Exception ex) { return $"Error: {ex.Message}"; }
+        }
+
+        [McpServerTool(Name = "revit_get_viewport_geometry", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Read viewport positions on a sheet in sheet-space millimetres: visible crop rectangle, view outline, scale, rotation, pinned and crop flags. Sheet coordinates are paper millimetres, not project coordinates. Use startViewport + maxViewports (hard max 500).")]
+        public static async Task<string> GetViewportGeometry(long? sheetId = null, string sheetNumber = "", long[] viewportIds = null, int startViewport = 0, int maxViewports = 100)
+        {
+            try
+            {
+                var result = await ToolGateway.SendToRevit("get_viewport_geometry", new
+                {
+                    sheet_id = sheetId,
+                    sheet_number = sheetNumber,
+                    viewport_ids = viewportIds,
+                    start_viewport = startViewport,
+                    max_viewports = maxViewports
+                });
+                return JsonConvert.SerializeObject(result, Formatting.Indented);
+            }
+            catch (Exception ex) { return $"Error: {ex.Message}"; }
+        }
+
+        [McpServerTool(Name = "revit_align_viewports", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace viewport positions on a sheet; restore them with Revit Undo. Align viewports to a reference viewport (left, right, top, bottom, center_x, center_y, center) or centre them on the sheet (center_on_sheet) using sheet-space millimetres of the visible crop rectangle. dryRun defaults to true and returns the planned moves without changing anything.")]
+        public static async Task<string> AlignViewports(string mode, long? sheetId = null, string sheetNumber = "", long? referenceViewportId = null, long[] viewportIds = null, bool dryRun = true)
+        {
+            try
+            {
+                var result = await ToolGateway.SendToRevit("align_viewports", new
+                {
+                    mode,
+                    sheet_id = sheetId,
+                    sheet_number = sheetNumber,
+                    reference_viewport_id = referenceViewportId,
+                    viewport_ids = viewportIds,
                     dry_run = dryRun
                 });
                 return JsonConvert.SerializeObject(result, Formatting.Indented);

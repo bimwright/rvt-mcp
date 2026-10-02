@@ -63,6 +63,7 @@ namespace RvtMcp.Plugin
             "get_titleblock_parameters",
             "get_type_parameters",
             "get_view_visibility",
+            "get_viewport_geometry",
             "list_areas",
             "list_assemblies",
             "list_available_targets",

@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 234,
+  "tool_count": 236,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -173,6 +173,48 @@
         "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": true
+      }
+    },
+    {
+      "name": "revit_align_viewports",
+      "description_hash": "sha256:735a973f3ee1f4fba579fa91e7c019be496f53fc1f0296cbf158934b590c2091",
+      "inputSchema": {
+        "properties": {
+          "dryRun": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "mode": {
+            "description": "",
+            "type": "String"
+          },
+          "referenceViewportId": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "sheetId": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "sheetNumber": {
+            "description": "",
+            "type": "String"
+          },
+          "viewportIds": {
+            "description": "",
+            "type": "Int64[]"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
       }
     },
     {
@@ -4776,6 +4818,42 @@
           "viewId": {
             "description": "",
             "type": "Nullable`1"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "revit_get_viewport_geometry",
+      "description_hash": "sha256:aba145d68bad6e7faa5f92dab7f0540086cb6e7786f0d6175ca149ea496c8168",
+      "inputSchema": {
+        "properties": {
+          "maxViewports": {
+            "description": "",
+            "type": "Int32"
+          },
+          "sheetId": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "sheetNumber": {
+            "description": "",
+            "type": "String"
+          },
+          "startViewport": {
+            "description": "",
+            "type": "Int32"
+          },
+          "viewportIds": {
+            "description": "",
+            "type": "Int64[]"
           }
         },
         "required": [],

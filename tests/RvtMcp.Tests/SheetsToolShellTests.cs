@@ -15,12 +15,14 @@ namespace RvtMcp.Tests
     {
         private static readonly string[] SheetsToolsInClass =
         {
+            "revit_align_viewports",
             "revit_assign_revision_to_sheet",
             "revit_create_placeholder_sheet",
             "revit_create_revision",
             "revit_create_sheet",
             "revit_duplicate_sheet",
             "revit_get_titleblock_parameters",
+            "revit_get_viewport_geometry",
             "revit_list_revisions",
             "revit_list_sheets",
             "revit_list_titleblocks",
@@ -195,6 +197,33 @@ namespace RvtMcp.Tests
             Assert.Equal("B", json.Value<string>("replace"));
             Assert.Equal("P-", json.Value<string>("prefix"));
             Assert.Equal("-S", json.Value<string>("suffix"));
+            Assert.True(json.Value<bool>("dry_run"));
+        }
+
+        [Fact]
+        public async Task Get_viewport_geometry_sends_sheet_and_paging()
+        {
+            var sent = await Capture.Send(() => SheetsTools.GetViewportGeometry(29410456, "", new long[] { 11, 12 }, 5, 20));
+
+            Assert.Equal("get_viewport_geometry", sent.Command);
+            var json = sent.Json();
+            Assert.Equal(29410456, json.Value<long>("sheet_id"));
+            Assert.Equal(new long[] { 11, 12 }, json["viewport_ids"]!.Select(t => t.Value<long>()).ToArray());
+            Assert.Equal(5, json.Value<int>("start_viewport"));
+            Assert.Equal(20, json.Value<int>("max_viewports"));
+        }
+
+        [Fact]
+        public async Task Align_viewports_defaults_to_dry_run_and_sends_mode_and_reference()
+        {
+            var sent = await Capture.Send(() => SheetsTools.AlignViewports("center_x", 29410456, "", 11, new long[] { 12 }));
+
+            Assert.Equal("align_viewports", sent.Command);
+            var json = sent.Json();
+            Assert.Equal("center_x", json.Value<string>("mode"));
+            Assert.Equal(29410456, json.Value<long>("sheet_id"));
+            Assert.Equal(11, json.Value<long>("reference_viewport_id"));
+            Assert.Equal(new long[] { 12 }, json["viewport_ids"]!.Select(t => t.Value<long>()).ToArray());
             Assert.True(json.Value<bool>("dry_run"));
         }
     }

@@ -17,6 +17,7 @@ namespace RvtMcp.Server.Prompts
         private static readonly string[] ChangeSets = { "query", "meta" };
         private static readonly string[] ModelAuditSets = { "workflows", "families", "lint", "meta" };
         private static readonly string[] PreIssueSets = { "sheets", "view", "annotation", "lint", "meta" };
+        private static readonly string[] DrawingLayoutSets = { "query", "sheets", "view", "meta" };
         // Spec §3: stairs needs meta (revit_get_current_target) even though send_code
         // can also ride the toolbaker set — without the gate a toolbaker-only server
         // would render a body whose first step isn't exposed.
@@ -72,6 +73,24 @@ namespace RvtMcp.Server.Prompts
                 args: new Dictionary<string, string>
                 {
                     ["scope"] = string.IsNullOrWhiteSpace(scope) ? "all" : scope
+                });
+        }
+
+        [McpServerPrompt(Name = "revit_drawing_layout"),
+         Description("Arrange viewports on one sheet: read real sheet-space positions, agree the alignment, confirm a dry-run plan, then move and read back. Read-only sessions report and propose only.")]
+        public static string DrawingLayout(
+            [Description("The layout change wanted: sheet number/ID, which viewports, and how to align or centre them")] string request)
+        {
+            return PromptBody.Render(
+                PromptBody.Load("drawing_layout"), DrawingLayoutSets, requiresSendCode: false,
+                args: new Dictionary<string, string>
+                {
+                    ["mode"] = ServerState.Config?.ReadOnlyOrDefault == true
+                        ? "READ-ONLY: report positions and propose moves only. Do not call revit_align_viewports."
+                        : "Use only exposed tools. Moves need confirmation of the dry-run plan below.",
+                    ["request"] = string.IsNullOrWhiteSpace(request)
+                        ? "Not specified. Ask me which sheet and which viewports, and how to arrange them, before reading or moving anything."
+                        : request
                 });
         }
 

@@ -177,7 +177,7 @@ namespace RvtMcp.Tests
                     new StreamClientTransport(output, output), cancellationToken: deadline.Token);
 
                 var prompts = await client.ListPromptsAsync(cancellationToken: deadline.Token);
-                Assert.Equal(new[] { "revit_change", "revit_getting_started", "revit_model_audit",
+                Assert.Equal(new[] { "revit_change", "revit_drawing_layout", "revit_getting_started", "revit_model_audit",
                     "revit_pre_issue_check", "revit_stairs" }, prompts.Select(p => p.Name).OrderBy(n => n));
                 var change = Assert.Single(prompts, p => p.Name == "revit_change");
                 var argument = Assert.Single(change.ProtocolPrompt.Arguments);

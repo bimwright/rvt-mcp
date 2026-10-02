@@ -32,6 +32,7 @@ namespace RvtMcp.Plugin.Views.Toast
             "update_",
             "change_",
             "apply_",
+            "align_",
             "assign_",
             "tag_",
             "override_",

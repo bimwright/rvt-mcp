@@ -149,6 +149,8 @@ namespace RvtMcp.Plugin
             Register(new Handlers.AssignRevisionToSheetHandler());
             Register(new Handlers.ListRevisionsHandler());
             Register(new Handlers.RenumberSheetsHandler());
+            Register(new Handlers.GetViewportGeometryHandler());
+            Register(new Handlers.AlignViewportsHandler());
 
             // Wave 6: Materials
             Register(new Handlers.ListMaterialsHandler());

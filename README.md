@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-231%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-233%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -75,10 +75,10 @@ Community videos of rvt-mcp at work. Install steps shown in a video can be older
 
 | Mode | Tools | Notes |
 |------|------:|-------|
-| Fresh install | **231** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
+| Fresh install | **233** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
 | Bare `rvt-mcp.exe` | **46** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **231** | Full catalog |
-| `all` + adaptive bake | **234** | Adds 3 suggestion-lifecycle tools |
+| `--toolsets all` | **233** | Full catalog |
+| `all` + adaptive bake | **236** | Adds 3 suggestion-lifecycle tools |
 
 Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 46-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline.
 
@@ -98,7 +98,7 @@ Counts exclude your personal baked tools. The installer writes the seeded defaul
 | `mep` | Systems, connectors, networks, place terminals/fixtures, etc. |
 | `graphics` | View filters, overrides, visibility/phase |
 | `toolbaker` | list/run baked tools; suggestion tools only if adaptive on |
-| `sheets` | Sheets, titleblocks, revisions, renumber |
+| `sheets` | Sheets, titleblocks, revisions, renumber, viewport layout |
 | `materials` | Materials, appearance, assignment, takeoff |
 | `geometry` | BBox, measure, clash, volume/area, … |
 | `rooms` | Rooms/areas/spaces, finishes, separators |
@@ -133,9 +133,10 @@ Notifications are **on by default** and can be turned off. In **Settings → Toa
 
 ### Prompts
 
-The v1.0.0 release candidate provides five MCP prompts — pick `/mcp__rvt-mcp__revit_<name>` (Claude Code) or the prompts menu (Claude Desktop), and the agent follows the script with the tools it already has:
+The v1.0.0 release candidate provides six MCP prompts — pick `/mcp__rvt-mcp__revit_<name>` (Claude Code) or the prompts menu (Claude Desktop), and the agent follows the script with the tools it already has:
 
 - `revit_getting_started` — orient in the open model (read-only, works on defaults).
+- `revit_drawing_layout` — supply `request`: arrange the viewports of one sheet. Reads real sheet-space positions first (`revit_get_viewport_geometry`), agrees the alignment with you, shows a dry-run plan (`revit_align_viewports`), moves only after you confirm, then reads back. Needs `query,sheets,view,meta`. In read-only mode it reports and proposes only.
 - `revit_change` — supply `change`: survey relationships, agree the smallest scope for this request, confirm the concrete proposal before writing, then read back and record the reason in the conversation. Needs `query,meta`; works without `send_code`. In read-only mode it stops at the survey/proposal. Missing or incomplete evidence stays "not checked"; readback is not a complete inventory of indirect changes, and the record is not a persistent change database.
 - `revit_model_audit` — health audit: warnings, families, dry-run purge candidates (needs `workflows,families,lint,meta`).
 - `revit_pre_issue_check` — checks resolved sheets before issue (needs `sheets,view,annotation,lint,meta`). Supply sheet numbers/IDs, an explicit number/name filter, or `all`; a named sheet set needs its member sheets. Sampled model warnings and incomplete checks are reported as **NOT VERIFIED**, not a sheet-level pass.
@@ -250,6 +251,7 @@ MCP annotations describe each tool's document/file effects. Transient selection,
       "mcp__rvt-mcp__revit_get_titleblock_parameters",
       "mcp__rvt-mcp__revit_get_type_parameters",
       "mcp__rvt-mcp__revit_get_view_visibility",
+      "mcp__rvt-mcp__revit_get_viewport_geometry",
       "mcp__rvt-mcp__revit_list_areas",
       "mcp__rvt-mcp__revit_list_assemblies",
       "mcp__rvt-mcp__revit_list_available_targets",
