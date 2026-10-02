@@ -225,7 +225,8 @@ namespace RvtMcp.Tests
         [Fact]
         public void TryClear_rejects_paths_outside_profile_or_test_sandbox()
         {
-            var path = Path.Combine(Directory.GetCurrentDirectory(), "rvtmcp-task4-outside-profile.json");
+            // Neither the profile nor the temp sandbox, wherever this checkout lives (a gate clone sits in %TEMP%).
+            var path = Path.Combine(Path.GetPathRoot(Path.GetTempPath()), "rvtmcp-task4-outside-profile.json");
             string error;
             Assert.False(RvtMcpConfig.TryClearPersistSendCodeBodies(out error, path));
             Assert.False(string.IsNullOrWhiteSpace(error));

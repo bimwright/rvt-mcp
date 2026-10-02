@@ -30,7 +30,7 @@ namespace RvtMcp.Plugin
             }
             var payload = measuredPayload ?? response.ToString(Formatting.None);
             var originalBytes = Encoding.UTF8.GetByteCount(payload);
-            var spill = new ResponseSpillProcessor(writer ?? new ResponseSpillWriter()).Process(
+            var spill = new ResponseSpillProcessor(writer ?? ResponseSpillWriter.ForConfig(config)).Process(
                 command, paramsJson, response.Value<bool>("success"), response["data"], payload,
                 budget, automaticSpill: true);
             if (spill.Spilled || spill.Data != response["data"])

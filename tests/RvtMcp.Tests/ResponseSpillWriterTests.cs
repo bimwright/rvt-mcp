@@ -146,41 +146,80 @@ namespace RvtMcp.Tests
             Assert.True(Encoding.UTF8.GetByteCount(spill.Envelope.ToString(Newtonsoft.Json.Formatting.None)) < ResponseSizeGuard.EnforcementBudgetBytes);
         }
 
-        [Fact]
-        public void Cleanup_deletes_files_older_than_24_hours_and_caps_directory_at_50_newest()
+        private void WriteAged(string name, DateTime now, double ageHours)
         {
             Directory.CreateDirectory(_directory);
+            var path = Path.Combine(_directory, name);
+            File.WriteAllText(path, "{}");
+            File.SetLastWriteTimeUtc(path, now.AddHours(-ageHours));
+        }
+
+        [Fact]
+        public void Default_retention_is_36_hours()
+        {
+            Assert.Equal(TimeSpan.FromHours(36), ResponseSpillWriter.DefaultRetention);
+            Assert.Equal(TimeSpan.FromHours(36), new ResponseSpillWriter(_directory).Retention);
+        }
+
+        [Fact]
+        public void Cleanup_deletes_only_files_older_than_36_hours()
+        {
             var now = new DateTime(2026, 8, 21, 12, 0, 0, DateTimeKind.Utc);
-            for (var i = 0; i < 55; i++)
-            {
-                var path = Path.Combine(_directory, "spill-" + i + ".json");
-                File.WriteAllText(path, "{}");
-                File.SetLastWriteTimeUtc(path, now.AddMinutes(-i));
-            }
-            var oldPath = Path.Combine(_directory, "expired.json");
-            File.WriteAllText(oldPath, "{}");
-            File.SetLastWriteTimeUtc(oldPath, now.AddHours(-25));
+            WriteAged("age-35h.json", now, 35);
+            WriteAged("age-37h.json", now, 37);
 
             var cleanup = new ResponseSpillWriter(_directory).Cleanup(now);
 
-            Assert.Equal(6, cleanup.DeletedCount);
-            Assert.Equal(50, cleanup.RemainingCount);
-            Assert.False(File.Exists(oldPath));
-            Assert.True(File.Exists(Path.Combine(_directory, "spill-0.json")));
-            Assert.False(File.Exists(Path.Combine(_directory, "spill-54.json")));
+            Assert.Equal(1, cleanup.DeletedCount);
+            Assert.Equal(1, cleanup.RemainingCount);
+            Assert.True(File.Exists(Path.Combine(_directory, "age-35h.json")));
+            Assert.False(File.Exists(Path.Combine(_directory, "age-37h.json")));
+        }
+
+        [Fact]
+        public void Cleanup_never_deletes_a_file_inside_retention_however_many_files_exist()
+        {
+            var now = new DateTime(2026, 8, 21, 12, 0, 0, DateTimeKind.Utc);
+            for (var i = 0; i < 120; i++)
+                WriteAged("recent-" + i + ".json", now, i % 35 + 0.5);
+
+            var cleanup = new ResponseSpillWriter(_directory).Cleanup(now);
+
+            Assert.Equal(0, cleanup.DeletedCount);
+            Assert.Equal(120, cleanup.RemainingCount);
+            Assert.Equal(120, Directory.GetFiles(_directory).Length);
+        }
+
+        [Fact]
+        public void Cleanup_follows_a_custom_retention()
+        {
+            var now = new DateTime(2026, 8, 21, 12, 0, 0, DateTimeKind.Utc);
+            WriteAged("age-35h.json", now, 35);
+            WriteAged("age-47h.json", now, 47);
+            WriteAged("age-49h.json", now, 49);
+
+            var cleanup = new ResponseSpillWriter(_directory, TimeSpan.FromHours(48)).Cleanup(now);
+
+            Assert.Equal(1, cleanup.DeletedCount);
+            Assert.True(File.Exists(Path.Combine(_directory, "age-47h.json")));
+            Assert.False(File.Exists(Path.Combine(_directory, "age-49h.json")));
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-5)]
+        public void A_non_positive_retention_falls_back_to_36_hours(int hours)
+        {
+            Assert.Equal(TimeSpan.FromHours(36),
+                new ResponseSpillWriter(_directory, TimeSpan.FromHours(hours)).Retention);
         }
 
         [Fact]
         public void Every_new_spill_runs_cleanup_and_keeps_its_returned_path()
         {
-            Directory.CreateDirectory(_directory);
             var now = DateTime.UtcNow;
-            for (var i = 0; i < ResponseSpillWriter.MaxRetainedFiles; i++)
-            {
-                var path = Path.Combine(_directory, "existing-" + i + ".json");
-                File.WriteAllText(path, "{}");
-                File.SetLastWriteTimeUtc(path, now.AddMinutes(-i - 1));
-            }
+            WriteAged("expired.json", now, 40);
+            WriteAged("fresh.json", now, 1);
 
             var spill = new ResponseSpillWriter(_directory).Write(
                 "export_shared_parameter_file",
@@ -188,14 +227,15 @@ namespace RvtMcp.Tests
                 ResponseSpillFormat.Json);
 
             Assert.True(File.Exists(spill.Path));
-            Assert.Equal(ResponseSpillWriter.MaxRetainedFiles, Directory.GetFiles(_directory).Length);
+            Assert.False(File.Exists(Path.Combine(_directory, "expired.json")));
+            Assert.True(File.Exists(Path.Combine(_directory, "fresh.json")));
         }
 
         [Fact]
         public void Cleanup_never_deletes_the_new_artifact_when_existing_timestamps_are_in_the_future()
         {
             Directory.CreateDirectory(_directory);
-            for (var i = 0; i < ResponseSpillWriter.MaxRetainedFiles; i++)
+            for (var i = 0; i < 60; i++)
             {
                 var path = Path.Combine(_directory, "future-" + i + ".json");
                 File.WriteAllText(path, "{}");
@@ -208,7 +248,7 @@ namespace RvtMcp.Tests
                 ResponseSpillFormat.Json);
 
             Assert.True(File.Exists(spill.Path));
-            Assert.Equal(ResponseSpillWriter.MaxRetainedFiles, Directory.GetFiles(_directory).Length);
+            Assert.Equal(61, Directory.GetFiles(_directory).Length);
         }
 
         [Fact]

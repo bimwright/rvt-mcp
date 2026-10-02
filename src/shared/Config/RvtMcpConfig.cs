@@ -39,6 +39,7 @@ namespace RvtMcp.Plugin
         public const string EnvResponseStrongWarnBytes = "BIMWRIGHT_RESPONSE_STRONG_WARN_BYTES";
         public const string EnvResponseBudgetBytes = "BIMWRIGHT_RESPONSE_BUDGET_BYTES";
         public const string EnvMaxResponseBytes = "BIMWRIGHT_MAX_RESPONSE_BYTES";
+        public const string EnvSpillRetentionHours = "BIMWRIGHT_SPILL_RETENTION_HOURS";
 
         public const bool DefaultReadOnly                  = false;
         public const bool DefaultAllowLanBind              = false;
@@ -50,6 +51,8 @@ namespace RvtMcp.Plugin
         public const bool DefaultPersistSendCodeBodies     = false;
         public const int DefaultToastIdleSeconds           = 20;
         public const int DefaultPersistSendCodeBodiesHours = 4;
+        public const int DefaultSpillRetentionHours        = 36;
+        public const int MaxSpillRetentionHours            = 24 * 365;
 
         [JsonProperty("target")]
         public string Target { get; set; }
@@ -83,6 +86,13 @@ namespace RvtMcp.Plugin
 
         [JsonProperty("maxResponseBytes")]
         public int? MaxResponseBytes { get; set; }
+
+        /// <summary>
+        /// Hours a spill file is kept after it is written (default 36). Read leniently: a missing,
+        /// non-numeric or out-of-range value means the default, so a bad edit never loses a spill.
+        /// </summary>
+        [JsonProperty("spillRetentionHours")]
+        public JToken SpillRetentionHours { get; set; }
 
         [JsonProperty("allowLanBind")]
         public bool? AllowLanBind { get; set; }
@@ -157,6 +167,25 @@ namespace RvtMcp.Plugin
         public int ResponseBudgetBytesOrDefault => PositiveBytes(ResponseBudgetBytes, 700 * 1024, "responseBudgetBytes");
         public int MaxResponseBytesOrDefault => PositiveBytes(MaxResponseBytes, 1024 * 1024, "maxResponseBytes");
 
+        public int SpillRetentionHoursOrDefault => NormalizeSpillRetentionHours(SpillRetentionHours);
+
+        public static int NormalizeSpillRetentionHours(JToken value)
+        {
+            if (value == null || (value.Type != JTokenType.Integer && value.Type != JTokenType.String))
+                return DefaultSpillRetentionHours;
+            var hours = ParseSpillRetentionHours(value.Type == JTokenType.String
+                ? value.Value<string>() : value.ToString(Formatting.None));
+            return hours ?? DefaultSpillRetentionHours;
+        }
+
+        internal static int? ParseSpillRetentionHours(string text)
+        {
+            if (!int.TryParse(text?.Trim(), System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture, out var hours))
+                return null;
+            return hours >= 1 && hours <= MaxSpillRetentionHours ? hours : (int?)null;
+        }
+
         private static int PositiveBytes(int? value, int fallback, string name)
         {
             if (value.HasValue && value.Value < 1024)
@@ -186,7 +215,8 @@ namespace RvtMcp.Plugin
                 ResponseWarnBytes = ResponseWarnBytesOrDefault,
                 ResponseStrongWarnBytes = ResponseStrongWarnBytesOrDefault,
                 ResponseBudgetBytes = ResponseBudgetBytesOrDefault,
-                MaxResponseBytes = MaxResponseBytesOrDefault
+                MaxResponseBytes = MaxResponseBytesOrDefault,
+                SpillRetentionHours = new JValue(SpillRetentionHoursOrDefault)
             };
         }
 
@@ -204,6 +234,7 @@ namespace RvtMcp.Plugin
             result.ResponseStrongWarnBytes = runtime.ResponseStrongWarnBytes ?? ResponseStrongWarnBytes;
             result.ResponseBudgetBytes = runtime.ResponseBudgetBytes ?? ResponseBudgetBytes;
             result.MaxResponseBytes = runtime.MaxResponseBytes ?? MaxResponseBytes;
+            result.SpillRetentionHours = runtime.SpillRetentionHours ?? SpillRetentionHours;
             result.ValidateResponseLimits();
             return result;
         }
@@ -363,6 +394,7 @@ namespace RvtMcp.Plugin
             config.ResponseStrongWarnBytes = ParseBytes(lookup(EnvResponseStrongWarnBytes), EnvResponseStrongWarnBytes) ?? config.ResponseStrongWarnBytes;
             config.ResponseBudgetBytes = ParseBytes(lookup(EnvResponseBudgetBytes), EnvResponseBudgetBytes) ?? config.ResponseBudgetBytes;
             config.MaxResponseBytes = ParseBytes(lookup(EnvMaxResponseBytes), EnvMaxResponseBytes) ?? config.MaxResponseBytes;
+            ApplySpillRetention(config, lookup(EnvSpillRetentionHours), EnvSpillRetentionHours);
 
             var allowLan = ParseBool(lookup(EnvAllowLanBind));
             if (allowLan.HasValue) config.AllowLanBind = allowLan;
@@ -463,6 +495,9 @@ namespace RvtMcp.Plugin
                     case "--response-strong-warn-bytes": config.ResponseStrongWarnBytes = ReadBytes(args, ref i); break;
                     case "--response-budget-bytes": config.ResponseBudgetBytes = ReadBytes(args, ref i); break;
                     case "--max-response-bytes": config.MaxResponseBytes = ReadBytes(args, ref i); break;
+                    case "--spill-retention-hours":
+                        ApplySpillRetention(config, i + 1 < args.Length ? args[++i] : null, arg);
+                        break;
                     case "--allow-lan-bind":
                         config.AllowLanBind = true;
                         break;
@@ -528,6 +563,21 @@ namespace RvtMcp.Plugin
                         break;
                 }
             }
+        }
+
+        // An unusable value must not throw: it leaves the default in place (36 h) and says so on stderr,
+        // so a typo can never shorten how long an agent's only copy of an output survives.
+        private static void ApplySpillRetention(RvtMcpConfig config, string text, string source)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+            var hours = ParseSpillRetentionHours(text);
+            if (hours.HasValue)
+            {
+                config.SpillRetentionHours = new JValue(hours.Value);
+                return;
+            }
+            config.SpillRetentionHours = null;
+            Console.Error.WriteLine($"[rvt-mcp] {source}: '{text}' is not 1-{MaxSpillRetentionHours} hours; using {DefaultSpillRetentionHours}.");
         }
 
         private static int ReadBytes(string[] args, ref int index)

@@ -50,25 +50,49 @@ namespace RvtMcp.Plugin
     {
         public const int PreviewMaxBytes = 48 * 1024;
         public const int SchemaMaxBytes = 64 * 1024;
-        public const int MaxRetainedFiles = 50;
-        public static readonly TimeSpan MaxFileAge = TimeSpan.FromHours(24);
+        /// <summary>
+        /// A spill file is the only full copy of an output the agent got a preview of, so it is kept at
+        /// least this long. The time is a setting (<c>spillRetentionHours</c>); this is the fallback.
+        /// </summary>
+        public static readonly TimeSpan DefaultRetention = TimeSpan.FromHours(RvtMcpConfig.DefaultSpillRetentionHours);
 
         private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(false);
         private readonly string _directory;
 
         public ResponseSpillWriter()
-            : this(System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Bimwright", "rvt-mcp",
-                "spill"))
+            : this(DefaultDirectory(), null)
         {
         }
 
         public ResponseSpillWriter(string directory)
+            : this(directory, null)
+        {
+        }
+
+        public ResponseSpillWriter(string directory, TimeSpan? retention)
         {
             if (string.IsNullOrWhiteSpace(directory))
                 throw new ArgumentException("Spill directory is required.", nameof(directory));
             _directory = System.IO.Path.GetFullPath(directory);
+            Retention = retention.HasValue && retention.Value > TimeSpan.Zero ? retention.Value : DefaultRetention;
+        }
+
+        /// <summary>Writer in the product spill folder, keeping files for the configured retention time.</summary>
+        public static ResponseSpillWriter ForConfig(RvtMcpConfig config)
+        {
+            return new ResponseSpillWriter(DefaultDirectory(),
+                TimeSpan.FromHours((config ?? new RvtMcpConfig()).SpillRetentionHoursOrDefault));
+        }
+
+        /// <summary>How long a spill file is kept after it is written.</summary>
+        public TimeSpan Retention { get; }
+
+        private static string DefaultDirectory()
+        {
+            return System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Bimwright", "rvt-mcp",
+                "spill");
         }
 
         public ResponseSpillResult Write(string commandName, object? payload, ResponseSpillFormat format)
@@ -588,8 +612,10 @@ namespace RvtMcp.Plugin
             if (!Directory.Exists(_directory))
                 return result;
 
-            var cutoff = utcNow.ToUniversalTime().Subtract(MaxFileAge);
-            var retained = new List<FileInfo>();
+            // Age is the only reason to delete: no count or size cap may remove a file that is still
+            // inside the retention time, because the agent holds only a preview and this path.
+            var cutoff = utcNow.ToUniversalTime().Subtract(Retention);
+            var kept = 0;
             foreach (var path in Directory.GetFiles(_directory))
             {
                 var file = new FileInfo(path);
@@ -598,29 +624,15 @@ namespace RvtMcp.Plugin
                 if (!isProtected && file.LastWriteTimeUtc < cutoff)
                 {
                     if (TryDelete(file.FullName)) result.DeletedCount++;
-                    else result.FailedCount++;
+                    else { result.FailedCount++; kept++; }
                 }
                 else
                 {
-                    retained.Add(file);
+                    kept++;
                 }
             }
 
-            var ordered = retained
-                .Where(file => file.Exists)
-                .OrderByDescending(file => protectedPath != null
-                    && string.Equals(file.FullName, protectedPath, StringComparison.OrdinalIgnoreCase))
-                .ThenByDescending(file => file.LastWriteTimeUtc)
-                .ThenByDescending(file => file.Name, StringComparer.Ordinal)
-                .ToArray();
-            for (var i = MaxRetainedFiles; i < ordered.Length; i++)
-            {
-                if (TryDelete(ordered[i].FullName)) result.DeletedCount++;
-                else result.FailedCount++;
-            }
-
-            try { result.RemainingCount = Directory.GetFiles(_directory).Length; }
-            catch { result.RemainingCount = Math.Min(ordered.Length, MaxRetainedFiles) + result.FailedCount; }
+            result.RemainingCount = kept;
             return result;
         }
 
