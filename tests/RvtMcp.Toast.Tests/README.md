@@ -10,8 +10,10 @@ dotnet run --project tests/RvtMcp.Toast.Tests -c Release
 
 Exit code 0 requires all checks to pass:
 
+- Deliberate hover reveals a three-row activity timeline; a stationary pointer or quick pass does not. The first real movement pauses idle. Verify live-tail updates, older fractional scroll positions, interrupted collapse, one-to-three-row growth and reset/close cleanup.
+- Timeline rails have correct endpoints after appending to a reused row. Success/failure have different node shapes and localized automation labels. Chrome hot reload preserves the historical text and reader position. A 5,001-call card realizes only a bounded viewport.
 - Merge outcome and context into one body, preserving errors/capture hints and omitting blank or duplicate context.
-- Verify the five-row activity card: the title names the gateway (`rvt-mcp`, or the supplied instance identity such as `rvt-mcp 2027`), the line under it names the latest tool, the Success · Failed · Capture counters are spread evenly with the first one lined up with the tool line, and the brand row is right-aligned. The card keeps its height for any result text.
+- Verify the six-row activity card with its collapsed details row: the title names the gateway (`rvt-mcp`, or the supplied instance identity such as `rvt-mcp 2027`), the line under it names the latest tool, the Success · Failed · Capture counters are spread evenly with the first one lined up with the tool line, and the brand row is right-aligned. The card keeps its height for any result text.
 - Odometer counters: only the digits that change roll, a new value continues the roll from where it is, a number that gains a digit widens gradually, a burst settles on the last value without resizing the card, and unchanged counters do not animate.
 - Thumbnail: the capture sits centred on both axes in one fixed frame whatever its shape. The frame opens with the card growing around it, cross-fades to the next capture and fades out before the card closes. An interrupted close still ends fully open, and nothing animates when Windows animation effects are off. A path outside the allowlist never renders.
 - Keep the × background transparent on hover, and crossfade the two wordmark layers only inside the moving hover band without dimming the whole logo.
@@ -22,6 +24,18 @@ Exit code 0 requires all checks to pass:
 - Render a status card in the shared slot, exercise the × control, route a card click to the host callback, and dismiss the card after the callback.
 
 ## Interactive preview
+
+Synthetic captures from the production renderer and focused checks:
+
+```powershell
+dotnet run --project tests/RvtMcp.Toast.Tests -c Release -- --capture C:\Temp\rvt-toast-captures
+dotnet run --project tests/RvtMcp.Toast.Tests -c Release -- --activity
+dotnet run --project tests/RvtMcp.Toast.Tests -c Release -- --hover-regression
+dotnet run --project tests/RvtMcp.Toast.Tests -c Release -- --thumbnail-motion
+dotnet run --project tests/RvtMcp.Toast.Tests -c Release -- --live-motion
+```
+
+Motion assertions sample `CompositionTarget.Rendering`, retaining intermediate-frame, endpoint and monotonicity checks. `--live-motion` repeats the incoming-result/collapse-reversal scenario 20 times and observes actual animation phases before injecting results. These are WPF checks, not live Revit or GPU/RDP cadence certification.
 
 ```powershell
 dotnet run --project tests/RvtMcp.Toast.Tests -c Release -- --demo

@@ -291,8 +291,8 @@ namespace RvtMcp.Plugin.Views.Toast
         private void OnPointerEntered(long cardId)
         {
             EnsureDispatcher();
-            if (_window != null && _window.CardId == cardId)
-                _aggregator.PointerEntered(cardId);
+            if (_window != null && _window.CardId == cardId && _aggregator.PointerEntered(cardId))
+                Render();
         }
 
         private void OnPointerLeft(long cardId)

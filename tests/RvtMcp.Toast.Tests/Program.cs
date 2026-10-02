@@ -14,8 +14,36 @@ internal static class Program
     {
         try
         {
+            var en = RvtMcp.Plugin.Localization.EmbeddedCatalog.Load(typeof(Program).Assembly, "en");
+            RvtMcp.Plugin.Localization.L.InitializeForTests(RvtMcp.Plugin.Localization.StringTable.Build("en", en, null, null));
+            if (args.Length == 1 && args[0] == "--hover-regression")
+            {
+                HoverRegressionTests.Run();
+                return 0;
+            }
+            if (args.Length == 1 && args[0] == "--thumbnail-motion")
+            {
+                ToastVisualTests.CheckThumbnailMotion();
+                return 0;
+            }
+            if (args.Length == 1 && args[0] == "--live-motion")
+            {
+                for (var i = 0; i < 20; i++) LiveTailVisualTests.CheckIncomingDuringMotionAndClosedState();
+                return 0;
+            }
             if (args.Length == 1 && args[0] == "--demo")
                 return ToastPreview.Run();
+            if (args.Length == 1 && args[0] == "--activity")
+            {
+                RecentActivityVisualTests.Run();
+                LiveTailVisualTests.Run();
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--capture")
+            {
+                TimelineVisualTests.Run(args[1]);
+                return 0;
+            }
             CheckCompactBody();
             CheckCloseHover();
             CheckCompactLayout();
@@ -25,6 +53,10 @@ internal static class Program
             CheckIdentityRow();
             CheckThumbnailRow();
             CheckStationaryPointerFiltering();
+            HoverRegressionTests.Run();
+            RecentActivityVisualTests.Run();
+            LiveTailVisualTests.Run();
+            TimelineVisualTests.Run();
             CheckSingleActivityCard();
             CheckStatusAndClickLifecycle();
             Console.WriteLine("PASS: single-card activity manager and WPF guards");
@@ -93,7 +125,7 @@ internal static class Program
             {
                 var root = (Border)window.Content;
                 var grid = (Grid)root.Child;
-                if (grid.RowDefinitions.Count != 5 || grid.Children.Count != 5)
+                if (grid.RowDefinitions.Count != 6 || grid.Children.Count != 6)
                     throw new Exception("Expected the stable activity card layout.");
                 var header = (DockPanel)grid.Children[0];
                 var hasProductHeader = false;
@@ -111,13 +143,13 @@ internal static class Program
                     throw new Exception("The line under the title must name the latest tool.");
                 var bodyGrid = (Grid)grid.Children[2];
                 var counterRow = (Viewbox)bodyGrid.Children[0];
-                if (counterRow.Visibility != Visibility.Visible || (string)counterRow.ToolTip != body
+                if (counterRow.Visibility != Visibility.Visible || counterRow.ToolTip != null
                     || bodyGrid.Children[1].Visibility != Visibility.Collapsed)
-                    throw new Exception("Activity must show counters, with its last summary only in the tooltip.");
-                var thumbnail = (Border)grid.Children[3];
+                    throw new Exception("Activity must show counters; results require deliberate hover.");
+                var thumbnail = (Border)grid.Children[4];
                 if (thumbnail.Visibility != Visibility.Collapsed)
                     throw new Exception("Thumbnail row must stay collapsed without a capture.");
-                var footer = (Grid)grid.Children[4];
+                var footer = (Grid)grid.Children[5];
                 if (((Grid)footer.Children[0]).HorizontalAlignment != HorizontalAlignment.Right)
                     throw new Exception("Brand must align right independently of footer fill.");
                 root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));

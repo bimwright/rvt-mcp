@@ -34,6 +34,10 @@ namespace RvtMcp.Plugin.Views.Toast
         private const int BrandRevealDelayMs = 100;
         private const int BrandRevealDurationMs = 500;
         private const int BrandHideDurationMs = 200;
+        private const int DetailsRevealDelayMs = 200;
+        private const int DetailsLeaveDelayMs = 120;
+        private const int DetailsOpenMs = 260;
+        private const int DetailsCloseMs = 220;
         private const int GwlExStyle = -20;
         private const long WsExNoActivate = 0x08000000L;
         private const long WsExToolWindow = 0x00000080L;
@@ -54,6 +58,15 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly Grid _brandRow;
         private readonly Grid _brandCell;
         private readonly string _instanceIdentity;
+        private readonly Border _detailsRow;
+        private readonly ToastActivityPanel _detailsPanel;
+        private readonly TranslateTransform _detailsShift = new TranslateTransform(0, -6);
+        private DispatcherTimer _detailsRevealTimer;
+        private DispatcherTimer _detailsHideTimer;
+        private bool _detailsRevealed;
+        private bool _detailsHiding;
+        private int _detailsGeneration;
+        private MouseButtonEventHandler _detailsUpHandler;
         private readonly Border _thumbnailRow;
         private readonly Border _thumbnailHost;
         private readonly Image _thumbnailImage;
@@ -100,6 +113,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private ActivitySnapshot _lastSnapshot;
 
         public McpToastViewModel ViewModel { get; private set; }
+
         public long CardId => _cardId;
 
         /// <summary>
@@ -155,7 +169,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 Margin = new Thickness(8),
                 CornerRadius = new CornerRadius(8),
                 Background = McpToastTheme.Background,
-                BorderBrush = McpToastTheme.BuildAccentBrush(ViewModel),
+                BorderBrush = McpToastTheme.BuildAccentBrush(new McpToastViewModel { Success = !snapshot.HasFailure }),
                 BorderThickness = new Thickness(6, 0, 0, 0),
                 RenderTransformOrigin = new Point(0, 0.5),
                 RenderTransform = transformGroup,
@@ -174,7 +188,8 @@ namespace RvtMcp.Plugin.Views.Toast
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             // Status summary and activity counters share one fixed-height body row.
             content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(26) });
-            // Capture thumbnail: collapsed unless the aggregator holds a capture for the card.
+            // Recent outcomes only expand on deliberate hover; then capture and branding.
+            content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
@@ -182,10 +197,8 @@ namespace RvtMcp.Plugin.Views.Toast
 
             _iconText = new TextBlock
             {
-                Text = McpToastTheme.GetIconGlyph(ViewModel),
                 FontFamily = McpToastTheme.IconFont,
                 FontSize = 16,
-                Foreground = McpToastTheme.BuildIconBrush(ViewModel),
                 Margin = new Thickness(0, 1, 8, 0),
                 VerticalAlignment = VerticalAlignment.Top
             };
@@ -282,6 +295,21 @@ namespace RvtMcp.Plugin.Views.Toast
             Grid.SetRow(body, 2);
             content.Children.Add(body);
 
+            _detailsPanel = new ToastActivityPanel(_motionEnabled)
+            {
+                Opacity = 0, RenderTransform = _detailsShift
+            };
+            _detailsRow = new Border
+            {
+                Height = 0, ClipToBounds = true, Visibility = Visibility.Collapsed,
+                Child = _detailsPanel, Cursor = Cursors.Arrow
+            };
+            // Reading/scrolling the preview must not invoke the card's dismiss action.
+            _detailsUpHandler = (_, e) => e.Handled = true;
+            _detailsRow.MouseLeftButtonUp += _detailsUpHandler;
+            Grid.SetRow(_detailsRow, 3);
+            content.Children.Add(_detailsRow);
+
             _thumbnailImage = CreateThumbnailImage();
             _thumbnailBack = CreateThumbnailImage();
             var thumbnailStack = new Grid();
@@ -313,7 +341,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 Child = _thumbnailHost,
                 Visibility = Visibility.Collapsed
             };
-            Grid.SetRow(_thumbnailRow, 3);
+            Grid.SetRow(_thumbnailRow, 4);
             content.Children.Add(_thumbnailRow);
 
             _brandRow = new Grid { Margin = new Thickness(24, 5, 0, 0) };
@@ -360,7 +388,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _brandCell.Children.Add(_brandShine);
             _brandRow.Children.Add(_brandCell);
 
-            Grid.SetRow(_brandRow, 4);
+            Grid.SetRow(_brandRow, 5);
             content.Children.Add(_brandRow);
             ParkBrandRow();
 
@@ -380,6 +408,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 {
                     _brandPointerMoved = true;
                     ScheduleBrandReveal();
+                    ScheduleDetailsReveal();
                 }
             };
             // A card that opens under a still cursor ignores that enter. The first
@@ -388,8 +417,12 @@ namespace RvtMcp.Plugin.Views.Toast
             {
                 if (!_brandPointerOver || !PointerPositionChanged())
                     return;
+                // The card opened under a still cursor, so MouseEnter did not count.
+                // This first real movement is the hover: pause idle as well as reveal the wordmark.
+                _activityPointerEntered?.Invoke(_cardId);
                 _brandPointerMoved = true;
                 ScheduleBrandReveal();
+                ScheduleDetailsReveal();
             };
             _mouseLeaveHandler = (_, __) =>
             {
@@ -399,6 +432,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 _brandPointerOver = false;
                 _brandPointerMoved = false;
                 HideBrand(immediate: false);
+                ScheduleDetailsHide();
             };
             _mouseUpHandler = (_, e) =>
             {
@@ -502,6 +536,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 return;
 
             ApplyActivitySnapshot(_lastSnapshot, preserveSnapshot: true);
+            _detailsPanel.RefreshLocalization();
         }
 
         public void CloseImmediate()
@@ -543,6 +578,157 @@ namespace RvtMcp.Plugin.Views.Toast
                 BeginBrandReveal();
             };
             _brandRevealTimer.Start();
+        }
+
+        /// <summary>
+        /// Intent delay is independent of branding and reduced motion. A passing pointer
+        /// or a card appearing underneath a still pointer never exposes outcome content.
+        /// </summary>
+        private void ScheduleDetailsReveal()
+        {
+            CancelDetailsHideTimer();
+            if (!_brandPointerOver || !_brandPointerMoved || _closedCallbackRaised || _isClosing
+                || _lastSnapshot == null || _lastSnapshot.IsStatus || _lastSnapshot.RecentEntries.Count == 0)
+                return;
+            if (_detailsRevealed)
+            {
+                // Reverse an interrupted close from its current height, without resetting
+                // the reader's scroll position or replaying a complete entrance.
+                if (_detailsHiding)
+                    BeginDetailsReveal();
+                return;
+            }
+            if (_detailsRevealTimer != null)
+                return;
+            _detailsRevealTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(DetailsRevealDelayMs)
+            };
+            _detailsRevealTimer.Tick += (_, __) =>
+            {
+                CancelDetailsRevealTimer();
+                if (_brandPointerOver && _brandPointerMoved && !_isClosing && !_closedCallbackRaised)
+                    BeginDetailsReveal();
+            };
+            _detailsRevealTimer.Start();
+        }
+
+        private void BeginDetailsReveal()
+        {
+            var snapshot = _lastSnapshot;
+            if (snapshot == null || snapshot.IsStatus || snapshot.RecentEntries.Count == 0)
+                return;
+            var newReading = !_detailsRevealed;
+            if (newReading)
+                _detailsPanel.SetEntries(snapshot.RecentEntries);
+            // New results refresh this view separately. A reversal/height retarget must
+            // preserve its scroll position; only a genuinely new hover starts at the tail.
+            _detailsRevealed = true;
+            _detailsHiding = false;
+            var generation = ++_detailsGeneration;
+            _detailsPanel.Measure(new Size(CardWidth - 28, double.PositiveInfinity));
+            var height = _detailsPanel.DesiredSize.Height;
+            _detailsRow.Visibility = Visibility.Visible;
+            if (newReading)
+                _detailsPanel.ScrollToLatest();
+            if (!_motionEnabled())
+            {
+                SettleDetailsOpen(height);
+                return;
+            }
+            var duration = TimeSpan.FromMilliseconds(DetailsOpenMs);
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var open = new DoubleAnimation(_detailsRow.Height, height, duration) { EasingFunction = ease };
+            open.Completed += (_, __) =>
+            {
+                if (generation == _detailsGeneration && !_closedCallbackRaised)
+                    SettleDetailsOpen(height);
+            };
+            _detailsRow.BeginAnimation(HeightProperty, open);
+            _detailsPanel.BeginAnimation(OpacityProperty,
+                new DoubleAnimation(_detailsPanel.Opacity, 1, duration) { EasingFunction = ease });
+            _detailsShift.BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(_detailsShift.Y, 0, duration) { EasingFunction = ease });
+        }
+
+        private void SettleDetailsOpen(double height)
+        {
+            _detailsRow.BeginAnimation(HeightProperty, null);
+            _detailsPanel.BeginAnimation(OpacityProperty, null);
+            _detailsShift.BeginAnimation(TranslateTransform.YProperty, null);
+            _detailsRow.Height = height;
+            _detailsPanel.Opacity = 1;
+            _detailsShift.Y = 0;
+        }
+
+        private void ScheduleDetailsHide()
+        {
+            CancelDetailsRevealTimer();
+            if (!_detailsRevealed || _detailsHideTimer != null)
+                return;
+            // Grace period avoids collapsing when crossing into the newly expanded area.
+            _detailsHideTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(DetailsLeaveDelayMs)
+            };
+            _detailsHideTimer.Tick += (_, __) =>
+            {
+                CancelDetailsHideTimer();
+                if (!_brandPointerOver)
+                    HideDetails(immediate: false);
+            };
+            _detailsHideTimer.Start();
+        }
+
+        private void HideDetails(bool immediate)
+        {
+            CancelDetailsRevealTimer();
+            CancelDetailsHideTimer();
+            var generation = ++_detailsGeneration;
+            if (immediate || !_motionEnabled() || !_detailsRevealed)
+            {
+                SettleDetailsClosed();
+                return;
+            }
+            _detailsHiding = true;
+            var duration = TimeSpan.FromMilliseconds(DetailsCloseMs);
+            var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
+            var close = new DoubleAnimation(_detailsRow.Height, 0, duration) { EasingFunction = ease };
+            close.Completed += (_, __) =>
+            {
+                if (generation == _detailsGeneration)
+                    SettleDetailsClosed();
+            };
+            _detailsRow.BeginAnimation(HeightProperty, close);
+            _detailsPanel.BeginAnimation(OpacityProperty,
+                new DoubleAnimation(_detailsPanel.Opacity, 0, duration) { EasingFunction = ease });
+            _detailsShift.BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(_detailsShift.Y, -6, duration) { EasingFunction = ease });
+        }
+
+        private void SettleDetailsClosed()
+        {
+            _detailsRow.BeginAnimation(HeightProperty, null);
+            _detailsPanel.BeginAnimation(OpacityProperty, null);
+            _detailsShift.BeginAnimation(TranslateTransform.YProperty, null);
+            _detailsRow.Height = 0;
+            _detailsRow.Visibility = Visibility.Collapsed;
+            _detailsPanel.Opacity = 0;
+            _detailsPanel.SetEntries(ToastActivityLog.Freeze(null));
+            _detailsShift.Y = -6;
+            _detailsRevealed = _detailsHiding = false;
+        }
+
+        private void CancelDetailsRevealTimer()
+        {
+            _detailsRevealTimer?.Stop();
+            _detailsRevealTimer = null;
+        }
+
+        private void CancelDetailsHideTimer()
+        {
+            _detailsHideTimer?.Stop();
+            _detailsHideTimer = null;
         }
 
         private void BeginBrandReveal()
@@ -741,6 +927,8 @@ namespace RvtMcp.Plugin.Views.Toast
                 return;
             }
             _isClosing = true;
+            CancelDetailsRevealTimer();
+            CancelDetailsHideTimer();
             var duration = TimeSpan.FromMilliseconds(220);
             var ease = new QuadraticEase { EasingMode = EasingMode.EaseIn };
             var fade = new DoubleAnimation(Opacity, 0, duration) { EasingFunction = ease };
@@ -758,10 +946,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 _lastSnapshot = snapshot;
 
             ViewModel = ToViewModel(snapshot);
-
-            _root.BorderBrush = snapshot.HasFailure
-                ? McpToastTheme.BuildAccentBrush(new McpToastViewModel { Success = false })
-                : McpToastTheme.BuildAccentBrush(new McpToastViewModel { Success = true });
+            _root.BorderBrush = McpToastTheme.BuildAccentBrush(new McpToastViewModel { Success = !snapshot.HasFailure });
             _iconText.Text = snapshot.LatestSuccess ? "\uE73E" : "\uE783";
             _iconText.Foreground = snapshot.HasFailure ? McpToastTheme.Error : McpToastTheme.Primary;
 
@@ -775,6 +960,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 _bodyText.Visibility = Visibility.Visible;
                 _bodyText.Text = status.Body;
                 _bodyText.ToolTip = status.Body;
+                HideDetails(immediate: true);
                 ApplyThumbnail(null, animate);
             }
             else
@@ -789,8 +975,20 @@ namespace RvtMcp.Plugin.Views.Toast
                 _failedCount.SetValue(snapshot.Failed,
                     snapshot.Failed > 0 ? McpToastTheme.Error : McpToastTheme.TextSecondary, animate);
                 _captureCount.SetValue(snapshot.Images, McpToastTheme.Text, animate);
-                // Keep the last result available without adding another visible row.
-                _counterRow.ToolTip = snapshot.Body;
+                // No auto-popup result tooltip: outcomes require a deliberate hover.
+                _counterRow.ToolTip = null;
+                if (_detailsRevealed && !_isClosing)
+                {
+                    var previousRows = Math.Min(ToastActivityPanel.VisibleEntryCount, _detailsPanel.Entries.Count);
+                    _detailsPanel.UpdateEntries(snapshot.RecentEntries);
+                    var currentRows = Math.Min(ToastActivityPanel.VisibleEntryCount, _detailsPanel.Entries.Count);
+                    // The first/second incoming result may grow the viewport. Retarget from
+                    // the current animated height; never expose rows behind an old fixed clip.
+                    if (previousRows != currentRows && !_detailsHiding)
+                        BeginDetailsReveal();
+                }
+                if (_brandPointerOver && _brandPointerMoved)
+                    ScheduleDetailsReveal();
                 System.Windows.Automation.AutomationProperties.SetName(_counterRow,
                     $"{snapshot.Succeeded} {_successLabel.Text}, {snapshot.Failed} {_failedLabel.Text}, {snapshot.Images} {_captureLabel.Text}");
                 ApplyThumbnail(snapshot.ImagePath, animate);
@@ -1105,6 +1303,10 @@ namespace RvtMcp.Plugin.Views.Toast
             {
                 _closeHost.MouseLeftButtonUp -= _closeHostMouseUpHandler;
             }
+            _detailsRow.MouseLeftButtonUp -= _detailsUpHandler;
+            HideDetails(immediate: true);
+            _detailsPanel.SetEntries(Array.AsReadOnly(new ToastActivityEntry[0]));
+            _lastSnapshot = null;
             _thumbnailHost.MouseLeftButtonUp -= _thumbnailUpHandler;
             _thumbnailStateGeneration++;
             _thumbnailSwapGeneration++;

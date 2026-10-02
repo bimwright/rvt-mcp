@@ -53,10 +53,10 @@ internal sealed class ToastPreview : Window
         FontSize = 13;
         Background = McpToastTheme.Background;
         var panel = new StackPanel { Margin = new Thickness(22) };
-        panel.Children.Add(new TextBlock { Text = "Production toast · rolling counters", FontSize = 21, FontWeight = FontWeights.SemiBold });
+        panel.Children.Add(new TextBlock { Text = "Production toast · activity timeline", FontSize = 21, FontWeight = FontWeights.SemiBold });
         panel.Children.Add(new TextBlock
         {
-            Text = "Real window + manager + aggregator, simulated results. No Revit/API calls.\nMotion is forced on here, whatever Windows' animation setting says. Title: instance identity. Hover: two-layer brand sweep. ×: dismiss only.",
+            Text = "Real window + manager + aggregator, simulated results. No Revit/API calls.\nMotion is forced on in this preview. Hover to read the latest three calls; scroll up for older calls. New results follow the bottom and preserve older reading positions. ×: dismiss only.",
             TextWrapping = TextWrapping.Wrap, Foreground = McpToastTheme.TextSecondary, Margin = new Thickness(0, 8, 0, 12)
         });
         var actions = new WrapPanel();

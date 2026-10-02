@@ -6,6 +6,11 @@
   </PropertyGroup>
   <!-- Real WPF windows on an STA dispatcher, independent of Revit. -->
   <ItemGroup>
+    <Compile Include="../../src/shared/Views/Toast/ToastActivityEntry.cs" Link="ToastActivityEntry.cs" />
+    <Compile Include="../../src/shared/Views/Toast/ToastActivityLog.cs" Link="ToastActivityLog.cs" />
+    <Compile Include="../../src/shared/Views/Toast/ToastActivityPanel.cs" Link="ToastActivityPanel.cs" />
+    <Compile Include="../../src/shared/Views/Toast/ToastScrollBarStyles.cs" Link="ToastScrollBarStyles.cs" />
+    <Compile Include="../../src/shared/Security/SecretMasker.cs" Link="SecretMasker.cs" />
     <Compile Include="../../src/shared/Views/Toast/ActivityAggregator.cs" Link="ActivityAggregator.cs" />
     <Compile Include="../../src/shared/Views/Toast/McpToastWindow.cs" Link="McpToastWindow.cs" />
     <Compile Include="../../src/shared/Views/Toast/RollingToastNumber.cs" Link="RollingToastNumber.cs" />
@@ -22,6 +27,10 @@
     <Compile Include="../../src/shared/Localization/L.cs" Link="Localization\L.cs" />
     <Compile Include="../../src/shared/Localization/StringTable.cs" Link="Localization\StringTable.cs" />
     <Compile Include="../../src/shared/Localization/LocaleResolver.cs" Link="Localization\LocaleResolver.cs" />
+    <Compile Include="../../src/shared/Localization/EmbeddedCatalog.cs" Link="Localization/EmbeddedCatalog.cs" />
+    <EmbeddedResource Include="../../src/shared/Localization/Catalog/strings.*.json" WithCulture="false">
+      <LogicalName>RvtMcp.Localization.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 </Project>

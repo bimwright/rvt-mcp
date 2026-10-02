@@ -214,12 +214,12 @@ namespace RvtMcp.Tests
         }
 
         [Theory]
-        [InlineData("{\"result\":{\"marker\":\"probe\"}}", "{\"marker\":\"probe\"}")]
-        [InlineData("{\"result\":{\"items\":[1,null,true]}}", "{\"items\":[1,null,true]}")]
-        [InlineData("{\"result\":[1,2]}", "[1,2]")]
-        [InlineData("{\"result\":[{\"name\":\"Cột\"},null]}", "[{\"name\":\"Cột\"},null]")]
-        [InlineData("{\"result\":{}}", "{}")]
-        [InlineData("{\"result\":[]}", "[]")]
+        [InlineData("{\"result\":{\"marker\":\"probe\"}}", "Fields: 1")]
+        [InlineData("{\"result\":{\"items\":[1,null,true]}}", "Fields: 1")]
+        [InlineData("{\"result\":[1,2]}", "Items: 2")]
+        [InlineData("{\"result\":[{\"name\":\"Cột\"},null]}", "Items: 2")]
+        [InlineData("{\"result\":{}}", "Fields: 0")]
+        [InlineData("{\"result\":[]}", "Items: 0")]
         [InlineData("{\"result\":42}", "42")]
         [InlineData("{\"result\":true}", "True")]
         [InlineData("{\"result\":null}", "Script finished")]
@@ -248,9 +248,49 @@ namespace RvtMcp.Tests
 
             Assert.True(vm.Success);
             Assert.InRange(vm.Summary.Length, 1, 100);
-            Assert.StartsWith(array ? "[\"界" : "{\"text\":\"界", vm.Summary);
+            Assert.Equal(array ? "Items: 1" : "Fields: 1", vm.Summary);
+            Assert.DoesNotContain("界", vm.Summary);
             Assert.DoesNotContain("\n", vm.Summary);
             Assert.DoesNotContain("\r", vm.Summary);
+        }
+
+        [Theory]
+        [InlineData("{\"complete\":false}")]
+        [InlineData("{\"complete\":true}")]
+        [InlineData("{}")]
+        public void Survey_missing_or_incomplete_coverage_is_explicit_without_claiming_call_failure(string result)
+        {
+            var vm = ToastContentBuilder.BuildCompleted("survey_change_impact", null, result, true, null, 100, null);
+            Assert.True(vm.Success);
+            Assert.Equal("Survey: coverage incomplete", vm.Summary);
+            Assert.Contains("blind spots", vm.Detail);
+        }
+
+        [Fact]
+        public void Survey_complete_supported_checks_still_requires_review()
+        {
+            var relations = new Newtonsoft.Json.Linq.JArray();
+            for (var i = 0; i < 10; i++) relations.Add(new Newtonsoft.Json.Linq.JObject { ["coverage"] = "complete" });
+            var result = new Newtonsoft.Json.Linq.JObject { ["complete"] = true, ["relations"] = relations };
+            var vm = ToastContentBuilder.BuildCompleted("survey_change_impact", null, result.ToString(), true, null, 100, null);
+            Assert.Equal("Survey: supported checks complete", vm.Summary);
+            Assert.Contains("before changes", vm.Detail);
+            relations[4]["coverage"] = "partial";
+            vm = ToastContentBuilder.BuildCompleted("survey_change_impact", null, result.ToString(), true, null, 100, null);
+            Assert.Equal("Survey: coverage incomplete", vm.Summary);
+        }
+
+        [Fact]
+        public void Display_redacts_before_truncation_and_does_not_reinterpret_script_values_as_outcomes()
+        {
+            var error = "password=\"" + new string('x', 160) + " private\"; C:\\private\\project.rvt";
+            var vm = ToastContentBuilder.BuildCompleted("query", null, null, false, error, 100, null);
+            Assert.DoesNotContain("private", vm.Summary);
+            Assert.Contains("<redacted>", vm.Summary);
+            Assert.False(vm.Success);
+            vm = ToastContentBuilder.BuildCompleted("send_code_to_revit", null, "{\"result\":{\"ok\":false}}", true, null, 100, null);
+            Assert.True(vm.Success); // arbitrary returned data is not an execution envelope
+            Assert.Equal("Fields: 1", vm.Summary);
         }
 
         [Fact]

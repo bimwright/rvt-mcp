@@ -70,9 +70,8 @@ namespace RvtMcp.Plugin.Views.Toast
                 durationMs,
                 toolDescription);
 
-            // The card shows a thumbnail of the latest capture and opens the file
-            // on click. The path has already passed the builder's local safety policy.
-            Record(vm.Title, vm.Body, vm.Success, vm.ThumbnailPath);
+            // Keep Revit's normalized outcome and measured duration; clicks still open History.
+            Record(vm.Title, vm.Body, vm.Success, vm.ThumbnailPath, vm.DurationMs);
         }
 
         /// <summary>One-shot connection confirmation, independent of activity counters.</summary>
@@ -135,9 +134,9 @@ namespace RvtMcp.Plugin.Views.Toast
             _host.Shutdown();
         }
 
-        private void Record(string title, string body, bool success, string imagePath)
+        private void Record(string title, string body, bool success, string imagePath, long durationMs)
         {
-            if (_activity.RecordResult(title, body, success, imagePath, IsOwnerFrameUsable()))
+            if (_activity.RecordResult(title, body, success, imagePath, IsOwnerFrameUsable(), durationMs))
                 _host.Post(manager => manager.Render());
         }
 

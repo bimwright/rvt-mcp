@@ -140,15 +140,31 @@ internal static class ToastVisualTests
 
     private const double ThumbnailRow = 126; // 6 gap + 120 frame
 
-    /// <summary>Pumps in short steps until <paramref name="done"/>, recording <paramref name="read"/> after each one.</summary>
+    /// <summary>Sample rendered frames, rather than timer ticks between WPF animation-clock updates.</summary>
     private static List<double> Sample(Func<double> read, Func<bool> done, int maxMilliseconds = 2000)
     {
         var values = new List<double> { read() };
-        var clock = Stopwatch.StartNew();
-        while (!done() && clock.ElapsedMilliseconds < maxMilliseconds)
+        if (!done())
         {
-            Pump(8);
-            values.Add(read());
+            var frame = new DispatcherFrame();
+            var timeout = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(maxMilliseconds) };
+            EventHandler rendered = (_, __) =>
+            {
+                values.Add(read());
+                if (done()) frame.Continue = false;
+            };
+            timeout.Tick += (_, __) => frame.Continue = false;
+            CompositionTarget.Rendering += rendered;
+            try
+            {
+                timeout.Start();
+                Dispatcher.PushFrame(frame);
+            }
+            finally
+            {
+                timeout.Stop();
+                CompositionTarget.Rendering -= rendered;
+            }
         }
         if (!done())
             throw new Exception("The animation did not finish in time.");
@@ -240,7 +256,7 @@ internal static class ToastVisualTests
         Console.WriteLine("PASS: thumbnail is centred on both axes in one fixed frame, whatever the capture shape");
     }
 
-    private static void CheckThumbnailMotion()
+    internal static void CheckThumbnailMotion()
     {
         var first = WritePng("rvtmcp-toast-motion-a.png", 320, 200);
         var second = WritePng("rvtmcp-toast-motion-b.png", 200, 320);
