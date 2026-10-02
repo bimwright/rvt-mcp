@@ -1,6 +1,6 @@
 # Change-impact survey
 
-The development tool `revit_survey_change_impact` belongs to `query` and is available with default toolsets, `--read-only`, and send-code disabled. It reads explicit targets from the active document. It does not edit the model, store a persistent snapshot, or publish a history receipt. Matching plugin/server builds are required; previously packaged Setup/MCPB candidates do not contain this tool.
+The tool `revit_survey_change_impact` belongs to `query` and is available with default toolsets, `--read-only`, and send-code disabled. It reads explicit targets from the active document. It does not edit the model, store a persistent snapshot, or publish a history receipt. A matching plugin/server pair from v1.0.0 or later is required.
 
 ```json
 {

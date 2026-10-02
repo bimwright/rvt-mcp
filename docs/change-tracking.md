@@ -1,8 +1,8 @@
 # Element changes during MCP commands
 
-Development source includes `_changes` metadata when Revit reports committed element
-changes during a synchronous MCP command. It needs a server and plugin built with
-this feature. Existing 1.0.0 candidate bundles do not acquire it automatically.
+The server returns `_changes` metadata when Revit reports committed element
+changes during a synchronous MCP command. It needs a matching server and plugin
+pair from v1.0.0 or later; an older installed add-in does not provide it.
 
 The metadata covers typed tools, `send_code_to_revit`, `batch_execute` and baked tools
 through the common command dispatcher. It is not a new tool and does not grant write
@@ -43,13 +43,13 @@ Timeouts remain unknown outcomes and may prevent delivery of this metadata.
 The server uses an allowlist for agent-facing change metadata. With call logging
 enabled, the journal adds a separate `Changes` field, not subject to the 2,048-character
 `Result` text truncation. Call logging remains off by default. The separate local
-history feature below is enabled by default in development builds.
+history feature below is enabled by default.
 
 The `revit_change` prompt uses available metadata to compare the agreed scope, while
 still requiring readback of actual values. No metadata from an older plugin is not
 evidence that nothing changed.
 
-## Local model history and reasons (development)
+## Local model history and reasons
 
 The server stores SQLite history under `%LOCALAPPDATA%\Bimwright\rvt-mcp\projects`.
 This is independent of the call log: `enableCallLog=false` does not turn it off.
@@ -145,5 +145,5 @@ long values carry `truncated=true`. Other commands have null before/after data.
 The reason tool cannot supply or override this evidence, and no arbitrary code body
 or general tool-argument payload is stored by change history.
 
-These are development capabilities. Previously built Setup/MCPB bundles and installed
-clients do not gain them automatically; a matching new plugin/server pair is required.
+These capabilities need a matching plugin/server pair from v1.0.0 or later; older
+installed add-ins and clients do not provide them.
