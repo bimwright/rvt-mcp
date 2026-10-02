@@ -156,6 +156,7 @@ namespace RvtMcp.Plugin
                     }
 
                     CommandResult result;
+                    var surveySnapshot = Survey.SurveyHistoryBridge.Before(app, request, runtimeConfig.EnableChangeHistoryOrDefault);
                     using (var capture = McpChangeTracker.Begin(request.History?.IsValid == true && runtimeConfig.EnableChangeHistoryOrDefault))
                     {
                         bool rolledBack = false;
@@ -174,8 +175,10 @@ namespace RvtMcp.Plugin
                                 HistoryDiagnostics.Report("history_snapshot", ex, request.History?.Id, App.DebugLog);
                                 historyMarker = new JObject { ["status"] = "capture_failed" };
                             }
+                            Survey.SurveyHistoryBridge.Complete(surveySnapshot, history);
                         }
                     }
+                    Survey.SurveyHistoryBridge.Remember(app, request, runtimeConfig.EnableChangeHistoryOrDefault, result);
                     sw.Stop();
                     // Spill may replace result.Data; the outcome is judged on the handler's own data.
                     var handlerData = result.Data;

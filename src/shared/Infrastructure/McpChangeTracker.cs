@@ -19,6 +19,7 @@ namespace RvtMcp.Plugin
 
         public static void OnDocumentChanged(object sender, DocumentChangedEventArgs e)
         {
+            Survey.SurveyHistoryBridge.DocumentChanged(); // UI edits and Undo invalidate RAM only; they are not persisted.
             var scope = _active;
             if (scope == null) return;
             try { scope.Record(e); }

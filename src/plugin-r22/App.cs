@@ -72,6 +72,9 @@ namespace RvtMcp.Plugin
             _handler = new McpEventHandler(_dispatcher, SessionLog, ToastNotifier);
             _externalEvent = ExternalEvent.Create(_handler);
             application.ControlledApplication.DocumentChanged += McpChangeTracker.OnDocumentChanged;
+            application.ViewActivated += Survey.SurveyHistoryBridge.Invalidate;
+            application.ControlledApplication.DocumentClosing += Survey.SurveyHistoryBridge.Invalidate;
+            application.ControlledApplication.DocumentSavedAs += Survey.SurveyHistoryBridge.Invalidate;
             DebugLog("OnStartup: Dispatcher + EventHandler + ExternalEvent OK");
 
             CreateAndStartTransport();
@@ -91,6 +94,9 @@ namespace RvtMcp.Plugin
         public Result OnShutdown(UIControlledApplication application)
         {
             application.ControlledApplication.DocumentChanged -= McpChangeTracker.OnDocumentChanged;
+            application.ViewActivated -= Survey.SurveyHistoryBridge.Invalidate;
+            application.ControlledApplication.DocumentClosing -= Survey.SurveyHistoryBridge.Invalidate;
+            application.ControlledApplication.DocumentSavedAs -= Survey.SurveyHistoryBridge.Invalidate;
             application.Idling -= OnIdling;
             Localization.LocalizationHost.ShutdownPlugin();
             _historyWindow?.Close();

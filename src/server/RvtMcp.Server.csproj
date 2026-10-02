@@ -42,6 +42,7 @@
     <Compile Include="..\shared\Infrastructure\LegacyDataMigration.cs" Link="Shared\LegacyDataMigration.cs" />
     <Compile Include="..\shared\Infrastructure\ToolReadPolicy.cs" Link="Shared\ToolReadPolicy.cs" />
     <Compile Include="..\shared\Survey\SurveyContract.cs" Link="Shared\SurveyContract.cs" />
+    <Compile Include="..\shared\Survey\SurveySnapshotCache.cs" Link="Shared\SurveySnapshotCache.cs" />
     <Compile Include="..\shared\Infrastructure\ResponseSizeGuard.cs" Link="Shared\ResponseSizeGuard.cs" />
     <Compile Include="..\shared\Infrastructure\ResponseSizePolicyCatalog.cs" Link="Shared\ResponseSizePolicyCatalog.cs" />
     <Compile Include="..\shared\Infrastructure\MutationResponseCompactor.cs" Link="Shared\MutationResponseCompactor.cs" />

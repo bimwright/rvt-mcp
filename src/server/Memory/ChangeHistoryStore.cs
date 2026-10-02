@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS model_info(model_key TEXT PRIMARY KEY,identity TEXT N
 CREATE TABLE IF NOT EXISTS change_records(record_id TEXT PRIMARY KEY,at TEXT NOT NULL,user_name TEXT NOT NULL,machine TEXT NOT NULL,reason_known INTEGER NOT NULL,context_json TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS change_calls(call_id TEXT PRIMARY KEY,record_id TEXT REFERENCES change_records(record_id),at TEXT NOT NULL,tool TEXT NOT NULL,session TEXT NOT NULL,success INTEGER NOT NULL,revit_year TEXT,user_name TEXT,machine TEXT,complete INTEGER NOT NULL,transactions_json TEXT NOT NULL,element_count INTEGER NOT NULL,capture_hash TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS change_call_elements(call_id TEXT NOT NULL REFERENCES change_calls(call_id),element_id INTEGER NOT NULL,unique_id TEXT,kind TEXT NOT NULL,category TEXT,before_json TEXT,after_json TEXT,PRIMARY KEY(call_id,element_id));
+CREATE TABLE IF NOT EXISTS change_call_snapshots(call_id TEXT PRIMARY KEY REFERENCES change_calls(call_id),metadata_json TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS change_elements_id ON change_call_elements(element_id);
 CREATE INDEX IF NOT EXISTS change_elements_uid ON change_call_elements(unique_id);
 CREATE INDEX IF NOT EXISTS change_calls_date ON change_calls(at);");
@@ -149,6 +150,15 @@ ON CONFLICT(model_key) DO UPDATE SET metadata_json=$json,last_seen=$at;",
                         ("$transactions", (item["summary"]?["transactions"] ?? new JArray()).ToString(Formatting.None)), ("$count", elements.Count), ("$hash", hash));
                     var updates = (docs.Count == 1 ? payload["parameterValues"]?["updated"] as JArray : null)?.OfType<JObject>()
                         .GroupBy(x => x.Value<long>("elementId")).ToDictionary(g => g.Key, g => g.First());
+                    var snapshot = item["parameterSnapshot"] as JObject;
+                    if (snapshot != null)
+                    {
+                        if ((snapshot["elements"] as JArray)?.Count > 25) throw new ArgumentException("Too many survey snapshot elements.");
+                        var metadata = (JObject)snapshot.DeepClone();
+                        metadata.Remove("elements");
+                        metadata["observedElementCount"] = elements.OfType<JObject>().Count(e => Plugin.Survey.SurveySnapshotCache.Match(snapshot, e) != null);
+                        Execute(db, tx, "INSERT INTO change_call_snapshots VALUES($id,$json)", ("$id", id), ("$json", Redact(metadata).ToString(Formatting.None)));
+                    }
                     foreach (var element in elements.OfType<JObject>())
                     {
                         var elementId = element.Value<long>("elementId");
@@ -158,8 +168,8 @@ ON CONFLICT(model_key) DO UPDATE SET metadata_json=$json,last_seen=$at;",
                         if (kind == "modified" && updates != null) updates.TryGetValue(elementId, out value);
                         Execute(db, tx, "INSERT INTO change_call_elements VALUES($id,$element,$unique,$kind,$category,$before,$after)",
                             ("$id", id), ("$element", elementId), ("$unique", element.Value<string>("uniqueId")), ("$kind", kind), ("$category", Text(element["category"])),
-                            ("$before", ParameterValue(payload["parameterValues"]?["parameter"], value, "old")),
-                            ("$after", ParameterValue(payload["parameterValues"]?["parameter"], value, "new")));
+                            ("$before", WithSurvey(ParameterValue(payload["parameterValues"]?["parameter"], value, "old"), snapshot, element, "before")),
+                            ("$after", WithSurvey(ParameterValue(payload["parameterValues"]?["parameter"], value, "new"), snapshot, element, "after")));
                     }
                 }
                 tx.Commit();
@@ -287,8 +297,15 @@ ORDER BY c.at DESC,c.call_id LIMIT $limit", ("$from", start), ("$until", end), (
                         ["reasonStatus"] = reader.IsDBNull(7) ? "unassigned" : reader.GetInt32(8) == 0 ? "unknown" : "recorded",
                         ["context"] = reader.IsDBNull(9) ? null : JToken.Parse(reader.GetString(9)) });
                 }
+            var hasSnapshots = Scalar(db, null, "SELECT 1 FROM sqlite_master WHERE type='table' AND name='change_call_snapshots'") != null;
             foreach (var call in calls.OfType<JObject>())
             {
+                // Legacy databases remain readable without creating/migrating anything on a read.
+                if (hasSnapshots)
+                {
+                    var metadata = Scalar(db, null, "SELECT metadata_json FROM change_call_snapshots WHERE call_id=$id", ("$id", call.Value<string>("callId"))) as string;
+                    if (metadata != null) call["parameterSnapshot"] = JObject.Parse(metadata);
+                }
                 using var elements = Command(db, null, @"SELECT element_id,unique_id,kind,category,before_json,after_json FROM change_call_elements
 WHERE call_id=$call AND ($element IS NULL OR element_id=$element) AND ($unique IS NULL OR unique_id=$unique) ORDER BY element_id LIMIT 201",
                     ("$call", call.Value<string>("callId")), ("$element", elementId), ("$unique", uniqueId));
@@ -313,6 +330,19 @@ WHERE call_id=$call AND ($element IS NULL OR element_id=$element) AND ($unique I
             var safe = (JObject)Redact(original);
             safe["truncated"] = original.Descendants().OfType<JValue>().Any(x => x.Type == JTokenType.String && x.ToString().Length > 4096);
             return safe.ToString(Formatting.None);
+        }
+        private static string WithSurvey(string direct, JObject snapshot, JObject element, string side)
+        {
+            var measured = Plugin.Survey.SurveySnapshotCache.Match(snapshot, element)?[side] as JObject;
+            if (measured == null) return direct;
+            var parameters = measured["parameters"] as JArray;
+            if (parameters == null || parameters.Count > 4 || measured.ToString(Formatting.None).Length > 80000)
+                throw new ArgumentException("Invalid survey parameter observations.");
+            var value = direct == null ? new JObject() : JObject.Parse(direct);
+            value["surveySnapshot"] = new JObject { ["surveyId"] = snapshot["surveyId"], ["source"] = snapshot["source"],
+                ["at"] = snapshot[side + "At"], ["status"] = measured["status"], ["reason"] = measured["reason"],
+                ["parameters"] = parameters.DeepClone() };
+            return Redact(value).ToString(Formatting.None);
         }
         private static JToken Redact(JToken value)
         {
