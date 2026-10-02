@@ -253,5 +253,13 @@
   "settings.general.listener": "MCP listener",
   "settings.general.restart": "Restart the listener with a new port",
   "settings.general.listenerFailed": "The MCP listener could not be started.",
-  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s."
+  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s.",
+  "update.title": "Доступно обновление rvt-mcp",
+  "update.message": "Доступна новая версия rvt-mcp ({latest}). Скопируйте подсказку ниже и вставьте её в своего ИИ-агента, чтобы обновиться.",
+  "update.installed": "Установлена: {current}",
+  "update.copyPrompt": "Копировать подсказку",
+  "update.copied": "Скопировано ✓",
+  "update.openRelease": "Открыть страницу релиза",
+  "update.skip": "Пропустить эту версию",
+  "update.close": "Закрыть"
 }

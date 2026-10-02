@@ -253,5 +253,13 @@
   "settings.general.listener": "MCP listener",
   "settings.general.restart": "Restart the listener with a new port",
   "settings.general.listenerFailed": "The MCP listener could not be started.",
-  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s."
+  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s.",
+  "update.title": "rvt-mcp 有可用更新",
+  "update.message": "rvt-mcp 有新版本可用（{latest}）。複製下方提示詞並貼給你的 AI 助理以完成更新。",
+  "update.installed": "已安裝：{current}",
+  "update.copyPrompt": "複製提示詞",
+  "update.copied": "已複製 ✓",
+  "update.openRelease": "開啟發行頁面",
+  "update.skip": "略過此版本",
+  "update.close": "關閉"
 }

@@ -281,7 +281,7 @@ namespace RvtMcp.Server
         // Anthropic truncates this field at 2KB; the keyword-dense first paragraph carries
         // the discoverability load if the SDK or proxy truncates later.
         // InformationalVersion carries "+githash"; report clean semver to MCP clients.
-        private static readonly string ServerVersion =
+        internal static readonly string ServerVersion =
             (Assembly.GetExecutingAssembly()
                 .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
                 ?.InformationalVersion ?? "0.0.0").Split('+')[0];
@@ -296,7 +296,9 @@ namespace RvtMcp.Server
                 Description = "Model Context Protocol gateway for Autodesk Revit 2022-2027",
                 WebsiteUrl = "https://github.com/bimwright/rvt-mcp"
             };
-            opts.ServerInstructions = ServerInstructionsText;
+            // A newer release known from the add-in's cached daily check (no network here).
+            opts.ServerInstructions = RvtMcp.Plugin.Update.UpdateNoticeText.ComposeInstructions(
+                ServerInstructionsText, RvtMcp.Plugin.Update.UpdateNoticeText.ForAgent(UpdateStatus.Current()));
         }
 
         // Anthropic Tool Search truncates this at 2 KB; the constant below is kept
@@ -2454,7 +2456,8 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                     targets,
                     note = targets.Length == 0
                         ? "No revit-YYYY.json files found. Start Revit and ensure the rvt-mcp plugin is loaded (Add-Ins ribbon)."
-                        : "Pass a 'year' value above as the 'version' argument of revit_switch_target (the parameter is named 'version', the value is the 4-digit year) to route subsequent commands to that Revit."
+                        : "Pass a 'year' value above as the 'version' argument of revit_switch_target (the parameter is named 'version', the value is the 4-digit year) to route subsequent commands to that Revit.",
+                    update_available = UpdateStatus.ForStatusResult()
                 }, Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
@@ -2475,7 +2478,8 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                     discovery_dir = AuthToken.DiscoveryDir(),
                     note = AuthToken.Target == null
                         ? "Auto-detect mode: next reconnect picks the first alive Revit (pipe 2027>2026>2025, then tcp 2024>2023>2022)."
-                        : "Pinned to Revit " + AuthToken.Target + ". Call revit_switch_target with version='auto' to clear the pin."
+                        : "Pinned to Revit " + AuthToken.Target + ". Call revit_switch_target with version='auto' to clear the pin.",
+                    update_available = UpdateStatus.ForStatusResult()
                 }, Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }

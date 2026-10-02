@@ -44,6 +44,7 @@ namespace RvtMcp.Plugin
         private UIControlledApplication _ribbonApplication;
         private bool _mainWindowCaptured;
         private System.Windows.Threading.Dispatcher _revitDispatcher;
+        private Update.UpdateNoticeCoordinator _updateNotice;
 
         public Result OnStartup(UIControlledApplication application)
         {
@@ -59,6 +60,8 @@ namespace RvtMcp.Plugin
             Localization.LocalizationHost.InitializePlugin(
                 application.ControlledApplication.Language.ToString(), Config.UiLanguage, DebugLog);
             ToastEnabled = Config.EnableToastOrDefault;
+            _updateNotice = new Update.UpdateNoticeCoordinator(DebugLog);
+            _updateNotice.Start();
             DebugLog("OnStartup: McpLogger + SessionLog OK");
 
             BakedToolRuntimeCache = new ToolBaker.BakedToolRuntimeCache();
@@ -103,6 +106,7 @@ namespace RvtMcp.Plugin
             _historyWindow?.Close();
             _bakeInboxWindow?.Close();
             _settingsWindow?.CloseForShutdown();
+            _updateNotice?.Shutdown();
 
             StopTransport();
             _handler?.CancelAll();
@@ -258,6 +262,7 @@ namespace RvtMcp.Plugin
                     _mainWindowCaptured = true;
                 }
             }
+            _updateNotice?.OnIdling(_ribbonApplication?.MainWindowHandle ?? IntPtr.Zero);
             _idlingUpdater?.Update(IsTransportRunning, Transport, SessionLog, ToastEnabled);
         }
 

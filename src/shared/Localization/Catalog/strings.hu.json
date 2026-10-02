@@ -253,5 +253,13 @@
   "settings.general.listener": "MCP listener",
   "settings.general.restart": "Restart the listener with a new port",
   "settings.general.listenerFailed": "The MCP listener could not be started.",
-  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s."
+  "settings.tools.timeout.budget": "Server budget {budget}; transport grace {grace} s.",
+  "update.title": "rvt-mcp frissítés érhető el",
+  "update.message": "Elérhető az rvt-mcp új verziója ({latest}). Másolja ki az alábbi promptot, és illessze be az AI-ügynökének a frissítéshez.",
+  "update.installed": "Telepítve: {current}",
+  "update.copyPrompt": "Prompt másolása",
+  "update.copied": "Másolva ✓",
+  "update.openRelease": "Kiadási oldal megnyitása",
+  "update.skip": "Verzió kihagyása",
+  "update.close": "Bezárás"
 }
