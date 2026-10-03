@@ -104,7 +104,7 @@
   "revit_create_mep_fitting": "Insert an MEP fitting at connectors of existing MEP elements. fittingKind: elbow|tee|union|cross|transition. connectors is a JSON array of {element_id, connect…",
   "revit_set_system_classification": "Add MEP elements to an existing duct/piping system. If systemId omitted, only reports current system membership (read-only). elementIds is an array of MEP elem…",
   "revit_get_panel_schedule": "Read panel metadata and a bounded circuit page. Use startCircuit + maxCircuits (hard max 1000).",
-  "revit_find_mep_disconnects": "Find MEP elements with open/unconnected End connectors (potential gaps in ductwork, piping, conduit). domainFilter: all|hvac|piping|electrical. viewOnly restri…",
+  "revit_find_mep_disconnects": "Find MEP elements with open/unconnected End connectors (potential gaps in ductwork, piping, conduit). domainFilter: all|mechanical|piping|electrical. viewOnly …",
   "revit_analyze_mep_network": "Analyze one MEP system. For piping and HVAC, element_count, category_breakdown, and open_connector_count come from the pipe or duct network; terminal_count exc…",
   "revit_create_view_filter": "Create a parameter-based view filter (ParameterFilterElement) targeting one or more categories. rules is an optional JSON array of {parameter_name, evaluator,…",
   "revit_apply_filter_to_view": "Add an existing view filter (ParameterFilterElement) to a view's filter list. viewId defaults to the active view. visible sets the initial visibility of matchi…",

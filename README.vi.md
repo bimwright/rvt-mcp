@@ -340,6 +340,7 @@ Thêm: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).
 | [docs/bake.md](docs/bake.md) | Adaptive bake và privacy body |
 | [docs/localization.md](docs/localization.md) | Ngôn ngữ UI, override, hot reload |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Build, test, thêm tool |
+| [docs/benchmarks/](docs/benchmarks/) | Benchmark và kết quả kiểm thử |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
 ---

@@ -342,6 +342,7 @@ More: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).
 | [docs/bake.md](docs/bake.md) | Adaptive bake and body privacy |
 | [docs/localization.md](docs/localization.md) | UI languages, overrides, hot reload |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Build, test, add a tool |
+| [docs/benchmarks/](docs/benchmarks/) | Benchmarks and test results |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
 ---

@@ -4,7 +4,7 @@
 
 | Version | Date | Available as |
 |---|---|---|
-| v1.0.0 | 2026-10-02 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.0.0) (latest) |
+| v1.0.0 | Pending | Release candidate; not yet published |
 | v0.8.1 | 2026-09-27 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.8.1) |
 | v0.6.3 | 2026-09-25 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.3) |
 | v0.6.2 | 2026-09-22 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.2); NuGet `RvtMcp.Server` 0.6.2 |
@@ -73,6 +73,12 @@ Follows v0.8.1. Tool counts: default **46**, `--toolsets all` **233**, adaptive 
 - **Destructive hints and response outcomes** — tools that replace or delete existing data now advertise `Destructive=true` with recovery guidance, including rebindings and takeoff-file overwrites. Repeated plugin/server response compaction preserves dry-run, rollback and unknown mutation outcomes. Takeoff exports through `output_path` retain successful completion when response detail is oversized; failed exports remain errors. Regression tests cover permission semantics, the two-stage guard and shared-config test isolation.
 
 ### Fixed
+
+- **Untyped JSON arguments** — preserve JSON values bound by the MCP SDK inside arrays and nested objects, including dimension references, filled-region and room-separator points, sheet renumber items, volumes and baked-tool arguments.
+
+- **Room and area failure handling** — capture Revit warnings in the tool result and silently roll back unresolved errors instead of opening failure dialogs. A rolled-back room transaction returns an error.
+
+- **MEP disconnect filter description** — advertise `mechanical`, matching the handler validation.
 
 - **Structured send-code toast results** — object and array results now produce compact JSON summaries instead of failing toast completion. Scalar/null handling and the 100-character summary limit are preserved.
 

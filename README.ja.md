@@ -320,6 +320,7 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 | [docs/bake.md](docs/bake.md) | Adaptive bake と本体プライバシー |
 | [docs/localization.md](docs/localization.md) | UI 言語、オーバーライド、ホットリロード |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | ビルド、テスト、ツール追加 |
+| [docs/benchmarks/](docs/benchmarks/) | ベンチマークとテスト結果 |
 | [CHANGELOG.md](CHANGELOG.md) | リリースノート |
 
 ---

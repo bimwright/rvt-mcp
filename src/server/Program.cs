@@ -2013,7 +2013,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_find_mep_disconnects", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Find MEP elements with open/unconnected End connectors (potential gaps in ductwork, piping, conduit). domainFilter: all|hvac|piping|electrical. viewOnly restricts to the active view.")]
+        [McpServerTool(Name = "revit_find_mep_disconnects", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Find MEP elements with open/unconnected End connectors (potential gaps in ductwork, piping, conduit). domainFilter: all|mechanical|piping|electrical. viewOnly restricts to the active view.")]
         public static async Task<string> FindMepDisconnects(string domainFilter = "all", bool viewOnly = false, int limit = 2000)
         {
             try
@@ -2263,7 +2263,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 
             if (!(@params is JsonElement element))
             {
-                var converted = JToken.FromObject(@params);
+                var converted = McpJsonInput.FromObject(@params);
                 if (converted is JObject convertedObj)
                     return convertedObj;
                 throw new ArgumentException("params must be a JSON object.");
@@ -2985,6 +2985,31 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 
     internal static class McpJsonInput
     {
+        // MCP binds untyped array items to System.Text.Json.JsonElement. Newtonsoft
+        // must read their JSON contents, including elements nested in native objects.
+        public static JToken FromObject(object value)
+        {
+            var serializer = Newtonsoft.Json.JsonSerializer.CreateDefault();
+            serializer.Converters.Add(new JsonElementConverter());
+            return JToken.FromObject(value, serializer);
+        }
+
+        private sealed class JsonElementConverter : Newtonsoft.Json.JsonConverter<JsonElement>
+        {
+            public override bool CanRead => false;
+
+            public override void WriteJson(JsonWriter writer, JsonElement value, Newtonsoft.Json.JsonSerializer serializer)
+            {
+                if (value.ValueKind == JsonValueKind.Undefined || value.ValueKind == JsonValueKind.Null)
+                    writer.WriteNull();
+                else
+                    JToken.Parse(value.GetRawText()).WriteTo(writer);
+            }
+
+            public override JsonElement ReadJson(JsonReader reader, Type objectType, JsonElement existingValue,
+                bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer) => throw new NotSupportedException();
+        }
+
         public static JArray RequiredArray(object value, string parameterName)
         {
             var array = OptionalArray(value, parameterName);
@@ -3022,7 +3047,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             if (value is string)
                 throw new ArgumentException($"{parameterName} must be a JSON array, not a string.");
 
-            var tokenFromObject = JToken.FromObject(value);
+            var tokenFromObject = FromObject(value);
             if (tokenFromObject.Type == JTokenType.Array)
                 return (JArray)tokenFromObject;
 
@@ -3058,7 +3083,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             if (value is string)
                 throw new ArgumentException($"{parameterName} must be a JSON object, not a string.");
 
-            var tokenFromObject = JToken.FromObject(value);
+            var tokenFromObject = FromObject(value);
             if (tokenFromObject.Type == JTokenType.Object)
                 return (JObject)tokenFromObject;
 
@@ -3100,7 +3125,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 
             try
             {
-                var tokenFromObject = JToken.FromObject(value);
+                var tokenFromObject = McpJsonInput.FromObject(value);
                 if (tokenFromObject.Type == JTokenType.Null)
                     return null;
                 if (tokenFromObject.Type == JTokenType.Array)

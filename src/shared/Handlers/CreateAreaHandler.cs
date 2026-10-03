@@ -164,6 +164,9 @@ namespace RvtMcp.Plugin.Handlers
                 using (var tx = new Transaction(doc, "RvtMcp: Create Area Inside"))
                 {
                     tx.Start();
+                    var failures = new SafeFailuresPreprocessor();
+                    tx.SetFailureHandlingOptions(tx.GetFailureHandlingOptions()
+                        .SetClearAfterRollback(true).SetFailuresPreprocessor(failures));
 
                     if (createdPlan)
                     {
@@ -200,7 +203,8 @@ namespace RvtMcp.Plugin.Handlers
                     {
                         if (createdPlan && tg.HasStarted())
                             tg.RollBack();
-                        return CommandResult.Fail("Create area transaction did not commit. Status: " + commitStatus);
+                        return CommandResult.Fail("Create area transaction did not commit. Status: " + commitStatus
+                            + (failures.Messages.Count > 0 ? ". " + string.Join("; ", failures.Messages) : ""));
                     }
 
                     string status = area.Area > 0.0001 ? "placed" : "not_enclosed";
@@ -238,7 +242,8 @@ namespace RvtMcp.Plugin.Handlers
                             area_scheme_name = areaPlan.AreaScheme?.Name ?? ""
                         },
                         created_area_plan = createdPlan,
-                        location = locData
+                        location = locData,
+                        warnings = failures.HadWarnings ? failures.Messages : null
                     });
                 }
             }

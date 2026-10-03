@@ -320,6 +320,7 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 | [docs/bake.md](docs/bake.md) | Adaptive bake 与正文隐私 |
 | [docs/localization.md](docs/localization.md) | 界面语言、覆盖、热重载 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 构建、测试、新增工具 |
+| [docs/benchmarks/](docs/benchmarks/) | 基准测试与测试结果 |
 | [CHANGELOG.md](CHANGELOG.md) | 发布说明 |
 
 ---

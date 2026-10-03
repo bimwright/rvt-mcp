@@ -49,6 +49,9 @@ namespace RvtMcp.Plugin.Handlers
             using (var tx = new Transaction(doc, "MCP: Create Room"))
             {
                 tx.Start();
+                var failures = new SafeFailuresPreprocessor();
+                tx.SetFailureHandlingOptions(tx.GetFailureHandlingOptions()
+                    .SetClearAfterRollback(true).SetFailuresPreprocessor(failures));
                 try
                 {
                     var room = doc.Create.NewRoom(level, point);
@@ -57,13 +60,18 @@ namespace RvtMcp.Plugin.Handlers
                     if (!string.IsNullOrEmpty(roomNumber))
                         room.Number = roomNumber;
 
-                    tx.Commit();
+                    var commitStatus = tx.Commit();
+                    if (commitStatus != TransactionStatus.Committed)
+                        return CommandResult.Fail("Create room transaction did not commit. Status: " + commitStatus
+                            + (failures.Messages.Count > 0 ? ". " + string.Join("; ", failures.Messages) : ""));
+
                     return CommandResult.Ok(new
                     {
                         elementId = RevitCompat.GetId(room.Id),
                         name = room.Name,
                         number = room.Number,
-                        level = level.Name
+                        level = level.Name,
+                        warnings = failures.HadWarnings ? failures.Messages : null
                     });
                 }
                 catch (Exception ex)

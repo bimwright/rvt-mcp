@@ -3697,7 +3697,7 @@
     },
     {
       "name": "revit_find_mep_disconnects",
-      "description_hash": "sha256:8be0af6e411d859f1cd25617b79cda57eaa926b88d99ee32b641ec94b2b072ba",
+      "description_hash": "sha256:23f8f23df473605d0f5a196695f724821569e69322df750c5eebef3a56ed6029",
       "inputSchema": {
         "properties": {
           "domainFilter": {

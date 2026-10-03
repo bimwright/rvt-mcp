@@ -4,7 +4,7 @@ using Autodesk.Revit.DB;
 namespace RvtMcp.Plugin
 {
     /// <summary>
-    /// Opt-in failure handling for send-code transactions and StairsEditScope.Commit.
+    /// Opt-in failure handling for typed/send-code transactions and StairsEditScope.Commit.
     /// Records and deletes warnings; unresolved errors force a silent rollback.
     /// Callers must report HadWarnings/Messages and inspect HadErrors and commit status.
     /// </summary>
