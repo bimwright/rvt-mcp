@@ -5,8 +5,15 @@ installer implements this same procedure: every run wires each detected client
 (`-Client <names>` limits it; `-Client none` skips it; `-WhatIf` previews;
 `-Uninstall -Client <names>` unwires) — this document remains the reference for the
 manual path, for clients the installer does not know, and for understanding
-what `-Client` does under the hood. Last verified on a live machine:
-2026-09-25.
+what `-Client` does under the hood. Last live-machine verification:
+2026-09-25 (documentation changes do not extend that tested scope).
+
+**Agent-assisted installs:** configure only the user's requested target client(s),
+which may differ from the client hosting the installer agent. Always pass an
+explicit `-Client` selection. **`claude` means Claude Code; `claude-desktop` means
+Claude Desktop.** For Desktop, direct config is the default; MCPB is an optional
+UI-based alternative. Inspect existing config and extension registrations before
+choosing one route. See [Desktop routes](install.md#claude-desktop-choose-one-registration-route).
 
 ## The contract (same for every client)
 
@@ -31,9 +38,13 @@ The `current` path never changes across upgrades — wire once, upgrade freely.
    (that loses comments and reorders keys).
 7. **Verify** with the client's own `list`/`get` command when one exists, else
    re-parse the file.
-8. **Handshake**: confirm `rvt-mcp` appears in the client's `tools/list`.
-9. **Restart** the client so it spawns the server. A Revit-dependent call
-   (`revit_get_current_view_info`) additionally needs Revit open with a model.
+8. **Restart** the target client so it spawns the server. Fully quit Desktop,
+   including the tray process, before editing its config; re-check the entry after
+   relaunch. A restart of the client hosting this session may end the session.
+9. **Verify the target connection**: its `tools/list` includes
+   `revit_get_current_view_info`. Revit is not required for tool discovery.
+10. **Verify the Revit handshake**: open a model in Revit, start MCP from
+    **Add-Ins → RvtMcp**, then call `revit_get_current_view_info` in the target.
 
 Edge-case rules, all clients:
 
@@ -58,9 +69,14 @@ three things differ — plan around them:
    persist their config from memory on exit — an entry written while the app
    runs may silently vanish when it quits. After the client restarts, check
    the file again and re-apply if the entry is gone.
-3. **You cannot self-verify.** `tools/list` and `revit_get_current_view_info`
-   are only callable in the *next* session. Tell the user what to expect:
+3. **Do not claim self-verification before reload.** Confirm the target tool
+   list and Revit handshake in the next session. Tell the user what to expect:
    `revit_*` tools after restart, then run the Verify steps below there.
+
+If the target is **another** client, keep this installer session running if
+possible and ask the user to restart and verify that target. Your own client's
+successful MCP calls do not verify Claude Desktop. Report untested stages as
+pending and provide the exact next action.
 
 ## Per-client procedures
 
@@ -79,6 +95,18 @@ claude mcp get rvt-mcp     # expect Scope: User config, Status: Connected
   the file again after they exit if entries reappear.
 
 ### Claude Desktop (file)
+
+This is the **direct-config route**, not the MCPB extension route. Preview with
+`install.ps1 -WhatIf -Client claude-desktop`, then apply the same selection after
+approval. Do not pass `-Client claude` (that configures Claude Code).
+
+Inspect both the active config below and Desktop's installed extensions first.
+If the gateway already has an MCPB registration, keep that route or obtain consent
+to disable/remove it in Desktop's UI before switching to direct config. Conversely,
+MCPB uses Setup with `-Client none` and requires consent to remove/disable a manual
+entry before enabling the extension. `-Client none` alone does not remove that entry.
+See [MCPB steps](install.md#claude-desktop-mcpb). Do not modify private extension
+storage to automate the UI.
 
 - MSIX (Store/MSIX install): `%LOCALAPPDATA%\Packages\<package-family>\LocalCache\Roaming\Claude\claude_desktop_config.json` — **check this first**. The family name is not always `Claude_*` (enterprise repackaging, channel variants) — probe `Packages\*\LocalCache\Roaming\Claude\` for any package that contains the `Claude` cache dir.
 - Classic/native installer (incl. the `AnthropicClaude` installer — app under `%LOCALAPPDATA%\AnthropicClaude`): `%APPDATA%\Claude\claude_desktop_config.json`.
@@ -209,13 +237,18 @@ MCP config lives in leveldb; do not edit files. Either:
 
 1. Client-native check where available (`claude mcp get`, `codex mcp get
    --json`, `grok mcp doctor`, `kilo mcp list`).
-2. `tools/list` shows `rvt-mcp` tools — installed servers seed
-   `toolsets=all` in `rvtmcp.config.json` (full surface); a bare exe without
-   that file defaults to 41 tools (`query,create,view,meta`). Either way
-   `revit_get_current_view_info` should be present.
-3. With Revit 2022–2027 open and a model loaded, call
-   `revit_get_current_view_info` → `{ "view_name": ..., "view_type": ...,
-   "project_name": ... }`.
+2. In the **requested target client**, `tools/list` shows `rvt-mcp` tools.
+   Installed servers seed `toolsets=all` in `rvtmcp.config.json`; a bare exe without
+   that file defaults to `query,create,view,meta`. Respect existing toolsets and
+   read-only choices instead of requiring a fixed count.
+   `revit_get_current_view_info` should be present; Revit need not be running yet.
+3. With Revit 2022–2027 open, a model loaded and MCP started from
+   **Add-Ins → RvtMcp**, call `revit_get_current_view_info` in the target and
+   confirm the successful response identifies that model/view.
+
+Report installation, target connection and Revit handshake separately. When tools
+are inaccessible to this agent or a user action is outstanding, mark that stage
+pending. A missing restart/model is not grounds for a full uninstall.
 
 ## Troubleshooting
 

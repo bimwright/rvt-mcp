@@ -35,23 +35,33 @@
 
 ## インストール
 
-**ユーザーの方へ：AI エージェントに任せてください。** 自分で何かを実行する必要はありません。下の 1 行をコピーして AI エージェント（Claude Code、Codex、Cursor など）に貼り付け、作業が終わるまでコーヒーでも飲んで待つだけです。エージェントは [AGENTS.md](AGENTS.md) に従い、インストールやクライアント設定の変更の前に必ず確認を求めます。
+**使用したいクライアントへのインストールを AI エージェントに依頼できます。** この Windows マシンで PowerShell の実行とローカルファイルの編集ができるエージェント（Claude Code、Codex、Cursor など）が必要です。ローカルツールのない通常のチャットでは実行できません。インストールするエージェントと、Revit ツールを使うクライアントは別でも構いません。[AGENTS.md](AGENTS.md) に従って変更をプレビューし、適用前に確認します。UI 操作やアプリの再起動はユーザーに依頼する場合があります。
+
+**Claude Desktop** の場合は、次を貼り付けてください：
 
 ```text
-rvt-mcp をインストールして: https://github.com/bimwright/rvt-mcp
+この Windows マシンで Claude Desktop 用に rvt-mcp をインストールしてください。
+先に https://github.com/bimwright/rvt-mcp/blob/master/AGENTS.md を読んでください。
+Claude Desktop だけを設定し、他のクライアントは設定しないでください。
+既存のインストールを確認し、変更をプレビューして書き込み前に確認を求めてください。
+UI 操作やアプリの再起動が必要なら明示してください。
 ```
 
-**自分でインストーラを実行する場合。** Revit を閉じてから PowerShell で：
+別のクライアントを使う場合は **Claude Desktop** をその名前に置き換えてください。**Claude Code と Claude Desktop は別の対象です：** インストーラの `claude` は Code、`claude-desktop` は Desktop を指します。
+
+**自分で実行する場合（Claude Desktop、直接設定）。** Revit を閉じ、Claude Desktop を完全に終了（トレイのプロセスも含む）してから PowerShell で：
 
 ```powershell
 $tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/releases/latest).tag_name
 $dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
 Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile "$dir.zip"
 Expand-Archive "$dir.zip" -DestinationPath $dir -Force
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf -Client claude-desktop
+# プレビューを確認してから適用：
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-desktop
 ```
 
-1 回の実行で両側をセットアップします：マシン上のすべての Revit 2022–2027 へのアドインと、検出したすべての MCP クライアントへの `rvt-mcp` エントリです（各設定は先にバックアップされます）。`-WhatIf` でプレビュー、`-Client claude,cursor` で指定したクライアントだけを接続、`-Client none` でクライアント設定に触れずにサーバを自分で登録できます。サーバの場所は `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe` です（[クライアント別手順](docs/mcp-client-wiring.md)）。
+検出したすべての Revit 2022–2027 にアドインをインストールし、Claude Desktop だけに `rvt-mcp` を登録します（設定は先にバックアップ）。Claude Code は `-Client claude`、複数の指定クライアントはカンマ区切りです。`-Client` を省略すると検出した全クライアントを接続し、`-Client none` は設定を変更しません。サーバは `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe` にあります（[クライアント別手順、Desktop classic/MSIX のパスを含む](docs/mcp-client-wiring.md)）。
 
 **動作確認：** AI クライアントを再起動し、Revit でモデルを開き、リボン（**アドイン**（Add-Ins）→ **RvtMcp**）で MCP を開始して、エージェントに `revit_get_current_view_info` を呼ばせます。アクティブビューの名前と種類が返れば成功です。
 
@@ -59,7 +69,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 **v0.8.1 または v0.6.x からの更新：** これらのバージョンは設定と ToolBaker データを `%LOCALAPPDATA%\RvtMcp\` に保存します。v1.0.0 は `%LOCALAPPDATA%\Bimwright\rvt-mcp\` を使い、インストーラが旧フォルダーをそこへ移動します。先に Revit とすべての MCP クライアントを閉じてください。実行中の旧サーバーがフォルダーをロックするためです。PowerShell で `Test-Path "$env:LOCALAPPDATA\RvtMcp"` を実行すると存在を確認できます。インストーラが `Both … exist` または `Could not move …` で停止した場合、移動した分は元に戻されています。設定と ToolBaker データがあるフォルダーを残し、もう一方は削除せず **名前を変更**（例：`RvtMcp.bak`）し、そのフォルダーを使っていたクライアントを閉じてから、インストーラを再実行してください。
 
-**Claude Desktop MCPB（v1.0.0）：** 同じリリースから別途インストールした gateway を起動します。Desktop の重複登録を避けるため、この方法では `install.ps1 -Client none` を使います。[MCPB のインストールと設定](docs/install.md#claude-desktop-mcpb)を参照してください。
+**Claude Desktop 拡張（MCPB、任意）：** エージェントによるインストールでは上の直接設定を既定とします。拡張/設定 UI を使いたい場合は `-Client none` で Setup を実行し、Desktop の拡張 UI から `.mcpb` をインストールします。**どちらか一方だけを使ってください。** `-Client none` は既存の手動登録を削除しません。v1.0.0 の拡張は未署名で、gateway/アドインをインストールせず、同じ release の正確な server build を必要とします。[MCPB のインストールと設定](docs/install.md#claude-desktop-mcpb)を参照してください。
 
 ---
 

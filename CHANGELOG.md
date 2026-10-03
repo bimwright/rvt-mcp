@@ -22,6 +22,15 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
+## Post-v1.0.0 documentation updates
+
+Documentation-only follow-up to installation feedback. These changes update the repository guides, not the already published v1.0.0 Setup ZIP/MCPB or their bundled instructions. For the current install protocol, use [AGENTS.md](AGENTS.md) on the default branch.
+
+- **Agent-assisted installer guidance** — the four READMEs now provide a Claude Desktop-specific prompt and distinguish the installer agent from the requested target client. `claude` selects Claude Code; `claude-desktop` selects Desktop. Explicit target selection, preview/approval, checksum verification and UI/restart handoff are documented in [AGENTS.md](AGENTS.md).
+- **Claude Desktop registration routes** — direct config is the default for agent-assisted installs; MCPB remains an optional extension/settings-UI route. Documented classic/MSIX config detection, existing registrations, duplicate prevention and the same-release executable-hash requirement. See [Desktop install routes](docs/install.md#claude-desktop-choose-one-registration-route) and [per-client wiring](docs/mcp-client-wiring.md#claude-desktop-file).
+- **Old-to-new upgrade failures and recovery** — documented v0.8.1/v0.6.x → v1.0.0 migration problems: `Both … exist`, `Could not move …`, runtime `MIGRATION_REQUIRED`, stale server paths and MCPB mismatch/duplicate registration. Recovery preserves settings and ToolBaker data, checks rollback reports, and avoids blind deletion or uninstall. See [upgrade troubleshooting](docs/install.md#troubleshooting-upgrades-from-v081-or-v06x-to-v100).
+- **Verification reporting** — installation, target-client connection and Revit handshake are separate checks; outstanding user actions stay pending. Revit is not required for `tools/list`. See [verification and handoff](docs/install.md#verify-and-hand-off).
+
 ## v1.0.0 - Change tracking, runtime controls, and viewport layout
 
 Follows v0.8.1. Tool counts: default **46**, `--toolsets all` **233**, adaptive bake **236**, `--read-only` **95** (without personal baked tools). Server and add-ins must come from the same release.

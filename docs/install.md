@@ -6,25 +6,34 @@ The quick path is in the [README](../README.md#install). This page has the detai
 
 Client machines should use the setup ZIP from [GitHub Releases](https://github.com/bimwright/rvt-mcp/releases/latest). It bundles a self-contained MCP server and Revit 2022–2027 plugins — no .NET SDK, NuGet global tool, or source clone. AI agents follow [AGENTS.md](../AGENTS.md).
 
-The installer detects Revit 2022–2027 (a year counts when its `Revit.exe` exists), installs the matching add-ins and the server at the fixed path `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe`, checks that the server starts and verifies the add-ins against the package. It also seeds `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json` with `"toolsets": ["all"]` when the file doesn't already set `toolsets` — so a fresh install exposes the full 229-tool surface, while your own `toolsets` choice survives upgrades (a bare `rvt-mcp.exe` without the file still defaults to `query,create,view,meta`). It then wires every MCP client it detects — `-Client <names>` wires only those, `-Client none` leaves client configs untouched, `-WhatIf` previews, and `-Uninstall -Client <names>` removes just the `rvt-mcp` entry. It applies [mcp-client-wiring.md](mcp-client-wiring.md): `.bak` backup before each edit, minimal text edits that keep JSONC comments, repointing of old versioned paths, and reporting (never replacing) of custom launchers and legacy `bimwright-rvt*` entries. Or register a stdio server named `rvt-mcp` by hand — or let your AI agent do it ([AGENTS.md](../AGENTS.md), Step 3).
+The installer detects Revit 2022–2027 (a year counts when its `Revit.exe` exists), installs the matching add-ins and the server at the fixed path `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe`, checks that the server starts and verifies the add-ins against the package. It also seeds `%LOCALAPPDATA%\Bimwright\rvt-mcp\rvtmcp.config.json` with `"toolsets": ["all"]` when the file doesn't already set `toolsets` — so a fresh install exposes the full tool surface, while your own `toolsets` choice survives upgrades (a bare `rvt-mcp.exe` without the file still defaults to `query,create,view,meta`).
+
+Without `-Client`, it wires every MCP client it detects. **For agent-assisted installs, explicitly select only the user's requested target(s):** `claude` means Claude Code, **`claude-desktop` means Claude Desktop**. The installer agent may run in a different client and need not configure itself. `-Client none` leaves client configs untouched, `-WhatIf` previews, and `-Uninstall -Client <names>` removes just the selected client's `rvt-mcp` entry. It applies [mcp-client-wiring.md](mcp-client-wiring.md): `.bak` backup before each edit, minimal text edits that keep JSONC comments, repointing old versioned paths, and reporting (never replacing) custom launchers and legacy `bimwright-rvt*` entries.
 
 Do **not** install v0.5.0 or earlier ZIPs. Do **not** `dotnet tool install -g Bimwright.Rvt.Server` (legacy 0.1–0.3). Do **not** use NuGet instead of this ZIP on a Revit client machine — the tool package has no add-in.
 
 On a fresh machine, follow the [README verification steps](../README.md#install) after installing and registering the MCP client.
 
+## Claude Desktop: choose one registration route
+
+**Default for agent-assisted installs: direct config.** Fully quit Desktop (tray included) and close Revit, then preview `install.ps1 -WhatIf -Client claude-desktop` and apply `install.ps1 -Client claude-desktop` after approval. The installer supports classic and MSIX config paths; see [Desktop wiring](mcp-client-wiring.md#claude-desktop-file). Restart Desktop before testing. No `.mcpb` is needed for this route.
+
+**Alternative: MCPB extension.** Choose it when the user wants Desktop's extension/settings UI. Use `-Client none` and the procedure below. Existing registrations must be inspected first; switching routes requires consent to remove/disable the old registration. Do not enable both for the same gateway.
+
 ## Claude Desktop MCPB
 
-Use the Setup ZIP and `rvt-mcp-desktop-1.0.0.mcpb` from the same v1.0.0 release. The extension does not install
-Revit, the gateway or its add-ins.
+Use the Setup ZIP and `rvt-mcp-desktop-1.0.0.mcpb` from the same v1.0.0 release and verify both against their SHA-256 sidecars. The v1.0.0 extension is unsigned and does not install Revit, the gateway or its add-ins.
 
 1. Close Revit and stop clients using the gateway. Preview the matching installer
    with `install.ps1 -WhatIf -Client none`, then install with `install.ps1 -Client none`.
    To wire other clients, name only those clients with `-Client`; leave Claude Desktop
    to the extension. Existing Desktop config entries are preserved, so remove or
    disable a previous manual `rvt-mcp` registration before enabling the extension.
-2. Install the MCPB through Claude Desktop's custom-extension interface. Use one
-   registration for this gateway. Start Revit with the matching add-in, then ask
-   for `revit_get_current_view_info`.
+2. In Claude Desktop, open **Settings → Extensions → Advanced settings → Install Extension…**
+   and select the verified `.mcpb`. Labels may vary by Desktop build. Ask the user to
+   perform this step unless the agent has an authorized UI tool; do not edit private
+   extension storage or bypass organizational policy blocking custom extensions.
+   Use one registration for this gateway and connect/reconnect before verification.
 3. The launcher checks the executable SHA-256 against the server in the matching
    Setup ZIP. Its default path is
    `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe`.
@@ -41,6 +50,16 @@ Revit, the gateway or its add-ins.
 5. Tools and prompts are discovered on connection. Upgrade the Setup and extension
    together; a new server build needs the matching extension. Removing the
    extension does not uninstall the gateway, add-ins or personal data.
+
+## Verify and hand off
+
+Report these stages separately:
+
+1. **Installed:** the installer completed and verified server/add-in files.
+2. **Claude Desktop connected:** after a full quit/relaunch, the selected config/extension route connects and `tools/list` includes `revit_get_current_view_info`. Revit need not be running for tool discovery. An agent in another client cannot prove Desktop's connection by testing its own tools.
+3. **Revit handshake verified:** open a model in Revit, start MCP from **Add-Ins → RvtMcp**, and call `revit_get_current_view_info` with no args in Desktop. Confirm it identifies the actual open model/view.
+
+If a user UI action, restart or model is still needed, report that stage as **pending**, not a completed end-to-end install. If the installer agent cannot access Desktop tools, give the user a prompt to call `revit_get_current_view_info` after restart and report the result. Troubleshoot the failing stage; do not uninstall valid files or purge personal data merely because Revit is closed or the client has not reloaded.
 
 ## Upgrade
 
@@ -60,13 +79,27 @@ Runtime security settings combine with the Revit add-in's settings: read-only ap
 if either side enables it; `send_code` requires both sides to allow it. Client flags
 cannot weaken the policy configured in Revit.
 
-Updates are manual. Close all Revit windows and stop the MCP connection in your AI client, extract the new release ZIP into a separate folder, then run its `install.ps1 -WhatIf` followed by `install.ps1`. Upgrade the server and plugins together; restart Revit and the MCP client, then repeat the [checks in the README](../README.md#install). Do not uninstall first: upgrades replace plugins and the server in place.
+Updates are manual. Close all Revit windows and stop clients using the gateway, extract the new release ZIP into a separate folder, then preview and apply with the same explicit client selection: for Desktop direct config, `install.ps1 -WhatIf -Client claude-desktop` followed by `install.ps1 -Client claude-desktop`; for MCPB, use `-Client none` and update the matching extension too. Upgrade the server and plugins together; restart Revit and the target MCP client, then repeat the [verification stages](#verify-and-hand-off). Do not uninstall first: upgrades replace plugins and the server in place.
 
-The server path never changes between versions, so MCP clients keep working and only need a restart; clients still running the previous copy keep it until they restart (the summary lists it under `In use`, and the next install removes it). Older add-in copies that carry RvtMcp's AddInId — Bimwright-era leftovers — are removed automatically, because Revit would otherwise load only one of them. A machine-wide copy under `%ProgramData%` stops the install (removing it needs admin rights).
+The server path never changes between versions, so MCP clients keep working and only need a restart; clients still running the previous copy keep it until they restart (the summary lists it under `In use`, and the next install removes it). For MCPB this stable path is not a compatibility guarantee: the extension's exact hash check still requires a matching extension update. Older add-in copies that carry RvtMcp's AddInId — Bimwright-era leftovers — are removed automatically, because Revit would otherwise load only one of them. A machine-wide copy under `%ProgramData%` stops the install (removing it needs admin rights).
 
 Before replacing files, the installer checks package checksums when a manifest is present, validates every selected plugin ZIP (including its add-in manifest), stages the payload and refuses installation while Revit is running. It then starts the new server once (`--help`) and verifies the installed add-ins byte for byte against the package. Any caught error restores the previous add-ins and server. If rollback is blocked by file locks or permissions, the error identifies retained `.rvtmcp-rollback-*` backups; hard termination or power loss requires manual recovery.
 
-Upgrading from v0.6.2 or earlier: those installers put the server in a versioned folder (`...\rvt\server\0.6.2\`). The summary lists such folders under `Legacy`; point your clients at the new `current` path, then remove the old copies with `install.ps1 -PruneOldServers`.
+Upgrading from v0.6.2 or earlier: those installers put the server in a versioned folder (`...\rvt\server\0.6.2\`). The summary lists such folders under `Legacy`; point your clients at the new `current` path, then preview/apply `install.ps1 -PruneOldServers` with the same explicit `-Client` selection to remove the old copies.
+
+### Troubleshooting upgrades from v0.8.1 or v0.6.x to v1.0.0
+
+These versions used `%LOCALAPPDATA%\RvtMcp\`; v1.0.0 moves the profile to `%LOCALAPPDATA%\Bimwright\rvt-mcp\`. Installation reports include migration conflicts and locked-folder failures. The guidance below explains recovery; it does not mean the released installer has been patched.
+
+| Symptom | What to check and how to recover |
+|---|---|
+| Installer stops with `Both … exist` | Both legacy and current profile folders exist; the installer refuses to merge them. Back up both while Revit and gateway clients are closed. Inspect which holds the settings and ToolBaker data to retain. With the user's approval, rename the other folder to an unused backup name rather than deleting it, then preview/retry installation. If both contain data to keep, stop and resolve the conflict from backups before retrying; do not discard one blindly. |
+| Installer stops with `Could not move …` | An old gateway/client may still lock the legacy folder; permissions may also block the move. Fully quit clients using the gateway, close Revit, and check the error's recovery report and any retained `.rvtmcp-rollback-*` backups. Resolve the lock/permission issue, then preview/retry. Do not purge user data or auto-kill processes. |
+| Runtime reports `MIGRATION_REQUIRED` | Legacy/current files conflict or migration is incomplete. Keep source folders and backups, inspect the reported conflict and reconcile the data to retain before retrying. Do not erase the current profile to force fallback settings. |
+| Client still points at `%LOCALAPPDATA%\RvtMcp\...` or a versioned server folder | Check the active client's command against the install summary's `Server :` path (`%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe`). Repoint only that entry, preserve args/env, and restart the target. Custom launchers require approval before changing. See [per-client wiring](mcp-client-wiring.md). |
+| Desktop connects twice, or MCPB exposes `rvt_mcp_setup_status` after upgrade | Use [one Desktop registration route](#claude-desktop-choose-one-registration-route). For MCPB, update Setup and extension from the same release; an older extension can reject the new executable's hash. `-Client none` does not remove an old manual entry. |
+
+After recovery, repeat the [three verification stages](#verify-and-hand-off). A closed Revit session or a pending Desktop restart is not a reason to uninstall or purge an otherwise valid installation. If recovery remains blocked, report the old/new versions, target client/install type and exact error at <https://github.com/bimwright/rvt-mcp/issues>; do not attach personal profile data or authentication tokens.
 
 ## Uninstall
 

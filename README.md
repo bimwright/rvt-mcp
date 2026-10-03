@@ -35,23 +35,32 @@ Agents get a **typed tool surface** for common Revit work, a C# escape hatch for
 
 ## Install
 
-**For users: let your AI agent do it.** You don't need to run anything yourself. Copy the line below, paste it into your AI agent (Claude Code, Codex, Cursor, …) and go get a coffee while it does the job. The agent follows [AGENTS.md](AGENTS.md) and asks you before it installs anything or edits your client config.
+**Let an AI agent install it for your target client.** Use an agent that can run PowerShell and edit local files on this Windows machine (Claude Code, Codex, Cursor, …), not a chat session without local tools. The agent installing it can be different from the client where you will use Revit tools. It follows [AGENTS.md](AGENTS.md), previews changes and asks before applying them; you may still need to approve a UI step or restart an app.
+
+For **Claude Desktop**, paste:
 
 ```text
-Install rvt-mcp for me: https://github.com/bimwright/rvt-mcp
+Install rvt-mcp for Claude Desktop on this Windows machine.
+First read https://github.com/bimwright/rvt-mcp/blob/master/AGENTS.md.
+Configure only Claude Desktop, not other clients. Inspect existing installations,
+preview changes and ask before writing. Tell me if I need to use the UI or restart an app.
 ```
 
-**Or run the installer yourself.** Close Revit, then in PowerShell:
+For another client, replace **Claude Desktop** with its name. **Claude Code and Claude Desktop are different targets:** installer option `claude` means Code; `claude-desktop` means Desktop.
+
+**Or run the installer yourself (Claude Desktop, direct config).** Close Revit and fully quit Claude Desktop (including its tray process), then in PowerShell:
 
 ```powershell
 $tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/releases/latest).tag_name
 $dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
 Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile "$dir.zip"
 Expand-Archive "$dir.zip" -DestinationPath $dir -Force
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf -Client claude-desktop
+# Review the preview before applying:
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-desktop
 ```
 
-One run sets up both sides: the add-in for every Revit 2022–2027 on the machine, and the `rvt-mcp` entry in every MCP client it finds (each config is backed up first). Add `-WhatIf` to preview, `-Client claude,cursor` to wire only those clients, or `-Client none` to skip client configs and register the server yourself — it lives at `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe` ([per-client steps](docs/mcp-client-wiring.md)).
+This installs the add-in for every detected Revit 2022–2027 and registers `rvt-mcp` only in Claude Desktop (the config is backed up first). For Claude Code use `-Client claude`; for multiple requested clients use a comma list. Omitting `-Client` wires every detected client; `-Client none` leaves configs untouched. The server lives at `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe` ([per-client steps, including Desktop classic/MSIX paths](docs/mcp-client-wiring.md)).
 
 **Check it works:** restart your AI client, open a model in Revit, start MCP from the ribbon (**Add-Ins** → **RvtMcp**) and ask the agent to call `revit_get_current_view_info`. It should return the active view's name and type.
 
@@ -59,7 +68,7 @@ One run sets up both sides: the add-in for every Revit 2022–2027 on the machin
 
 **Upgrading from v0.8.1 or v0.6.x:** those versions keep your settings and ToolBaker data in `%LOCALAPPDATA%\RvtMcp\`; v1.0.0 uses `%LOCALAPPDATA%\Bimwright\rvt-mcp\`, and the installer moves the old folder there. Close Revit and every MCP client first, because a running old server locks the folder. Check in PowerShell with `Test-Path "$env:LOCALAPPDATA\RvtMcp"`. If the installer stops with `Both … exist` or `Could not move …`, it has undone what it moved: keep the folder that holds your settings and ToolBaker data, **rename the other one (for example to `RvtMcp.bak`) instead of deleting it**, close the clients that were using it, and run the installer again.
 
-**Claude Desktop MCPB (v1.0.0):** the extension launches the separately installed gateway from the matching release. Use `install.ps1 -Client none` for this route to avoid a duplicate Desktop registration. See [MCPB installation and settings](docs/install.md#claude-desktop-mcpb).
+**Claude Desktop extension (MCPB, optional):** direct config above is the default for agent-assisted installs. If you want the extension/settings UI, use Setup with `-Client none`, then install the `.mcpb` through Desktop's extension UI. **Choose one route, not both.** `-Client none` does not remove an existing manual registration. The v1.0.0 extension is unsigned, does not install the gateway/add-ins, and requires the exact server build from the same release. See [MCPB installation and settings](docs/install.md#claude-desktop-mcpb).
 
 ---
 

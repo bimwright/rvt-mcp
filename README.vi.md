@@ -35,23 +35,33 @@ Agent có **bộ tool typed** cho việc Revit thường gặp, escape hatch C# 
 
 ## Cài đặt
 
-**Người dùng: để AI agent cài giúp.** Bạn không cần tự chạy gì. Copy dòng dưới, dán vào AI agent của bạn (Claude Code, Codex, Cursor, …) rồi đi pha cà phê trong lúc agent làm việc. Agent làm theo [AGENTS.md](AGENTS.md) và hỏi bạn trước khi cài hay sửa config client.
+**Để AI agent cài cho client bạn muốn sử dụng.** Dùng agent có thể chạy PowerShell và sửa file trên máy Windows này (Claude Code, Codex, Cursor, …), không phải phiên chat thiếu công cụ thao tác máy. Agent thực hiện cài đặt có thể khác client bạn dùng để làm việc với Revit. Agent làm theo [AGENTS.md](AGENTS.md), xem trước thay đổi và hỏi trước khi áp dụng; bạn vẫn có thể cần thao tác UI hoặc khởi động lại ứng dụng.
+
+Với **Claude Desktop**, dán:
 
 ```text
-Cài rvt-mcp giúp tôi: https://github.com/bimwright/rvt-mcp
+Hãy cài rvt-mcp để tôi sử dụng trong Claude Desktop trên máy Windows này.
+Đọc https://github.com/bimwright/rvt-mcp/blob/master/AGENTS.md trước.
+Chỉ cấu hình Claude Desktop, không cấu hình client khác. Kiểm tra cài đặt hiện có,
+xem trước thay đổi và xin xác nhận trước khi ghi. Nếu cần tôi thao tác UI
+hoặc restart ứng dụng, hãy nói rõ.
 ```
 
-**Hoặc tự chạy installer.** Đóng Revit, rồi trong PowerShell:
+Với client khác, thay **Claude Desktop** bằng tên client đó. **Claude Code và Claude Desktop là hai đích khác nhau:** tùy chọn installer `claude` là Code; `claude-desktop` là Desktop.
+
+**Hoặc tự chạy installer (Claude Desktop, config trực tiếp).** Đóng Revit và thoát hẳn Claude Desktop (kể cả tiến trình ở khay hệ thống), rồi trong PowerShell:
 
 ```powershell
 $tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/releases/latest).tag_name
 $dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
 Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile "$dir.zip"
 Expand-Archive "$dir.zip" -DestinationPath $dir -Force
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf -Client claude-desktop
+# Đọc bản xem trước rồi mới áp dụng:
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-desktop
 ```
 
-Một lần chạy cài cả hai phía: add-in cho mọi bản Revit 2022–2027 trên máy, và entry `rvt-mcp` trong mọi MCP client tìm thấy (mỗi config được backup trước). Thêm `-WhatIf` để xem trước, `-Client claude,cursor` để chỉ nối các client đó, hoặc `-Client none` để không đụng config client và tự đăng ký server — nằm ở `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe` ([các bước cho từng client](docs/mcp-client-wiring.md)).
+Lệnh này cài add-in cho mọi bản Revit 2022–2027 phát hiện được và chỉ đăng ký `rvt-mcp` trong Claude Desktop (config được backup trước). Với Claude Code dùng `-Client claude`; với nhiều client được yêu cầu dùng danh sách phân cách bằng dấu phẩy. Bỏ `-Client` sẽ nối mọi client phát hiện được; `-Client none` giữ nguyên config. Server nằm ở `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe` ([các bước cho từng client, gồm đường dẫn Desktop classic/MSIX](docs/mcp-client-wiring.md)).
 
 **Kiểm tra:** khởi động lại AI client, mở một model trong Revit, bật MCP trên ribbon (**Add-Ins** → **RvtMcp**) rồi nhờ agent gọi `revit_get_current_view_info`. Kết quả phải là tên và loại của view đang mở.
 
@@ -59,7 +69,7 @@ Một lần chạy cài cả hai phía: add-in cho mọi bản Revit 2022–2027
 
 **Nâng cấp từ v0.8.1 hoặc v0.6.x:** các bản này lưu cài đặt và dữ liệu ToolBaker trong `%LOCALAPPDATA%\RvtMcp\`; v1.0.0 dùng `%LOCALAPPDATA%\Bimwright\rvt-mcp\` và installer sẽ chuyển folder cũ sang đó. Hãy đóng Revit và mọi MCP client trước, vì server cũ đang chạy sẽ khóa folder. Kiểm tra trong PowerShell bằng `Test-Path "$env:LOCALAPPDATA\RvtMcp"`. Nếu installer dừng với thông báo `Both … exist` hoặc `Could not move …`, nó đã hoàn tác phần đã di chuyển: giữ folder đang chứa cài đặt và dữ liệu ToolBaker của bạn, **đổi tên folder còn lại (ví dụ thành `RvtMcp.bak`) thay vì xóa**, đóng các client đang dùng nó rồi chạy lại installer.
 
-**Claude Desktop MCPB (v1.0.0):** extension chạy gateway đã cài riêng từ cùng bản phát hành. Với cách này, dùng `install.ps1 -Client none` để tránh đăng ký trùng trong Desktop. Xem [cài MCPB và các setting](docs/install.md#claude-desktop-mcpb).
+**Extension Claude Desktop (MCPB, tùy chọn):** config trực tiếp ở trên là đường mặc định khi agent cài hộ. Nếu muốn UI extension/settings, chạy Setup với `-Client none`, rồi cài `.mcpb` qua UI extension của Desktop. **Chọn một đường, không làm cả hai.** `-Client none` không xóa registration thủ công đã có. Extension v1.0.0 chưa ký, không cài gateway/add-in và yêu cầu đúng server build từ cùng release. Xem [cài MCPB và các setting](docs/install.md#claude-desktop-mcpb).
 
 ---
 

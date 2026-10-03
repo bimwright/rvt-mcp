@@ -35,23 +35,32 @@ Agent 可以使用覆盖常见 Revit 工作的 **typed 工具面**、应对其�
 
 ## 安装
 
-**普通用户：交给 AI agent。** 你不需要自己运行任何命令。复制下面这一行，粘贴给你的 AI agent（Claude Code、Codex、Cursor 等），然后去泡杯咖啡，等它完成即可。agent 会按照 [AGENTS.md](AGENTS.md) 操作，在安装或修改客户端配置之前先征求你的同意。
+**让 AI agent 为指定客户端安装。** 使用能在这台 Windows 电脑上运行 PowerShell、编辑本地文件的 agent（Claude Code、Codex、Cursor 等），而非没有本地工具的普通聊天。执行安装的 agent 可以与之后使用 Revit 工具的客户端不同。agent 按照 [AGENTS.md](AGENTS.md) 预览更改并在应用前征求同意；你仍可能需要操作界面或重启应用。
+
+如需安装到 **Claude Desktop**，粘贴：
 
 ```text
-帮我安装 rvt-mcp：https://github.com/bimwright/rvt-mcp
+请在这台 Windows 电脑上为 Claude Desktop 安装 rvt-mcp。
+先阅读 https://github.com/bimwright/rvt-mcp/blob/master/AGENTS.md。
+只配置 Claude Desktop，不配置其他客户端。检查现有安装，预览更改并在写入前征求同意。
+如需我操作界面或重启应用，请明确说明。
 ```
 
-**或者自己运行安装程序。** 先关闭 Revit，然后在 PowerShell 中：
+如需其他客户端，请替换 **Claude Desktop**。**Claude Code 与 Claude Desktop 是不同目标：** 安装参数 `claude` 表示 Code，`claude-desktop` 表示 Desktop。
+
+**或者自己运行安装程序（Claude Desktop，直接配置）。** 关闭 Revit，完全退出 Claude Desktop（包括托盘进程），然后在 PowerShell 中：
 
 ```powershell
 $tag = (Invoke-RestMethod https://api.github.com/repos/bimwright/rvt-mcp/releases/latest).tag_name
 $dir = "$env:TEMP\RvtMcp.Setup-$tag-win-x64"
 Invoke-WebRequest "https://github.com/bimwright/rvt-mcp/releases/download/$tag/RvtMcp.Setup-$tag-win-x64.zip" -OutFile "$dir.zip"
 Expand-Archive "$dir.zip" -DestinationPath $dir -Force
-powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -WhatIf -Client claude-desktop
+# 检查预览后再应用：
+powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-desktop
 ```
 
-一次运行即可配置两端：为本机所有 Revit 2022–2027 安装插件，并在检测到的每个 MCP 客户端中写入 `rvt-mcp` 条目（每个配置都会先备份）。加 `-WhatIf` 可预览，用 `-Client claude,cursor` 只连接这些客户端，或用 `-Client none` 不改动客户端配置、自己注册 server——路径为 `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe`（[各客户端步骤](docs/mcp-client-wiring.md)）。
+此命令为检测到的所有 Revit 2022–2027 安装插件，仅在 Claude Desktop 中注册 `rvt-mcp`（先备份配置）。Claude Code 使用 `-Client claude`；多个指定客户端使用逗号分隔。省略 `-Client` 会连接所有检测到的客户端；`-Client none` 保持配置不变。server 路径为 `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe`（[各客户端步骤，含 Desktop classic/MSIX 路径](docs/mcp-client-wiring.md)）。
 
 **验证：** 重启 AI 客户端，在 Revit 中打开模型，在 ribbon（**附加模块**（Add-Ins）→ **RvtMcp**）上启动 MCP，然后让 agent 调用 `revit_get_current_view_info`。返回当前视图的名称和类型即表示成功。
 
@@ -59,7 +68,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 **从 v0.8.1 或 v0.6.x 升级：** 这些版本把设置和 ToolBaker 数据保存在 `%LOCALAPPDATA%\RvtMcp\`；v1.0.0 使用 `%LOCALAPPDATA%\Bimwright\rvt-mcp\`，安装程序会把旧文件夹移动过去。请先关闭 Revit 和所有 MCP 客户端，因为仍在运行的旧 server 会锁定该文件夹。可在 PowerShell 中用 `Test-Path "$env:LOCALAPPDATA\RvtMcp"` 检查。如果安装程序因 `Both … exist` 或 `Could not move …` 而停止，它会撤销已移动的内容：保留存有你的设置和 ToolBaker 数据的文件夹，**把另一个重命名（例如 `RvtMcp.bak`）而不是删除**，关闭正在使用它的客户端，然后重新运行安装程序。
 
-**Claude Desktop MCPB（v1.0.0）：** 扩展启动从同一版本单独安装的 gateway。此方式请使用 `install.ps1 -Client none`，避免 Desktop 重复注册。参见 [MCPB 安装与设置](docs/install.md#claude-desktop-mcpb)。
+**Claude Desktop 扩展（MCPB，可选）：** agent 辅助安装默认采用上面的直接配置。如需扩展/设置界面，用 `-Client none` 运行 Setup，再通过 Desktop 扩展界面安装 `.mcpb`。**只选一种方式，不要同时注册。** `-Client none` 不会删除已有的手动注册。v1.0.0 扩展未签名，不安装 gateway/插件，且要求同一 release 的确切 server build。参见 [MCPB 安装与设置](docs/install.md#claude-desktop-mcpb)。
 
 ---
 
