@@ -315,6 +315,10 @@ namespace RvtMcp.Plugin
 
         private ResponseSpillResult WriteSqlite(string commandName, JToken token)
         {
+            // Bind initialization to our referenced bundle. Revit can load another
+            // add-in's batteries assembly first, which SqliteConnection's reflection
+            // probe may initialize instead of the SQLitePCLRaw.core used here.
+            SQLitePCL.Batteries_V2.Init();
             var tables = Relationalize(token);
             var path = BuildPath(commandName, ".sqlite");
 

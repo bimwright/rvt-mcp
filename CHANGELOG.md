@@ -80,6 +80,8 @@ Follows v0.8.1. Tool counts: default **46**, `--toolsets all` **233**, adaptive 
 
 - **MEP disconnect filter description** — advertise `mechanical`, matching the handler validation.
 
+- **SQLite spill initialization in Revit** — initialize the referenced SQLite bundle explicitly when writing a database, so another add-in's loaded bundle cannot leave this gateway's provider unset.
+
 - **Structured send-code toast results** — object and array results now produce compact JSON summaries instead of failing toast completion. Scalar/null handling and the 100-character summary limit are preserved.
 
 - **Closed-document change capture** — capture summaries use metadata collected during transactions, so a command that closes its temporary project or EditFamily document before returning does not dereference an invalid Revit document.
