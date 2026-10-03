@@ -57,6 +57,8 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 **更新：** 新しいリリースのインストーラを同じ手順で実行します。先にアンインストールは不要で、クライアントは再起動だけで済みます。**アンインストール：** 同じフォルダで `uninstall.ps1 -Yes` を実行するとアドインとサーバが削除されます（`-Purge` を付けない限り設定は残ります）。クライアントのエントリも消すには、先に `install.ps1 -Uninstall -Client auto` を実行してください。開発者向け・NuGet を含む詳細：[docs/install.md](docs/install.md)。
 
+**v0.8.1 または v0.6.x からの更新：** これらのバージョンは設定と ToolBaker データを `%LOCALAPPDATA%\RvtMcp\` に保存します。v1.0.0 は `%LOCALAPPDATA%\Bimwright\rvt-mcp\` を使い、インストーラが旧フォルダーをそこへ移動します。先に Revit とすべての MCP クライアントを閉じてください。実行中の旧サーバーがフォルダーをロックするためです。PowerShell で `Test-Path "$env:LOCALAPPDATA\RvtMcp"` を実行すると存在を確認できます。インストーラが `Both … exist` または `Could not move …` で停止した場合、移動した分は元に戻されています。設定と ToolBaker データがあるフォルダーを残し、もう一方は削除せず **名前を変更**（例：`RvtMcp.bak`）し、そのフォルダーを使っていたクライアントを閉じてから、インストーラを再実行してください。
+
 **Claude Desktop MCPB（v1.0.0）：** 同じリリースから別途インストールした gateway を起動します。Desktop の重複登録を避けるため、この方法では `install.ps1 -Client none` を使います。[MCPB のインストールと設定](docs/install.md#claude-desktop-mcpb)を参照してください。
 
 ---

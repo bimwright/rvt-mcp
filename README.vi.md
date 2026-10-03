@@ -57,6 +57,8 @@ Một lần chạy cài cả hai phía: add-in cho mọi bản Revit 2022–2027
 
 **Cập nhật:** chạy installer của bản mới theo cùng cách — không cần gỡ trước; client chỉ cần khởi động lại. **Gỡ cài:** `uninstall.ps1 -Yes` trong cùng thư mục gỡ add-in và server (cài đặt được giữ, trừ khi thêm `-Purge`); chạy `install.ps1 -Uninstall -Client auto` trước nếu muốn xóa luôn entry trong client. Thêm, gồm cài developer và NuGet: [docs/install.md](docs/install.md).
 
+**Nâng cấp từ v0.8.1 hoặc v0.6.x:** các bản này lưu cài đặt và dữ liệu ToolBaker trong `%LOCALAPPDATA%\RvtMcp\`; v1.0.0 dùng `%LOCALAPPDATA%\Bimwright\rvt-mcp\` và installer sẽ chuyển folder cũ sang đó. Hãy đóng Revit và mọi MCP client trước, vì server cũ đang chạy sẽ khóa folder. Kiểm tra trong PowerShell bằng `Test-Path "$env:LOCALAPPDATA\RvtMcp"`. Nếu installer dừng với thông báo `Both … exist` hoặc `Could not move …`, nó đã hoàn tác phần đã di chuyển: giữ folder đang chứa cài đặt và dữ liệu ToolBaker của bạn, **đổi tên folder còn lại (ví dụ thành `RvtMcp.bak`) thay vì xóa**, đóng các client đang dùng nó rồi chạy lại installer.
+
 **Claude Desktop MCPB (v1.0.0):** extension chạy gateway đã cài riêng từ cùng bản phát hành. Với cách này, dùng `install.ps1 -Client none` để tránh đăng ký trùng trong Desktop. Xem [cài MCPB và các setting](docs/install.md#claude-desktop-mcpb).
 
 ---

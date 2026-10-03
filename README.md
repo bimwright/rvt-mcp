@@ -57,6 +57,8 @@ One run sets up both sides: the add-in for every Revit 2022–2027 on the machin
 
 **Upgrade:** run the new release's installer the same way — no uninstall first; clients only need a restart. **Uninstall:** `uninstall.ps1 -Yes` in the same folder removes the add-ins and the server (settings stay unless you add `-Purge`); run `install.ps1 -Uninstall -Client auto` first to also remove the client entries. More, including developer and NuGet installs: [docs/install.md](docs/install.md).
 
+**Upgrading from v0.8.1 or v0.6.x:** those versions keep your settings and ToolBaker data in `%LOCALAPPDATA%\RvtMcp\`; v1.0.0 uses `%LOCALAPPDATA%\Bimwright\rvt-mcp\`, and the installer moves the old folder there. Close Revit and every MCP client first, because a running old server locks the folder. Check in PowerShell with `Test-Path "$env:LOCALAPPDATA\RvtMcp"`. If the installer stops with `Both … exist` or `Could not move …`, it has undone what it moved: keep the folder that holds your settings and ToolBaker data, **rename the other one (for example to `RvtMcp.bak`) instead of deleting it**, close the clients that were using it, and run the installer again.
+
 **Claude Desktop MCPB (v1.0.0):** the extension launches the separately installed gateway from the matching release. Use `install.ps1 -Client none` for this route to avoid a duplicate Desktop registration. See [MCPB installation and settings](docs/install.md#claude-desktop-mcpb).
 
 ---

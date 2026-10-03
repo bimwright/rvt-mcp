@@ -57,6 +57,8 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 
 **升级：** 用同样方式运行新版本的安装程序——无需先卸载，客户端只需重启。**卸载：** 在同一文件夹运行 `uninstall.ps1 -Yes` 会移除插件和 server（除非加 `-Purge`，设置会保留）；如需同时删除客户端条目，请先运行 `install.ps1 -Uninstall -Client auto`。更多内容（包括开发者安装和 NuGet）：[docs/install.md](docs/install.md)。
 
+**从 v0.8.1 或 v0.6.x 升级：** 这些版本把设置和 ToolBaker 数据保存在 `%LOCALAPPDATA%\RvtMcp\`；v1.0.0 使用 `%LOCALAPPDATA%\Bimwright\rvt-mcp\`，安装程序会把旧文件夹移动过去。请先关闭 Revit 和所有 MCP 客户端，因为仍在运行的旧 server 会锁定该文件夹。可在 PowerShell 中用 `Test-Path "$env:LOCALAPPDATA\RvtMcp"` 检查。如果安装程序因 `Both … exist` 或 `Could not move …` 而停止，它会撤销已移动的内容：保留存有你的设置和 ToolBaker 数据的文件夹，**把另一个重命名（例如 `RvtMcp.bak`）而不是删除**，关闭正在使用它的客户端，然后重新运行安装程序。
+
 **Claude Desktop MCPB（v1.0.0）：** 扩展启动从同一版本单独安装的 gateway。此方式请使用 `install.ps1 -Client none`，避免 Desktop 重复注册。参见 [MCPB 安装与设置](docs/install.md#claude-desktop-mcpb)。
 
 ---
