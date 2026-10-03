@@ -113,7 +113,25 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 - **`revit_send_code_to_revit`**（既定オン）は、合う typed ツールがないときに C# 本体を Revit 内でコンパイルして実行します。`--read-only` または `--disable-send-code` で外れます。[docs/send-code.md](docs/send-code.md) を参照。階段は [docs/stairs-workflow.md](docs/stairs-workflow.md)。
 - **ToolBaker：** `revit_list_baked_tools` / `revit_run_baked_tool` には `--toolsets toolbaker` が必要です。Adaptive bake（`--enable-adaptive-bake`、既定オフ）は繰り返しの呼び出しからツールを提案し、accept するまで何も追加されません。Bake のコンパイルは Revit 内で行われ、Visual Studio は不要です。[docs/bake.md](docs/bake.md)。
 - **リボン：** 接続の開始/停止、**History** で過去の呼び出しの検索と再実行、完了 **Toast** の切り替え（既定オン）。
-- **表示言語：** アドインの UI は 15 言語に対応し、Revit の UI 言語に従います。リボンのスライドアウトにある **Language** コンボで変更できます。ツール名とペイロードは英語のままです。[docs/localization.md](docs/localization.md)。
+- **表示言語：** アドインの UI は 15 言語に対応し、Revit の UI 言語に従います。リボンのスライドアウトにある **Language** ボタンで変更できます。このボタンは **Settings → General → Language** を開きます（`BIMWRIGHT_UI_LANGUAGE` が引き続き優先されます）。ツール名とペイロードは英語のままです。[docs/localization.md](docs/localization.md)。
+
+### アクティビティトーストがある理由
+
+トーストは飾りではなく、作業のフィードバックです。実際に必要だった 3 つの点から生まれました。
+
+- **チャットを見張る必要をなくす。** 実際の MCP ワークフローでは、AI エージェントが長時間作業していても Revit 側には目に見える反応がほとんどありません。エージェントが動いているかを確かめるためだけにチャットを見続けるのは、注意力の無駄です。アクティビティカードは完了したツール呼び出しを知らせるので、更新の合間に別の作業へ移れます。
+- **マルチタスクを支える。** メンテナーは複数のデスクトップアプリを並行して開発し、繰り返しテストしています。短い通知なら、すべてのチャットを視界に置かなくてもそれらのセッションを追えます。
+- **体験を現代的にする。** Revit 側のフィードバックにより、自動化の反応が分かりやすくなり、モーダルダイアログで作業を中断することもありません。
+
+トーストが伝えるのは **ツール 1 回分の結果** であり、実行中のツールの進捗でも、タスク全体の完了でもありません。連続した結果は 1 枚のカードにまとまります。Revit が最小化されているときやモーダルダイアログで止まっているときは、通知が待たされることがあります。エージェントの作業を確認する代わりにはなりません。
+
+各カードにはゲートウェイ名と Revit の年（例：`rvt-mcp 2022`）、直近のツール、Success · Failed · Capture のカウントが表示されます。キャプチャのプレビューは少なくとも 5 秒間カードに残ります。
+
+意図的にホバーすると、最新 3 件の結果と各ローカル完了時刻（`HH:mm:ss`）を示すアクティビティタイムラインが開きます。上にスクロールすると、そのカードの以前の呼び出しを読めます。新しい結果は短いスライドインで末尾に追従します（行が上がり、新しい行がフェードインし、結果のドットが弾みます。視覚効果を減らす設定ではどれも表示されません）。古い呼び出しを読んでいる間は位置が保たれます。タイムライン内をクリックしても閉じずに読み続けられ、カードのそれ以外の部分をクリックすると History が開きます。ブランディングをオフにしても動作します。要約は長さが制限され、機微な情報は伏せられ、メモリ内にのみ保持され、カードを閉じると消去されます。スクリプトのオブジェクトや配列は件数で表示し、不完全な調査は不完全と明示されます。サーバー側のみのツールは、この UI 変更ではトースト対象になりません。
+
+トーストは **既定でオン** で、オフにもできます。**Settings → Toast** で、アイドル時間（10/20/30/60 秒、既定 20）と **Show branding**（**既定オフ**、ホバー時にワードマークを表示）を選べます。変更はすぐ反映され、Revit を再起動しても保存されます。アクティビティのフィードバックを得るためにブランディングを表示する必要はありません。
+
+**位置：** **Settings → Toast** で **Horizontal alignment**（左/右）と **Vertical alignment**（上/下）を個別に選べます。既定は左上です。変更は表示中のカードにすぐ反映・保存され、角を変えると保存済みのドラッグ位置は消去されます。**Allow dragging the card** をオンにすると、タイトル行でカードを移動できます。通常のクリックは引き続き History を開きます。ドラッグをオフにしても保存位置は保持され、オンに戻すと復元され、**Reset position** で消去されます。位置は Revit ウィンドウからの相対値で保存され、モニターの作業領域内に収まります。下側に固定したカードは上方向に伸び、スペースがなければ反対側に切り替わります。動きは Windows のアニメーション設定に従います。保存に失敗すると設定の下に表示され、そのセッション中は選択が有効なままです。最新ツール行やタイムライン行にホバーすると、機微情報を伏せた結果、Success/Failed、完了時刻、計測できた場合は所要時間が表示されます。複数の Autodesk アプリ間でのトースト調整は対象外です。
 
 ### プロンプト
 
@@ -125,6 +143,8 @@ v1.0.0 には 6 つの MCP プロンプトがあります。クライアント�
 - `revit_model_audit` — モデルの健全性監査：警告、ファミリ、ドライランの purge 候補（`workflows,families,lint,meta` が必要）。
 - `revit_pre_issue_check` — 発行前に対象シートを確認します（`sheets,view,annotation,lint,meta` が必要）。シート番号/ID、明示的な番号/名前フィルター、または `all` を指定します。名前付きシートセットにはメンバーシートが必要です。サンプリングされたモデル警告や不完全な確認は、シート単位の合格ではなく **NOT VERIFIED** と報告されます。
 - `revit_stairs` — `send_code` による階段作成のガイド（確認後にのみ書き込み）。トランザクション/失敗/後片付けのテンプレートを含み、ソースチェックアウトは不要です。
+
+プロンプトに必要な toolset が有効でない場合は、追加すべき `--toolsets` の行をそのまま答えます。中途半端な構成で何かが実行されることはありません。足りないツールが許す限り read-only の保護は維持され、書き込み可能な toolset を必要とするプロンプトは、設定を黙って変えずに矛盾を説明します。プロンプトはエージェントへの指示であり、サーバーが強制するワークフローのロックではありません。
 
 ---
 
@@ -157,6 +177,8 @@ v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 
 | send_code journal 永続化 | `--persist-send-code-bodies` / `--no-…` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES=1` | `persistSendCodeBodies` |
 | Journal TTL | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | 完了トースト（既定オン） | リボン **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
+| トースト branding（既定オフ、保存あり） | Settings → Toast → **Show branding** | — | `showBranding` |
+| トーストのアイドル時間（既定 20 秒） | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
 | トーストの位置（既定は左上・ドラッグなし、保存あり） | Settings → Toast → **Horizontal / Vertical alignment**、**Allow dragging the card**、**Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | UI 言語（アドイン） | リボン **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
 
@@ -283,7 +305,7 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
 
 send_code は ToolBaker と独立して既定 **オン**、call-log は既定 **オフ** です。優先順は CLI > 環境変数 > JSON。認証済みサーバー設定はリクエスト単位でプラグイン設定に優先します。call-log オフでは server journal、plugin `mcp-calls.jsonl`、send-code 本文 journal に書き込みません。メモリ内 History は利用可能です。本文 journal には call-log オンと別の TTL opt-in が必要です。ToolBaker `usage.jsonl` は adaptive-bake 設定に従う別の記録です。
 
-Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警告は 262144 byte 超、budget は 716800 byte、transport cap は 1048576 byte。サーバーは JSON エスケープ、MCP content と metadata も測定します。過大な読み取り結果は絞り込み案付きの `RESPONSE_TOO_LARGE`、完了した書き込みは小さな要約になります。任意コードの出力はローカルファイルに保存し、`mutation_applied: null` を返します。コマンドを再実行せず、そのファイルを確認してください。guard をオフにしても transport cap は残ります。値は整数 >=1024、順序は `warn <= strong <= budget <= max`。budget を下げる場合は警告値も調整してください。
+Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警告は 262144 byte 超、budget は 716800 byte、transport cap は 1048576 byte。サーバーは JSON エスケープ、MCP content と metadata も測定します。過大な読み取り結果は絞り込み案付きの `RESPONSE_TOO_LARGE`、完了した書き込みは小さな要約になります。任意コードの出力はローカルファイルに保存し、`mutation_applied: null` を返します。コマンドを再実行せず、そのファイルを確認してください。spill ファイルは既定で 36 時間保持されます（`--spill-retention-hours`、1-8760。無効な値は 36 を使用）。件数上限が、それより新しいファイルを削除することはありません。guard をオフにしても transport cap は残ります。値は整数 >=1024、順序は `warn <= strong <= budget <= max`。budget を下げる場合は警告値も調整してください。
 
 ## Supported Revit versions
 
@@ -320,7 +342,6 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 | [docs/bake.md](docs/bake.md) | Adaptive bake と本体プライバシー |
 | [docs/localization.md](docs/localization.md) | UI 言語、オーバーライド、ホットリロード |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | ビルド、テスト、ツール追加 |
-| [docs/benchmarks/](docs/benchmarks/) | ベンチマークとテスト結果 |
 | [CHANGELOG.md](CHANGELOG.md) | リリースノート |
 
 ---
@@ -343,6 +364,8 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 AI アシスタントと BIM・CAD アプリケーションをつなぐオープンソースのツール。
 
 **bimwright** は **BIM** と **wright** を組み合わせた名前です。wright は、ものを作る人や建てる人を表す古い英語で、*shipwright*（船大工）などに使われます。
+
+[ゲートウェイ名の付け方](https://github.com/bimwright/.github/blob/master/profile/README.md#naming)を参照してください。
 
 - [**rvt-mcp**](https://github.com/bimwright/rvt-mcp) — Autodesk® Revit®
 - [**dwg-mcp**](https://github.com/bimwright/dwg-mcp) — Autodesk® AutoCAD®

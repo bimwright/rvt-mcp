@@ -144,6 +144,8 @@ v1.0.0 có sáu MCP prompt — chọn `/mcp__rvt-mcp__revit_<name>` (Claude Code
 - `revit_pre_issue_check` — kiểm tra các sheet đã xác định trước khi phát hành (cần `sheets,view,annotation,lint,meta`). Truyền số/ID sheet, bộ lọc số/tên rõ ràng, hoặc `all`; sheet set có tên cần các sheet thành viên. Cảnh báo model chỉ lấy mẫu và kiểm tra chưa đầy đủ được báo là **NOT VERIFIED**, không phải đạt ở mức sheet.
 - `revit_stairs` — tạo thang có hướng dẫn qua `send_code` (chỉ ghi sau khi bạn xác nhận). Gồm mẫu transaction/xử lý lỗi/dọn dẹp; không cần source checkout.
 
+Nếu toolset mà prompt cần chưa bật, prompt trả lời đúng dòng `--toolsets` cần thêm — không có gì chạy khi cấu hình dở dang. Bảo vệ read-only vẫn bật khi các tool còn thiếu cho phép; prompt cần toolset có quyền ghi sẽ giải thích xung đột thay vì âm thầm đổi cấu hình. Prompt là hướng dẫn cho agent, không phải khóa quy trình do server cưỡng chế.
+
 ---
 
 ## Cấu hình
@@ -340,7 +342,6 @@ Thêm: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).
 | [docs/bake.md](docs/bake.md) | Adaptive bake và privacy body |
 | [docs/localization.md](docs/localization.md) | Ngôn ngữ UI, override, hot reload |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Build, test, thêm tool |
-| [docs/benchmarks/](docs/benchmarks/) | Benchmark và kết quả kiểm thử |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
 ---

@@ -113,7 +113,25 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
 - **`revit_send_code_to_revit`**（默认开启）在没有合适 typed 工具时，于 Revit 内编译并运行 C# 正文；`--read-only` 或 `--disable-send-code` 会移除它。见 [docs/send-code.md](docs/send-code.md)；楼梯见 [docs/stairs-workflow.md](docs/stairs-workflow.md)。
 - **ToolBaker：** `revit_list_baked_tools` / `revit_run_baked_tool` 需要 `--toolsets toolbaker`。Adaptive bake（`--enable-adaptive-bake`，默认关闭）会根据重复调用建议工具；在你 accept 之前不会添加任何东西。Bake 在 Revit 内编译，不需要 Visual Studio。见 [docs/bake.md](docs/bake.md)。
 - **Ribbon：** 启动或停止连接，打开 **History** 搜索并重跑历史调用，切换完成 **Toast**（默认开启）。
-- **界面语言：** 插件 UI 支持 15 种语言，默认跟随 Revit 的界面语言；可在 ribbon 滑出面板的 **Language** 下拉框中更改。工具名与 payload 保持英文。见 [docs/localization.md](docs/localization.md)。
+- **界面语言：** 插件 UI 支持 15 种语言，默认跟随 Revit 的界面语言；可通过 ribbon 滑出面板中的 **Language** 按钮更改，该按钮会打开 **Settings → General → Language**（`BIMWRIGHT_UI_LANGUAGE` 仍然优先）。工具名与 payload 保持英文。见 [docs/localization.md](docs/localization.md)。
+
+### 为什么有活动 toast
+
+Toast 不只是装饰，而是工作反馈。它来自三个实际需求：
+
+- **让用户不必一直盯着聊天窗口。** 在真实的 MCP 工作流中，AI 代理可能长时间工作，而 Revit 几乎没有可见的反馈。仅仅为了确认代理是否在工作而盯着聊天窗口，会白白消耗注意力。活动卡片会报告已完成的工具调用，用户可以在两次更新之间去做别的事。
+- **支持多任务。** 维护者同时开发并反复测试多个桌面应用。简短的通知让人无需把每个聊天窗口都留在视野里，也能跟进这些会话。
+- **让体验更现代。** Revit 内的反馈让自动化更灵敏、更易理解，而且不会用模态对话框打断工作。
+
+Toast 报告的是 **单次工具的结果**，不是运行中工具的进度，也不表示整个任务已完成。连续的结果共用一张卡片；Revit 最小化或被模态对话框阻塞时，通知可能会等待。它们不能代替你检查代理的工作。
+
+每张卡片显示网关名称和 Revit 年份（例如 `rvt-mcp 2022`）、最近一次工具，以及 Success · Failed · Capture 计数。捕获预览至少在卡片上停留 5 秒。
+
+有意悬停会打开活动时间线，显示最新三条结果及各自的本地完成时间（`HH:mm:ss`）。向上滚动可查看该卡片中更早的调用。新结果以简短的滑入动画跟随到底部（行向上移动，新行淡入，结果圆点弹出；开启减少动态效果时这些都不会出现）；阅读较早的调用时，位置保持不变。在时间线内点击可继续阅读而不关闭它；点击卡片其余部分会打开 History。关闭 branding 时同样可用。摘要有长度限制并已脱敏，只保存在内存中，卡片关闭后清除。脚本的对象/数组显示数量；不完整的调查会明确标注为不完整。仅在 server 端运行的工具不会因这次 UI 变更而获得 toast 覆盖。
+
+Toast **默认开启**，可以关闭。在 **Settings → Toast** 中可选择空闲时长（10/20/30/60 秒；默认 20）和 **Show branding**（**默认关闭**，悬停时显示字标）。更改立即生效，并在 Revit 重启后保留；无需显示 branding 也能获得活动反馈。
+
+**位置：** 在 **Settings → Toast** 中分别选择 **Horizontal alignment**（左/右）和 **Vertical alignment**（上/下）；默认左上。更改立即应用于已打开的卡片并即时保存；更换角落会清除已保存的拖动位置。开启 **Allow dragging the card** 后可通过标题行移动卡片；普通点击仍会打开 History。关闭拖动会保留已保存的位置，重新开启会恢复，**Reset position** 则将其清除。位置相对于 Revit 窗口保存，并保持在显示器工作区内。固定在底部的卡片向上扩展，空间不足时改到另一侧。动画遵循 Windows 的动画设置。保存失败会显示在设置项下方，该选择在本次会话中仍然有效。悬停在最新工具行或时间线某一行上，会显示已脱敏的结果、Success/Failed、完成时间，以及（可用时）测得的耗时。多个 Autodesk 应用之间的 toast 协调不在此范围内。
 
 ### 提示
 
@@ -125,6 +143,8 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 - `revit_model_audit` — 模型健康审计：警告、族、试运行的 purge 候选（需要 `workflows,families,lint,meta`）。
 - `revit_pre_issue_check` — 发布前检查已确定的图纸（需要 `sheets,view,annotation,lint,meta`）。提供图纸编号/ID、明确的编号/名称过滤，或 `all`；命名图纸集需要其成员图纸。抽样的模型警告和不完整的检查会报告为 **NOT VERIFIED**，而不是图纸级通过。
 - `revit_stairs` — 通过 `send_code` 引导创建楼梯（仅在你确认后写入）。包含事务/失败/清理模板，无需源码检出。
+
+如果提示所需的 toolset 未启用，它会给出需要添加的确切 `--toolsets` 行——不会以半配置状态运行。缺失的工具允许时，只读保护保持开启；需要可写 toolset 的提示会说明冲突，而不是悄悄更改配置。提示是给代理的指令，不是 server 强制执行的工作流锁。
 
 ---
 
@@ -157,6 +177,8 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 | 持久化 send_code journal | `--persist-send-code-bodies` / `--no-…` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES=1` | `persistSendCodeBodies` |
 | Journal TTL | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | 完成 toast（默认开启） | ribbon **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
+| toast branding（默认关闭，已保存） | Settings → Toast → **Show branding** | — | `showBranding` |
+| toast 空闲时长（默认 20 秒） | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
 | toast 位置（默认左上、不可拖动，已保存） | Settings → Toast → **Horizontal / Vertical alignment**、**Allow dragging the card**、**Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | 界面语言（插件） | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
 
@@ -283,7 +305,7 @@ Annotations 描述每个工具对文档和文件的影响。临时 selection、a
 
 send_code 默认 **开启**，独立于 ToolBaker；call-log 默认 **关闭**。优先级为 CLI > 环境变量 > JSON。经过认证的 server 设置按 request 覆盖 plugin 设置。关闭 call-log 时，server journal、plugin `mcp-calls.jsonl` 和 send-code 正文 journal 不写入；内存 History 仍可用。正文 journal 需要同时开启 call-log 和独立的 TTL opt-in。ToolBaker `usage.jsonl` 为另一类记录，由 adaptive-bake 设置控制。
 
-Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高于 262144，budget 为 716800，transport cap 为 1048576 byte。server 测量 JSON 转义、MCP content 和 metadata。过大的读取结果返回 `RESPONSE_TOO_LARGE` 和缩小查询的提示；已完成写入返回精简摘要。任意代码输出保存到本机文件，返回 `mutation_applied: null`；查看该文件，不要重新执行命令。关闭 guard 仍保留 transport cap。阈值必须为整数 >=1024，并满足 `warn <= strong <= budget <= max`；降低 budget 时也要调整较低阈值。
+Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高于 262144，budget 为 716800，transport cap 为 1048576 byte。server 测量 JSON 转义、MCP content 和 metadata。过大的读取结果返回 `RESPONSE_TOO_LARGE` 和缩小查询的提示；已完成写入返回精简摘要。任意代码输出保存到本机文件，返回 `mutation_applied: null`；查看该文件，不要重新执行命令。spill 文件默认保留 36 小时（`--spill-retention-hours`，1-8760；无效值使用 36），文件数量上限不会删除更新的文件。关闭 guard 仍保留 transport cap。阈值必须为整数 >=1024，并满足 `warn <= strong <= budget <= max`；降低 budget 时也要调整较低阈值。
 
 ## Supported Revit versions
 
@@ -320,7 +342,6 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 | [docs/bake.md](docs/bake.md) | Adaptive bake 与正文隐私 |
 | [docs/localization.md](docs/localization.md) | 界面语言、覆盖、热重载 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 构建、测试、新增工具 |
-| [docs/benchmarks/](docs/benchmarks/) | 基准测试与测试结果 |
 | [CHANGELOG.md](CHANGELOG.md) | 发布说明 |
 
 ---
@@ -343,6 +364,8 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 连接 AI 助手与 BIM、CAD 应用的开源工具。
 
 **bimwright** 这个名字由 **BIM** 和 **wright** 组成。wright 是英语中表示制作者或建造者的旧词，如 *shipwright*（造船工）。
+
+参见[网关名称的由来](https://github.com/bimwright/.github/blob/master/profile/README.md#naming)。
 
 - [**rvt-mcp**](https://github.com/bimwright/rvt-mcp) —— Autodesk® Revit®
 - [**dwg-mcp**](https://github.com/bimwright/dwg-mcp) —— Autodesk® AutoCAD®
