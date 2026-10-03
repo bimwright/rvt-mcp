@@ -74,7 +74,7 @@ Follows v0.8.1. Tool counts: default **46**, `--toolsets all` **233**, adaptive 
 
 ### Fixed
 
-- **Untyped JSON arguments** — preserve JSON values bound by the MCP SDK inside arrays and nested objects, including dimension references, filled-region and room-separator points, sheet renumber items, volumes and baked-tool arguments.
+- **Untyped JSON arguments** — preserve JSON values bound by the MCP SDK inside arrays and nested objects, including dimension references, filled-region and room-separator points, sheet renumber items, volumes, titleblock values, workflow sheet items and baked-tool arguments.
 
 - **Room and area failure handling** — capture Revit warnings in the tool result and silently roll back unresolved errors instead of opening failure dialogs. A rolled-back room transaction returns an error.
 

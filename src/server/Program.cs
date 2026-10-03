@@ -414,7 +414,8 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         private static readonly object _connectLock = new object();
         private static readonly JsonSerializerSettings RequestJsonSettings = new JsonSerializerSettings
         {
-            NullValueHandling = NullValueHandling.Ignore
+            NullValueHandling = NullValueHandling.Ignore,
+            Converters = { new McpJsonInput.JsonElementConverter() }
         };
         private static volatile bool _connected;
         private static string _token;
@@ -2994,7 +2995,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             return JToken.FromObject(value, serializer);
         }
 
-        private sealed class JsonElementConverter : Newtonsoft.Json.JsonConverter<JsonElement>
+        internal sealed class JsonElementConverter : Newtonsoft.Json.JsonConverter<JsonElement>
         {
             public override bool CanRead => false;
 

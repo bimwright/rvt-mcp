@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
@@ -75,6 +76,31 @@ namespace RvtMcp.Tests
             var actual = ToolbakerTools.NormalizeRunBakedToolParams(args);
 
             Assert.True(JToken.DeepEquals(JArray.Parse(json), actual["points"]), actual.ToString());
+        }
+
+        [Fact]
+        public async Task Workflow_sheet_items_survive_the_actual_wire_serializer()
+        {
+            const string json = "[{\"sheet_number\":\"A-02\",\"sheet_name\":\"Plan\"}]";
+            var sent = await Capture.Send(() => WorkflowsTools.WorkflowSheetSet(JsonSerializer.Deserialize<List<object>>(json)));
+            var settings = (Newtonsoft.Json.JsonSerializerSettings)typeof(ToolGateway)
+                .GetField("RequestJsonSettings", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+            var wire = JObject.Parse(Newtonsoft.Json.JsonConvert.SerializeObject(sent.Parameters, settings));
+
+            Assert.True(JToken.DeepEquals(JArray.Parse(json), wire["sheets"]), wire.ToString());
+        }
+
+        [Fact]
+        public async Task Titleblock_dictionary_values_survive_the_actual_wire_serializer()
+        {
+            var values = JsonSerializer.Deserialize<Dictionary<string, object>>("{\"Drawn By\":\"benchmark\",\"Scale\":50}");
+            var sent = await Capture.Send(() => SheetsTools.SetTitleblockParameters(values, 42));
+            var settings = (Newtonsoft.Json.JsonSerializerSettings)typeof(ToolGateway)
+                .GetField("RequestJsonSettings", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+            var wire = JObject.Parse(Newtonsoft.Json.JsonConvert.SerializeObject(sent.Parameters, settings));
+
+            Assert.Equal("benchmark", wire["parameters"].Value<string>("Drawn By"));
+            Assert.Equal(50, wire["parameters"].Value<int>("Scale"));
         }
     }
 }
