@@ -22,7 +22,7 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
-## Unreleased
+## v1.0.1 - Unreleased
 
 ### Fixed
 
@@ -34,11 +34,13 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 ### Changed
 
 - **IFC wait budget** — `revit_export_ifc` accepts optional `timeout_seconds` from 1 to 900, defaulting to 600 seconds instead of the fixed 60-second wait. Invalid values are rejected before dispatch. After a timeout, check whether the export completed before retrying. Tool summaries and client-timeout guidance now describe this budget; the Codex example allows a 960-second client deadline.
+- **Setup release notes** — include this changelog alongside the installer, uninstaller and agent installation guide in the Setup ZIP.
 
 ### Tests
 
 - Add regression coverage for placement correction and rollback, IFC timeout defaults and bounds, parameter-group defaults, and tool catalog/summary consistency.
 - Update Toast position test expectations to include the existing ribbon clearance; runtime Toast placement is unchanged.
+- Verify Setup tools in a disposable profile, including the IFC timeout contract, and support testing package upgrades from both legacy and current installation layouts.
 
 ## Post-v1.0.0 documentation updates
 

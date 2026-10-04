@@ -27,10 +27,10 @@ def safe_path(name):
 
 
 class Client:
-    def __init__(self, exe, log, args):
+    def __init__(self, exe, log, args, env=None):
         self.log = log.open("w", encoding="utf-8")
         self.proc = subprocess.Popen([str(exe), *args], stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE, stderr=self.log, text=True, encoding="utf-8",
+            stdout=subprocess.PIPE, stderr=self.log, text=True, encoding="utf-8", env=env,
             creationflags=subprocess.CREATE_NO_WINDOW)
         self.messages = queue.Queue()
         self.counter = 0
@@ -120,12 +120,22 @@ def main():
     exe = extraction / manifest["server"]["command"]
     report["serverExeSha256"] = digest(exe.read_bytes())
     report["smoke"] = []
-    # The server reads the machine's real rvtmcp.config.json, which an install
-    # seeds with toolsets=all, so the default surface is requested explicitly.
+    # Package-only checks use a disposable profile. The opt-in live check needs
+    # the real profile's discovery files and retains its existing behavior.
+    env = {k: v for k, v in os.environ.items() if not k.upper().startswith("BIMWRIGHT_")}
+    profile = package.parent / "smoke-profile"
+    for key, path in (("USERPROFILE", profile), ("APPDATA", profile / "AppData/Roaming"),
+                      ("LOCALAPPDATA", profile / "AppData/Local")):
+        path.mkdir(parents=True, exist_ok=True)
+        env[key] = str(path)
+    env["BIMWRIGHT_DISABLE_UPDATE_CHECK"] = "1"
+    if args.live_2027:
+        env = None
+    report["profileMode"] = "real-profile-live-opt-in" if args.live_2027 else "disposable-package-only"
     all_count = repo_json("tests/RvtMcp.Tests/Golden/tools-list.json")["tool_count"]
-    for mode, flags, expected in (("default", ["--toolsets", "query,create,view,meta"], 42),
+    for mode, flags, expected in (("default", ["--toolsets", "query,create,view,meta"], 46),
                                   ("all", ["--toolsets", "all"], all_count)):
-        client = Client(exe, package.parent / f"smoke-{mode}-stderr.log", flags + ["--target", "2027"])
+        client = Client(exe, package.parent / f"smoke-{mode}-stderr.log", flags + ["--target", "2027"], env)
         try:
             init = client.request("initialize", {"protocolVersion": "2025-03-26", "capabilities": {},
                 "clientInfo": {"name": "setup-package-verification", "version": "1"}})
@@ -135,6 +145,10 @@ def main():
             assert len(catalog) == expected, (mode, len(catalog))
             if mode == "all":
                 tools = {t["name"]: t for t in catalog}
+                ifc = tools["revit_export_ifc"]
+                assert "timeout_seconds" in ifc["inputSchema"]["properties"]
+                assert "timeout_seconds" not in ifc["inputSchema"].get("required", [])
+                assert "default 600" in ifc["description"]
                 assert "host_id" in tools["revit_create_point_based_element"]["inputSchema"]["properties"]
                 assert {"systemTypeId", "startElementId", "startConnectorId"} <= set(
                     tools["revit_create_pipe"]["inputSchema"]["properties"])

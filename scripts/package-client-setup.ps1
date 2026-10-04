@@ -140,6 +140,7 @@ foreach ($zip in $pluginZips) {
 
 Copy-Item -Path (Join-Path $RepoRoot 'scripts\install.ps1') -Destination (Join-Path $stageRoot 'install.ps1') -Force
 Copy-Item -Path (Join-Path $RepoRoot 'AGENTS.md') -Destination (Join-Path $stageRoot 'AGENTS.md') -Force
+Copy-Item -Path (Join-Path $RepoRoot 'CHANGELOG.md') -Destination (Join-Path $stageRoot 'CHANGELOG.md') -Force
 Copy-Item -Path (Join-Path $RepoRoot 'scripts\uninstall-all.ps1') -Destination (Join-Path $stageRoot 'uninstall.ps1') -Force
 Copy-Item -Path (Join-Path $RepoRoot 'scripts\uninstall-all.ps1') -Destination (Join-Path $stageRoot 'uninstall-all.ps1') -Force
 
