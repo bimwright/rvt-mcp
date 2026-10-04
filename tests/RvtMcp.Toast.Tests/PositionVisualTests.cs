@@ -104,7 +104,7 @@ internal static class PositionVisualTests
                 Near(window.Top + window.ActualHeight, bottom);
             }
             options = options.WithCorner(false, false); manager.ApplyPosition(); Pump(300);
-            Near(window.Left, 116); Near(window.Top, 116);
+            Near(window.Left, 116); Near(window.Top, 116 + ToastPlacement.RibbonClearance);
         }
         finally { manager.DismissAllImmediate(); manager.Dispose(); }
     }
@@ -172,14 +172,14 @@ internal static class PositionVisualTests
             var offsetX = options.OffsetX; var offsetY = options.OffsetY;
             var dragLeft = window.Left; var dragTop = window.Top;
             options = options.WithDrag(false); manager.ApplyPosition(); Pump(20);
-            Near(window.Left, 116); Near(window.Top, 116);
+            Near(window.Left, 116); Near(window.Top, 116 + ToastPlacement.RibbonClearance);
             if (options.OffsetX != offsetX || options.OffsetY != offsetY) throw new Exception("Disabling drag erased offset.");
             options = options.WithDrag(true); manager.ApplyPosition(); Pump(20);
             Near(window.Left, dragLeft); Near(window.Top, dragTop);
             owner = new ToastBounds(150, 150, 1000, 600); manager.Tick(true);
             Near(window.Left, dragLeft + 50); Near(window.Top, dragTop + 50);
             options = options.WithOffset(null, null); manager.ApplyPosition(); Pump(20);
-            Near(window.Left, 166); Near(window.Top, 166);
+            Near(window.Left, 166); Near(window.Top, 166 + ToastPlacement.RibbonClearance);
             options = new ToastPositionOptions(true, true, true, 100000, -100000); manager.ApplyPosition(); Pump(20);
             if (window.Left < 0 || window.Top < 0 || window.Left + window.ActualWidth > work.Right + .5)
                 throw new Exception("Restored out-of-monitor offset was not clamped.");
@@ -217,7 +217,7 @@ internal static class PositionVisualTests
             Hover(window, ref cursor); Pump(235);
             options = new ToastPositionOptions(); manager.ApplyPosition(); Pump(80);
             if (!window.IsPositionAnimating) throw new Exception("Changing corners during expansion cancelled movement.");
-            Pump(600); Near(window.Left, 116); Near(window.Top, 116);
+            Pump(600); Near(window.Left, 116); Near(window.Top, 116 + ToastPlacement.RibbonClearance);
             options = new ToastPositionOptions(true, true); manager.ApplyPosition(); Pump(350);
             window.BeginClose();
             // Poll for the first animation frame; a fixed short pump can sample before it renders.

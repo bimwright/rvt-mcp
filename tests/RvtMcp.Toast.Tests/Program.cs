@@ -202,7 +202,7 @@ internal static class Program
             var first = Current(manager);
             if (first == null)
                 throw new Exception("The first activity card was not created.");
-            AssertPosition(first, 16, 16);
+            AssertPosition(first, ToastPlacement.Margin + ToastPlacement.RibbonClearance, ToastPlacement.Margin);
         }
         finally { manager.DismissAllImmediate(); }
         Console.WriteLine("PASS: first placement from unset WPF coordinates via manager");
