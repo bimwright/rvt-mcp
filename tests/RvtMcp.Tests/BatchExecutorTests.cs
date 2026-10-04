@@ -9,6 +9,67 @@ namespace RvtMcp.Tests
     public class BatchExecutorTests
     {
         [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        public void Policy_stop_rolls_back_prior_commands_even_when_current_handler_reports_success(
+            bool continueOnError, bool throws)
+        {
+            var stopped = false;
+            var invoked = new List<string>();
+            var outcome = BatchExecutor.Run(Cmds(("first", null), ("failure", null), ("must_not_run", null)),
+                continueOnError, (name, _) =>
+                {
+                    invoked.Add(name);
+                    if (name == "failure")
+                    {
+                        stopped = true;
+                        if (throws) throw new InvalidOperationException("Policy cancelled transaction");
+                    }
+                    return BatchExecutor.InvokeResult.Ok(new { created = true });
+                }, isPolicyStopped: () => stopped);
+
+            Assert.Equal(new[] { "first", "failure" }, invoked);
+            Assert.True(outcome.PolicyStopped);
+            Assert.True(outcome.AnyFailed);
+            Assert.True(outcome.ShouldRollBack(continueOnError));
+            Assert.False(JObject.FromObject(outcome.Results[1]).Value<bool>("ok"));
+        }
+
+        [Fact]
+        public void Policy_stop_before_first_command_prevents_dispatch()
+        {
+            var invoked = false;
+            var outcome = BatchExecutor.Run(Cmds(("must_not_run", null)), true, (_, __) =>
+            {
+                invoked = true;
+                return BatchExecutor.InvokeResult.Ok(null);
+            }, isPolicyStopped: () => true);
+
+            Assert.False(invoked);
+            Assert.True(outcome.ShouldRollBack(true));
+        }
+
+        [Fact]
+        public void Ordinary_command_failure_can_continue_without_becoming_a_policy_stop()
+        {
+            var invoked = new List<string>();
+            var outcome = BatchExecutor.Run(Cmds(("ordinary_failure", null), ("next", null)), true, (name, _) =>
+            {
+                invoked.Add(name);
+                return name == "ordinary_failure" ? BatchExecutor.InvokeResult.Fail("invalid argument")
+                    : BatchExecutor.InvokeResult.Ok(null);
+            }, isPolicyStopped: () => false);
+
+            Assert.Equal(2, invoked.Count);
+            Assert.True(outcome.AnyFailed);
+            Assert.False(outcome.PolicyStopped);
+            Assert.False(outcome.ShouldRollBack(true));
+            Assert.True(outcome.ShouldRollBack(false));
+        }
+
+        [Theory]
         [InlineData(false)]
         [InlineData(true)]
         public void Send_code_cannot_bypass_its_own_MCP_switch_through_a_batch(bool continueOnError)

@@ -180,7 +180,8 @@ namespace RvtMcp.Plugin.Handlers
                         var center = m.Before.Viewport.GetBoxCenter();
                         m.Before.Viewport.SetBoxCenter(new XYZ(center.X + m.Dx, center.Y + m.Dy, center.Z));
                     }
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                 }
                 catch (Exception ex)
                 {

@@ -129,7 +129,8 @@ namespace RvtMcp.Plugin.Handlers
                     vss.CurrentViewSheetSet.Views = viewSet;
                     vss.SaveAs(name);
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                 }
                 catch (Exception ex)
                 {

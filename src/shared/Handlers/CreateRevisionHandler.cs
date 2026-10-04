@@ -70,7 +70,8 @@ namespace RvtMcp.Plugin.Handlers
                         rev.Issued = true;
                     }
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
 
                     string revNumber = "";
                     try

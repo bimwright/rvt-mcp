@@ -137,6 +137,7 @@ namespace RvtMcp.Plugin.Handlers
 
             var hadFailure = false;
             var rollback = WorkflowSupport.Rollback("TransactionGroup", false, "Committed successfully.");
+            using (Failures.FailureControl.BeginBatch())
             using (var group = new TransactionGroup(doc, "RvtMcp: workflow sheet set"))
             {
                 group.Start();
@@ -183,22 +184,28 @@ namespace RvtMcp.Plugin.Handlers
                                 null,
                                 ex.Message));
 
-                            if (!continueOnError)
+                            if (!continueOnError || Failures.FailureControl.IsStopped)
                                 break;
                         }
                     }
                 }
 
-                if (hadFailure && !continueOnError)
+                if ((hadFailure && !continueOnError) || Failures.FailureControl.IsStopped)
                 {
-                    group.RollBack();
+                    var rollbackStatus = group.RollBack();
+                    if (rollbackStatus != TransactionStatus.RolledBack)
+                        return CommandResult.Fail("Sheet workflow rollback was not confirmed (status: " + rollbackStatus + ").");
+                    Failures.FailureControl.NotifyBatchRolledBack();
+                    if (Failures.FailureControl.IsStopped)
+                        return CommandResult.Fail("REVIT_FAILURE_ROLLED_BACK: Failure policy stopped the sheet workflow and its transaction group was rolled back.");
                     rollback = WorkflowSupport.Rollback("TransactionGroup", true, "A sheet step failed and continue_on_error=false.");
                     createdIds.Clear();
                     modifiedIds.Clear();
                 }
                 else
                 {
-                    group.Assimilate();
+                    if (group.Assimilate() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the sheet workflow transaction group; model changes were not confirmed.");
                 }
             }
 

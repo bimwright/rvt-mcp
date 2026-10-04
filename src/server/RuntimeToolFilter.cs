@@ -32,6 +32,8 @@ namespace RvtMcp.Server
             var command = name.StartsWith("revit_", StringComparison.Ordinal) ? name.Substring(6) : name;
             var arguments = System.Text.Json.JsonSerializer.Serialize(request?.Arguments);
             var text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
+            JObject safety = null;
+            try { safety = JObject.Parse(text ?? "{}"); } catch { }
             var failed = result.IsError == true || IsFailure(text, command);
             if (failed) result.IsError = true;
             var wire = Serialize(result);
@@ -116,6 +118,23 @@ namespace RvtMcp.Server
                             ["_changes"] = changes == null ? null : ChangeSummary.Omitted(),
                             ["_history"] = history == null ? null : new JObject { ["status"] = history["status"], ["callId"] = history["callId"], ["modelKey"] = history["modelKey"], ["identityStatus"] = history["identityStatus"] }
                         }, result.IsError == true);
+                }
+            }
+            if (safety?["_failure"] != null || safety?["_operation"] != null)
+            {
+                JObject preserved;
+                try { preserved = JObject.Parse(result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text ?? "{}"); }
+                catch { preserved = new JObject { ["success"] = !failed }; }
+                SafetyResponseMetadata.Attach(preserved, safety);
+                if (failed) { preserved["success"] = false; preserved["error"] = safety["error"] ?? preserved["error"]; }
+                result = TextResult(preserved, failed || result.IsError == true);
+                if (Encoding.UTF8.GetByteCount(Serialize(result)) > limit)
+                {
+                    preserved = new JObject { ["success"] = !failed, ["error"] = safety["error"], ["response_compacted"] = true };
+                    SafetyResponseMetadata.Attach(preserved, safety, compact: true);
+                    if (history != null) preserved["_history"] = new JObject { ["status"] = history["status"], ["callId"] = history["callId"] };
+                    if (changes != null) preserved["_changes"] = ChangeSummary.Omitted();
+                    result = TextResult(preserved, failed || result.IsError == true);
                 }
             }
             text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;

@@ -387,6 +387,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             if (IncludeSendCode(enabled, config)) types.Add(typeof(SendCodeTools));
             if (enabled.Contains("meta"))       types.Add(typeof(MetaTools));
             if (enabled.Contains("meta"))       types.Add(typeof(ChangeHistoryTools));
+            if (enabled.Contains("meta"))       types.Add(typeof(FailureTools));
             if (enabled.Contains("lint"))       types.Add(typeof(LintTools));
             if (enabled.Contains("structural")) types.Add(typeof(StructuralTools));
             return types.ToArray();
@@ -410,8 +411,11 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         private static NamedPipeClientStream _pipeStream;
         private static StreamReader _reader;
         private static StreamWriter _writer;
-        private static readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _pending = new ConcurrentDictionary<string, TaskCompletionSource<string>>();
+        private static readonly ConcurrentDictionary<string, GatewayPendingRequest> _pending = new ConcurrentDictionary<string, GatewayPendingRequest>();
         private static readonly object _connectLock = new object();
+        private static readonly object _writeLock = new object();
+        private static long _connectionId;
+        private static bool _failureProtocol;
         private static readonly JsonSerializerSettings RequestJsonSettings = new JsonSerializerSettings
         {
             NullValueHandling = NullValueHandling.Ignore,
@@ -488,9 +492,12 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 
                 _reader = new StreamReader(stream, Encoding.UTF8);
                 _writer = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true };
+                _failureProtocol = capabilities.Any(c => string.Equals(c, "controlled_failures_v1", StringComparison.OrdinalIgnoreCase));
+                var connectionId = Interlocked.Increment(ref _connectionId);
+                var reader = _reader;
                 _connected = true;
 
-                var readThread = new Thread(ReadLoop) { IsBackground = true, Name = "RvtMcp.ResponseReader" };
+                var readThread = new Thread(() => ReadLoop(reader, connectionId)) { IsBackground = true, Name = "RvtMcp.ResponseReader" };
                 readThread.Start();
 
                 // Catalog delivery is a connection handshake extension. It is sent once
@@ -519,12 +526,13 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 ["params"] = JObject.FromObject(ServerState.ToolCatalog),
                 ["token"] = _token
             };
-            var tcs = new TaskCompletionSource<string>();
-            _pending[id] = tcs;
+            var pending = new GatewayPendingRequest(null, _connectionId);
+            _pending[id] = pending;
+            var tcs = pending.Caller;
 
             try
             {
-                _writer.WriteLine(request.ToString(Formatting.None));
+                lock (_writeLock) _writer.WriteLine(request.ToString(Formatting.None));
                 if (!tcs.Task.Wait(TimeSpan.FromSeconds(5)))
                 {
                     _pending.TryRemove(id, out _);
@@ -546,13 +554,13 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             }
         }
 
-        private static void ReadLoop()
+        private static void ReadLoop(StreamReader reader, long connectionId)
         {
             try
             {
-                while (_connected)
+                while (connectionId == Interlocked.Read(ref _connectionId))
                 {
-                    var line = _reader?.ReadLine();
+                    var line = reader.ReadLine();
                     if (line == null) break;
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
@@ -560,9 +568,15 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                     {
                         var obj = JObject.Parse(line);
                         var id = obj.Value<string>("id");
-                        if (id != null && _pending.TryRemove(id, out var tcs))
+                        if (id != null && _pending.TryGetValue(id, out var pending) && pending.ConnectionId == connectionId)
                         {
-                            tcs.TrySetResult(line);
+                            var callerReturned = pending.Caller.Task.IsCompleted;
+                            if (pending.Route(obj))
+                            {
+                                _pending.TryRemove(id, out _);
+                                // A caller that returned pending has no live filter context. Still ingest its final history.
+                                if (callerReturned) CaptureHistory(obj, pending.History);
+                            }
                         }
                     }
                     catch { }
@@ -571,7 +585,12 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch { }
             finally
             {
-                _connected = false;
+                if (connectionId == Interlocked.Read(ref _connectionId)) _connected = false;
+                foreach (var entry in _pending.Where(pair => pair.Value.ConnectionId == connectionId))
+                {
+                    entry.Value.Caller.TrySetResult(entry.Value.Pending("interrupted_unknown").ToString(Formatting.None));
+                    _pending.TryRemove(entry.Key, out _);
+                }
             }
         }
 
@@ -586,6 +605,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             lock (_connectLock)
             {
                 _connected = false;
+                Interlocked.Increment(ref _connectionId);
                 try { _client?.Close(); } catch { }
                 try { _pipeStream?.Close(); } catch { }
                 _client = null;
@@ -594,10 +614,10 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 _writer = null;
                 _token = null;
                 CurrentRevitVersion = null;
+                _failureProtocol = false;
                 foreach (var kv in _pending)
                 {
-                    kv.Value.TrySetException(new OperationCanceledException(
-                        "switch_target initiated — in-flight request cancelled."));
+                    kv.Value.Caller.TrySetResult(kv.Value.Pending("interrupted_unknown").ToString(Formatting.None));
                 }
                 _pending.Clear();
                 AuthToken.Target = newTarget;
@@ -620,18 +640,49 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             if (sendOverride != null)
                 return await sendOverride(command, parameters, timeoutSeconds);
 
-            EnsureConnected();
+            long connectionId;
+            string token;
+            lock (_connectLock)
+            {
+                EnsureConnected();
+                connectionId = _connectionId;
+                token = _token;
+                if (!ToolReadPolicy.IsReadOnly(command) && !_failureProtocol)
+                    return new JObject { ["success"] = false, ["error"] = "PAIRING_REQUIRED: update the gateway and Revit add-in together before model mutations." };
+                if (_pending.Values.Any(value => value.ConnectionId == connectionId && value.WaitingForUser))
+                    return new JObject { ["success"] = false, ["error"] = "REVIT_BUSY: Revit is waiting for native user input. Use the local failure or operation queries." };
+            }
 
             var id = $"req-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
-            var history = config.EnableChangeHistoryOrDefault ? new ChangeHistoryRequest { Id = Guid.NewGuid().ToString("N"), Session = HistorySession } : null;
+            var operationId = Guid.NewGuid().ToString("N");
+            var history = config.EnableChangeHistoryOrDefault ? new ChangeHistoryRequest { Id = operationId, Session = HistorySession } : null;
             using var historyLease = history == null ? null : new Memory.HistoryCallLease(history.Id);
-            var request = JsonConvert.SerializeObject(new { id, command, @params = parameters ?? new { }, token = _token, timeout_seconds = timeoutSeconds, runtime = config.ToRuntimeOptions(), history }, RequestJsonSettings);
+            var request = JsonConvert.SerializeObject(new { id, command, @params = parameters ?? new { }, token, timeout_seconds = timeoutSeconds, runtime = config.ToRuntimeOptions(), history, operation_id = operationId, failure_protocol = 1 }, RequestJsonSettings);
 
-            var tcs = new TaskCompletionSource<string>();
-            _pending[id] = tcs;
+            var pending = new GatewayPendingRequest(operationId, connectionId) { History = history };
+            var tcs = pending.Caller;
+            _pending[id] = pending;
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            _writer.WriteLine(request);
+            lock (_connectLock)
+            {
+                if (connectionId != _connectionId)
+                {
+                    _pending.TryRemove(id, out _);
+                    return new JObject { ["success"] = false, ["error"] = "REVIT_REQUEST_NOT_STARTED: target changed before dispatch.",
+                        ["_operation"] = new JObject { ["operationId"] = operationId, ["execution"] = "completed", ["outcome"] = "not_started", ["mutationApplied"] = false, ["complete"] = true } };
+                }
+                try { lock (_writeLock) _writer.WriteLine(request); }
+                catch
+                {
+                    // A broken write may have delivered the request. Keep its issued ID and never claim no mutation.
+                    _connected = false;
+                    var uncertain = pending.Pending("interrupted_unknown");
+                    pending.Caller.TrySetResult(uncertain.ToString(Formatting.None));
+                    _pending.TryRemove(id, out _);
+                    return uncertain;
+                }
+            }
 
             int budgetSeconds = timeoutSeconds ?? 60;
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(budgetSeconds) + TransportGrace);
@@ -639,11 +690,12 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 
             if (completedTask == timeoutTask)
             {
-                _pending.TryRemove(id, out _);
                 sw.Stop();
                 var paramsStr = parameters != null ? JsonConvert.SerializeObject(parameters, RequestJsonSettings) : null;
                 UsageLogger?.RecordToolCall(command, paramsStr, false);
-                throw new TimeoutException($"Request timed out ({budgetSeconds}s). Revit may be in a modal dialog.");
+                var unknown = pending.Pending();
+                pending.Caller.TrySetResult(unknown.ToString(Formatting.None));
+                return unknown;
             }
 
             sw.Stop();
@@ -687,11 +739,19 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 if (!string.IsNullOrWhiteSpace(responseWarning))
                     data["_response_warning"] = responseWarning;
                 if (changes != null) data["_changes"] = changes;
+                SafetyResponseMetadata.Attach(data, response);
                 return data;
             }
             else
             {
                 var error = response.Value<string>("error") ?? "Unknown error from Revit";
+                if (response["_failure"] != null || response["_operation"] != null)
+                {
+                    var data = new JObject { ["success"] = false, ["error"] = error };
+                    if (changes != null) data["_changes"] = changes;
+                    SafetyResponseMetadata.Attach(data, response);
+                    return data;
+                }
                 throw new InvalidOperationException(UnknownCommandGuidance(error, CurrentRevitVersion) ?? error);
             }
         }
@@ -2200,7 +2260,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
     [McpServerToolType, Toolset("meta")]
     public class SendCodeTools
     {
-        [McpServerTool(Name = "revit_send_code_to_revit"), System.ComponentModel.Description("Compile + run C# inside Revit for workflows not covered by typed tools. Variables: doc (Document), uidoc (UIDocument), app (UIApplication) - doc and uidoc are null when no model is open, which is legal: use app.OpenAndActivateDocument(path) to open one, or prefer the typed revit_open_model tool. Write a C# body ending in return; helper type declarations may accompany the body. Or provide a complete public McpDynamicScript with public static object Run(UIApplication app). For transactions/StairsEditScope.Commit, RvtMcp.Plugin.SafeFailuresPreprocessor records/deletes warnings and rolls back errors; report HadWarnings/Messages as committed_with_warnings; inspect HadErrors and commit status before reporting success. Output above 700 KiB auto-spills to a local same-machine file with schema and preview; there is no output parameter. Remote clients receive preview but cannot read the local file. Namespaces: System, System.Linq, System.Collections.Generic, Autodesk.Revit.DB, Autodesk.Revit.UI.")]
+        [McpServerTool(Name = "revit_send_code_to_revit"), System.ComponentModel.Description("Compile + run C# inside Revit for workflows not covered by typed tools. Variables: doc (Document), uidoc (UIDocument), app (UIApplication) - doc and uidoc are null when no model is open, which is legal: use app.OpenAndActivateDocument(path) to open one, or prefer the typed revit_open_model tool. Write a C# body ending in return; helper type declarations may accompany the body. Or provide a complete public McpDynamicScript with public static object Run(UIApplication app). For transactions/StairsEditScope.Commit, RvtMcp.Plugin.SafeFailuresPreprocessor captures failures and defaults to rollback for unapproved warnings and errors inside MCP operations. Only a model-specific decision made in Revit can accept supported warnings. Inspect commit status and the returned failure/operation outcome before reporting success. Output above 700 KiB auto-spills to a local same-machine file with schema and preview; there is no output parameter. Remote clients receive preview but cannot read the local file. Namespaces: System, System.Linq, System.Collections.Generic, Autodesk.Revit.DB, Autodesk.Revit.UI.")]
         public static async Task<string> SendCodeToRevit(string code)
         {
             try

@@ -16,6 +16,7 @@ namespace RvtMcp.Plugin
             var budget = config.EnableResponseGuardOrDefault
                 ? config.ResponseBudgetBytesOrDefault : config.MaxResponseBytesOrDefault;
             var response = (JObject)envelope.DeepClone();
+            SafetyResponseMetadata.Attach(response, envelope);
             if (response["changes"] is JObject)
             {
                 response["changes"] = ChangeSummary.ForAgent(response["changes"]);
@@ -53,7 +54,10 @@ namespace RvtMcp.Plugin
                 {
                     response.Remove("data");
                     response["success"] = false;
-                    response["error"] = size.RejectError;
+                    response["error"] = envelope.Value<bool>("success") ? size.RejectError : envelope["error"];
+                    if (response["error"]?.Type == JTokenType.String && response.Value<string>("error").Length > 512)
+                        response["error"] = response.Value<string>("error").Substring(0, 512);
+                    SafetyResponseMetadata.Attach(response, envelope, compact: true);
                     return response;
                 }
 
@@ -81,6 +85,8 @@ namespace RvtMcp.Plugin
                 if (Encoding.UTF8.GetByteCount(response.ToString(Formatting.None)) > budget)
                     response.Remove("warning");
             }
+            if (Encoding.UTF8.GetByteCount(response.ToString(Formatting.None)) > budget)
+                SafetyResponseMetadata.Attach(response, envelope, compact: true);
             return response;
         }
     }

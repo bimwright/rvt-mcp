@@ -23,6 +23,24 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
+## v1.1.0 - Controlled failures and model Issues (unreleased)
+
+### Changed
+
+- **Warnings during MCP edits now default to rollback.** The shared helper and native failure event capture the reason before changing failure state. A matching decision or model-specific rule saved in Revit's Issues UI is required to accept supported warnings; Error, Corruption and incomplete capture are not accepted by warning rules. Batch policy stops override `continueOnError=true`. Calls with earlier committed transactions can report partial or unknown outcomes instead of promising whole-call rollback.
+- **Unresolved model issues block further MCP writes.** Local failure records and model gates are independent of call logs and change-history recording, and saved-model state is retained across reconnects/restarts. Rules start empty and are not automatically inherited by copied/Save As models. Storage failures retain uncertainty and do not claim a durable record when none could be written.
+- **Pending execution is separate from caller timeout.** Matching gateway/add-in capability negotiation is required before non-read dispatch. Native dialogs remain with the user unless an exact supported dialog rule applies; busy-host responses direct the agent to local queries. Do not retry unchanged after timeout, pending, interrupted or unknown outcomes. Dirty-document close remains manual when the native event cannot distinguish saving from discarding.
+
+### Added
+
+- **History → Issues** for reviewing local incidents, Rework, Abandon, constrained Accept once, model rules/revocation and supported one-use native-operation grants. Decisions require a reason in Revit; no MCP approval or rule-mutation tool is exposed. Closing an issue never automatically retries, saves, discards or undoes earlier commits.
+- **`revit_get_failure_records` and `revit_get_operation_status`** in `meta`: bounded read-only local queries that work while Revit is modal and with send-code/history disabled. They use issued identifiers, preserve missing/incomplete evidence, and do not create a missing ledger. Development source counts: `--toolsets all` **235**, adaptive bake **238**, and bare defaults **48**.
+- **Structured `_failure` and `_operation` receipts**, with incident/operation IDs, actual outcome, persistence, model gate and observation coverage. Arbitrary code and custom preprocessors retain explicit coverage limits. See [controlled failures](docs/controlled-failures.md) for the behavior change, UI workflow and API limitations.
+
+### Validation status
+
+This is development source, not a published release or completed native acceptance. Candidate live checks on Revit 2022, 2024 and 2027 are pending; Revit 2025/.NET 8 live acceptance has not run. Six SDK builds do not establish native behavior on every year. Native Save As/Closing, delayed reminders, provider/storage fault recovery and the remaining acceptance clauses must be evaluated separately. No package or publication claim is made here.
+
 ## v1.0.1 - Export, parameter binding and placement fixes
 
 ### Fixed

@@ -5,8 +5,8 @@ using Newtonsoft.Json;
 namespace RvtMcp.Plugin
 {
     /// <summary>
-    /// Completes the per-request TCS when the 60s wait expires so the UI-thread
-    /// handler can skip a stale command instead of writing a late success.
+    /// Separates the caller wait from execution completion so the UI-thread
+    /// handler skips a timed-out queued command but retains every started operation result.
     /// Long-run commands pass a caller-supplied wait (envelope timeout_seconds);
     /// it is clamped to MaxTimeout defensively.
     /// </summary>
@@ -32,19 +32,10 @@ namespace RvtMcp.Plugin
         {
             if (tcs == null) throw new ArgumentNullException(nameof(tcs));
 
-            var wait = EffectiveTimeout(timeout);
-            if (tcs.Task.Wait(wait))
-                return tcs.Task.Result;
-
-            var response = JsonConvert.SerializeObject(new
-            {
-                id,
-                success = false,
-                error = $"Request timed out ({Math.Max(1, (int)wait.TotalSeconds)}s). Revit may still be running this command. " +
-                        "Do not retry clash, export, or other long tools until the current Revit operation finishes."
-            });
-            tcs.TrySetResult(response);
-            return response;
+            var lifecycle = PendingRequestLifecycle.For(tcs);
+            if (lifecycle.RequestId == null) lifecycle.Configure(id, null, null);
+            return lifecycle.CallerTask.Wait(EffectiveTimeout(timeout))
+                ? lifecycle.CallerTask.GetAwaiter().GetResult() : lifecycle.Timeout();
         }
     }
 }

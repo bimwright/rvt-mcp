@@ -212,7 +212,8 @@ namespace RvtMcp.Plugin.Handlers
 
                     view.SetFilterOverrides(filterId, ogs);
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                 }
                 catch (Exception ex)
                 {

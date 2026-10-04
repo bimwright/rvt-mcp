@@ -167,7 +167,8 @@ namespace RvtMcp.Plugin.Handlers
                     string familyName = family.Name;
                     string category = family.FamilyCategory != null ? family.FamilyCategory.Name : null;
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
 
                     return CommandResult.Ok(new
                     {

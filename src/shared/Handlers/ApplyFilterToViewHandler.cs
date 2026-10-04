@@ -83,7 +83,8 @@ namespace RvtMcp.Plugin.Handlers
 
                     view.SetFilterVisibility(filter.Id, visible);
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                     return CommandResult.Ok(new
                     {
                         applied = true,

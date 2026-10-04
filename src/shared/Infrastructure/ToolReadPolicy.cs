@@ -34,6 +34,8 @@ namespace RvtMcp.Plugin
             "get_current_target",
             "get_current_view_info",
             "get_change_records",
+            "get_failure_records",
+            "get_operation_status",
             "get_element_bounding_box",
             "get_element_centroid",
             "get_element_details",

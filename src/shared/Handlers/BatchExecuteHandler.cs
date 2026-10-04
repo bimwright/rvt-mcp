@@ -2,6 +2,7 @@ using System;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
+using RvtMcp.Plugin.Failures;
 
 namespace RvtMcp.Plugin.Handlers
 {
@@ -43,6 +44,7 @@ namespace RvtMcp.Plugin.Handlers
 
             var continueOnError = request.Value<bool?>("continueOnError") ?? false;
 
+            using (FailureControl.BeginBatch())
             using (var tg = new TransactionGroup(doc, "MCP: batch_execute"))
             {
                 tg.Start();
@@ -55,19 +57,32 @@ namespace RvtMcp.Plugin.Handlers
                     return r.Success
                         ? BatchExecutor.InvokeResult.Ok(r.Data)
                         : BatchExecutor.InvokeResult.Fail(r.Error);
-                }, _dispatcher.IsBakedCommand);
+                }, _dispatcher.IsBakedCommand, () => FailureControl.IsStopped);
 
                 bool rolledBack;
-                if (outcome.AnyFailed && !continueOnError)
+                if (outcome.ShouldRollBack(continueOnError) || FailureControl.IsStopped)
                 {
-                    tg.RollBack();
+                    var rollbackStatus = tg.RollBack();
+                    if (rollbackStatus != TransactionStatus.RolledBack)
+                        return CommandResult.Fail("Batch rollback was not confirmed (status: " + rollbackStatus + ").");
+                    FailureControl.NotifyBatchRolledBack();
                     rolledBack = true;
                 }
                 else
                 {
-                    tg.Assimilate();
+                    var groupStatus = tg.Assimilate();
+                    if (groupStatus != TransactionStatus.Committed)
+                        return CommandResult.Fail("Batch transaction group did not commit (status: " + groupStatus + ").");
                     rolledBack = false;
                 }
+
+                if (outcome.PolicyStopped || FailureControl.IsStopped)
+                    return new CommandResult
+                    {
+                        Success = false,
+                        Error = "REVIT_FAILURE_ROLLED_BACK: Failure policy stopped the batch and its transaction group was rolled back.",
+                        Data = new { results = outcome.Results, rolledBack }
+                    };
 
                 return CommandResult.Ok(new { results = outcome.Results, rolledBack });
             }

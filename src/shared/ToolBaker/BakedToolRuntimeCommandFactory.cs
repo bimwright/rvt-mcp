@@ -107,7 +107,10 @@ namespace RvtMcp.Plugin.ToolBaker
                     return CommandResult.Fail(ex.Message);
                 }
 
-                return handler.Execute(app, mergedParams);
+                Failures.FailureControl.ThrowIfStopped();
+                var result = handler.Execute(app, mergedParams);
+                Failures.FailureControl.ThrowIfStopped();
+                return result;
             }
         }
 
@@ -141,11 +144,13 @@ namespace RvtMcp.Plugin.ToolBaker
                 var results = new JArray();
                 foreach (var step in _sequence)
                 {
+                    Failures.FailureControl.ThrowIfStopped();
                     var handler = _dispatcher?.GetCommand(step);
                     if (handler == null)
                         return CommandResult.Fail("Macro handler is not available: " + step);
 
                     var result = handler.Execute(app, "{}");
+                    Failures.FailureControl.ThrowIfStopped();
                     if (result == null || !result.Success)
                     {
                         var error = result?.Error;

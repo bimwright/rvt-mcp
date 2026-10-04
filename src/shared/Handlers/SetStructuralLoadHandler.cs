@@ -50,7 +50,8 @@ namespace RvtMcp.Plugin.Handlers
                     changed += SetIfPresent(load, BuiltInParameter.LOAD_MOMENT_MY, req, "moment_y");
                     changed += SetIfPresent(load, BuiltInParameter.LOAD_MOMENT_MZ, req, "moment_z");
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                     return CommandResult.Ok(new
                     {
                         load_id = loadId.Value,

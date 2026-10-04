@@ -70,7 +70,8 @@ namespace RvtMcp.Plugin.Handlers
                     var center = new XYZ(1.0, 0.75, 0); // approximately center of A3/A4 in feet
                     var viewport = Viewport.Create(doc, sheet.Id, view.Id, center);
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                     return CommandResult.Ok(new
                     {
                         sheetId = RevitCompat.GetId(sheet.Id),

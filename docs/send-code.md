@@ -35,7 +35,7 @@ For a stair creation request, start with the [stairs conversation workflow](stai
 
 `StairsEditScope` is in `Autodesk.Revit.DB`; `Stairs` and `StairsRun` are in `Autodesk.Revit.DB.Architecture`. Begin the scope with no open transaction, then create runs/landings inside an inner transaction. Check the transaction result before committing the scope.
 
-The updated plugin provides `RvtMcp.Plugin.SafeFailuresPreprocessor`. It records each failure in `Messages`, flags `HadWarnings`, deletes warnings from Revit's failure processing, and requests a silent rollback for errors by setting `ClearAfterRollback`. Warning details must still be returned to the caller. This is opt-in; it does not make invalid geometry valid, and deleting warnings is not a design-quality check. In particular, a below-minimum tread-depth warning still requires review even when Revit permits the commit.
+The plugin provides `RvtMcp.Plugin.SafeFailuresPreprocessor`. During an MCP operation it records failures in `Messages`, preserves severity in `HadWarnings`/`HadErrors`, and sets `WasRolledBack` when the controlled policy requests rollback. Warnings default to rollback; only matching warning decisions or rules saved through Revit's Issues UI permit continuation. Errors are never accepted by warning rules. Outside an MCP operation, the helper retains its existing opt-in behavior. Warning details must still be returned; acceptance does not prove design quality.
 
 Use the same helper for the inner transaction and scope so failures remain inspectable:
 
@@ -56,11 +56,11 @@ using (var scope = new StairsEditScope(doc, "Create stairs"))
             // Create and validate runs/landings here.
             txStatus = tx.Commit();
         } // Close the inner transaction before committing/cancelling the scope.
-        if (txStatus != TransactionStatus.Committed)
+        if (txStatus != TransactionStatus.Committed || failures.WasRolledBack)
             return new { outcome = "not_committed", failures.Messages };
 
         scope.Commit(failures);
-        bool committed = !scope.IsActive && !failures.HadErrors
+        bool committed = !scope.IsActive && !failures.HadErrors && !failures.WasRolledBack
             && doc.GetElement(stairsId) != null;
         return new
         {
@@ -68,6 +68,7 @@ using (var scope = new StairsEditScope(doc, "Create stairs"))
             outcome = !committed ? "not_committed"
                 : failures.HadWarnings ? "committed_with_warnings" : "committed",
             requiresReview = failures.HadWarnings,
+            failures.WasRolledBack,
             failures.Messages
         };
     }
@@ -82,6 +83,8 @@ using (var scope = new StairsEditScope(doc, "Create stairs"))
 This is a control-flow template, not a complete stair generator. `scope.Commit(new RvtMcp.Plugin.SafeFailuresPreprocessor())` also works, but retaining the instance allows error inspection. Returning an element ID alone does not prove the scope committed; it may have rolled back. `committed` describes persistence only, not dimensional compliance. Do not report a warning-bearing result as clean success. An exception propagates to send-code's error response after the cleanup attempt; a failed cleanup must not be represented as a successful rollback.
 
 ## Verification limits
+
+The probes below predate controlled failure handling; they do not verify the new default rollback policy. Inspect `_failure` and `_operation` even when custom code returns success. A policy stop prevents subsequent supported transaction commits in the same call but cannot undo earlier commits or external side effects; those calls may have partial outcomes. Custom preprocessors and arbitrary code have unverified failure coverage. Do not retry unchanged after a failure, timeout, or pending result; inspect the operation, incident and model first.
 
 Revit 2027 build 27.0.10.13 passed source-form, warning-reporting, injected-Error rollback, and exception-cleanup probes in a fresh process loading the deployed plugin. These checks do not reproduce the original Revit 2025 crash. The native `create_stairs` proposal is deferred in favor of the documented conversation and send-code workflow.
 

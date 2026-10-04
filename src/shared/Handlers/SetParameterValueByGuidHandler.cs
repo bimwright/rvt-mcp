@@ -268,7 +268,12 @@ namespace RvtMcp.Plugin.Handlers
                             }
                             else
                             {
-                                subTx.Commit();
+                                var subStatus = subTx.Commit();
+                                if (subStatus != TransactionStatus.Committed)
+                                {
+                                    failed.Add(new { elementId = t.ElementId, error = "Subtransaction did not commit: " + subStatus });
+                                    continue;
+                                }
                                 var newVal = GetRawValue(t.Parameter);
                                 var newDisplay = GetDisplayValue(doc, t.Parameter);
 

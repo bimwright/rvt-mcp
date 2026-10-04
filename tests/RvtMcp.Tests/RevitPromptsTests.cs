@@ -280,6 +280,10 @@ namespace RvtMcp.Tests
             Assert.Contains("txStatus != TransactionStatus.Committed", rendered);
             Assert.Contains("scope.Commit(failures)", rendered);
             Assert.Contains("!failures.HadErrors", rendered);
+            Assert.Contains("!failures.WasRolledBack", rendered);
+            Assert.Contains("defaults to rollback for warnings and errors", rendered);
+            Assert.Contains("the agent cannot grant acceptance", rendered);
+            Assert.Contains("authoritative _failure and _operation", rendered);
             Assert.Contains("doc.GetElement(stairsId) != null", rendered);
             Assert.Contains("failures.Messages", rendered);
             Assert.Contains("finally", rendered);

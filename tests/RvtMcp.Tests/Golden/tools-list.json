@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 233,
+  "tool_count": 235,
   "tools": [
     {
       "name": "revit_acquire_coordinates_from_link",
@@ -4088,6 +4088,62 @@
       }
     },
     {
+      "name": "revit_get_failure_records",
+      "description_hash": "sha256:418ddff5aaa6fa084c00d101ffe596db9aa1a6f718ed7b3d7c7c142da3e3df4f",
+      "inputSchema": {
+        "properties": {
+          "cursor": {
+            "description": "",
+            "type": "String"
+          },
+          "elementId": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "from": {
+            "description": "",
+            "type": "String"
+          },
+          "incidentId": {
+            "description": "",
+            "type": "String"
+          },
+          "includeDetails": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "limit": {
+            "description": "",
+            "type": "Int32"
+          },
+          "modelScopeKey": {
+            "description": "",
+            "type": "String"
+          },
+          "operationId": {
+            "description": "",
+            "type": "String"
+          },
+          "state": {
+            "description": "",
+            "type": "String"
+          },
+          "until": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
       "name": "revit_get_family_instances",
       "description_hash": "sha256:131d8697a1c0694ae75d0eaef25904a6651b0f7935f9b08cc22b6bca1d11d002",
       "inputSchema": {
@@ -4352,6 +4408,28 @@
           }
         },
         "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "revit_get_operation_status",
+      "description_hash": "sha256:fa9592f1496b3c210aa504cf1ae56576d4876fc05e0e1f698332652cd6a4c313",
+      "inputSchema": {
+        "properties": {
+          "operationId": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "operationId"
+        ],
         "type": "object"
       },
       "annotations": {
@@ -6544,7 +6622,7 @@
     },
     {
       "name": "revit_send_code_to_revit",
-      "description_hash": "sha256:7f955f4374dd746d188616ef9ddc4db8c804ae27adb5be9973ca1c54ccec070b",
+      "description_hash": "sha256:d82f1825a5e99d21e6d633d2f10920bad3d00cb5c80727bb9cd6f54367ebf425",
       "inputSchema": {
         "properties": {
           "code": {

@@ -1,3 +1,4 @@
+using System;
 using Autodesk.Revit.UI;
 using RvtMcp.Plugin.ToolBaker;
 using Newtonsoft.Json.Linq;
@@ -34,7 +35,18 @@ namespace RvtMcp.Plugin.Handlers
             var revitVersion = AuthToken.RevitVersion ?? string.Empty;
             BakedToolDispatchAuthorizer.TryGetCompatWarning(meta, revitVersion, out var compatWarning);
 
-            var result = command.Execute(app, toolParams);
+            CommandResult result;
+            try
+            {
+                Failures.FailureControl.ThrowIfStopped();
+                result = command.Execute(app, toolParams);
+            }
+            catch (Exception) when (Failures.FailureControl.IsStopped)
+            {
+                result = CommandResult.Fail("Failure policy stopped the baked tool.");
+            }
+            if (Failures.FailureControl.IsStopped)
+                result = CommandResult.Fail("Failure policy stopped the baked tool; inspect its failure and operation records before retrying.");
             registry.RecordRun(name, revitVersion, result != null && result.Success, result?.Error);
 
             if (result == null)

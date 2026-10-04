@@ -76,6 +76,7 @@ namespace RvtMcp.Plugin
             _handler = new McpEventHandler(_dispatcher, SessionLog, ToastNotifier);
             _externalEvent = ExternalEvent.Create(_handler);
             application.ControlledApplication.DocumentChanged += McpChangeTracker.OnDocumentChanged;
+            Failures.FailureControl.Initialize(application);
             application.ViewActivated += Survey.SurveyHistoryBridge.Invalidate;
             application.ControlledApplication.DocumentClosing += Survey.SurveyHistoryBridge.Invalidate;
             application.ControlledApplication.DocumentSavedAs += Survey.SurveyHistoryBridge.Invalidate;
@@ -97,6 +98,7 @@ namespace RvtMcp.Plugin
 
         public Result OnShutdown(UIControlledApplication application)
         {
+            Failures.FailureControl.Shutdown(application);
             application.ControlledApplication.DocumentChanged -= McpChangeTracker.OnDocumentChanged;
             application.ViewActivated -= Survey.SurveyHistoryBridge.Invalidate;
             application.ControlledApplication.DocumentClosing -= Survey.SurveyHistoryBridge.Invalidate;
@@ -172,6 +174,8 @@ namespace RvtMcp.Plugin
             if (_historyWindow == null || !_historyWindow.IsLoaded)
             {
                 _historyWindow = new HistoryWindow(SessionLog, _dispatcher, _handler, _externalEvent);
+                var hwnd = _ribbonApplication?.MainWindowHandle ?? IntPtr.Zero;
+                if (hwnd != IntPtr.Zero) new System.Windows.Interop.WindowInteropHelper(_historyWindow).Owner = hwnd;
                 _historyWindow.Show();
             }
             else if (!_historyWindow.IsVisible)
@@ -182,6 +186,12 @@ namespace RvtMcp.Plugin
             {
                 _historyWindow.Activate();
             }
+        }
+
+        public void ShowIssues()
+        {
+            ShowOrFocusHistoryWindow();
+            _historyWindow?.ShowIssues();
         }
 
         public void ShowOrFocusSettingsWindow(SettingsTab initialTab = SettingsTab.General)
@@ -251,6 +261,7 @@ namespace RvtMcp.Plugin
 
         private void OnIdling(object sender, IdlingEventArgs e)
         {
+            Failures.FailureControl.OnIdling(sender as UIApplication);
             // Capture the owner early so pre-command toasts (e.g. agent
             // connected) anchor to the Revit window instead of the screen.
             if (!_mainWindowCaptured)

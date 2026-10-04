@@ -215,6 +215,8 @@ namespace RvtMcp.Plugin.Handlers
                 {
                     // detachAndPrompt: true shows a modal dialog nobody is there to answer.
                     var uidoc = app.OpenAndActivateDocument(modelPath, options, false);
+                    if (uidoc?.Document == null)
+                        return CommandResult.Fail("REVIT_OPERATION_REQUIRES_USER: Revit cancelled opening the model; no opened document was returned.");
                     document = uidoc.Document;
                     activeViewName = uidoc.ActiveView != null ? uidoc.ActiveView.Name : null;
                 }
@@ -222,6 +224,9 @@ namespace RvtMcp.Plugin.Handlers
                 {
                     document = app.Application.OpenDocumentFile(modelPath, options);
                 }
+
+                if (document == null)
+                    return CommandResult.Fail("REVIT_OPERATION_REQUIRES_USER: Revit cancelled opening the model; no opened document was returned.");
 
                 return CommandResult.Ok(new
                 {
@@ -273,10 +278,13 @@ namespace RvtMcp.Plugin.Handlers
                     // already-open document just activates it.
                     try
                     {
-                        app.OpenAndActivateDocument(
+                        var activatedDocument = app.OpenAndActivateDocument(
                             ModelPathUtils.ConvertUserVisiblePathToModelPath(alreadyOpen.PathName),
                             new OpenOptions(), false);
-                        activated = true;
+                        activated = activatedDocument?.Document != null
+                            && PathsEqual(activatedDocument.Document.PathName, alreadyOpen.PathName);
+                        if (!activated)
+                            return CommandResult.Fail("REVIT_OPERATION_REQUIRES_USER: Revit did not activate the already-open model.");
                     }
                     catch (Exception ex)
                     {

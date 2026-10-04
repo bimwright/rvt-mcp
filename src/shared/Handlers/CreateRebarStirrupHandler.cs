@@ -70,7 +70,8 @@ namespace RvtMcp.Plugin.Handlers
                         return CommandResult.Fail("Rebar.CreateFromRebarShape returned null.");
                     }
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                     return CommandResult.Ok(new
                     {
                         created_id = RevitCompat.GetId(rebar.Id),

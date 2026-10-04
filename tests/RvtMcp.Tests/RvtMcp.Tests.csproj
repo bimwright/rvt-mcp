@@ -20,6 +20,8 @@
     <Compile Include="../../src/shared/Views/Toast/ToastActivityEntry.cs" Link="ToastActivityEntry.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastActivityLog.cs" Link="ToastActivityLog.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastPlacement.cs" Link="ToastPlacement.cs" />
+    <Compile Include="../../src/shared/Views/FailureIssuesContext.cs" Link="FailureIssuesContext.cs" />
+    <Compile Include="../../src/shared/Views/FailureIssuesPresentation.cs" Link="FailureIssuesPresentation.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\SendCodeSourceBuilder.cs" Link="Shared\SendCodeSourceBuilder.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\NoDocumentGuidance.cs" Link="Shared\NoDocumentGuidance.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\RecentFileList.cs" Link="Shared\RecentFileList.cs" />
@@ -43,6 +45,8 @@
     <Compile Include="..\..\src\shared\Infrastructure\SchemaValidator.cs" Link="Shared\SchemaValidator.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\ResponsePaging.cs" Link="Shared\ResponsePaging.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\RequestWait.cs" Link="Shared\RequestWait.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\PendingRequestLifecycle.cs" Link="Shared\PendingRequestLifecycle.cs" />
+    <Compile Include="..\..\src\shared\Transport\TransportResponseWriter.cs" Link="Shared\TransportResponseWriter.cs" />
     <Compile Include="..\..\src\shared\Config\StatusPrivacySection.cs" Link="Shared\StatusPrivacySection.cs" />
     <Compile Include="..\..\src\shared\Handlers\BatchExecutor.cs" Link="Shared\BatchExecutor.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\CommandOutcome.cs" Link="Shared\CommandOutcome.cs" />

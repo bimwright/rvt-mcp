@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-233%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-235%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -85,14 +85,16 @@ Video cộng đồng giới thiệu rvt-mcp. Cách cài trong video có thể c�
 
 ## Tools
 
+Các số dưới đây mô tả **source phát triển v1.1.0**; bản phát hành đã công bố có thể có catalog cũ hơn.
+
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
-| Fresh install | **233** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **46** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **233** | Full catalog |
-| `all` + adaptive bake | **236** | Thêm 3 tool vòng đời suggestion |
+| Fresh install | **235** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **48** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **235** | Full catalog |
+| `all` + adaptive bake | **238** | Thêm 3 tool vòng đời suggestion |
 
-Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 46 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline.
+Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 48 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline.
 
 | Toolset | Phạm vi |
 |---------|---------|
@@ -161,6 +163,8 @@ Nếu toolset mà prompt cần chưa bật, prompt trả lời đúng dòng `--t
 ---
 
 ## Cấu hình
+
+**v1.1.0 đang phát triển:** Warning do MCP phát sinh mặc định rollback; issue chưa xử lý chặn ghi theo model. Người dùng quyết định tại **History → Issues**. Hai tool `revit_get_failure_records` và `revit_get_operation_status` đọc sổ local kể cả khi Revit đang hiện dialog. Không chạy lại lệnh đang pending hoặc chưa rõ kết quả. Xem [controlled failures và giới hạn nghiệm thu (English)](docs/controlled-failures.md).
 
 Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cục bộ mặc định bật, độc lập với call log; dùng `--disable-change-history` để tắt ghi. Ba tool `meta`: `revit_record_change` gắn lý do với nhóm call ID cụ thể, `revit_get_change_records` tra cứu thay đổi, `revit_resolve_history_identity` ghi lựa chọn tiếp nối hoặc tách lịch sử sau copy/Save As. Xem [ghi nhận thay đổi](docs/change-tracking.md) về riêng tư, giới hạn và phục hồi.
 
@@ -244,6 +248,7 @@ Annotations mô tả tác động lên document/file của từng tool. Đổi s
       "mcp__rvt-mcp__revit_get_element_geometry",
       "mcp__rvt-mcp__revit_get_element_parameters",
       "mcp__rvt-mcp__revit_get_element_relationships",
+      "mcp__rvt-mcp__revit_get_failure_records",
       "mcp__rvt-mcp__revit_get_family_instances",
       "mcp__rvt-mcp__revit_get_group_members",
       "mcp__rvt-mcp__revit_get_link_coordinate_system",
@@ -252,6 +257,7 @@ Annotations mô tả tác động lên document/file của từng tool. Đổi s
       "mcp__rvt-mcp__revit_get_material_quantities",
       "mcp__rvt-mcp__revit_get_mep_element_connectors",
       "mcp__rvt-mcp__revit_get_model_warnings_summary",
+      "mcp__rvt-mcp__revit_get_operation_status",
       "mcp__rvt-mcp__revit_get_panel_schedule",
       "mcp__rvt-mcp__revit_get_print_settings",
       "mcp__rvt-mcp__revit_get_project_coordinate_system",

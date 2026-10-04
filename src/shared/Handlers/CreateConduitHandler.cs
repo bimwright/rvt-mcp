@@ -126,7 +126,8 @@ namespace RvtMcp.Plugin.Handlers
                             diamParam.Set(diameter.Value * MmToFeet);
                     }
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
 
                     // Read back resulting length and diameter.
                     double lengthMm = 0;

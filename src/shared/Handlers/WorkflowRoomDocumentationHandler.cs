@@ -153,6 +153,7 @@ namespace RvtMcp.Plugin.Handlers
                             {
                                 sub.Start();
                                 var roomReport = BuildRoomPreview(room);
+                                var createdBeforeRoom = createdIds.Count;
                                 try
                                 {
                                     View calloutView = null;
@@ -179,13 +180,18 @@ namespace RvtMcp.Plugin.Handlers
                                         ((JObject)roomReport)["viewport_id"] = RevitCompat.GetId(viewport.Id);
                                     }
 
-                                    sub.Commit();
+                                    if (sub.Commit() != TransactionStatus.Committed)
+                                        throw new InvalidOperationException("Room documentation subtransaction did not commit.");
                                 }
                                 catch (Exception ex)
                                 {
                                     statusText = "partial";
                                     if (sub.HasStarted())
                                         sub.RollBack();
+                                    createdIds.RemoveRange(createdBeforeRoom, createdIds.Count - createdBeforeRoom);
+                                    ((JObject)roomReport)["callout_view_id"] = JValue.CreateNull();
+                                    ((JObject)roomReport)["tag_ids"] = new JArray();
+                                    ((JObject)roomReport).Remove("viewport_id");
                                     ((JObject)roomReport)["status"] = "failed";
                                     ((JObject)roomReport)["warnings"] = new JArray(ex.Message);
                                     warnings.Add("Room " + RevitCompat.GetId(room.Id).ToString(CultureInfo.InvariantCulture) + " documentation failed: " + ex.Message);
@@ -238,7 +244,8 @@ namespace RvtMcp.Plugin.Handlers
                         return CommandResult.Ok(BuildResult(false, "failed", steps, createdIds, modifiedIds, warnings, roomDocs, WorkflowSupport.Rollback("TransactionGroup", true, "Room documentation transaction failed and was rolled back.")));
                     }
                 }
-                group.Assimilate();
+                if (group.Assimilate() != TransactionStatus.Committed)
+                    return CommandResult.Fail("Revit did not commit the room documentation transaction group; model changes were not confirmed.");
             }
 
             return CommandResult.Ok(BuildResult(false, statusText, steps, createdIds, modifiedIds, warnings, roomDocs, WorkflowSupport.Rollback("TransactionGroup", false, "Room documentation transaction group committed.")));

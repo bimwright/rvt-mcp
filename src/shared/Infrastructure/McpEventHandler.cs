@@ -54,7 +54,7 @@ namespace RvtMcp.Plugin
             while (_queue.TryDequeue(out var request))
             {
                 // Stale command guard: skip if TCS already completed (timeout/cancel)
-                if (request.Tcs.Task.IsCompleted)
+                if (!PendingRequestLifecycle.For(request.Tcs).TryStart())
                     continue;
 
                 var sw = Stopwatch.StartNew();
@@ -62,6 +62,7 @@ namespace RvtMcp.Plugin
                 JObject changes = null;
                 JObject history = null;
                 JObject historyMarker = null;
+                Failures.FailureControl.Scope failureScope = null;
                 try
                 {
                     runtimeConfig = RvtMcpConfig.LoadReadOnly().WithRuntimeOptions(request.RuntimeOptions);
@@ -156,12 +157,15 @@ namespace RvtMcp.Plugin
                     }
 
                     CommandResult result;
+                    failureScope = Failures.FailureControl.Begin(app, request);
+                    Failures.FailureControl.ThrowIfStopped();
                     var surveySnapshot = Survey.SurveyHistoryBridge.Before(app, request, runtimeConfig.EnableChangeHistoryOrDefault);
                     using (var capture = McpChangeTracker.Begin(request.History?.IsValid == true && runtimeConfig.EnableChangeHistoryOrDefault))
                     {
                         bool rolledBack = false;
                         try
                         {
+                            failureScope.ExecutionStarted = true;
                             result = command.Execute(app, request.ParamsJson);
                             rolledBack = request.CommandName == "batch_execute"
                                 && result.Data != null && JObject.FromObject(result.Data).Value<bool>("rolledBack");
@@ -178,6 +182,7 @@ namespace RvtMcp.Plugin
                             Survey.SurveyHistoryBridge.Complete(surveySnapshot, history);
                         }
                     }
+                    failureScope.Complete(result);
                     Survey.SurveyHistoryBridge.Remember(app, request, runtimeConfig.EnableChangeHistoryOrDefault, result);
                     sw.Stop();
                     // Spill may replace result.Data; the outcome is judged on the handler's own data.
@@ -193,6 +198,7 @@ namespace RvtMcp.Plugin
                         error = McpResponsePrivacy.RedactErrorForResponse(NoDocumentGuidance.ForAgent(result.Error))
                     });
                     var envelope = JObject.Parse(preSpillResponse);
+                    failureScope.Enrich(envelope);
                     if (changes != null) envelope["changes"] = changes;
                     // Reserve the small receipt marker in the response budget before writing the capture.
                     if (history != null || historyMarker != null)
@@ -237,6 +243,9 @@ namespace RvtMcp.Plugin
                     historyMarker = historyMarker ?? PublishHistory(request, history, outcome.Success, handlerData, app.Application.VersionNumber);
                     if (historyMarker != null) preGuard["history_transfer"] = historyMarker;
                     else preGuard.Remove("history_transfer");
+                    failureScope.PersistFinal(preGuard);
+                    if (!preGuard.Value<bool>("success") && outcome.Success)
+                        outcome = CommandOutcome.Normalize(request.CommandName, false, handlerData, preGuard.Value<string>("error"), null);
                     var response = preGuard.ToString(Formatting.None);
 
                     McpLogger.Log(request.CommandName, request.ParamsJson, outcome.Success,
@@ -280,6 +289,8 @@ namespace RvtMcp.Plugin
                 {
                     sw.Stop();
                     var exError = McpResponsePrivacy.RedactErrorForResponse(ex.Message);
+                    failureScope?.Complete(new CommandResult { Success = false, Error = exError });
+                    if (failureScope?.Stopped == true) exError = failureScope.ErrorCode ?? exError;
                     McpLogger.Log(request.CommandName, request.ParamsJson, false,
                                   sw.ElapsedMilliseconds, exError, enabled: runtimeConfig.EnableCallLogOrDefault);
 
@@ -307,14 +318,16 @@ namespace RvtMcp.Plugin
                         success = false,
                         error = exError
                     });
+                    failureScope?.Enrich(errorEnvelope);
                     if (changes != null) errorEnvelope["changes"] = changes;
                     historyMarker = historyMarker ?? PublishHistory(request, history, false, null, app.Application.VersionNumber);
                     if (historyMarker != null) errorEnvelope["history_transfer"] = historyMarker;
-                    if (changes != null)
+                    if (changes != null || failureScope != null)
                     {
                         try { errorEnvelope = ResponseEnvelopeGuard.Apply(request.CommandName, request.ParamsJson, errorEnvelope, runtimeConfig); }
                         catch { errorEnvelope["changes"] = ChangeSummary.Omitted(); }
                     }
+                    failureScope?.PersistFinal(errorEnvelope);
                     request.Tcs.TrySetResult(errorEnvelope.ToString(Formatting.None));
                     try
                     {
@@ -331,6 +344,10 @@ namespace RvtMcp.Plugin
                     {
                         App.DebugLog("McpToastNotifier.OnCompleted failed (exception path): " + toastEx.Message);
                     }
+                }
+                finally
+                {
+                    failureScope?.Dispose();
                 }
 
                 break;

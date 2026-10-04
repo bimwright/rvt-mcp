@@ -16,6 +16,10 @@ namespace RvtMcp.Plugin.Handlers
         {
             public List<object> Results { get; set; } = new List<object>();
             public bool AnyFailed { get; set; }
+            public bool PolicyStopped { get; set; }
+
+            public bool ShouldRollBack(bool continueOnError) =>
+                PolicyStopped || (AnyFailed && !continueOnError);
         }
 
         public const int MaxCommands = 20;
@@ -34,11 +38,16 @@ namespace RvtMcp.Plugin.Handlers
         /// Optional predicate used by the Revit handler to keep baked tools out of
         /// batch_execute; baked tools must run through run_baked_tool.
         /// </param>
+        /// <param name="isPolicyStopped">
+        /// Native failure-scope stop flag. Unlike an ordinary command error, this
+        /// unconditionally stops dispatch and requires the outer group to roll back.
+        /// </param>
         public static Outcome Run(
             JArray commandsArr,
             bool continueOnError,
             Func<string, string, InvokeResult> invoke,
-            Func<string, bool> isBakedCommand = null)
+            Func<string, bool> isBakedCommand = null,
+            Func<bool> isPolicyStopped = null)
         {
             if (commandsArr == null) throw new ArgumentNullException(nameof(commandsArr));
             if (invoke == null) throw new ArgumentNullException(nameof(invoke));
@@ -54,6 +63,12 @@ namespace RvtMcp.Plugin.Handlers
 
             for (var i = 0; i < commandsArr.Count; i++)
             {
+                if (MarkPolicyStop(outcome, isPolicyStopped))
+                {
+                    outcome.Results.Add(new { index = i, ok = false, error = "Failure policy stopped the batch; remaining commands were not run." });
+                    return outcome;
+                }
+
                 var cmd = commandsArr[i] as JObject;
                 var cmdName = cmd?.Value<string>("command");
 
@@ -110,8 +125,16 @@ namespace RvtMcp.Plugin.Handlers
                 {
                     outcome.Results.Add(new { index = i, ok = false, error = ex.Message });
                     outcome.AnyFailed = true;
-                    if (!continueOnError) return outcome;
+                    if (MarkPolicyStop(outcome, isPolicyStopped) || !continueOnError) return outcome;
                     continue;
+                }
+
+                // A native pre-event can cancel an operation whose API returns normally.
+                // Policy stop is authoritative even when the handler reports success.
+                if (MarkPolicyStop(outcome, isPolicyStopped))
+                {
+                    outcome.Results.Add(new { index = i, ok = false, error = "Failure policy stopped the batch; its transaction group must roll back.", data = r.Data });
+                    return outcome;
                 }
 
                 if (r.UnknownCommand)
@@ -149,6 +172,14 @@ namespace RvtMcp.Plugin.Handlers
             }
 
             return outcome;
+        }
+
+        private static bool MarkPolicyStop(Outcome outcome, Func<bool> isPolicyStopped)
+        {
+            if (isPolicyStopped == null || !isPolicyStopped()) return false;
+            outcome.PolicyStopped = true;
+            outcome.AnyFailed = true;
+            return true;
         }
 
         public static string BakedCommandNotSupportedMessage(string name) =>

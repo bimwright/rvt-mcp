@@ -44,7 +44,8 @@ namespace RvtMcp.Plugin.Handlers
                     var newBox = BuildExplicitBox(boundsObj) ?? BuildFitBox(doc, view, fitIdsToken, paddingMm);
                     if (newBox != null) view.CropBox = newBox;
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                     return CommandResult.Ok(new
                     {
                         view_id = RevitCompat.GetId(view.Id),

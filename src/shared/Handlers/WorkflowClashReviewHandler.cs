@@ -267,7 +267,8 @@ namespace RvtMcp.Plugin.Handlers
                     }
                 }
 
-                group.Assimilate();
+                if (group.Assimilate() != TransactionStatus.Committed)
+                    return CommandResult.Fail("Revit did not commit the clash review transaction group; model changes were not confirmed.");
             }
 
             return CommandResult.Ok(BuildResult(

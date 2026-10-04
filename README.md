@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-233%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-235%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -84,21 +84,23 @@ Community videos of rvt-mcp at work. Install steps shown in a video can be older
 
 ## Tools
 
+Counts below describe the **v1.1.0 development source**; published releases can expose an older catalog.
+
 | Mode | Tools | Notes |
 |------|------:|-------|
-| Fresh install | **233** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **46** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **233** | Full catalog |
-| `all` + adaptive bake | **236** | Adds 3 suggestion-lifecycle tools |
+| Fresh install | **235** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **48** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **235** | Full catalog |
+| `all` + adaptive bake | **238** | Adds 3 suggestion-lifecycle tools |
 
-Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 46-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline.
+Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 48-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline.
 
 | Toolset | What it covers |
 |---------|----------------|
 | `query` | View, selection, filters, stats, parameters, relationships, worksets, groups/assemblies |
 | `create` | Grids, levels, rooms, line/point/surface-based elements, groups |
 | `view` | Create views, sheets layout helpers, capture image, crop/scale |
-| `meta` | Batch execute (max 20), multi-Revit targets, recent models, project info, purge unused (MVP), message, send_code |
+| `meta` | Batch execute (max 20), multi-Revit targets, recent models, project info, purge unused (MVP), message, send_code, local failure records and operation status |
 | `lint` | View naming patterns, firm-profile detect, warnings summary |
 | `schedule` | List/create schedules, fields, formulas, data |
 | `families` | Load/unload, types, instances, audit, export `.rfa` (project-side) |
@@ -123,7 +125,7 @@ Counts exclude your personal baked tools. The installer writes the seeded defaul
 
 - **`revit_send_code_to_revit`** (on by default) compiles and runs a C# body inside Revit when no typed tool fits; `--read-only` or `--disable-send-code` removes it. See [docs/send-code.md](docs/send-code.md), and [docs/stairs-workflow.md](docs/stairs-workflow.md) for stairs.
 - **ToolBaker:** `revit_list_baked_tools` / `revit_run_baked_tool` need `--toolsets toolbaker`. Adaptive bake (`--enable-adaptive-bake`, off by default) suggests tools from repeated calls; nothing is added until you accept one. Bake compiles inside Revit — no Visual Studio needed. See [docs/bake.md](docs/bake.md).
-- **Ribbon:** start or stop the connection, open **History** to search and re-run past calls, and switch completion **Toasts** (on by default).
+- **Ribbon:** start or stop the connection, open **History** to search past calls and review **Issues**, and switch completion **Toasts** (on by default).
 - **UI languages:** the add-in UI comes in 15 languages and follows Revit's UI language; change it with the **Language** button in the ribbon slide-out — it opens **Settings → General → Language** (`BIMWRIGHT_UI_LANGUAGE` still wins). Tool names and payloads stay English. See [docs/localization.md](docs/localization.md).
 
 ### Why activity toasts exist
@@ -160,6 +162,8 @@ If a prompt's toolsets aren't enabled, it answers with the exact `--toolsets` li
 ---
 
 ## Configuration
+
+**v1.1.0 development:** MCP warnings now default to rollback; unresolved issues block writes for that model. Review decisions in **History → Issues**. The new `revit_get_failure_records` and `revit_get_operation_status` tools read local state even while Revit is modal. Do not retry a pending or unknown operation. See [controlled failures and acceptance limits](docs/controlled-failures.md).
 
 Since v1.0.0 the server reports `_changes` and local per-model `_history`. History defaults on independently of call logs; use `--disable-change-history` to disable recording. The `meta` tools `revit_record_change`, `revit_get_change_records` and `revit_resolve_history_identity` attach reasons to explicit call IDs, query stored changes and record the owner's history choice after a copy or Save As. See [change tracking](docs/change-tracking.md) for privacy, limits and recovery.
 
@@ -243,6 +247,7 @@ MCP annotations describe each tool's document/file effects. Transient selection,
       "mcp__rvt-mcp__revit_get_element_geometry",
       "mcp__rvt-mcp__revit_get_element_parameters",
       "mcp__rvt-mcp__revit_get_element_relationships",
+      "mcp__rvt-mcp__revit_get_failure_records",
       "mcp__rvt-mcp__revit_get_family_instances",
       "mcp__rvt-mcp__revit_get_group_members",
       "mcp__rvt-mcp__revit_get_link_coordinate_system",
@@ -251,6 +256,7 @@ MCP annotations describe each tool's document/file effects. Transient selection,
       "mcp__rvt-mcp__revit_get_material_quantities",
       "mcp__rvt-mcp__revit_get_mep_element_connectors",
       "mcp__rvt-mcp__revit_get_model_warnings_summary",
+      "mcp__rvt-mcp__revit_get_operation_status",
       "mcp__rvt-mcp__revit_get_panel_schedule",
       "mcp__rvt-mcp__revit_get_print_settings",
       "mcp__rvt-mcp__revit_get_project_coordinate_system",
@@ -349,6 +355,7 @@ More: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).
 | [docs/install.md](docs/install.md) | Installer details, upgrade, uninstall, developer and NuGet installs |
 | [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md) | Per-client MCP wiring |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Processes, transport, DTO rules |
+| [docs/controlled-failures.md](docs/controlled-failures.md) | Warning rollback, model gates, Issues decisions and pending-operation recovery |
 | [docs/send-code.md](docs/send-code.md) | send_code source forms and failure handling |
 | [docs/bake.md](docs/bake.md) | Adaptive bake and body privacy |
 | [docs/localization.md](docs/localization.md) | UI languages, overrides, hot reload |

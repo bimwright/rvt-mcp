@@ -15,7 +15,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>rvt-mcp</ToolCommandName>
     <PackageId>RvtMcp.Server</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.1.0</Version>
     <Authors>Khoa Le</Authors>
     <Description>MCP gateway for Autodesk Revit 2022-2027 — expose the Revit API as AI-callable tools with progressive disclosure (toolset gating), a Transaction-safe batch_execute, and a ToolBaker self-evolution engine. Pair with the Revit plugin distributed on GitHub Releases.</Description>
     <PackageProjectUrl>https://github.com/bimwright/rvt-mcp</PackageProjectUrl>
@@ -33,6 +33,11 @@
 
   <!-- Shared config (A9) — pulled in as source so server binary has zero extra deps -->
   <ItemGroup>
+    <Compile Include="..\shared\Failures\FailureContracts.cs" Link="Shared\Failures\FailureContracts.cs" />
+    <Compile Include="..\shared\Failures\FailureCompletion.cs" Link="Shared\Failures\FailureCompletion.cs" />
+    <Compile Include="..\shared\Failures\FailurePolicy.cs" Link="Shared\Failures\FailurePolicy.cs" />
+    <Compile Include="..\shared\Failures\FailureCapture.cs" Link="Shared\Failures\FailureCapture.cs" />
+    <Compile Include="..\shared\Failures\FailureLedgerStore.cs" Link="Shared\Failures\FailureLedgerStore.cs" />
     <Compile Include="..\shared\Config\RvtMcpConfig.cs" Link="Shared\RvtMcpConfig.cs" />
     <Compile Include="..\shared\Config\ToastPositionOptions.cs" Link="Shared\ToastPositionOptions.cs" />
     <Compile Include="..\shared\Logging\PersistSendCodeTtl.cs" Link="Shared\PersistSendCodeTtl.cs" />
@@ -51,6 +56,7 @@
     <Compile Include="..\shared\Infrastructure\ResponseSpillPolicy.cs" Link="Shared\ResponseSpillPolicy.cs" />
     <Compile Include="..\shared\Infrastructure\ResponseSpillProcessor.cs" Link="Shared\ResponseSpillProcessor.cs" />
     <Compile Include="..\shared\Infrastructure\ResponseEnvelopeGuard.cs" Link="Shared\ResponseEnvelopeGuard.cs" />
+    <Compile Include="..\shared\Infrastructure\SafetyResponseMetadata.cs" Link="Shared\SafetyResponseMetadata.cs" />
     <Compile Include="..\shared\Infrastructure\DocumentChangeAccumulator.cs" Link="Shared\DocumentChangeAccumulator.cs" />
     <Compile Include="..\shared\Infrastructure\ChangeSummary.cs" Link="Shared\ChangeSummary.cs" />
     <Compile Include="..\shared\Infrastructure\ChangeHistoryTransfer.cs" Link="Shared\ChangeHistoryTransfer.cs" />

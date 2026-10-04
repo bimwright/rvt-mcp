@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
@@ -107,7 +107,7 @@ namespace RvtMcp.Plugin
             try
             {
                 var reader = new StreamReader(pipe, Encoding.UTF8);
-                var writer = new StreamWriter(pipe, new UTF8Encoding(false)) { AutoFlush = true };
+                using var writer = new TransportResponseWriter(new StreamWriter(pipe, new UTF8Encoding(false)) { AutoFlush = true });
 
                 var requestTimestamps = new System.Collections.Generic.Queue<DateTime>();
                 const int RateLimitMax = 20;
@@ -175,7 +175,6 @@ namespace RvtMcp.Plugin
                     string id = request.Value<string>("id");
                     string command = request.Value<string>("command");
                     string paramsJson = request["params"]?.ToString() ?? "{}";
-                    int? timeoutSeconds = request.Value<int?>("timeout_seconds");
 
                     // Internal server -> plugin handshake messages are consumed here,
                     // after token auth and before rate limiting or the Revit callback.
@@ -194,8 +193,6 @@ namespace RvtMcp.Plugin
                         continue;
                     }
 
-                    // Create TCS and invoke callback
-                    var tcs = new TaskCompletionSource<string>();
 
                     var now = DateTime.UtcNow;
                     while (requestTimestamps.Count > 0 && (now - requestTimestamps.Peek()) > RateLimitWindow)
@@ -218,19 +215,7 @@ namespace RvtMcp.Plugin
                     requestTimestamps.Enqueue(now);
 
                     LastCommandTime = DateTime.Now;
-                    _onRequest(line, tcs);
-
-                    var response = RequestWait.WaitOrTimeout(tcs, id,
-                        timeoutSeconds.HasValue ? TimeSpan.FromSeconds(timeoutSeconds.Value) : (TimeSpan?)null);
-
-                    try
-                    {
-                        writer.WriteLine(response);
-                    }
-                    catch
-                    {
-                        break;
-                    }
+                    writer.Dispatch(request, line, _onRequest);
                 }
             }
             finally

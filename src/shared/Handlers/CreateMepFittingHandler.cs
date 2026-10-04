@@ -149,7 +149,8 @@ namespace RvtMcp.Plugin.Handlers
                             "Revit returned no fitting for the supplied connectors.");
                     }
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
 
                     return CommandResult.Ok(new
                     {

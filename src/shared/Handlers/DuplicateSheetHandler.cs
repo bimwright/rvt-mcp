@@ -269,7 +269,8 @@ namespace RvtMcp.Plugin.Handlers
                             txGroup.RollBack();
                             return CommandResult.Fail($"Transaction did not commit (status: {commitStatus}).");
                         }
-                        txGroup.Assimilate();
+                        if (txGroup.Assimilate() != TransactionStatus.Committed)
+                            return CommandResult.Fail("Revit did not commit the sheet transaction group; model changes were not confirmed.");
                     }
                     catch (Exception ex)
                     {

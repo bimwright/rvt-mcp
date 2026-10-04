@@ -35,6 +35,8 @@ namespace RvtMcp.Server
         {
             "list_available_targets",
             "get_current_target",
+            "get_failure_records",
+            "get_operation_status",
             "switch_target",
             "list_bake_suggestions",
             "dismiss_bake_suggestion",

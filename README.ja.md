@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-233%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-235%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -85,14 +85,16 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 ## Tools
 
+Counts below describe the **v1.1.0 development source**; published releases can expose an older catalog.
+
 | モード | Tools | 注記 |
 |--------|------:|------|
-| 新規インストール | **233** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
-| 素の `rvt-mcp.exe` | **46** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **233** | フルカタログ |
-| `all` + adaptive bake | **236** | 提案ライフサイクル 3 ツールを追加 |
+| 新規インストール | **235** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
+| 素の `rvt-mcp.exe` | **48** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **235** | フルカタログ |
+| `all` + adaptive bake | **238** | 提案ライフサイクル 3 ツールを追加 |
 
-件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 46 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。
+件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 48 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。
 
 | Toolset | 範囲 |
 |---------|------|
@@ -161,6 +163,8 @@ v1.0.0 には 6 つの MCP プロンプトがあります。クライアント�
 ---
 
 ## 設定
+
+**v1.1.0 development:** Controlled failures, model gates and **History → Issues** decisions are described in the [English guide](docs/controlled-failures.md). `revit_get_failure_records` and `revit_get_operation_status` read local state while Revit is modal. Native acceptance remains pending; do not retry pending or unknown operations.
 
 v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 `_history` を返します。履歴は call log と独立して既定で有効です。記録を止めるには `--disable-change-history` を指定します。`meta` の `revit_record_change` は明示した call ID に理由を関連付け、`revit_get_change_records` は履歴を検索します。プライバシー、制限、復旧は [変更の記録](docs/change-tracking.md) を参照してください。
 
@@ -244,6 +248,7 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
       "mcp__rvt-mcp__revit_get_element_geometry",
       "mcp__rvt-mcp__revit_get_element_parameters",
       "mcp__rvt-mcp__revit_get_element_relationships",
+      "mcp__rvt-mcp__revit_get_failure_records",
       "mcp__rvt-mcp__revit_get_family_instances",
       "mcp__rvt-mcp__revit_get_group_members",
       "mcp__rvt-mcp__revit_get_link_coordinate_system",
@@ -252,6 +257,7 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
       "mcp__rvt-mcp__revit_get_material_quantities",
       "mcp__rvt-mcp__revit_get_mep_element_connectors",
       "mcp__rvt-mcp__revit_get_model_warnings_summary",
+      "mcp__rvt-mcp__revit_get_operation_status",
       "mcp__rvt-mcp__revit_get_panel_schedule",
       "mcp__rvt-mcp__revit_get_print_settings",
       "mcp__rvt-mcp__revit_get_project_coordinate_system",

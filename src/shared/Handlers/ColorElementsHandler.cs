@@ -95,7 +95,8 @@ namespace RvtMcp.Plugin.Handlers
                         coloredCount++;
                     }
                 }
-                tx.Commit();
+                if (tx.Commit() != TransactionStatus.Committed)
+                    return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
             }
 
             var summary = groups.Select((g, i) => new

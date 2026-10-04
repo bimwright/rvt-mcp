@@ -83,7 +83,8 @@ namespace RvtMcp.Plugin.Handlers
                             return CommandResult.Fail($"Element type '{elementType}' not supported. Supported: wall");
                     }
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                     return CommandResult.Ok(new
                     {
                         elementId = RevitCompat.GetId(created.Id),

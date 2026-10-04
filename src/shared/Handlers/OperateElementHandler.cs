@@ -41,7 +41,8 @@ namespace RvtMcp.Plugin.Handlers
                     {
                         tx.Start();
                         view.HideElements(ids);
-                        tx.Commit();
+                        if (tx.Commit() != TransactionStatus.Committed)
+                            return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                     }
                     return CommandResult.Ok(new { operation, count = ids.Count });
 
@@ -50,7 +51,8 @@ namespace RvtMcp.Plugin.Handlers
                     {
                         tx.Start();
                         view.UnhideElements(ids);
-                        tx.Commit();
+                        if (tx.Commit() != TransactionStatus.Committed)
+                            return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                     }
                     return CommandResult.Ok(new { operation, count = ids.Count });
 
@@ -59,7 +61,8 @@ namespace RvtMcp.Plugin.Handlers
                     {
                         tx.Start();
                         view.IsolateElementsTemporary(ids);
-                        tx.Commit();
+                        if (tx.Commit() != TransactionStatus.Committed)
+                            return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                     }
                     return CommandResult.Ok(new { operation, count = ids.Count });
 
@@ -75,7 +78,8 @@ namespace RvtMcp.Plugin.Handlers
                         ogs.SetSurfaceForegroundPatternColor(new Color(r, g, b));
                         foreach (var id in ids)
                             view.SetElementOverrides(id, ogs);
-                        tx.Commit();
+                        if (tx.Commit() != TransactionStatus.Committed)
+                            return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                     }
                     return CommandResult.Ok(new { operation, count = ids.Count, color = $"RGB({r},{g},{b})" });
 

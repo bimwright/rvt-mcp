@@ -74,7 +74,8 @@ namespace RvtMcp.Plugin.Handlers
                     if (!string.IsNullOrEmpty(name))
                         created.Name = name;
 
-                    tx.Commit();
+                    if (tx.Commit() != TransactionStatus.Committed)
+                        return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
                     return CommandResult.Ok(new
                     {
                         elementId = RevitCompat.GetId(created.Id),

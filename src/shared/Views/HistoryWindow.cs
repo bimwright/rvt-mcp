@@ -63,6 +63,10 @@ namespace RvtMcp.Plugin.Views
         private bool _rerunInProgress;
         private bool _detailShowsRerun;
         private int _lastSeenL10nVersion = -1;
+        private readonly TabControl _tabs;
+        private readonly TabItem _activityTab;
+        private readonly TabItem _issuesTab;
+        private readonly FailureIssuesView _issuesView;
 
         private static readonly Dictionary<string, string> FilterKeys = new Dictionary<string, string>
         {
@@ -104,9 +108,9 @@ namespace RvtMcp.Plugin.Views
             };
             Unloaded += (s, e) => L.Changed -= _lChangedHandler;
             Width = 900;
-            Height = 600;
+            Height = 700;
             MinWidth = 720;
-            MinHeight = 420;
+            MinHeight = Math.Min(600, SystemParameters.WorkArea.Height);
             MaxWidth = SystemParameters.WorkArea.Width;
             MaxHeight = SystemParameters.WorkArea.Height;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
@@ -265,7 +269,13 @@ namespace RvtMcp.Plugin.Views
             Grid.SetRow(_detailSplitter, 1);
             mainGrid.Children.Add(_detailSplitter);
 
-            Content = mainGrid;
+            _issuesView = new FailureIssuesView();
+            _activityTab = new TabItem { Content = mainGrid };
+            _issuesTab = new TabItem { Content = _issuesView };
+            _tabs = new TabControl();
+            _tabs.Items.Add(_activityTab);
+            _tabs.Items.Add(_issuesTab);
+            Content = _tabs;
             _lastSeenL10nVersion = L.Version;
             ApplyLocalization();
         }
@@ -281,6 +291,8 @@ namespace RvtMcp.Plugin.Views
             var localeChanged = version != _lastSeenL10nVersion;
             _lastSeenL10nVersion = version;
             Title = L.T("history.window.title", ("brand", BrandAssets.Wordmark));
+            _activityTab.Header = L.T("failure.tab.history");
+            _issuesTab.Header = L.T("failure.tab.issues");
             _colTime.Header = L.T("history.col.time");
             _colTool.Header = L.T("history.col.tool");
             _colSummary.Header = L.T("history.col.summary");
@@ -314,6 +326,13 @@ namespace RvtMcp.Plugin.Views
             // Re-run results live in _outputContainer — a locale swap must not wipe them.
             if (!_rerunInProgress && !_detailShowsRerun)
                 ShowEntry(_selectedEntry);
+        }
+
+        /// <summary>Called after the native callback has returned; never opens an approval inside failure processing.</summary>
+        public void ShowIssues()
+        {
+            _tabs.SelectedItem = _issuesTab;
+            if (_issuesView.IsLoaded) _issuesView.Refresh();
         }
 
         private StackPanel CreateToolbar()
