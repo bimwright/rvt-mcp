@@ -31,7 +31,7 @@ namespace RvtMcp.Plugin.Handlers
     },
     ""parameterGroupId"": {
       ""type"": ""string"",
-      ""default"": ""autodesk.parameter.group:pg_data""
+      ""description"": ""Built-in parameter group ForgeTypeId, e.g. autodesk.parameter.group:data-1.0.0. Omit for Data.""
     },
     ""sharedParameterFilePath"": { ""type"": ""string"" },
     ""allowRebind"": {
@@ -52,7 +52,7 @@ namespace RvtMcp.Plugin.Handlers
             var guidInput = request.Value<string>("guid");
             var categoriesInput = request["categories"]?.ToObject<string[]>();
             var bindingKind = request.Value<string>("bindingKind") ?? "instance";
-            var parameterGroupId = request.Value<string>("parameterGroupId") ?? "autodesk.parameter.group:pg_data";
+            var parameterGroupInput = request.Value<string>("parameterGroupId");
             var customPath = request.Value<string>("sharedParameterFilePath");
             var allowRebind = request.Value<bool?>("allowRebind") ?? false;
 
@@ -67,6 +67,12 @@ namespace RvtMcp.Plugin.Handlers
             {
                 return CommandResult.Fail("bindingKind must be 'instance' or 'type'.");
             }
+
+            var groupTypeId = string.IsNullOrWhiteSpace(parameterGroupInput)
+                ? GroupTypeId.Data
+                : new ForgeTypeId(parameterGroupInput.Trim());
+            if (!ParameterUtils.IsBuiltInGroup(groupTypeId))
+                return CommandResult.Fail($"parameterGroupId '{parameterGroupInput}' is not a built-in parameter group. Omit it for Data ({GroupTypeId.Data.TypeId}).");
 
             if (!string.IsNullOrEmpty(customPath) && !Path.IsPathRooted(customPath))
                 return CommandResult.Fail("sharedParameterFilePath must be an absolute path.");
@@ -137,7 +143,6 @@ namespace RvtMcp.Plugin.Handlers
                 categorySet.Insert(cat);
             }
 
-            var groupTypeId = new ForgeTypeId(parameterGroupId);
             SharedParameterElement paramElement = null;
             var collector = new FilteredElementCollector(doc).OfClass(typeof(SharedParameterElement));
             foreach (SharedParameterElement spe in collector)
@@ -170,7 +175,7 @@ namespace RvtMcp.Plugin.Handlers
                 iterator.Reset();
                 while (iterator.MoveNext())
                 {
-                    if (iterator.Key is ExternalDefinition extDef && extDef.GUID == guidObj)
+                    if (SharedParameterGuid.Of(doc, iterator.Key) == guidObj)
                     {
                         existingDef = iterator.Key;
                         existingBinding = iterator.Current as Binding;
@@ -288,7 +293,7 @@ namespace RvtMcp.Plugin.Handlers
                 name = externalDefinition.Name,
                 guid = guidObj.ToString("d"),
                 bindingKind,
-                parameterGroupId,
+                parameterGroupId = groupTypeId.TypeId,
                 categoryCount = catsResponse.Length,
                 categories = catsResponse,
                 warnings = warnings.ToArray()

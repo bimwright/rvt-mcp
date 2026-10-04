@@ -70,7 +70,7 @@ namespace RvtMcp.Plugin.Handlers
 
                 if (guidObj != Guid.Empty)
                 {
-                    if (definition is ExternalDefinition extDef && extDef.GUID == guidObj)
+                    if (SharedParameterGuid.Of(doc, definition) == guidObj)
                     {
                         targetDef = definition;
                         targetBinding = binding;
@@ -240,7 +240,7 @@ namespace RvtMcp.Plugin.Handlers
                 removedBinding,
                 rebuiltBinding,
                 name = targetDef.Name,
-                guid = (targetDef as ExternalDefinition)?.GUID.ToString("d"),
+                guid = SharedParameterGuid.Of(doc, targetDef)?.ToString("d"),
                 bindingKind,
                 removedCategories = removedCatsDto,
                 remainingCategories = remainingCatsDto,

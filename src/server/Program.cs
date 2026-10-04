@@ -4095,7 +4095,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         }
 
         [McpServerTool(Name = "revit_bind_shared_parameter", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Add or replace parameter bindings; restore document changes with Revit Undo. Bind a shared parameter from the shared parameter file to categories in the project.")]
-        public static async Task<string> BindSharedParameter(string guid, string[] categories, string bindingKind = "instance", string parameterGroupId = "autodesk.parameter.group:pg_data", string sharedParameterFilePath = "", bool allowRebind = false)
+        public static async Task<string> BindSharedParameter(string guid, string[] categories, string bindingKind = "instance", string parameterGroupId = "", string sharedParameterFilePath = "", bool allowRebind = false)
         {
             try
             {
@@ -4106,7 +4106,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         }
 
         [McpServerTool(Name = "revit_create_project_parameter", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a pure project parameter. Note: The public Revit API does not support non-shared project parameter creation; this command will fail explicitly stating it is unsupported.")]
-        public static async Task<string> CreateProjectParameter(string name, string dataTypeId, string[] categories, string bindingKind = "instance", string parameterGroupId = "autodesk.parameter.group:pg_data")
+        public static async Task<string> CreateProjectParameter(string name, string dataTypeId, string[] categories, string bindingKind = "instance", string parameterGroupId = "")
         {
             try
             {
