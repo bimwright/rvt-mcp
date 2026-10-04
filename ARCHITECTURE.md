@@ -89,7 +89,7 @@ The **server** is version-agnostic — it just forwards JSON envelopes. All Revi
 6. Response envelope travels back up the same pipe.
 7. `ToolGateway` resolves the `TaskCompletionSource`; MCP tool method returns the DTO.
 
-Timeout: 60s per request. On expiry the plugin completes the request TCS so a late UI-thread result is skipped; the error tells agents not to retry clash/export until Revit finishes. Listener cancels pending requests on plugin shutdown.
+Timeout: 60s by default. Long-run tools accept `timeout_seconds` from 1–900; IFC export defaults to 600s. The same per-call budget reaches the plugin and gateway, with a short transport grace on the gateway. On expiry the plugin completes the request TCS so a late UI-thread result is skipped; the error tells agents not to retry clash/export until Revit finishes. Listener cancels pending requests on plugin shutdown.
 
 Wire JSON over 1 MiB is rejected (100 KB logs an S4 warning). Narrow filters / `max_results` instead of retrying the same dump.
 

@@ -3387,7 +3387,7 @@
     },
     {
       "name": "revit_export_ifc",
-      "description_hash": "sha256:d8d46c7c3b0dd7cb0c2dc6a6b894b87e8ad5fb1228b76cebeaa59963dc4d629f",
+      "description_hash": "sha256:d8de10ce6c2fd286fcdba0a22d5f5c0a111ddfe9db01859f69172d16676730f2",
       "inputSchema": {
         "properties": {
           "fileName": {
@@ -3401,6 +3401,10 @@
           "outputFolder": {
             "description": "",
             "type": "String"
+          },
+          "timeout_seconds": {
+            "description": "",
+            "type": "Int32"
           }
         },
         "required": [

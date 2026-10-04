@@ -111,6 +111,39 @@ namespace RvtMcp.Tests
             var json = sent.Json();
             Assert.Equal("model", json.Value<string>("file_name"));
             Assert.Equal("IFC4", json.Value<string>("ifc_version"));
+            Assert.Equal(600, sent.TimeoutSeconds);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(120)]
+        [InlineData(900)]
+        public async Task Export_ifc_forwards_custom_wait_budget(int timeout)
+        {
+            var sent = await Capture.Send(() => ExportTools.ExportIfc(@"C:\out", "model", "IFC4", timeout));
+            Assert.Equal(timeout, sent.TimeoutSeconds);
+            Assert.Null(sent.Json()["timeout_seconds"]); // The budget belongs to the wire envelope.
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(901)]
+        [InlineData(600000)]
+        public async Task Export_ifc_rejects_invalid_budget_before_dispatch(int timeout)
+        {
+            var calls = 0;
+            await Capture.WithSendOverride((command, parameters, budget) =>
+            {
+                calls++;
+                return Task.FromResult(new JObject());
+            }, async () =>
+            {
+                var result = await ExportTools.ExportIfc(@"C:\out", "model", "IFC4", timeout);
+                Assert.StartsWith("Error:", result);
+                Assert.Contains("1 and 900", result);
+            });
+            Assert.Equal(0, calls);
         }
 
         [Fact]
