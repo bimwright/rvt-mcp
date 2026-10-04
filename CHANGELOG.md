@@ -4,6 +4,7 @@
 
 | Version | Date | Available as |
 |---|---|---|
+| v1.0.1 | 2026-10-04 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.0.1) |
 | v1.0.0 | 2026-10-03 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.0.0); NuGet `RvtMcp.Server` 1.0.0 |
 | v0.8.1 | 2026-09-27 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.8.1) |
 | v0.6.3 | 2026-09-25 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.6.3) |
@@ -21,6 +22,26 @@
 | v0.1.0 | 2026-04-17 | Git tag (public launch) |
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
+
+## v1.0.1 - Export, parameter binding and placement fixes
+
+### Fixed
+
+- **IFC, DWF and DWFx exports** — open the transaction required by Revit when the caller does not already have one, then roll it back after export to avoid leaving exporter changes in the model. IFC now distinguishes a read-only document from a writable document with no active transaction.
+- **Shared-parameter groups** — use Revit's built-in Data group when `parameterGroupId` is omitted or empty, and reject invalid built-in group IDs with a clear error. Remove the invalid default group ID from the parameter tool contracts.
+- **Shared-parameter GUID lookup** — find existing document bindings through their `SharedParameterElement`, so duplicate detection, rebinding and removal by GUID work with Revit's internal definitions. Removal results retain the parameter GUID.
+- **Point-based family placement** — correct the level elevation added by some unhosted families inside the original creation transaction. Read back the final coordinates, level and host before committing; unexpected placement still rolls back. Creation and correction remain one Undo step, with requested and actual coordinates included in mismatch errors.
+
+### Changed
+
+- **IFC wait budget** — `revit_export_ifc` accepts optional `timeout_seconds` from 1 to 900, defaulting to 600 seconds instead of the fixed 60-second wait. Invalid values are rejected before dispatch. After a timeout, check whether the export completed before retrying. Tool summaries and client-timeout guidance now describe this budget; the Codex example allows a 960-second client deadline.
+- **Setup release notes** — include this changelog alongside the installer, uninstaller and agent installation guide in the Setup ZIP.
+
+### Tests
+
+- Add regression coverage for placement correction and rollback, IFC timeout defaults and bounds, parameter-group defaults, and tool catalog/summary consistency.
+- Update Toast position test expectations to include the existing ribbon clearance; runtime Toast placement is unchanged.
+- Verify Setup tools in a disposable profile, including the IFC timeout contract, and support testing package upgrades from both legacy and current installation layouts.
 
 ## Post-v1.0.0 documentation updates
 

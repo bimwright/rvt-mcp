@@ -58,7 +58,7 @@ cwd = "%LOCALAPPDATA%\\Bimwright\\rvt-mcp"      # optional: working dir for the 
 enabled = true                       # default true; set false to keep entry but disable
 required = false                     # default false; if true, Codex fails startup when server is unreachable
 startup_timeout_sec = 10             # default 10 — bump if the server is slow to bind to stdio
-tool_timeout_sec = 60                # default 60 — per-tool call timeout in seconds
+tool_timeout_sec = 960               # leave headroom above the 1–900s plugin wait for long tools
 
 # Tool filtering
 enabled_tools = []                   # allow list — empty means "all tools allowed"
@@ -74,6 +74,8 @@ approval_mode = "prompt"             # ask before each revit_batch_execute call 
 BIMWRIGHT_READ_ONLY = "0"
 BIMWRIGHT_TOOLSETS = "query,create,view,sheets,families"
 ```
+
+`tool_timeout_sec` is the client's own deadline. IFC export defaults to a 600-second plugin wait; other long tools also accept up to 900 seconds. Use a client deadline above that budget plus transport grace, as in the example. Increasing `timeout_seconds` on the tool cannot override a shorter client deadline. The client default in the reference below is unchanged.
 
 ### Streamable HTTP entry (not applicable to RvtMcp, shown for completeness)
 

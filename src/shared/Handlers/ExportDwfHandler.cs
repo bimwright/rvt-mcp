@@ -10,8 +10,8 @@ namespace RvtMcp.Plugin.Handlers
 {
     /// <summary>
     /// Exports sheets or views to Autodesk DWF or DWFx using DWFExportOptions /
-    /// DWFXExportOptions (available Revit 2022+). No Transaction is required for
-    /// an export operation.
+    /// DWFXExportOptions (available Revit 2022+). Revit requires a modifiable
+    /// document for DWF/DWFx export; ExportTransaction rolls it back afterwards.
     /// </summary>
     public class ExportDwfHandler : IRevitCommand
     {
@@ -139,13 +139,13 @@ namespace RvtMcp.Plugin.Handlers
                 {
                     var dwfxOpts = new DWFXExportOptions();
                     dwfxOpts.ExportObjectData = true;
-                    doc.Export(outputFolder, baseName, viewSet, dwfxOpts);
+                    ExportTransaction.Run(doc, "RvtMcp: export DWFx", () => doc.Export(outputFolder, baseName, viewSet, dwfxOpts));
                 }
                 else
                 {
                     var dwfOpts = new DWFExportOptions();
                     dwfOpts.ExportObjectData = true;
-                    doc.Export(outputFolder, baseName, viewSet, dwfOpts);
+                    ExportTransaction.Run(doc, "RvtMcp: export DWF", () => doc.Export(outputFolder, baseName, viewSet, dwfOpts));
                 }
             }
             catch (Exception ex)

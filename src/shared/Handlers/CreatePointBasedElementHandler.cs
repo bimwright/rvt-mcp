@@ -9,6 +9,7 @@ namespace RvtMcp.Plugin.Handlers
 {
     public class CreatePointBasedElementHandler : IRevitCommand
     {
+        private const double PlacementTolerance = 1.0 / 304.8;
         public string Name => "create_point_based_element";
         public string Description => "Create a OneLevelBased or OneLevelBasedHosted family at model coordinates in mm. " +
             "Hosted families require host_id; no host is inferred. Non-hosted families ignore host_id with a warning. " +
@@ -106,8 +107,25 @@ namespace RvtMcp.Plugin.Handlers
                     if (host != null && (actualHost == null || actualHost.Id != host.Id))
                         throw new InvalidOperationException("Revit did not assign the requested host. Placement was rolled back.");
                     var actualPoint = (instance.Location as LocationPoint)?.Point;
-                    if (actualPoint == null || actualPoint.DistanceTo(point) > 1.0 / 304.8)
-                        throw new InvalidOperationException("Revit did not place the instance within 1 mm of the requested model coordinates. Check the host, level and family placement constraints. Placement was rolled back.");
+                    // Some OneLevelBased families interpret the input Z as an offset from
+                    // the level. Correct only that measured pattern, not arbitrary constraints.
+                    if (host == null && actualHost == null && actualPoint != null
+                        && actualPoint.DistanceTo(point) > PlacementTolerance
+                        && Math.Abs(actualPoint.X - point.X) <= PlacementTolerance
+                        && Math.Abs(actualPoint.Y - point.Y) <= PlacementTolerance
+                        && Math.Abs(actualPoint.Z - point.Z - level.ProjectElevation) <= PlacementTolerance)
+                    {
+                        ElementTransformUtils.MoveElement(doc, instance.Id, new XYZ(0, 0, point.Z - actualPoint.Z));
+                        doc.Regenerate();
+                        actualPoint = (instance.Location as LocationPoint)?.Point;
+                        actualHost = instance.Host;
+                        if (actualHost != null)
+                            throw new InvalidOperationException("Revit assigned a host during position correction. Placement was rolled back.");
+                    }
+                    if (host == null && instance.LevelId != level.Id)
+                        throw new InvalidOperationException("Revit did not assign the requested level. Placement was rolled back.");
+                    if (actualPoint == null || actualPoint.DistanceTo(point) > PlacementTolerance)
+                        throw new InvalidOperationException("Revit did not place the instance within 1 mm of the requested model coordinates. Check the host, level and family placement constraints. " + PlacementDiagnostics(point, actualPoint, level) + " Placement was rolled back.");
 
                     var result = new
                     {
@@ -139,5 +157,14 @@ namespace RvtMcp.Plugin.Handlers
                 throw new ArgumentException($"{name} must be a finite number in mm.");
             return value.Value;
         }
+
+        // Records where Revit put the instance before rollback, so a placement miss can be
+        // told apart: Z off by the level elevation, an elevation-base offset, or a family constraint.
+        private static string PlacementDiagnostics(XYZ requested, XYZ actual, Level level) =>
+            FormattableString.Invariant(
+                $"requested_mm=({Mm(requested)}), actual_mm=({(actual == null ? "none" : Mm(actual))}), level '{level.Name}' elevation_mm={level.Elevation * 304.8:0.###}, project_elevation_mm={level.ProjectElevation * 304.8:0.###}.");
+
+        private static string Mm(XYZ p) =>
+            FormattableString.Invariant($"{p.X * 304.8:0.###}, {p.Y * 304.8:0.###}, {p.Z * 304.8:0.###}");
     }
 }

@@ -22,8 +22,7 @@ namespace RvtMcp.Plugin.Handlers
       ""default"": ""instance""
     },
     ""parameterGroupId"": {
-      ""type"": ""string"",
-      ""default"": ""autodesk.parameter.group:pg_data""
+      ""type"": ""string""
     },
     ""allowIfApiUnsupported"": {
       ""type"": ""boolean"",

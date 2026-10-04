@@ -74,6 +74,48 @@ public class PointBasedPlacementTests
         Assert.Equal(1, result.Value<int>("rolledBack"));
     }
 
+    [Fact]
+    public void PlacementMissReportsActualPositionAndLevel()
+    {
+        var error = Run("unhosted_level_snaps_z").Value<string>("error");
+        Assert.Contains("requested_mm=(2500, 2000, 900)", error);
+        Assert.Contains("actual_mm=(2500, 2000, 30480)", error);
+        Assert.Contains("level 'L1' elevation_mm=30480, project_elevation_mm=0", error);
+    }
+
+    [Theory]
+    [InlineData("unhosted_level_relative")]
+    [InlineData("unhosted_shared_level_relative")]
+    [InlineData("unhosted_negative_level_relative")]
+    public void LevelRelativeFamilyIsPlacedAtRequestedModelCoordinates(string scenario)
+    {
+        var result = Run(scenario);
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        Assert.Equal(1, result.Value<int>("calls"));
+        Assert.Equal(1, result.Value<int>("instances"));
+        Assert.Equal(1, result.Value<int>("committed"));
+        Assert.Equal(1L, result.Value<long>("levelId"));
+        Assert.Equal(2500, (double)result["data"]!["location_mm"]!["x"]!, 6);
+        Assert.Equal(2000, (double)result["data"]!["location_mm"]!["y"]!, 6);
+        Assert.Equal(900, (double)result["data"]!["location_mm"]!["z"]!, 6);
+    }
+
+    [Theory]
+    [InlineData("unhosted_level_relative_wrong_xy")]
+    [InlineData("unhosted_level_relative_move_rejected")]
+    [InlineData("unhosted_level_relative_move_ignored")]
+    [InlineData("unhosted_level_relative_changed_level")]
+    [InlineData("hosted_level_relative")]
+    [InlineData("unhosted_wrong_level")]
+    public void ConstrainedOrHostedPlacementStillRollsBack(string scenario)
+    {
+        var result = Run(scenario);
+        Assert.False(result.Value<bool>("success"));
+        Assert.Equal(0, result.Value<int>("committed"));
+        Assert.Equal(0, result.Value<int>("instances"));
+        Assert.Equal(1, result.Value<int>("rolledBack"));
+    }
+
     private static JObject Run(string scenario) => JObject.Parse((string)Probe.Value.Invoke(null, new object[] { scenario })!);
 
     private static MethodInfo Compile() => CompileAt();
@@ -110,26 +152,35 @@ namespace Autodesk.Revit.DB {
  public class Element {public ElementId Id;public string Name="test";public Category Category;}
  public class Category {public ElementId Id=new ElementId(1);public string Name="Doors";}
  public class Wall:Element {}
- public class Level:Element {public double Elevation;}
+ public class Level:Element {public double Elevation,ProjectElevation;}
  public class Family {public FamilyPlacementType Placement;public bool Throw;public FamilyPlacementType FamilyPlacementType {get{if(Throw)throw new Exception("metadata unavailable");return Placement;}}}
  public class FamilySymbol:Element {public Family Family;public string FamilyName="fixture";public bool IsActive;public void Activate(){IsActive=true;}}
  public class XYZ {public double X,Y,Z;public XYZ(double x,double y,double z){X=x;Y=y;Z=z;}public double DistanceTo(XYZ p)=>Math.Sqrt(Math.Pow(X-p.X,2)+Math.Pow(Y-p.Y,2)+Math.Pow(Z-p.Z,2));}
  public class LocationPoint {public XYZ Point;}
- public class FamilyInstance:Element {public Element Host;public object Location;}
+ public class FamilyInstance:Element {public Element Host;public object Location;public ElementId LevelId;}
  public class Document {
   public string Scenario;public Dictionary<long,Element> Elements=new Dictionary<long,Element>();public int Started,Committed,RolledBack,Calls,Instances;public bool HostOverload;
   public Factory Create=>new Factory(this);public Element GetElement(ElementId id)=>Elements.TryGetValue(id.Value,out var e)?e:null;public void Regenerate(){}
  }
  public class Factory {
   Document d;public Factory(Document doc){d=doc;}
-  public FamilyInstance NewFamilyInstance(XYZ p,FamilySymbol s,Level l,Autodesk.Revit.DB.Structure.StructuralType st)=>Make(p,s,null);
-  public FamilyInstance NewFamilyInstance(XYZ p,FamilySymbol s,Element h,Level l,Autodesk.Revit.DB.Structure.StructuralType st){d.HostOverload=true;return Make(p,s,h);}
-  FamilyInstance Make(XYZ p,FamilySymbol s,Element h){d.Calls++;d.Instances++;if(d.Scenario=="api_throw")throw new Exception("API threw after mutation");if(d.Scenario=="null_instance")return null;
-   var result=new FamilyInstance{Id=new ElementId(30),Category=s.Category,Host=d.Scenario=="null_host"?null:d.Scenario=="other_host"?new Wall{Id=new ElementId(21)}:h,Location=d.Scenario=="missing_location"?null:new LocationPoint{Point=d.Scenario=="wrong_location"?new XYZ(0,6.35/304.8,0):d.Scenario=="unhosted_level_snaps_z"?new XYZ(p.X,p.Y,100):p}};d.Elements[30]=result;return result;
+  public FamilyInstance NewFamilyInstance(XYZ p,FamilySymbol s,Level l,Autodesk.Revit.DB.Structure.StructuralType st)=>Make(p,s,null,l);
+  public FamilyInstance NewFamilyInstance(XYZ p,FamilySymbol s,Element h,Level l,Autodesk.Revit.DB.Structure.StructuralType st){d.HostOverload=true;return Make(p,s,h,l);}
+  FamilyInstance Make(XYZ p,FamilySymbol s,Element h,Level l){d.Calls++;d.Instances++;if(d.Scenario=="api_throw")throw new Exception("API threw after mutation");if(d.Scenario=="null_instance")return null;
+   var placed=d.Scenario.Contains("level_relative")?new XYZ(p.X+(d.Scenario.EndsWith("wrong_xy")?1:0),p.Y,p.Z+l.ProjectElevation):p;
+   var result=new FamilyInstance{Id=new ElementId(30),Category=s.Category,LevelId=d.Scenario=="unhosted_wrong_level"?new ElementId(2):l.Id,Host=d.Scenario=="null_host"?null:d.Scenario=="other_host"?new Wall{Id=new ElementId(21)}:h,Location=d.Scenario=="missing_location"?null:new LocationPoint{Point=d.Scenario=="wrong_location"?new XYZ(0,6.35/304.8,0):d.Scenario=="unhosted_level_snaps_z"?new XYZ(p.X,p.Y,100):placed}};d.Elements[30]=result;return result;
+  }
+ }
+ public static class ElementTransformUtils {
+  public static void MoveElement(Document doc,ElementId id,XYZ delta){
+   if(doc.Scenario.EndsWith("move_rejected"))throw new Exception("Family constraint rejected movement");
+   var instance=(FamilyInstance)doc.GetElement(id);var location=(LocationPoint)instance.Location;
+   if(!doc.Scenario.EndsWith("move_ignored"))location.Point=new XYZ(location.Point.X+delta.X,location.Point.Y+delta.Y,location.Point.Z+delta.Z);
+   if(doc.Scenario.EndsWith("changed_level"))instance.LevelId=new ElementId(2);
   }
  }
  public class FilteredElementCollector:IEnumerable<Element>{Document d;Type type;public FilteredElementCollector(Document doc){d=doc;}public FilteredElementCollector OfClass(Type t){type=t;return this;}public IEnumerator<Element> GetEnumerator()=>d.Elements.Values.Where(e=>type.IsInstanceOfType(e)).GetEnumerator();IEnumerator IEnumerable.GetEnumerator()=>GetEnumerator();}
- public class Transaction:IDisposable {Document d;bool active;public Transaction(Document doc,string name){d=doc;}public void Start(){d.Started++;active=true;}public bool HasStarted()=>active;public void RollBack(){d.RolledBack++;d.Instances=0;active=false;}public TransactionStatus Commit(){if(d.Scenario=="commit_rejected"){RollBack();return TransactionStatus.RolledBack;}d.Committed++;active=false;return TransactionStatus.Committed;}public void Dispose(){if(active)RollBack();}}
+ public class Transaction:IDisposable {Document d;bool active;public Transaction(Document doc,string name){d=doc;}public void Start(){d.Started++;active=true;}public bool HasStarted()=>active;public void RollBack(){d.RolledBack++;d.Instances=0;d.Elements.Remove(30);active=false;}public TransactionStatus Commit(){if(d.Scenario=="commit_rejected"){RollBack();return TransactionStatus.RolledBack;}d.Committed++;active=false;return TransactionStatus.Committed;}public void Dispose(){if(active)RollBack();}}
 }
 namespace Autodesk.Revit.DB.Structure {public enum StructuralType {NonStructural}}
 namespace Autodesk.Revit.UI {public class UIDocument {public Document Document;} public class UIApplication {public UIDocument ActiveUIDocument;}}
@@ -150,11 +201,14 @@ public class PlacementProbe {
   if(scenario=="unknown_level")args["level"]="unknown";
   if(scenario=="missing_x")args.Remove("x");
   if(scenario=="nonfinite")args["x"]=double.NaN;
-  if(scenario=="unhosted"||scenario=="ignored_host"||scenario=="unhosted_level_snaps_z"){f.Placement=FamilyPlacementType.OneLevelBased;if(scenario!="ignored_host")args.Remove("host_id");else args["host_id"]=999;}
+  if(scenario=="unhosted"||scenario=="ignored_host"||scenario.StartsWith("unhosted_")){f.Placement=FamilyPlacementType.OneLevelBased;if(scenario!="ignored_host")args.Remove("host_id");else args["host_id"]=999;}
+  if(scenario.Contains("level_relative"))((Level)d.Elements[1]).ProjectElevation=100;
+  if(scenario=="unhosted_shared_level_relative")((Level)d.Elements[1]).Elevation=150;
+  if(scenario=="unhosted_negative_level_relative"){((Level)d.Elements[1]).Elevation=-100;((Level)d.Elements[1]).ProjectElevation=-100;}
   if(Enum.TryParse<FamilyPlacementType>(scenario,out var placement))f.Placement=placement;
   var app=new Autodesk.Revit.UI.UIApplication{ActiveUIDocument=new Autodesk.Revit.UI.UIDocument{Document=d}};
   var r=new RvtMcp.Plugin.Handlers.CreatePointBasedElementHandler().Execute(app,args.ToString());
-  return JsonConvert.SerializeObject(new{success=r.Success,error=r.Error,data=r.Data,started=d.Started,committed=d.Committed,rolledBack=d.RolledBack,calls=d.Calls,instances=d.Instances,hostOverload=d.HostOverload});
+  return JsonConvert.SerializeObject(new{success=r.Success,error=r.Error,data=r.Data,started=d.Started,committed=d.Committed,rolledBack=d.RolledBack,calls=d.Calls,instances=d.Instances,hostOverload=d.HostOverload,levelId=(d.GetElement(new ElementId(30)) as FamilyInstance)?.LevelId.Value});
  }
 }
 """;

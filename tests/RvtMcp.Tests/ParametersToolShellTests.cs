@@ -84,6 +84,15 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public async Task Bind_shared_parameter_leaves_group_empty_by_default()
+        {
+            // The plugin maps an empty group to GroupTypeId.Data; "pg_data" is not a valid ForgeTypeId.
+            var sent = await Capture.Send(() => ParametersTools.BindSharedParameter("g1", new[] { "Walls" }));
+
+            Assert.Equal("", sent.Json().Value<string>("parameterGroupId"));
+        }
+
+        [Fact]
         public async Task Create_project_parameter_sends_spec()
         {
             var sent = await Capture.Send(() => ParametersTools.CreateProjectParameter(

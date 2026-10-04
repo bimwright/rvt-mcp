@@ -9,8 +9,8 @@ namespace RvtMcp.Plugin.Handlers
 {
     /// <summary>
     /// Exports the active model to an IFC (Industry Foundation Classes) file using
-    /// IFCExportOptions (available Revit 2022+). No Transaction is required for an
-    /// export operation.
+    /// IFCExportOptions (available Revit 2022+). Revit requires an open transaction
+    /// for IFC export; ExportTransaction rolls it back so the model is unchanged.
     ///
     /// The IFCVersion enum gained/renamed members across Revit 2022-2027, so the
     /// FileVersion assignment is wrapped in try/catch and silently falls back to the
@@ -40,10 +40,9 @@ namespace RvtMcp.Plugin.Handlers
             if (doc == null)
                 return CommandResult.Fail("No document is open.");
 
-            // The IFC exporter modifies the document internally, so a read-only
-            // document fails deep inside doc.Export with the cryptic
-            // "no open transaction" error — refuse early with a clear reason.
-            if (!doc.IsModifiable)
+            // IsModifiable only means "a transaction is open"; IsReadOnly is the
+            // state no transaction can fix, so refuse that early with a clear reason.
+            if (doc.IsReadOnly)
                 return CommandResult.Fail("IFC export requires a modifiable document (the current document is read-only).");
 
             JObject request;
@@ -127,7 +126,7 @@ namespace RvtMcp.Plugin.Handlers
 
             try
             {
-                doc.Export(outputFolder, fileName, opts);
+                ExportTransaction.Run(doc, "RvtMcp: export IFC", () => doc.Export(outputFolder, fileName, opts));
             }
             catch (Exception ex)
             {

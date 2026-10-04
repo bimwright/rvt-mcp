@@ -65,7 +65,7 @@
   "revit_export_dwg": "Export sheets or views to AutoCAD DWG. outputFolder must be an existing absolute path. viewIds defaults to the active view. settingsName optionally selects a s…",
   "revit_export_dgn": "Export sheets or views to MicroStation DGN. outputFolder must be an existing absolute path. viewIds defaults to the active view. Do not retry on 60s timeout; R…",
   "revit_export_dwf": "Export sheets or views to Autodesk DWF/DWFx. outputFolder must be an existing absolute path. viewIds defaults to the active view. useDwfx=true exports DWFx. Do…",
-  "revit_export_ifc": "Export the model to IFC. outputFolder must be an existing absolute path. ifcVersion: IFC2x3|IFC4|default. Do not retry on 60s timeout; Revit may still be runni…",
+  "revit_export_ifc": "Export IFC. timeout_seconds: 1-900, default 600s. After a timeout, check completion before retrying. Existing output files may be overwritten.",
   "revit_export_nwc": "Export the model to Navisworks NWC. outputFolder must be an existing absolute path. Optional exportScopeViewId scopes the export to one view. Requires the Navi…",
   "revit_export_fbx": "Export a 3D view to Autodesk FBX. outputFolder must be an existing absolute path. viewId must reference a 3D view (defaults to the active view, which must be 3…",
   "revit_export_gbxml": "Export the model's energy analytical data to gbXML. outputFolder must be an existing absolute path. Requires rooms/spaces with energy settings. Do not retry on…",

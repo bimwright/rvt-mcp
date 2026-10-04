@@ -1565,13 +1565,16 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_export_ifc", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Export the model to IFC. outputFolder must be an existing absolute path. ifcVersion: IFC2x3|IFC4|default. Do not retry on 60s timeout; Revit may still be running the command." +
+        [McpServerTool(Name = "revit_export_ifc", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Export the model to IFC. outputFolder must be an existing absolute path. ifcVersion: IFC2x3|IFC4|default. timeout_seconds: plugin wait 1-900s, default 600; a large model export can exceed 60s. Do not retry after a timeout; Revit may still be running the command." +
             " May overwrite existing output files. Revit Undo cannot restore them; back up the destination first.")]
-        public static async Task<string> ExportIfc(string outputFolder, string fileName, string ifcVersion = "default")
+        public static async Task<string> ExportIfc(string outputFolder, string fileName, string ifcVersion = "default", int timeout_seconds = 600)
         {
+            var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
+            if (timeoutError != null) return timeoutError;
+
             try
             {
-                var result = await ToolGateway.SendToRevit("export_ifc", new { output_folder = outputFolder, file_name = fileName, ifc_version = ifcVersion });
+                var result = await ToolGateway.SendToRevit("export_ifc", new { output_folder = outputFolder, file_name = fileName, ifc_version = ifcVersion }, timeout_seconds);
                 return JsonConvert.SerializeObject(result, Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
@@ -4092,7 +4095,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         }
 
         [McpServerTool(Name = "revit_bind_shared_parameter", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Add or replace parameter bindings; restore document changes with Revit Undo. Bind a shared parameter from the shared parameter file to categories in the project.")]
-        public static async Task<string> BindSharedParameter(string guid, string[] categories, string bindingKind = "instance", string parameterGroupId = "autodesk.parameter.group:pg_data", string sharedParameterFilePath = "", bool allowRebind = false)
+        public static async Task<string> BindSharedParameter(string guid, string[] categories, string bindingKind = "instance", string parameterGroupId = "", string sharedParameterFilePath = "", bool allowRebind = false)
         {
             try
             {
@@ -4103,7 +4106,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
         }
 
         [McpServerTool(Name = "revit_create_project_parameter", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a pure project parameter. Note: The public Revit API does not support non-shared project parameter creation; this command will fail explicitly stating it is unsupported.")]
-        public static async Task<string> CreateProjectParameter(string name, string dataTypeId, string[] categories, string bindingKind = "instance", string parameterGroupId = "autodesk.parameter.group:pg_data")
+        public static async Task<string> CreateProjectParameter(string name, string dataTypeId, string[] categories, string bindingKind = "instance", string parameterGroupId = "")
         {
             try
             {

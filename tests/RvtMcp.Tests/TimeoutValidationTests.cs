@@ -4,7 +4,7 @@ using Xunit;
 namespace RvtMcp.Tests
 {
     /// <summary>
-    /// The 4 long-run tools accept timeout_seconds 1-900 (default 600).
+    /// Long-run tools accept timeout_seconds 1-900 (default 600).
     /// Out-of-range values are refused with an explicit error instead of
     /// being silently clamped, so a wrong unit surfaces immediately.
     /// </summary>
