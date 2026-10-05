@@ -84,7 +84,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 ## Tools
 
-Counts below describe the **v1.1.0 development source**; published releases can expose an older catalog.
+Counts below describe the **v1.0.2 development source**; published releases can expose an older catalog.
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
@@ -163,7 +163,7 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 
 ## 配置
 
-**v1.1.0 development:** Controlled failures, model gates and **History → Issues** decisions are described in the [English guide](docs/controlled-failures.md). `revit_get_failure_records` and `revit_get_operation_status` read local state while Revit is modal. Native acceptance remains pending; do not retry pending or unknown operations.
+**v1.0.2 development:** Controlled failures, model gates and **History → Issues** decisions are described in the [English guide](docs/controlled-failures.md). `revit_get_failure_records` and `revit_get_operation_status` read local state while Revit is modal. Native acceptance remains pending; do not retry pending or unknown operations.
 
 自 v1.0.0 起，服务器返回 `_changes` 和按模型保存的本地历史 `_history`。历史默认开启，与 call log 独立；使用 `--disable-change-history` 停止记录。`meta` 中的 `revit_record_change` 将原因关联到明确的 call ID，`revit_get_change_records` 用于查询历史。隐私、限制与恢复方式见[变更记录](docs/change-tracking.md)。
 

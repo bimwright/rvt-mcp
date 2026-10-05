@@ -85,7 +85,7 @@ Video cộng đồng giới thiệu rvt-mcp. Cách cài trong video có thể c�
 
 ## Tools
 
-Các số dưới đây mô tả **source phát triển v1.1.0**; bản phát hành đã công bố có thể có catalog cũ hơn.
+Các số dưới đây mô tả **source phát triển v1.0.2**; bản phát hành đã công bố có thể có catalog cũ hơn.
 
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
@@ -164,7 +164,7 @@ Nếu toolset mà prompt cần chưa bật, prompt trả lời đúng dòng `--t
 
 ## Cấu hình
 
-**v1.1.0 đang phát triển:** Warning do MCP phát sinh mặc định rollback; issue chưa xử lý chặn ghi theo model. Người dùng quyết định tại **History → Issues**. Hai tool `revit_get_failure_records` và `revit_get_operation_status` đọc sổ local kể cả khi Revit đang hiện dialog. Không chạy lại lệnh đang pending hoặc chưa rõ kết quả. Xem [controlled failures và giới hạn nghiệm thu (English)](docs/controlled-failures.md).
+**v1.0.2 đang phát triển:** Warning do MCP phát sinh mặc định rollback; issue chưa xử lý chặn ghi theo model. Người dùng quyết định tại **History → Issues**. Hai tool `revit_get_failure_records` và `revit_get_operation_status` đọc sổ local kể cả khi Revit đang hiện dialog. Không chạy lại lệnh đang pending hoặc chưa rõ kết quả. Xem [controlled failures và giới hạn nghiệm thu (English)](docs/controlled-failures.md).
 
 Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cục bộ mặc định bật, độc lập với call log; dùng `--disable-change-history` để tắt ghi. Ba tool `meta`: `revit_record_change` gắn lý do với nhóm call ID cụ thể, `revit_get_change_records` tra cứu thay đổi, `revit_resolve_history_identity` ghi lựa chọn tiếp nối hoặc tách lịch sử sau copy/Save As. Xem [ghi nhận thay đổi](docs/change-tracking.md) về riêng tư, giới hạn và phục hồi.
 
