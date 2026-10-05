@@ -277,7 +277,11 @@ namespace RvtMcp.Plugin.Failures
                     }
                     if (!IsRead && !Persisted && !Stopped) Reserve();
                 }
-                catch { StorageFailure(); }
+                catch (Exception ex)
+                {
+                    App.DebugLog("Failure scope start failed for " + Request.CommandName + ": " + ex.GetType().Name + ": " + ex.Message);
+                    StorageFailure();
+                }
             }
 
             internal void Attach(DocumentState state)
@@ -298,7 +302,9 @@ namespace RvtMcp.Plugin.Failures
                 if (!state.BaselineMeasured)
                 {
                     state.BaselineMeasured = true;
-                    using (var collector = new FilteredElementCollector(state.Document))
+                    // Revit rejects an unfiltered collector; element instances OR types still covers every element.
+                    var everything = new LogicalOrFilter(new ElementIsElementTypeFilter(false), new ElementIsElementTypeFilter(true));
+                    using (var collector = new FilteredElementCollector(state.Document).WherePasses(everything))
                     {
                         state.ElementIndexComplete = collector.GetElementCount() <= 200000;
                         if (state.ElementIndexComplete)

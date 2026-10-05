@@ -15,6 +15,8 @@ namespace RvtMcp.Failures
         private readonly bool _readOnly;
         private readonly HashSet<string> _uncertainScopes = new HashSet<string>(StringComparer.Ordinal);
         private readonly object _sync = new object();
+        /// <summary>Receives the type and message of a swallowed write failure. The plugin points it at its local debug log.</summary>
+        public static Action<string> Diagnostic;
         public string DatabasePath { get; }
         public static string DefaultPath { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bimwright", "rvt-mcp", "failures", "ledger.db"); } }
         private string PendingPath { get { return Path.Combine(Path.GetDirectoryName(DatabasePath), "pending"); } }
@@ -591,8 +593,9 @@ AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i
             try { EnsureInitialized(); using (var c = Open(true)) using (var tx = c.BeginTransaction()) { write(c, tx); tx.Commit(); } return Recorded(); }
             catch (GateDeniedException)
             { return new FailurePersistenceResult { Persistence = "failed", ErrorCode = "REVIT_MODEL_BLOCKED" }; }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Diagnostic?.Invoke("Failure ledger " + kind + " write failed: " + ex.GetType().Name + ": " + ex.Message);
                 lock (_sync) foreach (var scope in membership) _uncertainScopes.Add(scope);
                 var id = Guid.NewGuid().ToString("N"); string temporary = null;
                 try
@@ -606,7 +609,11 @@ AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i
                     File.Move(temporary, Path.Combine(PendingPath, id + ".json"));
                     return new FailurePersistenceResult { Persistence = "fallback", Durable = true, ErrorCode = "FAILURE_STORAGE_FAILED" };
                 }
-                catch (Exception) { return new FailurePersistenceResult { Persistence = "failed", Durable = false, ErrorCode = "FAILURE_STORAGE_FAILED" }; }
+                catch (Exception fallback)
+                {
+                    Diagnostic?.Invoke("Failure ledger " + kind + " fallback failed: " + fallback.GetType().Name + ": " + fallback.Message);
+                    return new FailurePersistenceResult { Persistence = "failed", Durable = false, ErrorCode = "FAILURE_STORAGE_FAILED" };
+                }
                 finally { if (temporary != null && File.Exists(temporary)) { try { File.Delete(temporary); } catch (IOException) { } } }
             }
         }

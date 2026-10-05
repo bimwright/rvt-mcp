@@ -45,6 +45,7 @@ namespace RvtMcp.Plugin.Failures
         {
             if (_subscribed) return;
             Store = new FailureLedgerStore();
+            FailureLedgerStore.Diagnostic = App.DebugLog;
             try
             {
                 Store.Initialize();
@@ -61,7 +62,11 @@ namespace RvtMcp.Plugin.Failures
                 // Inaccessible process metadata is not evidence that another host has stopped.
                 if (hostEvidenceComplete) Store.MarkInterruptedHosts(live);
             }
-            catch { _storageError = "FAILURE_STORAGE_FAILED"; }
+            catch (Exception ex)
+            {
+                _storageError = "FAILURE_STORAGE_FAILED";
+                App.DebugLog("Failure ledger initialization failed: " + ex.GetType().Name + ": " + ex.Message);
+            }
 
             var controlled = application.ControlledApplication;
             controlled.FailuresProcessing += OnFailuresProcessing;
