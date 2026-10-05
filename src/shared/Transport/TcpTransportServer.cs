@@ -107,6 +107,8 @@ namespace RvtMcp.Plugin
 
         private void HandleClient(TcpClient client)
         {
+            // No socket read timeout: it would also fire while a request is running or waiting for the user.
+            // Idle release is enforced below instead, and only when nothing is in flight.
             client.ReceiveTimeout = 0;
             _clientConnected = true;
             ToolCatalogStore.BeginConnection();
@@ -115,6 +117,12 @@ namespace RvtMcp.Plugin
                 var stream = client.GetStream();
                 var reader = new StreamReader(stream, Encoding.UTF8);
                 using var writer = new TransportResponseWriter(new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true });
+                using var idleGuard = new Timer(_ =>
+                {
+                    if (!writer.IsIdleFor(IdleLimit)) return;
+                    Log("Closing idle client");
+                    try { client.Close(); } catch { }
+                }, null, IdleCheckPeriod, IdleCheckPeriod);
 
                 var requestTimestamps = new System.Collections.Generic.Queue<DateTime>();
                 const int RateLimitMax = 20;
@@ -142,7 +150,7 @@ namespace RvtMcp.Plugin
                         }
                         if (line == null) break; // Client disconnected
                     }
-                    catch (IOException) // ReceiveTimeout fired or broken pipe
+                    catch (IOException) // idle guard closed the socket, or broken pipe
                     {
                         Log("Client read timeout or broken pipe");
                         break;
@@ -152,6 +160,7 @@ namespace RvtMcp.Plugin
                         break;
                     }
 
+                    writer.Touch();
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
                     // Parse request
@@ -233,6 +242,9 @@ namespace RvtMcp.Plugin
         }
 
         private const int MaxLineBytes = 1024 * 1024; // 1 MiB
+        // A truly idle gateway is released so another one can connect; a connection with a request in flight is never closed.
+        private static readonly TimeSpan IdleLimit = TimeSpan.FromSeconds(120);
+        private static readonly TimeSpan IdleCheckPeriod = TimeSpan.FromSeconds(15);
 
         private static string ReadLineBounded(StreamReader reader, int maxBytes, out bool overflow)
         {

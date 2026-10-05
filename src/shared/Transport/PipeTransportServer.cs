@@ -67,12 +67,7 @@ namespace RvtMcp.Plugin
                 NamedPipeServerStream pipe = null;
                 try
                 {
-                    pipe = new NamedPipeServerStream(
-                        _pipeName,
-                        PipeDirection.InOut,
-                        1, // maxNumberOfServerInstances
-                        PipeTransmissionMode.Byte,
-                        PipeOptions.None);
+                    pipe = CreatePipe(_pipeName);
 
                     pipe.WaitForConnection();
 
@@ -99,6 +94,11 @@ namespace RvtMcp.Plugin
                 }
             }
         }
+
+        // Asynchronous (overlapped) so the transport writer thread can write while the listener thread
+        // waits in Read. A synchronous handle serializes the two and deadlocks the handshake.
+        internal static NamedPipeServerStream CreatePipe(string pipeName) => new NamedPipeServerStream(
+            pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
 
         private void HandleClient(NamedPipeServerStream pipe)
         {

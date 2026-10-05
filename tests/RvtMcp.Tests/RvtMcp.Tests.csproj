@@ -47,6 +47,9 @@
     <Compile Include="..\..\src\shared\Infrastructure\RequestWait.cs" Link="Shared\RequestWait.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\PendingRequestLifecycle.cs" Link="Shared\PendingRequestLifecycle.cs" />
     <Compile Include="..\..\src\shared\Transport\TransportResponseWriter.cs" Link="Shared\TransportResponseWriter.cs" />
+    <Compile Include="..\..\src\shared\Transport\PipeTransportServer.cs" Link="Shared\PipeTransportServer.cs" />
+    <Compile Include="..\..\src\shared\Transport\ITransportServer.cs" Link="Shared\ITransportServer.cs" />
+    <Compile Include="..\..\src\shared\Security\AuthToken.cs" Link="Shared\PluginAuthToken.cs" />
     <Compile Include="..\..\src\shared\Config\StatusPrivacySection.cs" Link="Shared\StatusPrivacySection.cs" />
     <Compile Include="..\..\src\shared\Handlers\BatchExecutor.cs" Link="Shared\BatchExecutor.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\CommandOutcome.cs" Link="Shared\CommandOutcome.cs" />

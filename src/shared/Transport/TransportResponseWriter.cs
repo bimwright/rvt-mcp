@@ -14,6 +14,14 @@ namespace RvtMcp.Plugin
         private readonly BlockingCollection<string> _frames = new BlockingCollection<string>();
         private readonly StreamWriter _writer;
         private readonly Thread _thread;
+        private int _inFlight;
+        private long _lastActivityTicks = DateTime.UtcNow.Ticks;
+        /// <summary>Requests dispatched on this connection whose execution has not completed yet.</summary>
+        internal int InFlight => Volatile.Read(ref _inFlight);
+        internal void Touch() => Interlocked.Exchange(ref _lastActivityTicks, DateTime.UtcNow.Ticks);
+        /// <summary>True when nothing is in flight and the connection has been quiet for <paramref name="limit"/>.</summary>
+        internal bool IsIdleFor(TimeSpan limit) =>
+            InFlight == 0 && DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastActivityTicks) >= limit.Ticks;
         internal TransportResponseWriter(StreamWriter writer)
         {
             _writer = writer;
@@ -52,6 +60,8 @@ namespace RvtMcp.Plugin
                 return;
             }
             var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Interlocked.Increment(ref _inFlight);
+            Touch();
             var lifecycle = PendingRequestLifecycle.For(tcs);
             lifecycle.Configure(id, request.Value<string>("operation_id"), WriteLine);
             var seconds = request.Value<int?>("timeout_seconds");
@@ -66,6 +76,8 @@ namespace RvtMcp.Plugin
             tcs.Task.ContinueWith(task =>
             {
                 timer.Dispose();
+                Interlocked.Decrement(ref _inFlight);
+                Touch();
                 if (task.Status == TaskStatus.RanToCompletion) WriteLine(task.Result);
             }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             timer.Change(timeout, Timeout.InfiniteTimeSpan);
