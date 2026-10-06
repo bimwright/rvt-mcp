@@ -5,6 +5,8 @@
     <IsPackable>false</IsPackable>
     <LangVersion>latest</LangVersion>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- Linked plugin files are Windows-only (ACL restriction); plugins target -windows TFMs. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
   <!--
@@ -27,6 +29,11 @@
     <Compile Include="..\..\src\shared\Handlers\OpenModelLocalPolicy.cs" Link="Shared\OpenModelLocalPolicy.cs" />
     <Compile Include="..\..\src\shared\Handlers\ViewportLayoutMath.cs" Link="Shared\ViewportLayoutMath.cs" />
     <Compile Include="..\..\src\shared\Security\PathAllowlist.cs" Link="Shared\PathAllowlist.cs" />
+    <Compile Include="..\..\src\shared\Security\DiscoveryPublisher.cs" Link="Shared\DiscoveryPublisher.cs" />
+    <Compile Include="..\..\src\shared\Security\AuthToken.cs" Link="Shared\AuthToken.cs" />
+    <Compile Include="..\..\src\shared\Transport\ITransportServer.cs" Link="Shared\ITransportServer.cs" />
+    <Compile Include="..\..\src\shared\Transport\PipeTransportServer.cs" Link="Shared\PipeTransportServer.cs" />
+    <Compile Include="..\..\src\shared\Transport\TcpTransportServer.cs" Link="Shared\TcpTransportServer.cs" />
     <Compile Include="..\..\src\shared\Logging\McpLogger.cs" Link="Shared\McpLogger.cs" />
     <Compile Include="..\..\src\shared\Logging\McpSessionLog.cs" Link="Shared\McpSessionLog.cs" />
     <Compile Include="..\..\src\shared\Logging\SendCodeJournal.cs" Link="Shared\SendCodeJournal.cs" />
@@ -93,6 +100,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.IO.FileSystem.AccessControl" Version="5.0.0" />
+    <PackageReference Include="System.Security.Principal.Windows" Version="5.0.0" />
     <PackageReference Include="xunit" Version="2.9.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

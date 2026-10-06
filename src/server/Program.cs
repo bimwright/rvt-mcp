@@ -13,6 +13,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Bimwright.Targeting;
 using RvtMcp.Plugin; // RvtMcpConfig
 using RvtMcp.Server.Bake;
 using RvtMcp.Server.Handlers;
@@ -40,9 +41,9 @@ namespace RvtMcp.Server
                 return;
             }
 
-            // A9 3-layer config precedence (JSON < env < CLI). AuthToken.Target + transport
-            // mode (--http) stay as separate CLI parses for now; A3 toolsets gating uses
-            // RvtMcpConfig.
+            // A9 3-layer config precedence (JSON < env < CLI). The --target selector and
+            // transport mode (--http) stay as separate CLI parses for now; A3 toolsets
+            // gating uses RvtMcpConfig.
             if (!LegacyDataMigration.TryMigrateOnce(Console.Error.WriteLine))
             { Environment.ExitCode = 1; return; }
             AuthToken.CleanupLegacyDiscoveryFiles();
@@ -53,18 +54,21 @@ namespace RvtMcp.Server
                 ToolsetFilter.Resolve(config), config);
             if (!string.IsNullOrWhiteSpace(config.Target))
             {
-                var target = config.Target.Trim();
-                if (Array.IndexOf(AuthToken.AllVersions, target) < 0)
+                if (!TryResolveTargetSelector(config.Target.Trim(), out var selector, out var targetError))
                 {
                     Console.Error.WriteLine(
-                        "[RvtMcp] Invalid --target value '" + config.Target + "'. " +
-                        "Expected a 4-digit Revit calendar year: 2022 | 2023 | 2024 | 2025 | 2026 | 2027. " +
-                        "Note: legacy R-codes (R22..R27) are no longer accepted in v0.5; use the year directly.");
+                        "[RvtMcp] Invalid --target value '" + config.Target + "'. " + targetError);
                     Environment.Exit(1);
                     return;
                 }
-                AuthToken.Target = target;
+                RevitTargetBinding.Initialize(selector);
             }
+
+            // Warm up the target-binding code paths on a background thread so the
+            // first tool call's connect+handshake isn't penalized by one-time JIT.
+            // The scan may delete proven-dead descriptor files (same as a list call)
+            // but must not bind, connect, or change binding state.
+            new Thread(WarmUpTargetBinding) { IsBackground = true, Name = "RvtMcp.TargetWarmup" }.Start();
 
             var bakePaths = new BakePaths();
             TryInitializeBakeStorage(bakePaths, out _);
@@ -92,6 +96,32 @@ namespace RvtMcp.Server
             {
                 await RunStdio(config);
             }
+        }
+
+        /// <summary>JIT warm-up: exercise selector parse, descriptor scan/probe,
+        /// binding plan and the §6.10 envelope paths once, off the tool-call path.</summary>
+        private static void WarmUpTargetBinding()
+        {
+            try
+            {
+                SelectorParser.TryParse(HostProduct.Revit, "auto", out _, out _, out _);
+                var scan = RevitTargetBinding.Scan();
+                var binding = RevitTargetBinding.Binding;
+                binding.CaptureGeneration();
+                binding.PlanCall(0, scan.Live);
+                MetaTools.TargetEnvelope(new Bimwright.Targeting.TargetPayload
+                {
+                    Code = Bimwright.Targeting.TargetCode.NoTarget,
+                    Message = "warmup",
+                    NextStep = "warmup",
+                    Candidates = scan.Live.Count == 0
+                        ? new List<Bimwright.Targeting.CandidateInfo>
+                            { new Bimwright.Targeting.CandidateInfo("warmup", 2024, 0, false, null) }
+                        : Array.Empty<Bimwright.Targeting.CandidateInfo>()
+                });
+                ToolGateway.WarmUpWire();
+            }
+            catch { /* warm-up is best-effort */ }
         }
 
         internal static LegacyBakedToolImportResult InitializeBakeStorage(BakePaths paths)
@@ -201,11 +231,10 @@ namespace RvtMcp.Server
                 "  --http <port>           Run HTTP SSE on 127.0.0.1:<port> (1-65535). Default = stdio.",
                 "",
                 "Routing:",
-                "  --target 2022|2023|2024|2025|2026|2027",
-                "                          Pin to a specific Revit calendar-year version when multiple",
-                "                          Revits run. Use the 4-digit year — legacy R-codes (R22..R27)",
-                "                          are rejected in v0.5+.",
-                "                          Default: auto-detect via revit-YYYY.json files in",
+                "  --target <selector>     Pin the initial target: auto | a 4-digit calendar",
+                "                          year (2022..2027) | pid:<n> | id:revit-<year>-<pid>.",
+                "                          Legacy R-codes (R22..R27) are rejected in v0.5+.",
+                "                          Default: auto — ordered scan of revit-*.json files in",
                 "                          %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\.",
                 "",
                 "Tool exposure (A3 Progressive Disclosure):",
@@ -308,7 +337,7 @@ namespace RvtMcp.Server
         private const string ServerInstructionsText =
 @"rvt-mcp — MCP gateway for Autodesk Revit 2022-2027. Use whenever user works with .rvt, Revit, BIM, walls, doors, windows, floors, ceilings, roofs, levels, grids, rooms, sheets, schedules, families, views, view templates, view filters, MEP (ducts, pipes, trays, conduits, HVAC, lighting, plumbing), structural (columns, beams, foundations, rebar), dimensions, tags, annotations, keynotes, worksets, phases, links, parameters, materials, IFC, DWG, NWC, PDF.
 
-Multi-Revit: if >1 Revit may be open, call revit_list_available_targets THEN revit_switch_target. Years are 2022-2027, not R-codes. Defaults: query,create,view,meta. --toolsets all for export/clash. Do not retry clash/export after 60s timeout.
+Multi-Revit: list via revit_list_available_targets (a year can repeat); pin with revit_switch_target(""pid:<n>""); never guess. Defaults: query,create,view,meta. --toolsets all for export/clash. Do not retry clash/export after 60s timeout.
 
 Before model changes, use the revit_change prompt: survey, agree scope, record why.
 
@@ -337,6 +366,21 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - lint: find_untagged_elements, get_model_warnings_summary
 - toolbaker: list_baked_tools, run_baked_tool";
 
+        /// <summary>Parse a --target/BIMWRIGHT_TARGET/config selector (§6.1); R-codes get the educational error.</summary>
+        internal static bool TryResolveTargetSelector(string raw, out TargetSelector selector, out string error)
+        {
+            if (SelectorParser.TryParse(HostProduct.Revit, raw, out selector, out var selError, out var selMessage))
+            {
+                error = null;
+                return true;
+            }
+            error = "Expected: auto | a 4-digit Revit calendar year 2022..2027 | pid:<n> | id:revit-<year>-<pid>. "
+                + (selError == SelectorError.RCode
+                    ? "Note: legacy R-codes (R22..R27) are no longer accepted in v0.5; use the year directly."
+                    : selMessage ?? "Unrecognized selector.");
+            return false;
+        }
+
         internal static bool IncludeSendCode(HashSet<string> enabled, RvtMcpConfig config)
         {
             var sendCodeOn = config == null || config.EnableSendCodeOrDefault;
@@ -350,7 +394,11 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly))
                 .Where(method => method.GetCustomAttribute<McpServerToolAttribute>() != null)
                 .Where(method => config?.ReadOnlyOrDefault != true
-                    || method.GetCustomAttribute<McpServerToolAttribute>().ReadOnly);
+                    || method.GetCustomAttribute<McpServerToolAttribute>().ReadOnly
+                    // revit_switch_target is annotated ReadOnly=false (it mutates session
+                    // routing) but must stay exposed in read-only sessions so the agent
+                    // can always recover the target binding (spec §6.8/§6.11).
+                    || method.GetCustomAttribute<McpServerToolAttribute>().Name == "revit_switch_target");
         }
 
         internal static IMcpServerBuilder RegisterToolsets(IMcpServerBuilder mcp, HashSet<string> enabled, RvtMcpConfig config)
@@ -397,212 +445,20 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
     /// Shared plugin-connection plumbing used by every toolset class. Owns the socket/
     /// pipe lifecycle, response read loop, pending-request correlation, and session
     /// call recording. Toolset classes contain only the MCP tool-method shells.
+    /// Every wire command is gated by <see cref="RevitTargetBinding"/> (spec §6):
+    /// a call pins the binding generation when it arrives, and the command is only
+    /// written to the connection while the pinned generation still matches.
     /// </summary>
-    internal static class ToolGateway
+    internal static partial class ToolGateway
     {
         public static Memory.SessionContext Session { get; set; }
         internal static Memory.ChangeHistoryStore History { get; set; }
         private static readonly string HistorySession = Guid.NewGuid().ToString("N");
         public static UsageEventLogger UsageLogger { get; set; }
-        public static string CurrentRevitVersion { get; private set; }
 
-        private static TcpClient _client;
-        private static NamedPipeClientStream _pipeStream;
-        private static StreamReader _reader;
-        private static StreamWriter _writer;
-        private static readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _pending = new ConcurrentDictionary<string, TaskCompletionSource<string>>();
-        private static readonly object _connectLock = new object();
-        private static readonly JsonSerializerSettings RequestJsonSettings = new JsonSerializerSettings
-        {
-            NullValueHandling = NullValueHandling.Ignore,
-            Converters = { new McpJsonInput.JsonElementConverter() }
-        };
-        private static volatile bool _connected;
-        private static string _token;
-
-        private static void EnsureConnected()
-        {
-            if (_connected && (_client?.Connected == true || _pipeStream?.IsConnected == true))
-                return;
-
-            lock (_connectLock)
-            {
-                if (_connected && (_client?.Connected == true || _pipeStream?.IsConnected == true))
-                    return;
-
-                _connected = false;
-                try { _client?.Close(); } catch { }
-                try { _pipeStream?.Close(); } catch { }
-                _client = null;
-                _pipeStream = null;
-
-                Stream stream = null;
-
-                var target = AuthToken.Target; // null = auto, "2022"-"2027" = specific version
-
-                // Try Named Pipe first (R25-R27).
-                // If the discovery file exists but the connect itself fails (plugin unloaded
-                // while Revit stayed alive, or some transient state), fall through to TCP
-                // rather than giving up the whole connection attempt.
-                IReadOnlyList<string> capabilities = Array.Empty<string>();
-                if (AuthToken.TryReadPipe(out var pipeName, out var pipeToken, out var pipeVer, out var pipeCapabilities))
-                {
-                    try
-                    {
-                        var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut,
-                            PipeOptions.Asynchronous);
-                        pipe.Connect(5000);
-                        _token = pipeToken;
-                        CurrentRevitVersion = pipeVer;
-                        capabilities = pipeCapabilities ?? Array.Empty<string>();
-                        _pipeStream = pipe;
-                        stream = pipe;
-                        Console.Error.WriteLine($"[RvtMcp] Connected to Revit {pipeVer} via Named Pipe: {pipeName}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.Error.WriteLine($"[RvtMcp] Pipe connect failed ({pipeVer}: {ex.Message}) — falling back to TCP");
-                        try { _pipeStream?.Close(); } catch { }
-                        _pipeStream = null;
-                    }
-                }
-
-                // Fall back to TCP (R22-R24) if pipe did not connect.
-                if (stream == null && AuthToken.TryReadTcp(out var port, out var tcpToken, out var tcpVer, out var tcpCapabilities))
-                {
-                    _token = tcpToken;
-                    CurrentRevitVersion = tcpVer;
-                    capabilities = tcpCapabilities ?? Array.Empty<string>();
-                    _client = new TcpClient();
-                    _client.Connect("127.0.0.1", port);
-                    stream = _client.GetStream();
-                    Console.Error.WriteLine($"[RvtMcp] Connected to Revit {tcpVer} via TCP on port {port}");
-                }
-
-                if (stream == null)
-                {
-                    var which = target != null ? $"(target={target})" : "(auto-detect R22-R27)";
-                    throw new InvalidOperationException(
-                        $"Revit MCP plugin not running {which}. Check discovery files in %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\");
-                }
-
-                _reader = new StreamReader(stream, Encoding.UTF8);
-                _writer = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true };
-                _connected = true;
-
-                var readThread = new Thread(ReadLoop) { IsBackground = true, Name = "RvtMcp.ResponseReader" };
-                readThread.Start();
-
-                // Catalog delivery is a connection handshake extension. It is sent once
-                // per newly opened connection and never blocks the first real tool call
-                // for longer than the fixed five-second handshake budget.
-                SendToolCatalogIfAdvertised(capabilities);
-            }
-        }
-
-        internal static bool ShouldSendToolCatalog(RvtMcp.ToolCatalog.ToolCatalog catalog, IReadOnlyList<string> capabilities)
-        {
-            return catalog != null && capabilities != null
-                && capabilities.Any(value => string.Equals(value, "tool_catalog", StringComparison.OrdinalIgnoreCase));
-        }
-
-        private static void SendToolCatalogIfAdvertised(IReadOnlyList<string> capabilities)
-        {
-            if (!ShouldSendToolCatalog(ServerState.ToolCatalog, capabilities))
-                return;
-
-            var id = $"catalog-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
-            var request = new JObject
-            {
-                ["id"] = id,
-                ["command"] = "set_tool_catalog",
-                ["params"] = JObject.FromObject(ServerState.ToolCatalog),
-                ["token"] = _token
-            };
-            var tcs = new TaskCompletionSource<string>();
-            _pending[id] = tcs;
-
-            try
-            {
-                _writer.WriteLine(request.ToString(Formatting.None));
-                if (!tcs.Task.Wait(TimeSpan.FromSeconds(5)))
-                {
-                    _pending.TryRemove(id, out _);
-                    Console.Error.WriteLine("[RvtMcp] Tool catalog handshake timed out; continuing without catalog.");
-                    return;
-                }
-
-                var response = JObject.Parse(tcs.Task.GetAwaiter().GetResult());
-                if (!response.Value<bool>("success"))
-                {
-                    var error = response.Value<string>("error") ?? "plugin rejected catalog";
-                    Console.Error.WriteLine($"[RvtMcp] Tool catalog rejected: {error}");
-                }
-            }
-            catch (Exception ex)
-            {
-                _pending.TryRemove(id, out _);
-                Console.Error.WriteLine($"[RvtMcp] Tool catalog handshake failed: {ex.Message}");
-            }
-        }
-
-        private static void ReadLoop()
-        {
-            try
-            {
-                while (_connected)
-                {
-                    var line = _reader?.ReadLine();
-                    if (line == null) break;
-                    if (string.IsNullOrWhiteSpace(line)) continue;
-
-                    try
-                    {
-                        var obj = JObject.Parse(line);
-                        var id = obj.Value<string>("id");
-                        if (id != null && _pending.TryRemove(id, out var tcs))
-                        {
-                            tcs.TrySetResult(line);
-                        }
-                    }
-                    catch { }
-                }
-            }
-            catch { }
-            finally
-            {
-                _connected = false;
-            }
-        }
-
-        /// <summary>
-        /// Close the current Server↔Plugin connection and set a new target version.
-        /// Next <see cref="SendToRevit"/> call will reconnect against the new target.
-        /// Pass <c>null</c> to clear the pin and re-enable auto-detect.
-        /// Cancels any in-flight requests — they'd be routed to the now-dead connection.
-        /// </summary>
-        public static void Reconnect(string newTarget)
-        {
-            lock (_connectLock)
-            {
-                _connected = false;
-                try { _client?.Close(); } catch { }
-                try { _pipeStream?.Close(); } catch { }
-                _client = null;
-                _pipeStream = null;
-                _reader = null;
-                _writer = null;
-                _token = null;
-                CurrentRevitVersion = null;
-                foreach (var kv in _pending)
-                {
-                    kv.Value.TrySetException(new OperationCanceledException(
-                        "switch_target initiated — in-flight request cancelled."));
-                }
-                _pending.Clear();
-                AuthToken.Target = newTarget;
-            }
-        }
+        /// <summary>Calendar year of the bound Revit instance, or null when nothing is bound.</summary>
+        public static string CurrentRevitVersion =>
+            RevitTargetBinding.Snapshot().Record?.HostYear.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
         // Plugin-side wait is the primary timeout authority; the server adds a
         // short grace so the plugin's structured timeout response wins the race.
@@ -620,19 +476,36 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             if (sendOverride != null)
                 return await sendOverride(command, parameters, timeoutSeconds);
 
-            EnsureConnected();
+            var callCtx = TargetCallContext.Current;
+            long pinned;
+            if (callCtx != null && callCtx.InToolCall)
+            {
+                pinned = callCtx.PinnedGeneration;
+            }
+            else
+            {
+                // Code outside a tool call must never trigger first selection (§6.4);
+                // it may reuse the existing binding only.
+                var snap = RevitTargetBinding.Snapshot();
+                if (snap.State == BindingState.None || snap.Record == null)
+                    throw new InvalidOperationException(
+                        "No Revit target is bound; this call did not come through an MCP tool request.");
+                pinned = snap.Generation;
+            }
 
             var id = $"req-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
             var history = config.EnableChangeHistoryOrDefault ? new ChangeHistoryRequest { Id = Guid.NewGuid().ToString("N"), Session = HistorySession } : null;
             using var historyLease = history == null ? null : new Memory.HistoryCallLease(history.Id);
-            var request = JsonConvert.SerializeObject(new { id, command, @params = parameters ?? new { }, token = _token, timeout_seconds = timeoutSeconds, runtime = config.ToRuntimeOptions(), history }, RequestJsonSettings);
+            var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var binding = RevitTargetBinding.Binding;
 
-            var tcs = new TaskCompletionSource<string>();
-            _pending[id] = tcs;
+            // Establishment can take seconds (scan, descriptor wait, socket connect,
+            // catalog handshake) — run it off the caller's context.
+            var (conn, effectiveGeneration) = await Task.Run(() => EnsureConnectedFor(pinned, callCtx));
+            (conn, effectiveGeneration) = await WriteRequest(
+                conn, effectiveGeneration, id, command, parameters, timeoutSeconds, config, history, tcs, callCtx);
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            _writer.WriteLine(request);
-
             int budgetSeconds = timeoutSeconds ?? 60;
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(budgetSeconds) + TransportGrace);
             var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
@@ -647,7 +520,17 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             }
 
             sw.Stop();
-            var responseLine = await tcs.Task;
+            string responseLine;
+            try
+            {
+                responseLine = await tcs.Task;
+            }
+            catch (ConnectionInterruptedException)
+            {
+                var paramsStr = parameters != null ? JsonConvert.SerializeObject(parameters, RequestJsonSettings) : null;
+                UsageLogger?.RecordToolCall(command, paramsStr, false);
+                throw new TargetException(binding.Interrupted(effectiveGeneration));
+            }
             var response = JObject.Parse(responseLine);
             var paramsJson = parameters != null ? JsonConvert.SerializeObject(parameters, RequestJsonSettings) : null;
             UsageLogger?.RecordToolCall(command, paramsJson, response.Value<bool>("success"));
@@ -714,7 +597,8 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             var year = string.IsNullOrWhiteSpace(revitYear) ? "this Revit" : "Revit " + revitYear;
             return $"The add-in loaded in {year} does not know the command '{command}'. It is most likely an older build than this server. "
                  + "Install the add-in from the same release as the server for that Revit year and restart Revit. "
-                 + "If another Revit year already has the newer add-in, call revit_list_available_targets and then revit_switch_target with that year.";
+                 + "If another Revit instance already has the newer add-in, call revit_list_available_targets to see its pid, "
+                 + "then pin it with revit_switch_target(\"pid:<n>\") — never guess.";
         }
 
         /// <summary>
@@ -2233,7 +2117,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             " May change documents and files; Undo cannot restore arbitrary file writes. Review its source and back up affected files before running.")]
         public static async Task<string> RunBakedTool(string name, object @params = null, string output = "inline")
         {
-            var revitVersionBeforeConnect = ToolGateway.CurrentRevitVersion ?? AuthToken.Target ?? "unknown";
+            var revitVersionBeforeConnect = ToolGateway.CurrentRevitVersion ?? "unknown";
             try
             {
                 var normalizedParams = NormalizeRunBakedToolParams(@params);
@@ -2352,7 +2236,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 var paths = new BakePaths();
                 using var db = new BakeDb(paths);
                 db.Migrate();
-                var revitVersion = ToolGateway.CurrentRevitVersion ?? AuthToken.Target ?? "unknown";
+                var revitVersion = ToolGateway.CurrentRevitVersion ?? "unknown";
                 return DismissBakeSuggestionHandler.Handle(
                     db,
                     id,
@@ -2430,28 +2314,108 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
+        /// <summary>§6.9 binding block shared by get_current_target and switch_target.</summary>
+        internal static JObject BindingJson(BindingSnapshot snap, IReadOnlyList<TargetCandidate> live)
+        {
+            var record = snap.Record;
+            var windowTitle = record != null
+                ? live.FirstOrDefault(c => c.Pid == record.Pid)?.WindowTitle
+                : null;
+            return new JObject
+            {
+                ["selector"] = snap.Selector.Canonical,
+                ["binding"] = snap.State == BindingState.None || record == null
+                    ? "none"
+                    : record.Kind == BindingKind.Explicit ? "explicit" : "implicit",
+                ["binding_state"] = snap.State switch
+                {
+                    BindingState.Bound => "bound",
+                    BindingState.Lost => "lost",
+                    _ => "none",
+                },
+                ["generation"] = snap.Generation,
+                ["bound_target_id"] = record?.TargetId,
+                ["bound_pid"] = record != null ? (JToken)record.Pid : JValue.CreateNull(),
+                ["bound_host_year"] = record != null ? (JToken)record.HostYear : JValue.CreateNull(),
+                ["identity_verified"] = record?.IdentityVerified ?? false,
+                ["window_title"] = windowTitle != null ? (JToken)windowTitle : JValue.CreateNull(),
+                ["next_target_id"] = (JToken)RevitTargetBinding.NextTargetId(live) ?? JValue.CreateNull(),
+                ["confirmation_required"] = snap.ConfirmationRequired,
+                ["last_switch"] = snap.LastSwitch != null
+                    ? new JObject
+                    {
+                        ["from"] = snap.LastSwitch.From,
+                        ["to"] = snap.LastSwitch.To,
+                        ["at_utc"] = snap.LastSwitch.AtUtc.ToString("o")
+                    }
+                    : JValue.CreateNull()
+            };
+        }
+
+        /// <summary>§6.10 rvt envelope around a target payload: {success:false, error:"CODE: …", target:{…}}.</summary>
+        internal static JObject TargetEnvelope(TargetPayload payload)
+        {
+            var json = payload.ToJson();
+            FillWindowTitles(json);
+            return new JObject
+            {
+                ["success"] = false,
+                ["error"] = payload.Message,
+                ["target"] = json
+            };
+        }
+
+        /// <summary>
+        /// The connect path scans without window titles (probe skips MainWindowTitle);
+        /// fill them here from the live process so error payloads still carry
+        /// <c>window_title</c> for agent disambiguation (§6.9).
+        /// </summary>
+        internal static void FillWindowTitles(JObject targetJson)
+        {
+            Fill(targetJson["previous"] as JObject);
+            Fill(targetJson["current"] as JObject);
+            if (targetJson["candidates"] is JArray candidates)
+                foreach (var c in candidates.OfType<JObject>()) Fill(c);
+
+            static void Fill(JObject o)
+            {
+                if (o == null || o["window_title"] != null || o["pid"] is not JValue pidTok) return;
+                var title = RevitTargetBinding.WindowTitle(pidTok.Value<int>());
+                if (title != null) o["window_title"] = title;
+            }
+        }
+
         [McpServerTool(Name = "revit_list_available_targets", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
             "List every Revit instance currently running with the rvt-mcp plugin loaded. " +
-            "Reads the discovery directory %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\ and parses each revit-YYYY.json file. " +
-            "Use this BEFORE revit_switch_target so you know which years (4-digit, e.g. 2024) are actually available — do not guess. " +
-            "Returns: {discovery_dir, count, targets: [{year, transport ('tcp'|'pipe'), port, pipe_name, pid, discovery_file, is_currently_connected}]}. " +
+            "Reads the discovery directory %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\ — both per-instance revit-<year>-<pid>.json and legacy revit-<year>.json files. " +
+            "Multiple instances may share a year — identify the one you want by pid and window_title, then pin it with revit_switch_target(\"pid:<n>\"). Never guess. " +
+            "Use this BEFORE revit_switch_target. " +
+            "Returns: {discovery_dir, count, targets: [{year, transport, port, pipe_name, pid, discovery_file, is_currently_connected, target_id, host_year, process_start_utc, identity_verified, source, is_current, window_title}]}. " +
             "If count == 0, no Revit is running or no plugin is loaded — instruct the user to start Revit and enable the rvt-mcp plugin.")]
         public static string ListAvailableTargets()
         {
             try
             {
                 var dir = AuthToken.DiscoveryDir();
-                var found = AuthToken.ListAvailable();
-                var currentYear = ToolGateway.CurrentRevitVersion;
-                var targets = found.Select(d => new
+                var scan = RevitTargetBinding.Scan();
+                var snap = RevitTargetBinding.Snapshot();
+                var connectedId = ToolGateway.ConnectedTargetId;
+                var targets = scan.Live.Select(c => new
                 {
-                    year = d.Year,
-                    transport = d.Transport,
-                    port = d.Transport == "tcp" ? (int?)d.Port : null,
-                    pipe_name = d.Transport == "pipe" ? d.PipeName : null,
-                    pid = d.Pid,
-                    discovery_file = d.DiscoveryFilePath,
-                    is_currently_connected = string.Equals(d.Year, currentYear, StringComparison.Ordinal)
+                    year = c.HostYear.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    transport = c.Descriptor.Transport,
+                    port = c.Descriptor.Transport == "tcp" ? c.Descriptor.Port : null,
+                    pipe_name = c.Descriptor.Transport == "pipe" ? c.Descriptor.PipeName : null,
+                    pid = c.Pid,
+                    discovery_file = Path.Combine(dir, c.Descriptor.FileName),
+                    is_currently_connected = string.Equals(c.TargetId, connectedId, StringComparison.OrdinalIgnoreCase),
+                    target_id = c.TargetId,
+                    host_year = c.HostYear,
+                    process_start_utc = c.ObservedStartUtc?.ToString("o"),
+                    identity_verified = c.IdentityVerified,
+                    source = c.Descriptor.Source == DescriptorSource.PerInstance ? "per_instance" : "legacy",
+                    is_current = snap.Record != null && string.Equals(snap.Record.TargetId, c.TargetId, StringComparison.OrdinalIgnoreCase),
+                    window_title = c.WindowTitle
                 }).ToArray();
                 return JsonConvert.SerializeObject(new
                 {
@@ -2459,8 +2423,8 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                     count = targets.Length,
                     targets,
                     note = targets.Length == 0
-                        ? "No revit-YYYY.json files found. Start Revit and ensure the rvt-mcp plugin is loaded (Add-Ins ribbon)."
-                        : "Pass a 'year' value above as the 'version' argument of revit_switch_target (the parameter is named 'version', the value is the 4-digit year) to route subsequent commands to that Revit.",
+                        ? "No revit-*.json descriptors found. Start Revit and ensure the rvt-mcp plugin is loaded (Add-Ins ribbon)."
+                        : "Pin an instance with revit_switch_target — 'version' accepts a 4-digit year, 'pid:<n>' or 'id:<target_id>'. When several instances share a year, always pin with pid:<n>.",
                     update_available = UpdateStatus.ForStatusResult()
                 }, Formatting.Indented);
             }
@@ -2469,88 +2433,99 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 
         [McpServerTool(Name = "revit_get_current_target", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
             "Report which Revit instance this MCP server will route the NEXT command to. " +
-            "Returns: {pinned_target (4-digit year or 'auto'), currently_connected_year (or null), discovery_dir}. " +
+            "Returns: {pinned_target, currently_connected_year (or null), discovery_dir, selector, binding, binding_state, generation, bound_target_id, bound_pid, bound_host_year, identity_verified, window_title, next_target_id, confirmation_required, last_switch}. " +
+            "When confirmation_required is true the previous bound Revit is gone — call revit_switch_target to confirm a candidate before repeating the call. " +
             "Use to verify routing before sending Revit-modifying commands when multiple Revits are open.")]
         public static string GetCurrentTarget()
         {
             try
             {
-                return JsonConvert.SerializeObject(new
-                {
-                    pinned_target = AuthToken.Target ?? "auto",
-                    currently_connected_year = ToolGateway.CurrentRevitVersion,
-                    discovery_dir = AuthToken.DiscoveryDir(),
-                    note = AuthToken.Target == null
-                        ? "Auto-detect mode: next reconnect picks the first alive Revit (pipe 2027>2026>2025, then tcp 2024>2023>2022)."
-                        : "Pinned to Revit " + AuthToken.Target + ". Call revit_switch_target with version='auto' to clear the pin.",
-                    update_available = UpdateStatus.ForStatusResult()
-                }, Formatting.Indented);
+                var snap = RevitTargetBinding.Snapshot();
+                var live = RevitTargetBinding.Scan().Live;
+                var block = BindingJson(snap, live);
+                block["pinned_target"] = snap.Selector.Canonical;
+                block["currently_connected_year"] = ToolGateway.ConnectedTargetId != null
+                    ? ToolGateway.CurrentRevitVersion
+                    : null;
+                block["discovery_dir"] = AuthToken.DiscoveryDir();
+                block["update_available"] = UpdateStatus.ForStatusResult() is { } upd
+                    ? JToken.FromObject(upd)
+                    : JValue.CreateNull();
+                return JsonConvert.SerializeObject(block, Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_switch_target", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
-            "Switch active Revit connection to a specific version when multiple Revits are running. " +
-            "version: a 4-digit calendar year — '2022'|'2023'|'2024'|'2025'|'2026'|'2027' — or 'auto' to clear the pin and re-enable auto-detect. " +
+        [McpServerTool(Name = "revit_switch_target", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
+            "Switch the active Revit binding to a specific instance when multiple Revits are running — including several instances of the same year. " +
+            "version: a selector — 'auto', a 4-digit calendar year, 'pid:<n>', or 'id:revit-<year>-<pid>'. " +
+            "When several instances share a year, ALWAYS pin with pid:<n> after listing. " +
             "DO NOT pass R-codes like 'R22' or 'R24' — they are rejected with an educational error. " +
-            "DO NOT guess. ALWAYS call revit_list_available_targets first to see which versions are actually running and what year string each one uses. " +
-            "Immediately closes the current Server↔Plugin connection (cancels in-flight requests) and updates the target. " +
-            "The next tool call transparently reconnects against the new target. " +
-            "Returns: {ok, previousTarget, newTarget, verified (if verify=true)}. " +
+            "DO NOT guess. ALWAYS call revit_list_available_targets first to see which instances are actually running (pid, window_title). " +
+            "A valid switch after TARGET_CHANGED confirms the proposed replacement — calls keep failing until you confirm. " +
+            "Switching to a different instance closes the old connection; any command still in flight ends as TARGET_INTERRUPTED. " +
+            "Returns: {ok, previous: {target_id, pid}|null, binding: {…}, verified, activeView} plus legacy previousTarget/newTarget strings. " +
             "verify=true (default): immediately attempts get_current_view_info against the new target to confirm connectivity; " +
             "set verify=false to skip when the new target's document isn't in a view yet (e.g., Revit just launched).")]
         public static async Task<string> SwitchTarget(string version, bool verify = true)
         {
             try
             {
-                var previousTarget = AuthToken.Target;
-                string newTarget = null;
-                if (!string.IsNullOrWhiteSpace(version) && !version.Equals("auto", StringComparison.OrdinalIgnoreCase))
+                var snapBefore = RevitTargetBinding.Snapshot();
+
+                // Parse the selector first — an invalid one changes nothing (§6.8).
+                if (!SelectorParser.TryParse(HostProduct.Revit, version, out var selector, out var selError, out var selMessage))
                 {
-                    var trimmed = version.Trim();
-
-                    // Hard validation: reject legacy R-codes with an educational message that
-                    // forces the agent to read revit_list_available_targets instead of guessing.
-                    if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^[Rr]\d{2}$"))
-                    {
-                        return JsonConvert.SerializeObject(new
-                        {
-                            ok = false,
-                            error = "Invalid version format '" + version + "'. v0.5+ uses 4-digit calendar years, NOT R-codes. " +
-                                    "Translate: R22=2022, R23=2023, R24=2024, R25=2025, R26=2026, R27=2027. " +
-                                    "BEFORE calling this tool again, call revit_list_available_targets to see exactly which versions are running on this machine and what year string each one uses. " +
-                                    "Do not guess.",
-                            allowed_versions = AuthToken.AllVersions,
-                            recommended_next_tool = "revit_list_available_targets"
-                        });
-                    }
-
-                    if (Array.IndexOf(AuthToken.AllVersions, trimmed) < 0)
-                    {
-                        return JsonConvert.SerializeObject(new
-                        {
-                            ok = false,
-                            error = "Invalid version '" + version + "'. Allowed: " + string.Join("|", AuthToken.AllVersions) + " or 'auto'. " +
-                                    "Call revit_list_available_targets first to see which years are actually running on this machine.",
-                            allowed_versions = AuthToken.AllVersions,
-                            recommended_next_tool = "revit_list_available_targets"
-                        });
-                    }
-                    newTarget = trimmed;
+                    var payload = TargetPayload.InvalidSelector(HostProduct.Revit, version,
+                        selError == SelectorError.RCode
+                            ? "Invalid version format '" + version + "'. v0.5+ uses 4-digit calendar years, NOT R-codes. " +
+                              "Translate: R22=2022, R23=2023, R24=2024, R25=2025, R26=2026, R27=2027. " +
+                              "BEFORE calling this tool again, call revit_list_available_targets to see exactly which instances are running on this machine (pid, window_title). " +
+                              "Do not guess."
+                            : "Invalid version '" + version + "'. Allowed: auto | 2022..2027 | pid:<n> | id:revit-<year>-<pid>. " +
+                              (selMessage != null ? "(" + selMessage + ") " : "") +
+                              "Call revit_list_available_targets first to see which instances are actually running on this machine.");
+                    var invalidEnv = TargetEnvelope(payload);
+                    invalidEnv["ok"] = false;
+                    invalidEnv["allowed_versions"] = new JArray(AuthToken.AllVersions);
+                    invalidEnv["recommended_next_tool"] = "revit_list_available_targets";
+                    return JsonConvert.SerializeObject(invalidEnv, Formatting.Indented);
                 }
 
-                ToolGateway.Reconnect(newTarget);
+                var live = RevitTargetBinding.Scan().Live;
+                var result = ToolGateway.SwitchBinding(selector, live);
+                if (!result.Ok)
+                {
+                    var failEnv = TargetEnvelope(result.Failure);
+                    failEnv["ok"] = false;
+                    failEnv["allowed_versions"] = new JArray(AuthToken.AllVersions);
+                    failEnv["recommended_next_tool"] = result.Failure.RecommendedNextTool;
+                    return JsonConvert.SerializeObject(failEnv, Formatting.Indented);
+                }
+
+                // This call's pinned generation follows the binding it just established,
+                // so the verify probe below is sent under the new generation.
+                var callCtx = TargetCallContext.Current;
+                if (callCtx != null) callCtx.PinnedGeneration = RevitTargetBinding.Snapshot().Generation;
+
+                var previous = result.Previous != null
+                    ? (JToken)new JObject { ["target_id"] = result.Previous.TargetId, ["pid"] = result.Previous.Pid }
+                    : JValue.CreateNull();
+                var previousTarget = snapBefore.Record?.HostYear.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "auto";
+                var newTarget = result.Current?.HostYear.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "auto";
 
                 if (!verify)
                 {
                     return JsonConvert.SerializeObject(new
                     {
                         ok = true,
-                        previousTarget = previousTarget ?? "auto",
-                        newTarget = newTarget ?? "auto",
+                        previous,
+                        binding = BindingJson(RevitTargetBinding.Snapshot(), live),
                         verified = false,
+                        previousTarget,
+                        newTarget,
                         note = "Target updated. Next tool call will connect to new target."
-                    });
+                    }, Formatting.Indented);
                 }
 
                 try
@@ -2559,23 +2534,32 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                     return JsonConvert.SerializeObject(new
                     {
                         ok = true,
-                        previousTarget = previousTarget ?? "auto",
-                        newTarget = newTarget ?? "auto",
+                        previous,
+                        binding = BindingJson(RevitTargetBinding.Snapshot(), live),
                         verified = true,
-                        activeView = probe.Value<string>("viewName")
-                    });
+                        activeView = probe.Value<string>("viewName"),
+                        previousTarget,
+                        newTarget
+                    }, Formatting.Indented);
                 }
                 catch (Exception verifyEx)
                 {
+                    // The switch itself succeeded; a verify failure must not replace this
+                    // meta-tool response with the probe's target envelope.
+                    if (callCtx != null) callCtx.Payload = null;
                     return JsonConvert.SerializeObject(new
                     {
                         ok = true,
-                        previousTarget = previousTarget ?? "auto",
-                        newTarget = newTarget ?? "auto",
+                        previous,
+                        binding = BindingJson(RevitTargetBinding.Snapshot(), live),
                         verified = false,
                         verifyError = verifyEx.Message,
+                        verify_target = (verifyEx as TargetException)?.Payload is { } vp
+                            ? MetaTools.TargetEnvelope(vp)["target"] : null,
+                        previousTarget,
+                        newTarget,
                         note = "Target set, but verify failed. The next tool call may still succeed."
-                    });
+                    }, Formatting.Indented);
                 }
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }

@@ -11,12 +11,25 @@ namespace RvtMcp.Plugin
 {
     public class TcpTransportServer : ITransportServer
     {
+        private readonly string _discoveryDirectory;
+        private readonly Action<string> _log;
+        private readonly ManualResetEvent _stop = new ManualResetEvent(false);
+        private readonly object _clientGate = new object();
         private TcpListener _listener;
         private Thread _listenThread;
         private volatile bool _running;
+        private int _stopped;
         private Action<string, TaskCompletionSource<string>> _onRequest;
         private int _port;
         private volatile bool _clientConnected;
+        private TcpClient _activeClient;
+        private DiscoveryPublisher _publisher;
+
+        public TcpTransportServer(string discoveryDirectory = null, Action<string> log = null)
+        {
+            _discoveryDirectory = discoveryDirectory;
+            _log = log;
+        }
 
         public bool IsRunning => _running;
         public int Port => _port;
@@ -37,7 +50,7 @@ namespace RvtMcp.Plugin
             _listener.Start();
             _port = ((IPEndPoint)_listener.LocalEndpoint).Port;
 
-            AuthToken.GenerateAndPersist(_port);
+            _publisher = AuthToken.GenerateAndPersist(_port, _discoveryDirectory);
             if (allowLan)
             {
                 const string warn = "[RvtMcp] \u26A0 LAN bind enabled. Token auth active but network exposed.";
@@ -66,9 +79,19 @@ namespace RvtMcp.Plugin
 
         public void Stop()
         {
+            if (Interlocked.Exchange(ref _stopped, 1) != 0)
+                return;
             _running = false;
+            _stop.Set();
+            lock (_clientGate) { try { _activeClient?.Close(); } catch { } }
             try { _listener?.Stop(); } catch { }
-            AuthToken.DeleteDiscoveryFile();
+
+            if (_listenThread != null && Thread.CurrentThread != _listenThread)
+                _listenThread.Join(2000);
+
+            try { _publisher?.Dispose(); } catch { }
+            _publisher = null;
+
             Log("Stopped");
         }
 
@@ -79,12 +102,16 @@ namespace RvtMcp.Plugin
 
         private void ListenLoop()
         {
+            var backoffMs = 100;
             while (_running)
             {
                 TcpClient client = null;
+                var hadClient = false;
                 try
                 {
                     client = _listener.AcceptTcpClient();
+                    hadClient = true;
+                    backoffMs = 100; // a successful connection resets the error back-off
                     Log("Client connected");
                     HandleClient(client);
                 }
@@ -96,11 +123,15 @@ namespace RvtMcp.Plugin
                 catch (Exception ex)
                 {
                     Log($"Listen error: {ex.Message}");
+                    if (_stop.WaitOne(backoffMs))
+                        break;
+                    backoffMs = Math.Min(backoffMs * 2, 2000);
                 }
                 finally
                 {
                     try { client?.Close(); } catch { }
-                    Log("Client disconnected");
+                    if (hadClient)
+                        Log("Client disconnected");
                 }
             }
         }
@@ -109,7 +140,8 @@ namespace RvtMcp.Plugin
         {
             client.ReceiveTimeout = 120000;
             _clientConnected = true;
-            ToolCatalogStore.BeginConnection();
+            lock (_clientGate) { _activeClient = client; }
+            var conn = ToolCatalogStore.BeginConnection();
             try
             {
                 var stream = client.GetStream();
@@ -189,7 +221,7 @@ namespace RvtMcp.Plugin
                     // They must never enter history, usage, toast, or ExternalEvent.
                     if (string.Equals(command, "set_tool_catalog", StringComparison.Ordinal))
                     {
-                        var catalogResult = ToolCatalogStore.AcceptJson(paramsJson);
+                        var catalogResult = ToolCatalogStore.AcceptJson(paramsJson, conn);
                         var catalogResponse = new Newtonsoft.Json.Linq.JObject
                         {
                             ["id"] = id,
@@ -243,7 +275,8 @@ namespace RvtMcp.Plugin
             finally
             {
                 _clientConnected = false;
-                ToolCatalogStore.Clear();
+                lock (_clientGate) { _activeClient = null; }
+                ToolCatalogStore.Clear(conn);
             }
         }
 
@@ -267,6 +300,12 @@ namespace RvtMcp.Plugin
         }
 
         private void Log(string message)
+        {
+            if (_log != null) { try { _log(message); } catch { } return; }
+            FileLog(message);
+        }
+
+        private static void FileLog(string message)
         {
             try
             {

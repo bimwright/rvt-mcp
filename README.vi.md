@@ -305,7 +305,6 @@ Annotations mô tả tác động lên document/file của từng tool. Đổi s
       "mcp__rvt-mcp__revit_show_message",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
       "mcp__rvt-mcp__revit_survey_change_impact",
-      "mcp__rvt-mcp__revit_switch_target",
       "mcp__rvt-mcp__revit_workflow_model_audit"
     ]
   }
@@ -328,6 +327,34 @@ Response guard mặc định **bật**: cảnh báo tại 65536 byte UTF-8, cả
 | 2027 | .NET 10 (`net10.0-windows7.0`) | Named Pipe |
 
 Chỉ Revit desktop đầy đủ; Revit Viewer không được hỗ trợ. CI build cả 6 add-in, nhưng độ sâu runtime khác nhau theo năm — kiểm lại baked tool và C# custom trên các năm bạn dùng.
+
+---
+
+## Nhiều phiên bản Revit chạy đồng thời
+
+Server chỉ bind vào đúng một phiên bản Revit — kể cả khi có nhiều phiên bản cùng năm chạy song song. Nó bind ngầm ở lệnh gọi đầu tiên hoặc tường minh qua `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target`. Selector: `auto`, năm 4 chữ số (`2024`), `pid:<n>` hoặc `id:revit-<year>-<pid>`; các mã R cũ như `R24` bị từ chối.
+
+Khi có nhiều phiên bản chạy — nhất là nhiều phiên bản cùng năm — đừng đoán target:
+
+1. Gọi `revit_list_available_targets`: mọi phiên bản đang sống được liệt kê kèm `target_id`, `pid`, `host_year`, `window_title` và `source`.
+2. Chọn phiên bản theo `pid` và/hoặc `window_title`.
+3. Ghim bằng `revit_switch_target("pid:<n>")` — mọi dạng selector đều dùng được, `pid:` là rõ ràng nhất.
+4. `revit_get_current_target` hiển thị binding hiện tại, generation và `next_target_id` được đề xuất.
+
+Mã lỗi target và cách xử lý. Mọi mã trừ `TARGET_INTERRUPTED` nghĩa là lệnh **chưa** được gửi:
+
+| Mã | Ý nghĩa | Hành động của agent |
+|---|---|---|
+| `NO_TARGET` | Không có phiên bản sống nào khớp selector (cũng xảy ra khi implicit binding mất và còn 0 candidate) | Gọi `revit_list_available_targets`; mở Revit / add-in hoặc sửa selector |
+| `TARGET_UNAVAILABLE` | Phiên bản đang bind vẫn sống nhưng không kết nối được — listener đã dừng/đang khởi động lại, descriptor bị thiếu, token bị từ chối. Binding được giữ nguyên | Thử lại sau ít lâu; nhờ người dùng (khởi động lại) MCP trong Revit đó. Đừng đổi sang phiên bản khác trừ khi người dùng muốn |
+| `TARGET_BUSY` | Endpoint tồn tại nhưng handshake không hoàn tất trong 5 s — thường do agent/gateway khác đang giữ kết nối duy nhất, hoặc Revit đang bị chặn | Thử lại sau; đừng chạy hai gateway trên một phiên bản |
+| `TARGET_LOST` | Phiên bản được ghim tường minh (`pid:`/`id:`) đã thoát | Xem `candidates`, xác nhận với người dùng, rồi `revit_switch_target` |
+| `TARGET_CHANGED` | Phiên bản được bind ngầm đã thoát và có đúng một phiên bản thay thế (hoặc binding đổi giữa lúc nhận và gửi lệnh). Lệnh **chưa** được gửi; mọi call đều trả mã này cho tới khi được xác nhận | Kiểm tra phiên bản được đề xuất (`window_title`), xác nhận bằng `revit_switch_target`, rồi gọi lại |
+| `AMBIGUOUS_TARGET` | Phiên bản được bind ngầm đã thoát và ≥2 phiên bản khớp | Liệt kê, chọn theo `pid`/`window_title`, `revit_switch_target("pid:<n>")` |
+| `TARGET_INTERRUPTED` | Lệnh đã được gửi nhưng kết nối đóng trước khi có phản hồi (`sent:true`, `outcome:unknown`) | Kiểm tra trạng thái model trước khi lặp lại bất kỳ thao tác ghi nào |
+| `INVALID_TARGET_SELECTOR` | Selector sai định dạng hoặc mã R | Dùng `auto`, năm, `pid:<n>` hoặc `id:<target_id>` |
+
+`revit_switch_target` được chú thích non-read-only vì nó đổi định tuyến của phiên, nhưng vẫn khả dụng dưới `--read-only` để luôn khôi phục được binding.
 
 ---
 

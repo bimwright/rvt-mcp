@@ -305,7 +305,6 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
       "mcp__rvt-mcp__revit_show_message",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
       "mcp__rvt-mcp__revit_survey_change_impact",
-      "mcp__rvt-mcp__revit_switch_target",
       "mcp__rvt-mcp__revit_workflow_model_audit"
     ]
   }
@@ -328,6 +327,34 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 | 2027 | .NET 10 (`net10.0-windows7.0`) | Named Pipe |
 
 フル Revit デスクトップのみで、Revit Viewer は非対応です。CI は 6 つのアドインすべてをビルドしますが、実行時の深さは年で差があります — baked ツールとカスタム C# は使う年で再確認してください。
+
+---
+
+## 複数の Revit インスタンス
+
+サーバーは常に正確に 1 つの Revit インスタンスにバインドします — 同年の複数インスタンスが同時に動いていても同じです。初回呼び出しで暗黙に、または `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target` で明示的にバインドします。セレクター: `auto`、4 桁の年（`2024`）、`pid:<n>`、`id:revit-<year>-<pid>`。`R24` などの旧 R コードは拒否されます。
+
+複数インスタンスが動いているとき — 特に同年が複数あるとき — ターゲットを推測しないでください:
+
+1. `revit_list_available_targets` を呼ぶ: 稼働中の全インスタンスが `target_id`, `pid`, `host_year`, `window_title`, `source` 付きで列挙されます。
+2. `pid` や `window_title` でインスタンスを選ぶ。
+3. `revit_switch_target("pid:<n>")` でピン留め — どのセレクター形式でも可、`pid:` が最も明確です。
+4. `revit_get_current_target` が現在のバインド、generation、提案された `next_target_id` を表示します。
+
+ターゲットエラーコードと対処。`TARGET_INTERRUPTED` 以外のすべてのコードは、コマンドが**未送信**であることを意味します:
+
+| コード | 意味 | エージェントの対処 |
+|---|---|---|
+| `NO_TARGET` | セレクターに合う稼働インスタンスがない（暗黙バインド喪失後に候補 0 の場合も） | `revit_list_available_targets` を呼び、Revit / アドインを起動するかセレクターを修正 |
+| `TARGET_UNAVAILABLE` | バインド中のインスタンスは生存しているが到達不能 — リスナー停止/再起動中、ディスクリプタ欠落、トークン拒否。バインドは維持される | すぐに再試行。その Revit で MCP を（再）起動するようユーザーに依頼。ユーザーが望まない限り別インスタンスへ切り替えない |
+| `TARGET_BUSY` | エンドポイントは存在するが 5 秒以内にハンドシェイクが完了しない — 通常は別エージェント/ゲートウェイが唯一の接続を占有しているか、Revit がブロック中 | 後で再試行。1 つのインスタンスに 2 つのゲートウェイを走らせない |
+| `TARGET_LOST` | 明示的にピン留め（`pid:`/`id:`）したインスタンスが終了 | `candidates` を確認し、ユーザーに確認のうえ `revit_switch_target` |
+| `TARGET_CHANGED` | 暗黙バインドしたインスタンスが終了し、代替がちょうど 1 つ存在（または呼び出し受付から送信の間にバインドが変化）。コマンドは**未送信**。確認されるまですべての呼び出しがこのコードを返す | 提案されたインスタンス（`window_title`）を確認し、`revit_switch_target` で確定してから呼び出しを繰り返す |
+| `AMBIGUOUS_TARGET` | 暗黙バインドしたインスタンスが終了し、2 つ以上が一致 | 一覧し、`pid`/`window_title` で選び `revit_switch_target("pid:<n>")` |
+| `TARGET_INTERRUPTED` | コマンドは送信されたが応答前に接続が切断（`sent:true`、`outcome:unknown`） | 書き込みを繰り返す前にモデル状態を確認 |
+| `INVALID_TARGET_SELECTOR` | セレクター形式エラーまたは R コード | `auto`、年、`pid:<n>`、`id:<target_id>` を使用 |
+
+`revit_switch_target` はセッションのルーティングを変えるため非 read-only と注釈されていますが、`--read-only` 下でも利用可能で、いつでもバインドを回復できます。
 
 ---
 

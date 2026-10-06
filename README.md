@@ -304,7 +304,6 @@ MCP annotations describe each tool's document/file effects. Transient selection,
       "mcp__rvt-mcp__revit_show_message",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
       "mcp__rvt-mcp__revit_survey_change_impact",
-      "mcp__rvt-mcp__revit_switch_target",
       "mcp__rvt-mcp__revit_workflow_model_audit"
     ]
   }
@@ -327,6 +326,34 @@ The response guard defaults **on**: UTF-8 warnings at 65536 bytes, strong warnin
 | 2027 | .NET 10 (`net10.0-windows7.0`) | Named Pipe |
 
 Full Revit desktop only; Revit Viewer is not a supported target. CI builds all six add-ins, but runtime depth varies by year — recheck baked tools and custom C# on the years you use.
+
+---
+
+## Multiple Revit instances
+
+The server binds to exactly one Revit instance — including when several instances of the same year run at once. It binds implicitly on the first call or explicitly through `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target`. Selectors: `auto`, a 4-digit year (`2024`), `pid:<n>` or `id:revit-<year>-<pid>`; legacy R-codes like `R24` are rejected.
+
+When more than one instance runs — especially several of the same year — do not guess the target:
+
+1. Call `revit_list_available_targets`: every live instance is listed with `target_id`, `pid`, `host_year`, `window_title` and `source`.
+2. Pick the instance by `pid` and/or `window_title`.
+3. Pin it with `revit_switch_target("pid:<n>")` — any selector form works, `pid:` is unambiguous.
+4. `revit_get_current_target` shows the active binding, its generation and the proposed `next_target_id`.
+
+Target error codes and how to react. Every code except `TARGET_INTERRUPTED` means the command was **not** sent:
+
+| Code | Meaning | Agent action |
+|---|---|---|
+| `NO_TARGET` | No live instance matches the selector (also: the implicit binding was lost and zero candidates remain) | Call `revit_list_available_targets`; start Revit / the add-in or fix the selector |
+| `TARGET_UNAVAILABLE` | The bound instance is still alive but cannot be reached — listener stopped or restarting, descriptor missing, token rejected. The binding is kept | Retry shortly; ask the user to (re)start MCP in that Revit. Do not switch to another instance unless the user wants that |
+| `TARGET_BUSY` | The endpoint exists but did not complete the handshake within 5 s — usually another agent or gateway holds its single connection, or Revit is blocked | Retry later; do not run two gateways on one instance |
+| `TARGET_LOST` | The explicitly pinned (`pid:`/`id:`) instance exited | Check `candidates`, confirm with the user, then `revit_switch_target` |
+| `TARGET_CHANGED` | The implicitly bound instance exited and exactly one replacement exists (or the binding changed between call arrival and send). The command was **not** sent; every call returns this until confirmed | Check the proposed instance (`window_title`), confirm with `revit_switch_target`, then repeat the call |
+| `AMBIGUOUS_TARGET` | The implicitly bound instance exited and two or more instances match | List, pick by `pid`/`window_title`, `revit_switch_target("pid:<n>")` |
+| `TARGET_INTERRUPTED` | The command was sent but the connection closed before a response (`sent:true`, `outcome:unknown`) | Inspect the model state before repeating any write |
+| `INVALID_TARGET_SELECTOR` | Malformed selector or R-code | Use `auto`, a year, `pid:<n>` or `id:<target_id>` |
+
+`revit_switch_target` is annotated non-read-only because it changes session routing, but it stays available under `--read-only` so the binding can always be recovered.
 
 ---
 

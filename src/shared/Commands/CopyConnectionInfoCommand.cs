@@ -21,6 +21,7 @@ namespace RvtMcp.Plugin.Commands
             var info = App.Instance.IsTransportRunning
                 ? transport.ConnectionInfo
                 : Localization.L.T("dialog.connectionInfo.notRunning");
+            info += "\ntarget_id: " + AuthToken.TargetId;
 
             Clipboard.SetText(info);
 
