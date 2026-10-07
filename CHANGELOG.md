@@ -54,6 +54,11 @@ Update **both** the server and the Revit add-ins from the same release. Mixed de
 
 Behaviour change for single-Revit users: v1.0.1 reconnected silently after Revit was restarted. v1.1.0 returns `TARGET_CHANGED` instead, and waits for one `revit_switch_target` call, because the restarted Revit may have a different model open.
 
+Upgrade in place without uninstalling first. Close Revit and gateway clients and
+back up the product data folder; settings and ToolBaker data are retained. MCPB
+users run Setup with `-Client none`, update the matching extension and review
+Desktop settings/permissions before reconnecting. See the [upgrade sequence](docs/install.md#upgrade).
+
 ### Tests
 
 - New coverage for the descriptor scanner (per-instance/legacy dedup, dead-pid deletion, malformed files), the binding state machine (selector forms, generation pinning, switch semantics), and the gateway against in-process fake listeners (busy vs unavailable, token rotation, descriptor retry window, mid-command interruption, switch-vs-send atomicity, pipe transport).

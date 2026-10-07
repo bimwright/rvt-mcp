@@ -42,7 +42,8 @@ Choose one published release and use its Setup ZIP and `rvt-mcp-desktop-<version
    This verifies the server file, not the add-in already loaded by Revit: update
    the gateway and add-ins together and restart Revit.
 4. Defaults are all toolsets, full mode, send_code enabled, call logging disabled
-   and response guard enabled. The extension also exposes target year and optional
+   and response guard enabled. The extension also exposes a target selector:
+   `auto`, a 4-digit Revit year, `pid:<n>` or `id:revit-<year>-<pid>`, plus optional
    response-size thresholds. Empty values inherit server configuration; explicit
    send_code, call-log and response-guard choices pass their CLI on/off flags.
    Unchecked read-only sends no override, so read-only set elsewhere still applies.
@@ -79,13 +80,46 @@ Runtime security settings combine with the Revit add-in's settings: read-only ap
 if either side enables it; `send_code` requires both sides to allow it. Client flags
 cannot weaken the policy configured in Revit.
 
-Updates are manual. Close all Revit windows and stop clients using the gateway, extract the new release ZIP into a separate folder, then preview and apply with the same explicit client selection: for Desktop direct config, `install.ps1 -WhatIf -Client claude-desktop` followed by `install.ps1 -Client claude-desktop`; for MCPB, use `-Client none` and update the matching extension too. Upgrade the server and plugins together; restart Revit and the target MCP client, then repeat the [verification stages](#verify-and-hand-off). Do not uninstall first: upgrades replace plugins and the server in place.
+Updates are manual. Upgrade in place; do not uninstall first. Use the Setup ZIP
+and MCPB from the same release and follow this sequence:
+
+1. Close all Revit windows and fully quit clients using the gateway, including
+   Claude Desktop in the tray. Extract the new Setup ZIP into a separate folder.
+2. Back up `%LOCALAPPDATA%\Bimwright\rvt-mcp\` while the gateway is stopped. If
+   `%LOCALAPPDATA%\RvtMcp\` still exists, back it up too. If both roots contain
+   data, preserve both and resolve the [migration conflict](#upgrade-troubleshooting)
+   before retrying installation. Do not use `-Purge` during an upgrade.
+3. Preview and apply with the same explicit client selection. For Desktop direct
+   config, use `install.ps1 -WhatIf -Client claude-desktop`, then
+   `install.ps1 -Client claude-desktop`. For an existing MCPB installation, use
+   `install.ps1 -WhatIf -Client none`, then `install.ps1 -Client none`; keep the
+   extension route and avoid adding a second Desktop registration.
+4. For MCPB, install the matching new `.mcpb` through Desktop's Extensions UI.
+   The extension ID remains `rvt-mcp-desktop`. Check that Desktop shows the
+   selected release version, then review `toolsets`, `read_only`, `send_code`,
+   `target`, `server_path` and permission choices. An override must point to the
+   new Setup's gateway. Settings and permission retention are managed by Desktop;
+   do not assume that previous choices or "Always allow" survived the update.
+5. Restart Revit and the target client, repeat the [verification stages](#verify-and-hand-off),
+   and check that expected baked tools appear in `revit_list_baked_tools` before
+   running them. Read-only mode intentionally hides baked-tool execution.
+
+**ToolBaker data is kept.** The installer replaces the server and add-ins while
+preserving the product data root, including `bake.db` and its SQLite sidecars,
+`baked\`, `bake-audit.jsonl`, settings and other personal files. Legacy-root
+relocation moves the whole tree; a caught installation failure attempts rollback
+and reports any recovery failure. Older `baked\registry.json` entries are imported
+without deleting the original files or replacing existing registry names. Invalid
+entries or missing source files are reported in the audit log. Preserved data does
+not by itself prove that every old tool runs successfully in the selected Revit.
 
 The server path never changes between versions, so MCP clients keep working and only need a restart; clients still running the previous copy keep it until they restart (the summary lists it under `In use`, and the next install removes it). For MCPB this stable path is not a compatibility guarantee: the extension's exact hash check still requires a matching extension update. Older add-in copies that carry RvtMcp's AddInId — Bimwright-era leftovers — are removed automatically, because Revit would otherwise load only one of them. A machine-wide copy under `%ProgramData%` stops the install (removing it needs admin rights).
 
 Before replacing files, the installer checks package checksums when a manifest is present, validates every selected plugin ZIP (including its add-in manifest), stages the payload and refuses installation while Revit is running. It then starts the new server once (`--help`) and verifies the installed add-ins byte for byte against the package. Any caught error restores the previous add-ins and server. If rollback is blocked by file locks or permissions, the error identifies retained `.rvtmcp-rollback-*` backups; hard termination or power loss requires manual recovery.
 
 Upgrading from v0.6.2 or earlier: those installers put the server in a versioned folder (`...\rvt\server\0.6.2\`). The summary lists such folders under `Legacy`; point your clients at the new `current` path, then preview/apply `install.ps1 -PruneOldServers` with the same explicit `-Client` selection to remove the old copies.
+
+<a id="upgrade-troubleshooting"></a>
 
 ### Troubleshooting upgrades from v0.8.1 or v0.6.x to v1.0.0
 
