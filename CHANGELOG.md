@@ -47,6 +47,8 @@ Reported and analysed by [@BenniOST](https://github.com/BenniOST) in [#19](https
 
 Update **both** the server and the Revit add-ins from the same release. Mixed deployments keep working in one direction only: a v1.1.0 server still reads legacy `revit-<year>.json` files, but a v1.0.1 server reads **only** the legacy file — it sees at most one instance per year (the last one to publish it, with handover when that instance stops). The legacy shared file may be dropped in v1.2.0.
 
+Behaviour change for single-Revit users: v1.0.1 reconnected silently after Revit was restarted. v1.1.0 returns `TARGET_CHANGED` instead, and waits for one `revit_switch_target` call, because the restarted Revit may have a different model open.
+
 ### Tests
 
 - New coverage for the descriptor scanner (per-instance/legacy dedup, dead-pid deletion, malformed files), the binding state machine (selector forms, generation pinning, switch semantics), and the gateway against in-process fake listeners (busy vs unavailable, token rotation, descriptor retry window, mid-command interruption, switch-vs-send atomicity, pipe transport).

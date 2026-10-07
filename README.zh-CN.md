@@ -353,6 +353,8 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 | `TARGET_INTERRUPTED` | 命令已发送但在收到响应前连接关闭（`sent:true`，`outcome:unknown`） | 重复任何写操作之前先检查模型状态 |
 | `INVALID_TARGET_SELECTOR` | 选择器格式错误或 R 代码 | 使用 `auto`、年份、`pid:<n>` 或 `id:<target_id>` |
 
+**Revit 重启后（即使只打开了一个 Revit）**，下一次调用会返回 `TARGET_CHANGED`，服务器会等待一次 `revit_switch_target` 调用后才发送命令。这是有意为之：重启后的 Revit 可能打开了另一个模型，因此服务器绝不会静默地重新绑定。返回内容中会给出建议的实例；确认后再重复调用即可。
+
 `revit_switch_target` 因改变会话路由而被标注为非只读，但在 `--read-only` 下仍然可用，以便随时恢复绑定。
 
 ---

@@ -354,6 +354,8 @@ Mã lỗi target và cách xử lý. Mọi mã trừ `TARGET_INTERRUPTED` nghĩa
 | `TARGET_INTERRUPTED` | Lệnh đã được gửi nhưng kết nối đóng trước khi có phản hồi (`sent:true`, `outcome:unknown`) | Kiểm tra trạng thái model trước khi lặp lại bất kỳ thao tác ghi nào |
 | `INVALID_TARGET_SELECTOR` | Selector sai định dạng hoặc mã R | Dùng `auto`, năm, `pid:<n>` hoặc `id:<target_id>` |
 
+**Sau khi khởi động lại Revit — kể cả khi chỉ mở một Revit** — lời gọi tiếp theo trả về `TARGET_CHANGED` và server chờ một lần gọi `revit_switch_target` rồi mới gửi lệnh. Đây là chủ đích: Revit vừa khởi động lại có thể đang mở một model khác, nên server không bao giờ tự bind lại một cách âm thầm. Payload có ghi instance được đề xuất; hãy xác nhận rồi gọi lại lệnh.
+
 `revit_switch_target` được chú thích non-read-only vì nó đổi định tuyến của phiên, nhưng vẫn khả dụng dưới `--read-only` để luôn khôi phục được binding.
 
 ---

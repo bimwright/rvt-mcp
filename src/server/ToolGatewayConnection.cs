@@ -71,10 +71,10 @@ namespace RvtMcp.Server
         private static readonly SemaphoreSlim _establishGate = new SemaphoreSlim(1, 1);
 
         /// <summary>Target id of the instance the open connection serves, or null.</summary>
-        internal static string ConnectedTargetId => _conn?.Alive == true ? _conn.TargetId : null;
+        internal static string ConnectedTargetId => _conn is { Alive: true } c ? c.TargetId : null;
 
         /// <summary>PID of the instance the open connection serves, or null.</summary>
-        internal static int? ConnectedPid => _conn?.Alive == true ? _conn.Pid : (int?)null;
+        internal static int? ConnectedPid => _conn is { Alive: true } c ? c.Pid : (int?)null;
 
         /// <summary>JIT warm-up for the wire paths: request serialization, pending map,
         /// response parse, plus a private 127.0.0.1 socket pair — no Revit listener is touched.</summary>

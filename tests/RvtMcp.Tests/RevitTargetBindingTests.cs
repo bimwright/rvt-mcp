@@ -183,6 +183,33 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void Implicit_binding_with_single_replacement_waits_for_switch_confirmation()
+        {
+            // Single-Revit restart: the bound instance exits and exactly one new instance is live.
+            RevitTargetBinding.Switch(TargetSelector.Auto, new[] { Candidate(PidA, 2024, StartA, "Revit A") });
+            var pinned = RevitTargetBinding.CaptureGeneration();
+            _probe.Set(PidA, ProcessState.Exited, StartA);
+            var onlyB = new[] { Candidate(PidB, 2024, StartB, "Revit B") };
+
+            for (var i = 0; i < 2; i++) // never rebinds on its own, however often the call repeats
+            {
+                var plan = Assert.IsType<FailPlan>(RevitTargetBinding.Binding.PlanCall(pinned, onlyB));
+                Assert.Equal(TargetCode.TargetChanged, plan.Payload.Code);
+                Assert.False(plan.Payload.Sent);
+                Assert.Equal("revit-2024-" + PidB, plan.Payload.Current.TargetId);
+                Assert.True(RevitTargetBinding.Snapshot().ConfirmationRequired);
+            }
+
+            var result = RevitTargetBinding.Switch(TargetSelector.Auto, onlyB);
+
+            Assert.True(result.Ok);
+            var snap = RevitTargetBinding.Snapshot();
+            Assert.Equal(PidB, snap.Record.Pid);
+            Assert.False(snap.ConfirmationRequired);
+            Assert.True(RevitTargetBinding.Binding.CanSend(snap.Generation, onlyB, out _));
+        }
+
+        [Fact]
         public void Title_cache_prunes_entries_older_than_ttl()
         {
             var probe = new SystemProcessProbe(withTitles: true);

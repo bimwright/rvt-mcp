@@ -354,6 +354,8 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 | `TARGET_INTERRUPTED` | コマンドは送信されたが応答前に接続が切断（`sent:true`、`outcome:unknown`） | 書き込みを繰り返す前にモデル状態を確認 |
 | `INVALID_TARGET_SELECTOR` | セレクター形式エラーまたは R コード | `auto`、年、`pid:<n>`、`id:<target_id>` を使用 |
 
+**Revit を再起動した後は（Revit を 1 つしか開いていない場合でも）**、次の呼び出しは `TARGET_CHANGED` を返し、サーバーは `revit_switch_target` が 1 回呼ばれるまでコマンドを送信しません。これは意図的な動作です。再起動した Revit では別のモデルが開いている可能性があるため、サーバーが黙って再バインドすることはありません。ペイロードに提案先のインスタンスが示されるので、確認してから呼び出しを繰り返してください。
+
 `revit_switch_target` はセッションのルーティングを変えるため非 read-only と注釈されていますが、`--read-only` 下でも利用可能で、いつでもバインドを回復できます。
 
 ---

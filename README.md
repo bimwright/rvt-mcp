@@ -353,6 +353,8 @@ Target error codes and how to react. Every code except `TARGET_INTERRUPTED` mean
 | `TARGET_INTERRUPTED` | The command was sent but the connection closed before a response (`sent:true`, `outcome:unknown`) | Inspect the model state before repeating any write |
 | `INVALID_TARGET_SELECTOR` | Malformed selector or R-code | Use `auto`, a year, `pid:<n>` or `id:<target_id>` |
 
+**After a Revit restart — even with a single Revit open** — the next call returns `TARGET_CHANGED` and the server waits for one `revit_switch_target` call before it sends anything. This is deliberate: the restarted Revit can have a different model open, so the server never rebinds to it silently. The payload names the proposed instance; confirm it and repeat the call.
+
 `revit_switch_target` is annotated non-read-only because it changes session routing, but it stays available under `--read-only` so the binding can always be recovered.
 
 ---
