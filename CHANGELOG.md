@@ -37,10 +37,11 @@ Reported and analysed by [@BenniOST](https://github.com/BenniOST) in [#19](https
 
 ### Changed
 
-- **No silent fall-through** — after the bound instance dies or is replaced, calls fail with `TARGET_LOST`/`TARGET_CHANGED`/`AMBIGUOUS_TARGET` and wait for an explicit `revit_switch_target` confirmation; they never execute on a different instance. Reconnecting probes the bound pid and reads only that instance's descriptor (no pipe→TCP fallback across instances).
+- **No silent fall-through** — after the bound instance dies or is replaced, calls fail with `TARGET_LOST`/`TARGET_CHANGED`/`AMBIGUOUS_TARGET` and `confirmation_required` stays true until an explicit `revit_switch_target` confirms a candidate; they never execute on a different instance. Reconnecting probes the bound pid and reads only that instance's descriptor (no pipe→TCP fallback across instances).
 - **Busy detection** — a plugin that accepts the socket but never answers the `set_tool_catalog` handshake reports `TARGET_BUSY` within ~5 s (pipe busy via connect timeout, TCP via handshake timeout) instead of stalling until the command timeout.
 - **`revit_switch_target`** — annotation is now `ReadOnly=false` (session navigation, Destructive=false); it remains available under `--read-only` so the agent can always recover the binding.
 - **Listener ownership** — each transport owns its discovery publisher and tool-catalog slot, so a late `Stop()` from an old listener can no longer delete the new listener's descriptor or clobber its catalog. `Stop()` is idempotent and closes the held client promptly.
+- **Listener back-off** — when a named-pipe listener keeps failing to create its pipe (the "All pipe instances are busy" loop reported in [#19](https://github.com/bimwright/rvt-mcp/issues/19)), retries now back off from 100 ms up to 2 s instead of spinning in a tight log loop.
 
 ### Upgrade note
 

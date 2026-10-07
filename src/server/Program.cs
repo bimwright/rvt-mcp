@@ -2433,7 +2433,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 
         [McpServerTool(Name = "revit_get_current_target", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
             "Report which Revit instance this MCP server will route the NEXT command to. " +
-            "Returns: {pinned_target, currently_connected_year (or null), discovery_dir, selector, binding, binding_state, generation, bound_target_id, bound_pid, bound_host_year, identity_verified, window_title, next_target_id, confirmation_required, last_switch}. " +
+            "Returns: {pinned_target, currently_connected_year (or null), currently_connected_pid (or null), discovery_dir, selector, binding, binding_state, generation, bound_target_id, bound_pid, bound_host_year, identity_verified, window_title, next_target_id, confirmation_required, last_switch}. " +
             "When confirmation_required is true the previous bound Revit is gone — call revit_switch_target to confirm a candidate before repeating the call. " +
             "Use to verify routing before sending Revit-modifying commands when multiple Revits are open.")]
         public static string GetCurrentTarget()
@@ -2447,6 +2447,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
                 block["currently_connected_year"] = ToolGateway.ConnectedTargetId != null
                     ? ToolGateway.CurrentRevitVersion
                     : null;
+                block["currently_connected_pid"] = ToolGateway.ConnectedPid;
                 block["discovery_dir"] = AuthToken.DiscoveryDir();
                 block["update_available"] = UpdateStatus.ForStatusResult() is { } upd
                     ? JToken.FromObject(upd)

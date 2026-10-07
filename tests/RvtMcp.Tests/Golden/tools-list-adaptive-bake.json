@@ -3957,7 +3957,7 @@
     },
     {
       "name": "revit_get_current_target",
-      "description_hash": "sha256:b9eba2e19cd8aad62cfdbe4230b5b3f4df5c887b170437277dc25363fa3bb984",
+      "description_hash": "sha256:ac244d75aed3150785df853e67fc9e8d1d426a6cfd9f3b5b067cdc33464779e2",
       "inputSchema": {
         "properties": {},
         "required": [],

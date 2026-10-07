@@ -43,6 +43,7 @@ namespace RvtMcp.Server
             public string Token;
             public string TargetId;
             public string Year;
+            public int Pid;
             public int Closed;
             /// <summary>
             /// Serializes wire writes on this connection so a blocked writer (plugin
@@ -71,6 +72,9 @@ namespace RvtMcp.Server
 
         /// <summary>Target id of the instance the open connection serves, or null.</summary>
         internal static string ConnectedTargetId => _conn?.Alive == true ? _conn.TargetId : null;
+
+        /// <summary>PID of the instance the open connection serves, or null.</summary>
+        internal static int? ConnectedPid => _conn?.Alive == true ? _conn.Pid : (int?)null;
 
         /// <summary>JIT warm-up for the wire paths: request serialization, pending map,
         /// response parse, plus a private 127.0.0.1 socket pair — no Revit listener is touched.</summary>
@@ -400,6 +404,7 @@ namespace RvtMcp.Server
                 Token = desc.AuthToken,
                 TargetId = desc.TargetId,
                 Year = desc.HostYear.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                Pid = desc.Pid,
             };
             if (transport is TcpClient tcp)
             {
@@ -453,13 +458,11 @@ namespace RvtMcp.Server
                 Console.Error.WriteLine($"[RvtMcp] Tool catalog rejected: {error}");
                 return HandshakeResult.AnsweredRejected;
             }
-            catch (ConnectionInterruptedException)
-            {
-                return HandshakeResult.Closed; // connection died mid-handshake → unavailable
-            }
             catch (Exception ex)
             {
                 _pending.TryRemove(id, out _);
+                // A faulted tcs.Task reaches Wait() wrapped in AggregateException, so a
+                // mid-handshake ConnectionInterruptedException lands here too — both mean Closed.
                 Console.Error.WriteLine($"[RvtMcp] Tool catalog handshake failed: {ex.Message}");
                 return HandshakeResult.Closed; // e.g. write failed on a closing stream → unavailable
             }

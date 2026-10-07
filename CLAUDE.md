@@ -16,8 +16,8 @@ Two processes:
 
 Communication: newline-delimited JSON (NDJSON). Discovery files written per Revit instance in `%LOCALAPPDATA%\Bimwright\rvt-mcp\`:
 - `revit-<year>-<pid>.json` — per-instance descriptor (schema 3) for every instance, plus the legacy `revit-<year>.json` for older servers
-- `revit-2022.json` / `revit-2023.json` / `revit-2024.json` — TCP transport (port OS-assigned) + auth token + PID
-- `revit-2025.json` / `revit-2026.json` / `revit-2027.json` — Named Pipe transport + auth token + PID
+- `revit-2022.json` / `revit-2023.json` / `revit-2024.json` — legacy per-year files: TCP transport (port OS-assigned) + auth token + PID
+- `revit-2025.json` / `revit-2026.json` / `revit-2027.json` — legacy per-year files: Named Pipe transport + auth token + PID
 
 Discovery file format (`schema_version=3`):
 ```json
