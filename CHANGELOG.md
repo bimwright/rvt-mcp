@@ -4,7 +4,7 @@
 
 | Version | Date | Available as |
 |---|---|---|
-| v1.1.0 | — | Git tag (pending release) |
+| v1.1.0 | 2026-10-07 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.1.0) |
 | v1.0.1 | 2026-10-04 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.0.1) |
 | v1.0.0 | 2026-10-03 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.0.0); NuGet `RvtMcp.Server` 1.0.0 |
 | v0.8.1 | 2026-09-27 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.8.1) |
