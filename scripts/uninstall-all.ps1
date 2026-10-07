@@ -13,7 +13,8 @@
     2. Legacy .NET global tool RvtMcp.Server, if present.
     3. MCP client configs are not touched: remove the 'rvt-mcp' entry from each
        client you configured yourself (see AGENTS.md).
-    4. Server copies, discovery files (revit-YYYY.json) and the spill cache in
+    4. Server copies, discovery files (revit-YYYY.json and revit-YYYY-PID.json)
+       and the spill cache in
        %LOCALAPPDATA%\Bimwright\rvt-mcp\ (and a leftover legacy
        %LOCALAPPDATA%\RvtMcp\, if one still exists). A server copy that an MCP
        client is still running is kept whole and reported; close that client
@@ -203,8 +204,9 @@ function Invoke-Step4-Discovery {
                 $remove = ($e.Extension -notin @('.log', '.jsonl'))
             }
         } else {
+            # Sweep both generations even when only an older version was installed.
             $remove = ($e.Name -in @('rvt', 'server', 'spill')) -or
-                (-not $e.PSIsContainer -and $e.Name -match '^revit-\d{4}\.json$')
+                (-not $e.PSIsContainer -and $e.Name -match '^revit-\d{4}(?:-\d+)?\.json$')
         }
         if (-not $remove) {
             $preserved += $e.Name
@@ -240,7 +242,7 @@ function Invoke-Step4-Discovery {
 }
 
 # --- Main ---
-$step4Plan = 'Step4: %LOCALAPPDATA%\Bimwright\rvt-mcp\ server copies (kept while an MCP client still runs them), discovery files and spill cache (settings, translations, ToolBaker data, logs and captures are kept); a leftover %LOCALAPPDATA%\RvtMcp\ gets the same sweep'
+$step4Plan = 'Step4: %LOCALAPPDATA%\Bimwright\rvt-mcp\ server copies (kept while an MCP client still runs them), discovery files (revit-YYYY.json and revit-YYYY-PID.json) and spill cache (settings, translations, ToolBaker data, logs and captures are kept); a leftover %LOCALAPPDATA%\RvtMcp\ gets the same sweep'
 if ($Purge) {
     $step4Plan = 'Step4 (-Purge): PERMANENTLY delete %LOCALAPPDATA%\Bimwright\rvt-mcp\ (and a leftover %LOCALAPPDATA%\RvtMcp\) including settings, translations, ToolBaker data, firm profiles, shared parameters, captures and logs; the Bimwright parent and sibling products are never touched'
     if ($KeepLogs) { $step4Plan += ' (logs kept)' }

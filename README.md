@@ -68,7 +68,7 @@ This installs the add-in for every detected Revit 2022–2027 and registers `rvt
 
 **Upgrading from v0.8.1 or v0.6.x:** those versions keep your settings and ToolBaker data in `%LOCALAPPDATA%\RvtMcp\`; v1.0.0 uses `%LOCALAPPDATA%\Bimwright\rvt-mcp\`, and the installer moves the old folder there. Close Revit and every MCP client first, because a running old server locks the folder. Check in PowerShell with `Test-Path "$env:LOCALAPPDATA\RvtMcp"`. If the installer stops with `Both … exist` or `Could not move …`, it has undone what it moved: keep the folder that holds your settings and ToolBaker data, **rename the other one (for example to `RvtMcp.bak`) instead of deleting it**, close the clients that were using it, and run the installer again.
 
-**Claude Desktop extension (MCPB, optional):** direct config above is the default for agent-assisted installs. If you want the extension/settings UI, use Setup with `-Client none`, then install the `.mcpb` through Desktop's extension UI. **Choose one route, not both.** `-Client none` does not remove an existing manual registration. The v1.0.0 extension is unsigned, does not install the gateway/add-ins, and requires the exact server build from the same release. See [MCPB installation and settings](docs/install.md#claude-desktop-mcpb).
+**Claude Desktop extension (MCPB, optional):** direct config above is the default for agent-assisted installs. If you want the extension/settings UI, use Setup with `-Client none`, then install the `.mcpb` through Desktop's extension UI. **Choose one route, not both.** `-Client none` does not remove an existing manual registration. Use the bundle from the same selected release as Setup; it does not install the gateway/add-ins and requires that release's exact server build. Check the release notes for its signing status. See [MCPB installation and settings](docs/install.md#claude-desktop-mcpb).
 
 ---
 
@@ -169,7 +169,7 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwr
 
 | Setting | CLI | Env | JSON |
 |---------|-----|-----|------|
-| Target year | `--target 2024` | `BIMWRIGHT_TARGET` | `target` |
+| Target selector | `--target 2024` / `--target pid:12345` | `BIMWRIGHT_TARGET` | `target` |
 | Toolsets | `--toolsets query,create` | `BIMWRIGHT_TOOLSETS` | `toolsets` |
 | Read-only | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
 | send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |

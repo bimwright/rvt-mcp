@@ -68,7 +68,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 **从 v0.8.1 或 v0.6.x 升级：** 这些版本把设置和 ToolBaker 数据保存在 `%LOCALAPPDATA%\RvtMcp\`；v1.0.0 使用 `%LOCALAPPDATA%\Bimwright\rvt-mcp\`，安装程序会把旧文件夹移动过去。请先关闭 Revit 和所有 MCP 客户端，因为仍在运行的旧 server 会锁定该文件夹。可在 PowerShell 中用 `Test-Path "$env:LOCALAPPDATA\RvtMcp"` 检查。如果安装程序因 `Both … exist` 或 `Could not move …` 而停止，它会撤销已移动的内容：保留存有你的设置和 ToolBaker 数据的文件夹，**把另一个重命名（例如 `RvtMcp.bak`）而不是删除**，关闭正在使用它的客户端，然后重新运行安装程序。
 
-**Claude Desktop 扩展（MCPB，可选）：** agent 辅助安装默认采用上面的直接配置。如需扩展/设置界面，用 `-Client none` 运行 Setup，再通过 Desktop 扩展界面安装 `.mcpb`。**只选一种方式，不要同时注册。** `-Client none` 不会删除已有的手动注册。v1.0.0 扩展未签名，不安装 gateway/插件，且要求同一 release 的确切 server build。参见 [MCPB 安装与设置](docs/install.md#claude-desktop-mcpb)。
+**Claude Desktop 扩展（MCPB，可选）：** agent 辅助安装默认采用上面的直接配置。如需扩展/设置界面，用 `-Client none` 运行 Setup，再通过 Desktop 扩展界面安装 `.mcpb`。**只选一种方式，不要同时注册。** `-Client none` 不会删除已有的手动注册。使用与 Setup 同一选定 release 的 bundle；扩展不安装 gateway/插件，且要求该 release 的确切 server build。签名状态请查看 release notes。参见 [MCPB 安装与设置](docs/install.md#claude-desktop-mcpb)。
 
 ---
 
@@ -169,7 +169,7 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 
 | 设置 | CLI | Env | JSON |
 |------|-----|-----|------|
-| 目标年份 | `--target 2024` | `BIMWRIGHT_TARGET` | `target` |
+| 目标选择器 | `--target 2024` / `--target pid:12345` | `BIMWRIGHT_TARGET` | `target` |
 | Toolsets | `--toolsets query,create` | `BIMWRIGHT_TOOLSETS` | `toolsets` |
 | 只读 | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
 | send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |

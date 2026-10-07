@@ -1,6 +1,6 @@
-﻿# Contributing to Bimwright
+﻿# Contributing to rvt-mcp
 
-Thanks for your interest. Bimwright is a solo-maintained project shipping its first public release; this guide is the short version. Open an issue before a large PR so we can agree on scope.
+Thanks for your interest. rvt-mcp is a solo-maintained bimwright gateway; this guide is the short version. Open an issue before a large PR so we can agree on scope.
 
 ## Dev setup
 
@@ -8,7 +8,7 @@ Thanks for your interest. Bimwright is a solo-maintained project shipping its fi
 
 - Windows 10/11 (Revit is Windows-only).
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) — required for the server and the Revit 2025/2026 plugins.
-- [.NET 10 SDK (preview)](https://dotnet.microsoft.com/download/dotnet/10.0) — required for the Revit 2027 plugin. Skip if you're not building it.
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) — required for the Revit 2027 plugin. Skip if you're not building it.
 - Visual Studio 2022+ or JetBrains Rider (optional — `dotnet build` from CLI works).
 - One or more Revit installations (2022–2027) for runtime testing.
 
@@ -32,7 +32,23 @@ Build output lands in `src/plugin-r<nn>/bin/Debug/<tfm>/` and `src/server/bin/De
 dotnet test tests/RvtMcp.Tests/RvtMcp.Tests.csproj
 ```
 
-Tests are pure .NET 8 xUnit, no Revit dependency — they cover `ErrorSanitizer`, `SchemaValidator`, `RvtMcpConfig`, `ToolsetFilter`, and `BatchExecutor`. Anything that needs a live Revit document is tested manually.
+Tests run under .NET 8 xUnit without a running Revit. Coverage includes configuration, tool contracts and permissions, response guards/spill, batch behavior, discovery, per-instance binding and fake-listener transport scenarios. These do not replace live Revit acceptance tests.
+
+Installer/uninstaller and packaging-script fixtures use disposable folders, not a real installation. Run them under both Windows PowerShell 5.1 and PowerShell 7:
+
+```powershell
+powershell -NoProfile -File tests/installer/upgrade.Tests.ps1
+powershell -NoProfile -File tests/installer/uninstall.Tests.ps1
+powershell -NoProfile -File tests/installer/pack-nupkg.Tests.ps1
+pwsh -NoProfile -File tests/installer/upgrade.Tests.ps1
+pwsh -NoProfile -File tests/installer/uninstall.Tests.ps1
+pwsh -NoProfile -File tests/installer/pack-nupkg.Tests.ps1
+pwsh -NoProfile -File tests/check-public-tree.Tests.ps1
+pwsh -NoProfile -File scripts/check-public-tree.ps1
+python -B -m unittest discover -s tests/installer -p "test_*.py" -v
+```
+
+Start PS5.1 from a normal Windows PowerShell environment; do not inherit a PS7-specific `PSModulePath`.
 
 ### Package the plugin ZIPs
 
@@ -40,7 +56,15 @@ Tests are pure .NET 8 xUnit, no Revit dependency — they cover `ErrorSanitizer`
 pwsh scripts/stage-plugin-zip.ps1 -Config Release
 ```
 
-Produces `build/plugin-zip/RvtMcp.Plugin.R{22..27}.zip`. Run this before cutting a plugin release bundle.
+Produces `build/plugin-zip/RvtMcp.Plugin.R{22..27}.zip` from existing Release build output. For the complete client package, use:
+
+```powershell
+pwsh scripts/package-client-setup.ps1 -Config Release
+python tests/installer/verify-package.py build/client-setup/RvtMcp.Setup-v<x.y.z>-win-x64.zip --output <report.json>
+pwsh scripts/publish-nupkg.ps1
+```
+
+Replace the version/report placeholders with actual paths. Setup packaging builds all six add-ins with auto-deploy disabled and writes a ZIP checksum sidecar. The verifier checks the archive and runs its server in a disposable profile; it does not contact Revit unless `--live-2027` is explicitly passed. Use a fresh output directory for each verification run. NuGet packaging writes the `.nupkg` and its `.sha256`; it does not publish unless `-Push` is explicitly passed. Neither command performs a GitHub release. A dirty checkout requires `-AllowDirty` for a throwaway Setup, never a release artifact.
 
 ## Project layout
 
@@ -49,7 +73,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the conceptual model. Quick reference
 | Path | What lives here |
 |------|-----------------|
 | `src/server/` | MCP server, tool registration, stdio/HttpSse entry points |
-| `src/shared/Handlers/` | One file per Revit command handler; 32 MCP tools by default, 35 with adaptive bake enabled |
+| `src/shared/Handlers/` | One file per Revit command handler; 46 tools on bare CLI, 233 with all toolsets, 236 with all + adaptive bake |
 | `src/shared/Infrastructure/` | `CommandDispatcher`, `McpEventHandler`, `SchemaValidator`, `BatchExecutor` |
 | `src/shared/Transport/` | `ITransportServer`, TCP + Named Pipe implementations |
 | `src/shared/Security/` | `AuthToken`, `ErrorSanitizer`, `SecretMasker` |
@@ -57,15 +81,15 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the conceptual model. Quick reference
 | `src/shared/Config/` | `RvtMcpConfig` — 3-layer precedence |
 | `src/plugin-r<nn>/` | Revit-year shell: `App.cs`, `RibbonSetup.cs`, csproj, `.addin` |
 | `tests/RvtMcp.Tests/` | xUnit tests (pure .NET 8, no Revit API) |
-| `scripts/` | `stage-plugin-zip.ps1`, `install.ps1` |
+| `scripts/` | Setup/NuGet packaging, public-tree checks, install and uninstall entrypoints |
 | `.github/workflows/` | CI matrix build |
 
 ## Adding a new MCP tool
 
 1. Write the handler in `src/shared/Handlers/<Verb><Noun>Handler.cs` implementing `IRevitCommand`. Return DTOs — never serialize Revit API objects directly.
 2. Register in `src/shared/Infrastructure/CommandDispatcher.cs` constructor: `Register(new Handlers.YourHandler());`.
-3. Add an `[McpServerTool]` method in the appropriate toolset class under `src/server/` (e.g. `QueryTools.cs`, `CreateTools.cs`). Use the 4-part description template: what, when-to-use, params, example.
-4. If the tool mutates model state, put it in `CreateTools` / `ModifyTools` / `DeleteTools` (off by default).
+3. Add an `[McpServerTool]` method in the appropriate toolset class under `src/server/` (e.g. `QueryTools` or `CreateTools` in `Program.cs`). Use the 4-part description template: what, when-to-use, params, example.
+4. Choose the domain toolset and explicitly set all four permission hints for the strongest optional branch. Model/file writes must not be marked read-only; destructive descriptions explain recovery or lack of Undo. Arbitrary send_code intentionally has no annotations. The bare CLI defaults to `query,create,view,meta`; fresh installs seed `all`.
 5. Cover any non-trivial logic with an xUnit test in `tests/RvtMcp.Tests/`. Extract pure functions where possible — `BatchExecutor.Run` is a good template.
 6. Manual smoke test in at least one Revit year before PR.
 
@@ -95,7 +119,7 @@ Public documentation should describe shipped behavior and reproducible contribut
 Open a GitHub issue with:
 
 - Revit version + year.
-- Bimwright server version (`bimwright --version`) and plugin version (check the `.addin` manifest).
+- rvt-mcp server version (MCP `initialize` → `serverInfo.version`) and plugin DLL file/assembly version; identify the selected release. The command is `rvt-mcp`, not `bimwright`.
 - Reproduction steps — ideally the exact MCP tool call and params.
 - Logs from `%LOCALAPPDATA%\Bimwright\rvt-mcp\` — but **check for paths you don't want to share** (the sanitizer masks absolute paths in errors sent to the model, but local log files are unredacted).
 

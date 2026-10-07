@@ -43,15 +43,22 @@ Reported and analysed by [@BenniOST](https://github.com/BenniOST) in [#19](https
 - **Listener ownership** — each transport owns its discovery publisher and tool-catalog slot, so a late `Stop()` from an old listener can no longer delete the new listener's descriptor or clobber its catalog. `Stop()` is idempotent and closes the held client promptly.
 - **Listener back-off** — when a named-pipe listener keeps failing to create its pipe (the "All pipe instances are busy" loop reported in [#19](https://github.com/bimwright/rvt-mcp/issues/19)), retries now back off from 100 ms up to 2 s instead of spinning in a tight log loop.
 
+### Fixed
+
+- **Discovery cleanup on uninstall** — remove both legacy `revit-<year>.json` and per-instance `revit-<year>-<pid>.json` descriptors, including leftovers from older installations in either product data root. Default uninstall still keeps settings, ToolBaker data, logs, captures and unrecognized files; `-WhatIf` changes nothing.
+- **NuGet artifact selection and checksums** — pack/hash the exact server version instead of whichever leftover package has the newest timestamp. Write a `.nupkg.sha256` sidecar for release-asset verification; publishing still requires explicit `-Push`.
+
 ### Upgrade note
 
-Update **both** the server and the Revit add-ins from the same release. Mixed deployments keep working in one direction only: a v1.1.0 server still reads legacy `revit-<year>.json` files, but a v1.0.1 server reads **only** the legacy file — it sees at most one instance per year (the last one to publish it, with handover when that instance stops). The legacy shared file may be dropped in v1.2.0.
+Update **both** the server and the Revit add-ins from the same release. Mixed deployments remain compatible in both directions, with legacy limits: a v1.1.0 server still reads an older plugin's `revit-<year>.json` file, while a v1.0.1 server reads **only** the legacy file published by the newer plugin — it sees at most one instance per year (the last one to publish it, with handover when that instance stops). Discovering every instance of the same year requires the new per-instance discovery files. The legacy shared file may be dropped in v1.2.0.
 
 Behaviour change for single-Revit users: v1.0.1 reconnected silently after Revit was restarted. v1.1.0 returns `TARGET_CHANGED` instead, and waits for one `revit_switch_target` call, because the restarted Revit may have a different model open.
 
 ### Tests
 
 - New coverage for the descriptor scanner (per-instance/legacy dedup, dead-pid deletion, malformed files), the binding state machine (selector forms, generation pinning, switch semantics), and the gateway against in-process fake listeners (busy vs unavailable, token rotation, descriptor retry window, mid-command interruption, switch-vs-send atomicity, pipe transport).
+- Uninstaller fixtures cover both descriptor formats across years/instances and both data roots, `-WhatIf`, in-use servers, and preservation of personal data, lookalike filenames/directories and sibling products.
+- Add host-free publication-path, NuGet packaging and ZIP checksum/path guard tests. CI verifies the built Setup's checksum, manifest and MCP server in a disposable profile, without installing into or contacting a live Revit.
 
 ## v1.0.1 - Export, parameter binding and placement fixes
 

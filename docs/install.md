@@ -22,7 +22,7 @@ On a fresh machine, follow the [README verification steps](../README.md#install)
 
 ## Claude Desktop MCPB
 
-Use the Setup ZIP and `rvt-mcp-desktop-1.0.0.mcpb` from the same v1.0.0 release and verify both against their SHA-256 sidecars. The v1.0.0 extension is unsigned and does not install Revit, the gateway or its add-ins.
+Choose one published release and use its Setup ZIP and `rvt-mcp-desktop-<version>.mcpb` (`<version>` is the release tag without its leading `v`). Verify both against their SHA-256 sidecars. If the bundle or checksum is missing, stop rather than substituting an older extension. The extension does not install Revit, the gateway or its add-ins; check that release's notes for signing status.
 
 1. Close Revit and stop clients using the gateway. Preview the matching installer
    with `install.ps1 -WhatIf -Client none`, then install with `install.ps1 -Client none`.
@@ -115,7 +115,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -WhatIf
 powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-all.ps1 -Yes
 ```
 
-Removes the add-ins for every Revit year 2022–2027 (including Bimwright-era copies), the self-contained server, discovery files and the spill cache. MCP client configs are not touched — use `install.ps1 -Uninstall -Client <names>` to strip just the `rvt-mcp` entry, or remove it from your clients yourself. A server copy that a running MCP client still uses is kept; close the client and run again. Everything else under `%LOCALAPPDATA%\Bimwright\rvt-mcp` (settings, translations, ToolBaker data, firm profiles, shared parameters, logs, captures) is kept. `-Purge` deletes the whole folder; `-Purge -KeepLogs` keeps logs.
+Removes the add-ins for every Revit year 2022–2027 (including Bimwright-era copies), the self-contained server, both legacy `revit-YYYY.json` and per-instance `revit-YYYY-PID.json` discovery files, and the spill cache. Both descriptor formats are removed regardless of the installed version, under the current `%LOCALAPPDATA%\Bimwright\rvt-mcp\` root and any leftover legacy `%LOCALAPPDATA%\RvtMcp\` root. MCP client configs are not touched — use `install.ps1 -Uninstall -Client <names>` to strip just the `rvt-mcp` entry, or remove it from your clients yourself. A server copy that a running MCP client still uses is kept; close the client and run again. Everything else under `%LOCALAPPDATA%\Bimwright\rvt-mcp` (settings, translations, ToolBaker data, firm profiles, shared parameters, logs, captures) is kept. `-Purge` deletes the whole folder; `-Purge -KeepLogs` keeps logs.
 
 ## Developer install
 

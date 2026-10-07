@@ -87,7 +87,7 @@ Expand-Archive $zip -DestinationPath $dir -Force
 
 For an explicitly requested published release, set `$tag` to its tag instead of querying latest. Do not overwrite a previous extraction directory if it holds user files. If release lookup fails, the tag is older than v0.6.1, a required asset is missing or checksum verification fails, stop. Do not clone, build, or install the .NET SDK for a client machine. Do not install v0.5.0 or earlier ZIPs.
 
-For MCPB, also download the selected release's `.mcpb` and `.mcpb.sha256` assets and verify the bundle hash before opening it. v1.0.0 names the bundle `rvt-mcp-desktop-1.0.0.mcpb`. Do not mix an extension from one release with a Setup ZIP from another.
+For MCPB, also download the selected release's `rvt-mcp-desktop-<version>.mcpb` and matching `.mcpb.sha256` assets and verify the bundle hash before opening it (`<version>` is the selected tag without its leading `v`). If either asset is missing, stop; do not substitute an older bundle. Do not mix an extension from one release with a Setup ZIP from another.
 
 ---
 
@@ -138,7 +138,7 @@ For Desktop, confirm the entry is in the active classic/MSIX config and survives
 
 After Step 2 with `-Client none`, guide the user through **Settings → Extensions → Advanced settings → Install Extension…** and select the verified `.mcpb` from Step 1. Labels can vary by Desktop build. This is a user UI step unless the agent has an authorized UI tool; never edit Claude's private extension storage. If custom extensions are blocked by organizational policy, report it rather than bypassing it.
 
-Before enabling the extension, inspect and obtain approval to remove/disable any previous manual rvt-mcp entry. `-Client none` preserves existing entries; it does not remove duplicates. The extension is unsigned in v1.0.0, launches the separately installed gateway, and requires its exact matching executable hash. `rvt_mcp_setup_status` means setup is missing or mismatched, not a successful Revit connection. Upgrade Setup and MCPB together; see [docs/install.md#claude-desktop-mcpb](docs/install.md#claude-desktop-mcpb).
+Before enabling the extension, inspect and obtain approval to remove/disable any previous manual rvt-mcp entry. `-Client none` preserves existing entries; it does not remove duplicates. The extension launches the separately installed gateway and requires its exact matching executable hash; check the selected release's notes for signing status. `rvt_mcp_setup_status` means setup is missing or mismatched, not a successful Revit connection. Upgrade Setup and MCPB together; see [docs/install.md#claude-desktop-mcpb](docs/install.md#claude-desktop-mcpb).
 
 If the requested target is also hosting this session, plan the restart/handoff last. Verify the target in the next session, not in the installer agent's unrelated client.
 
@@ -213,7 +213,7 @@ The uninstaller removes:
 
 - RvtMcp add-ins for every Revit year 2022–2027, including Bimwright-era copies with the same AddInId;
 - the legacy .NET global tool, if present;
-- server copies, discovery files and the spill cache under `%LOCALAPPDATA%\Bimwright\rvt-mcp\`.
+- server copies, both legacy `revit-YYYY.json` and per-instance `revit-YYYY-PID.json` discovery files, and the spill cache under `%LOCALAPPDATA%\Bimwright\rvt-mcp\`; a leftover `%LOCALAPPDATA%\RvtMcp\` gets the same sweep, regardless of which version was installed.
 
 A server copy that an open MCP client still runs is kept; close the client and run the uninstaller again. Everything else under `%LOCALAPPDATA%\Bimwright\rvt-mcp\` (settings, translations, ToolBaker data, firm profiles, shared parameters, logs, captures) is kept. `-Purge` deletes the whole folder, and `-Purge -KeepLogs` keeps logs.
 

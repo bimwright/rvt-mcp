@@ -69,7 +69,7 @@ Lệnh này cài add-in cho mọi bản Revit 2022–2027 phát hiện được 
 
 **Nâng cấp từ v0.8.1 hoặc v0.6.x:** các bản này lưu cài đặt và dữ liệu ToolBaker trong `%LOCALAPPDATA%\RvtMcp\`; v1.0.0 dùng `%LOCALAPPDATA%\Bimwright\rvt-mcp\` và installer sẽ chuyển folder cũ sang đó. Hãy đóng Revit và mọi MCP client trước, vì server cũ đang chạy sẽ khóa folder. Kiểm tra trong PowerShell bằng `Test-Path "$env:LOCALAPPDATA\RvtMcp"`. Nếu installer dừng với thông báo `Both … exist` hoặc `Could not move …`, nó đã hoàn tác phần đã di chuyển: giữ folder đang chứa cài đặt và dữ liệu ToolBaker của bạn, **đổi tên folder còn lại (ví dụ thành `RvtMcp.bak`) thay vì xóa**, đóng các client đang dùng nó rồi chạy lại installer.
 
-**Extension Claude Desktop (MCPB, tùy chọn):** config trực tiếp ở trên là đường mặc định khi agent cài hộ. Nếu muốn UI extension/settings, chạy Setup với `-Client none`, rồi cài `.mcpb` qua UI extension của Desktop. **Chọn một đường, không làm cả hai.** `-Client none` không xóa registration thủ công đã có. Extension v1.0.0 chưa ký, không cài gateway/add-in và yêu cầu đúng server build từ cùng release. Xem [cài MCPB và các setting](docs/install.md#claude-desktop-mcpb).
+**Extension Claude Desktop (MCPB, tùy chọn):** config trực tiếp ở trên là đường mặc định khi agent cài hộ. Nếu muốn UI extension/settings, chạy Setup với `-Client none`, rồi cài `.mcpb` qua UI extension của Desktop. **Chọn một đường, không làm cả hai.** `-Client none` không xóa registration thủ công đã có. Dùng bundle từ cùng release đã chọn với Setup; extension không cài gateway/add-in và yêu cầu đúng server build của release đó. Kiểm tra release notes về trạng thái ký. Xem [cài MCPB và các setting](docs/install.md#claude-desktop-mcpb).
 
 ---
 
@@ -170,7 +170,7 @@ Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cụ
 
 | Setting | CLI | Env | JSON |
 |---------|-----|-----|------|
-| Năm target | `--target 2024` | `BIMWRIGHT_TARGET` | `target` |
+| Selector target | `--target 2024` / `--target pid:12345` | `BIMWRIGHT_TARGET` | `target` |
 | Toolsets | `--toolsets query,create` | `BIMWRIGHT_TOOLSETS` | `toolsets` |
 | Read-only | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
 | send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |

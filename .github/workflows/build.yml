@@ -8,6 +8,17 @@ on:
   workflow_dispatch:
 
 jobs:
+  public-tree:
+    name: public-tree
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check publication paths and guard fixtures
+        shell: pwsh
+        run: |
+          ./scripts/check-public-tree.ps1
+          ./tests/check-public-tree.Tests.ps1
+
   installer:
     name: installer-${{ matrix.shell }}
     runs-on: windows-latest
@@ -16,13 +27,18 @@ jobs:
         shell: [powershell, pwsh]
     steps:
       - uses: actions/checkout@v4
-      - name: Test isolated upgrade and rollback
+      - name: Test isolated installer and NuGet packaging
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path artifacts -Force | Out-Null
+          if ('${{ matrix.shell }}' -eq 'powershell') {
+            Remove-Item Env:PSModulePath -ErrorAction SilentlyContinue
+          }
           & ${{ matrix.shell }} -NoProfile -ExecutionPolicy Bypass -File ./tests/installer/upgrade.Tests.ps1 -ResultPath artifacts/installer-upgrade-${{ matrix.shell }}.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & ${{ matrix.shell }} -NoProfile -ExecutionPolicy Bypass -File ./tests/installer/uninstall.Tests.ps1 -ResultPath artifacts/installer-uninstall-${{ matrix.shell }}.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & ${{ matrix.shell }} -NoProfile -ExecutionPolicy Bypass -File ./tests/installer/pack-nupkg.Tests.ps1 -ResultPath artifacts/installer-pack-nupkg-${{ matrix.shell }}.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         if: always()
@@ -64,13 +80,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET (8 + 10 preview)
+      - name: Setup .NET 8 + 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
             8.0.x
             10.0.x
-          dotnet-quality: preview
 
       - name: Restore
         run: dotnet restore ${{ matrix.project }}
@@ -102,14 +117,17 @@ jobs:
       - name: Build
         run: dotnet build src/server/RvtMcp.Server.csproj -c Release --no-restore
 
-      - name: Pack .NET tool
-        run: dotnet pack src/server/RvtMcp.Server.csproj -c Release --no-build --output artifacts
+      - name: Pack .NET tool and checksum (no publish)
+        shell: pwsh
+        run: ./scripts/publish-nupkg.ps1
 
       - name: Upload nupkg
         uses: actions/upload-artifact@v4
         with:
           name: rvtmcp-server-nupkg
-          path: artifacts/*.nupkg
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.nupkg.sha256
           retention-days: 14
 
   client-setup:
@@ -118,17 +136,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET (8 + 10 preview)
+      - name: Setup .NET 8 + 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
             8.0.x
             10.0.x
-          dotnet-quality: preview
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Test package verifier guards
+        run: python -B -m unittest discover -s tests/installer -p "test_*.py" -v
 
       - name: Build client setup ZIP
         shell: pwsh
         run: pwsh scripts/package-client-setup.ps1 -Config Release
+
+      - name: Verify ZIP and sandboxed MCP server (no live Revit)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts -Force | Out-Null
+          $version = (Get-Content server.json -Raw | ConvertFrom-Json).version
+          python tests/installer/verify-package.py "build/client-setup/RvtMcp.Setup-v$version-win-x64.zip" --output artifacts/setup-verification.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload Setup verification evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rvtmcp-setup-verification
+          path: |
+            artifacts/setup-verification.json
+            build/client-setup/smoke-*-stderr.log
 
       - name: Upload client setup ZIP
         uses: actions/upload-artifact@v4

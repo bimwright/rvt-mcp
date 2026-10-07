@@ -69,7 +69,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 **v0.8.1 または v0.6.x からの更新：** これらのバージョンは設定と ToolBaker データを `%LOCALAPPDATA%\RvtMcp\` に保存します。v1.0.0 は `%LOCALAPPDATA%\Bimwright\rvt-mcp\` を使い、インストーラが旧フォルダーをそこへ移動します。先に Revit とすべての MCP クライアントを閉じてください。実行中の旧サーバーがフォルダーをロックするためです。PowerShell で `Test-Path "$env:LOCALAPPDATA\RvtMcp"` を実行すると存在を確認できます。インストーラが `Both … exist` または `Could not move …` で停止した場合、移動した分は元に戻されています。設定と ToolBaker データがあるフォルダーを残し、もう一方は削除せず **名前を変更**（例：`RvtMcp.bak`）し、そのフォルダーを使っていたクライアントを閉じてから、インストーラを再実行してください。
 
-**Claude Desktop 拡張（MCPB、任意）：** エージェントによるインストールでは上の直接設定を既定とします。拡張/設定 UI を使いたい場合は `-Client none` で Setup を実行し、Desktop の拡張 UI から `.mcpb` をインストールします。**どちらか一方だけを使ってください。** `-Client none` は既存の手動登録を削除しません。v1.0.0 の拡張は未署名で、gateway/アドインをインストールせず、同じ release の正確な server build を必要とします。[MCPB のインストールと設定](docs/install.md#claude-desktop-mcpb)を参照してください。
+**Claude Desktop 拡張（MCPB、任意）：** エージェントによるインストールでは上の直接設定を既定とします。拡張/設定 UI を使いたい場合は `-Client none` で Setup を実行し、Desktop の拡張 UI から `.mcpb` をインストールします。**どちらか一方だけを使ってください。** `-Client none` は既存の手動登録を削除しません。Setup と同じ選択済み release の bundle を使用してください。拡張は gateway/アドインをインストールせず、その release の正確な server build を必要とします。署名の状態は release notes で確認してください。[MCPB のインストールと設定](docs/install.md#claude-desktop-mcpb)を参照してください。
 
 ---
 
@@ -170,7 +170,7 @@ v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 
 
 | 設定 | CLI | Env | JSON |
 |------|-----|-----|------|
-| ターゲット年 | `--target 2024` | `BIMWRIGHT_TARGET` | `target` |
+| ターゲットセレクター | `--target 2024` / `--target pid:12345` | `BIMWRIGHT_TARGET` | `target` |
 | Toolsets | `--toolsets query,create` | `BIMWRIGHT_TOOLSETS` | `toolsets` |
 | 読み取り専用 | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
 | send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |
