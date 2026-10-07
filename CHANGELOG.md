@@ -4,6 +4,7 @@
 
 | Version | Date | Available as |
 |---|---|---|
+| v1.1.0 | — | Git tag (pending release) |
 | v1.0.1 | 2026-10-04 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.0.1) |
 | v1.0.0 | 2026-10-03 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.0.0); NuGet `RvtMcp.Server` 1.0.0 |
 | v0.8.1 | 2026-09-27 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v0.8.1) |
@@ -22,6 +23,35 @@
 | v0.1.0 | 2026-04-17 | Git tag (public launch) |
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
+
+## v1.1.0 - Per-instance Revit target binding
+
+Reported and analysed by [@BenniOST](https://github.com/BenniOST) in [#19](https://github.com/bimwright/rvt-mcp/issues/19): when several Revit instances run at once — including several of the same year — v1.0.1 could silently route commands to a different instance than the one the agent believes it is bound to, or stall for ~70 s behind a busy single-client listener.
+
+### Added
+
+- **Per-instance discovery** — each plugin instance now publishes `revit-<year>-<pid>.json` (schema 3) alongside the legacy `revit-<year>.json`, carrying `target_id`, `process_start_utc`, `host_app`/`host_year`, transport, `auth_token` and capabilities. The server resolves `window_title` live from the process, not from the file. Multiple instances of the same year are independently discoverable and addressable.
+- **Explicit instance selectors** — `--target`, `BIMWRIGHT_TARGET` and `revit_switch_target` accept `pid:<n>` and `id:revit-<year>-<pid>` in addition to `auto` and the 4-digit year. `revit_list_available_targets` returns `target_id`, `pid`, `window_title`, `process_start_utc`, `identity_verified` and `source` per instance; `revit_get_current_target` reports the §6.9 binding block (selector, binding state, generation, bound identity, `confirmation_required`, `last_switch`).
+- **Structured target errors** — target failures return `{success:false, error:"<CODE>: …", target:{…}}` with codes `NO_TARGET`, `TARGET_UNAVAILABLE`, `TARGET_BUSY`, `TARGET_LOST`, `AMBIGUOUS_TARGET`, `TARGET_CHANGED`, `TARGET_INTERRUPTED` and `INVALID_TARGET_SELECTOR`, each carrying `sent`, `outcome`, candidate list and `recommended_next_tool` so the agent can recover deterministically.
+- **Generation-pinned calls** — each tool call pins the binding generation at entry; a mid-call `switch_target` can never slide a command onto the new instance, and pending requests on a closed connection end immediately as `TARGET_INTERRUPTED` instead of waiting out the command timeout.
+
+### Changed
+
+- **No silent fall-through** — after the bound instance dies or is replaced, calls fail with `TARGET_LOST`/`TARGET_CHANGED`/`AMBIGUOUS_TARGET` and `confirmation_required` stays true until an explicit `revit_switch_target` confirms a candidate; they never execute on a different instance. Reconnecting probes the bound pid and reads only that instance's descriptor (no pipe→TCP fallback across instances).
+- **Busy detection** — a plugin that accepts the socket but never answers the `set_tool_catalog` handshake reports `TARGET_BUSY` within ~5 s (pipe busy via connect timeout, TCP via handshake timeout) instead of stalling until the command timeout.
+- **`revit_switch_target`** — annotation is now `ReadOnly=false` (session navigation, Destructive=false); it remains available under `--read-only` so the agent can always recover the binding.
+- **Listener ownership** — each transport owns its discovery publisher and tool-catalog slot, so a late `Stop()` from an old listener can no longer delete the new listener's descriptor or clobber its catalog. `Stop()` is idempotent and closes the held client promptly.
+- **Listener back-off** — when a named-pipe listener keeps failing to create its pipe (the "All pipe instances are busy" loop reported in [#19](https://github.com/bimwright/rvt-mcp/issues/19)), retries now back off from 100 ms up to 2 s instead of spinning in a tight log loop.
+
+### Upgrade note
+
+Update **both** the server and the Revit add-ins from the same release. Mixed deployments keep working in one direction only: a v1.1.0 server still reads legacy `revit-<year>.json` files, but a v1.0.1 server reads **only** the legacy file — it sees at most one instance per year (the last one to publish it, with handover when that instance stops). The legacy shared file may be dropped in v1.2.0.
+
+Behaviour change for single-Revit users: v1.0.1 reconnected silently after Revit was restarted. v1.1.0 returns `TARGET_CHANGED` instead, and waits for one `revit_switch_target` call, because the restarted Revit may have a different model open.
+
+### Tests
+
+- New coverage for the descriptor scanner (per-instance/legacy dedup, dead-pid deletion, malformed files), the binding state machine (selector forms, generation pinning, switch semantics), and the gateway against in-process fake listeners (busy vs unavailable, token rotation, descriptor retry window, mid-command interruption, switch-vs-send atomicity, pipe transport).
 
 ## v1.0.1 - Export, parameter binding and placement fixes
 

@@ -14,24 +14,30 @@ Two processes:
 - **RvtMcp.Server.exe** — MCP Server, runs as separate process, stdio transport (ModelContextProtocol NuGet)
 - **RvtMcp.Plugin.dll** — Revit addin, loads inside Revit.exe, TCP listener (Revit 2022–2024) or Named Pipe (Revit 2025–2027) + ExternalEvent marshalling. Each Revit version gets its own shell DLL compiled from the same `src/shared/` source glob.
 
-Communication: newline-delimited JSON (NDJSON). Discovery files written per Revit version in `%LOCALAPPDATA%\Bimwright\rvt-mcp\`:
-- `revit-2022.json` / `revit-2023.json` / `revit-2024.json` — TCP transport (port OS-assigned) + auth token + PID
-- `revit-2025.json` / `revit-2026.json` / `revit-2027.json` — Named Pipe transport + auth token + PID
+Communication: newline-delimited JSON (NDJSON). Discovery files written per Revit instance in `%LOCALAPPDATA%\Bimwright\rvt-mcp\`:
+- `revit-<year>-<pid>.json` — per-instance descriptor (schema 3) for every instance, plus the legacy `revit-<year>.json` for older servers
+- `revit-2022.json` / `revit-2023.json` / `revit-2024.json` — legacy per-year files: TCP transport (port OS-assigned) + auth token + PID
+- `revit-2025.json` / `revit-2026.json` / `revit-2027.json` — legacy per-year files: Named Pipe transport + auth token + PID
 
-Discovery file format (`schema_version=2`):
+Discovery file format (`schema_version=3`):
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
+  "host_app": "revit",
+  "host_year": 2024,
   "revit_year": 2024,
+  "target_id": "revit-2024-67890",
+  "pid": 67890,
+  "process_start_utc": "2026-10-06T08:00:00.000Z",
   "transport": "tcp",
   "port": 49891,
   "pipe_name": null,
   "auth_token": "...",
-  "pid": 67890
+  "capabilities": ["tool_catalog"]
 }
 ```
 
-Server auto-detects which Revit is running by scanning these files (skipping any whose `pid` is dead). Use `--target 2022` etc. (4-digit calendar year, NOT legacy R-codes) to pin a specific version when multiple Revits run. Agents should call `revit_list_available_targets` to enumerate live instances and `revit_get_current_target` to inspect the pinned target rather than guessing version strings — `revit_switch_target` hard-fails with an educational error if passed an R-code like `R24`.
+`window_title` is not in the descriptor — the server reads it live from the process. The server binds to exactly one instance by scanning these files (skipping any whose `pid` is dead, deduplicating per-instance vs legacy by pid). Use `--target 2022` / `pid:<n>` / `id:revit-<year>-<pid>` (4-digit calendar year, NOT legacy R-codes) to pin a specific instance when multiple Revits run. Agents should call `revit_list_available_targets` to enumerate live instances and `revit_get_current_target` to inspect the pinned target rather than guessing version strings — `revit_switch_target` hard-fails with an educational error if passed an R-code like `R24`.
 
 ## Project Structure
 

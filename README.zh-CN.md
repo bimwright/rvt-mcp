@@ -304,7 +304,6 @@ Annotations 描述每个工具对文档和文件的影响。临时 selection、a
       "mcp__rvt-mcp__revit_show_message",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
       "mcp__rvt-mcp__revit_survey_change_impact",
-      "mcp__rvt-mcp__revit_switch_target",
       "mcp__rvt-mcp__revit_workflow_model_audit"
     ]
   }
@@ -327,6 +326,36 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 | 2027 | .NET 10 (`net10.0-windows7.0`) | Named Pipe |
 
 仅支持完整 Revit 桌面版，不支持 Revit Viewer。CI 会构建全部六个插件，但运行时深度因年份而异 — baked 工具与自定义 C# 请在你使用的年份上复测。
+
+---
+
+## 多个 Revit 实例
+
+服务器始终只绑定一个 Revit 实例 —— 即使同一年份有多个实例同时运行。首次调用时隐式绑定，或通过 `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target` 显式绑定。选择器：`auto`、4 位年份（`2024`）、`pid:<n>` 或 `id:revit-<year>-<pid>`；旧的 R 代码如 `R24` 会被拒绝。
+
+当运行多个实例时 —— 尤其是同一年份的多个实例 —— 不要猜测目标：
+
+1. 调用 `revit_list_available_targets`：列出所有存活实例及其 `target_id`、`pid`、`host_year`、`window_title` 和 `source`。
+2. 按 `pid` 和/或 `window_title` 选择实例。
+3. 用 `revit_switch_target("pid:<n>")` 固定 —— 任何选择器形式都可以，`pid:` 最明确。
+4. `revit_get_current_target` 显示当前绑定、generation 和建议的 `next_target_id`。
+
+目标错误代码及处理方式。除 `TARGET_INTERRUPTED` 外的所有代码都表示命令**未**发送：
+
+| 代码 | 含义 | 代理应执行的操作 |
+|---|---|---|
+| `NO_TARGET` | 没有匹配选择器的存活实例（也包括隐式绑定丢失后剩余 0 个候选的情况） | 调用 `revit_list_available_targets`；启动 Revit / 加载项或修正选择器 |
+| `TARGET_UNAVAILABLE` | 绑定的实例仍然存活但无法连接 —— 监听器已停止/正在重启、描述符缺失或令牌被拒绝。绑定保持不变 | 稍后重试；请用户在该 Revit 中（重新）启动 MCP。除非用户要求，不要切换到其他实例 |
+| `TARGET_BUSY` | 端点存在但 5 秒内未完成握手 —— 通常是另一个代理/网关占用了其唯一连接，或 Revit 被阻塞 | 稍后重试；不要在同一实例上运行两个网关 |
+| `TARGET_LOST` | 显式固定（`pid:`/`id:`）的实例已退出 | 查看 `candidates`，与用户确认后执行 `revit_switch_target` |
+| `TARGET_CHANGED` | 隐式绑定的实例已退出且恰好存在一个替代实例（或绑定在命令到达与发送之间发生变化）。命令**未**发送；在确认之前每次调用都会返回此代码 | 查看建议的实例（`window_title`），用 `revit_switch_target` 确认，然后重复该调用 |
+| `AMBIGUOUS_TARGET` | 隐式绑定的实例已退出且有两个及以上实例匹配 | 列出实例，按 `pid`/`window_title` 选择，执行 `revit_switch_target("pid:<n>")` |
+| `TARGET_INTERRUPTED` | 命令已发送但在收到响应前连接关闭（`sent:true`，`outcome:unknown`） | 重复任何写操作之前先检查模型状态 |
+| `INVALID_TARGET_SELECTOR` | 选择器格式错误或 R 代码 | 使用 `auto`、年份、`pid:<n>` 或 `id:<target_id>` |
+
+**Revit 重启后（即使只打开了一个 Revit）**，下一次调用会返回 `TARGET_CHANGED`，服务器会等待一次 `revit_switch_target` 调用后才发送命令。这是有意为之：重启后的 Revit 可能打开了另一个模型，因此服务器绝不会静默地重新绑定。返回内容中会给出建议的实例；确认后再重复调用即可。
+
+`revit_switch_target` 因改变会话路由而被标注为非只读，但在 `--read-only` 下仍然可用，以便随时恢复绑定。
 
 ---
 

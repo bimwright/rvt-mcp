@@ -16,11 +16,34 @@ namespace RvtMcp.Server
             => mcp.WithRequestFilters(filters => filters.AddCallToolFilter(next => async (request, ct) =>
             {
                 var clock = System.Diagnostics.Stopwatch.StartNew();
-                using (var capture = new ChangeCaptureContext())
+                // Pin the binding generation at call entry (spec §6.6/§8). When the
+                // binding layer produced a §6.10 payload the tool result is replaced
+                // with the target envelope — regardless of how the tool formatted it.
+                var targetCtx = TargetCallContext.Begin();
+                try
                 {
-                    var result = await next(request, ct);
-                    return Apply(request.Params, result, config, session, durationMs: clock.ElapsedMilliseconds,
-                        changes: capture.Changes, history: capture.History);
+                    using (var capture = new ChangeCaptureContext())
+                    {
+                        CallToolResult result;
+                        try
+                        {
+                            result = await next(request, ct);
+                        }
+                        catch when (targetCtx.Payload != null)
+                        {
+                            // Even an uncaught TargetException leaves its payload on the
+                            // context — surface the §6.10 envelope, not a bare exception.
+                            result = TextResult(MetaTools.TargetEnvelope(targetCtx.Payload), failed: true);
+                        }
+                        if (targetCtx.Payload != null)
+                            result = TextResult(MetaTools.TargetEnvelope(targetCtx.Payload), failed: true);
+                        return Apply(request.Params, result, config, session, durationMs: clock.ElapsedMilliseconds,
+                            changes: capture.Changes, history: capture.History);
+                    }
+                }
+                finally
+                {
+                    TargetCallContext.End(targetCtx);
                 }
             }));
 

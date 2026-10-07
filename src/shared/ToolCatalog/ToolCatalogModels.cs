@@ -360,6 +360,8 @@ namespace RvtMcp.ToolCatalog
         private static ToolCatalog _current;
         private static ToolCatalogStatus _status = ToolCatalogStatus.NotConnected;
         private static string _error;
+        private static long _owner;
+        private static long _nextConnectionId;
 
         public static event EventHandler Changed;
 
@@ -378,22 +380,47 @@ namespace RvtMcp.ToolCatalog
             get { lock (Gate) return _error; }
         }
 
-        public static void BeginConnection()
+        /// <summary>Registers a new connection and returns its ownership id.</summary>
+        public static long BeginConnection()
         {
+            long id;
             lock (Gate)
             {
+                id = ++_nextConnectionId;
+                _owner = id;
                 _current = null;
                 _error = null;
                 _status = ToolCatalogStatus.ConnectedNoCatalog;
             }
             NotifyChanged();
+            return id;
         }
 
+        /// <summary>Maps to the current connection owner (non-transport callers).</summary>
         public static ToolCatalogValidationResult AcceptJson(string json)
         {
-            var result = ToolCatalogCodec.ParseAndValidate(json);
+            long owner;
+            lock (Gate) { owner = _owner; }
+            return AcceptJson(json, owner);
+        }
+
+        /// <summary>Accepts a catalog only from the owning connection; a stale id is a no-op.</summary>
+        public static ToolCatalogValidationResult AcceptJson(string json, long connectionId)
+            => AcceptJson(json, connectionId, null);
+
+        internal static ToolCatalogValidationResult AcceptJson(string json, long connectionId, Action betweenParseAndCommit)
+        {
             lock (Gate)
             {
+                if (connectionId != _owner)
+                    return ToolCatalogValidationResult.Invalid("Catalog update from a stale connection.");
+            }
+            var result = ToolCatalogCodec.ParseAndValidate(json);
+            betweenParseAndCommit?.Invoke();
+            lock (Gate)
+            {
+                if (connectionId != _owner)
+                    return ToolCatalogValidationResult.Invalid("Catalog update from a stale connection.");
                 if (result.IsValid)
                 {
                     _current = result.Catalog;
@@ -411,6 +438,23 @@ namespace RvtMcp.ToolCatalog
             return result;
         }
 
+        /// <summary>Compare-and-clear: only the owning connection may reset state.</summary>
+        public static bool Clear(long connectionId)
+        {
+            lock (Gate)
+            {
+                if (connectionId != _owner)
+                    return false;
+                _current = null;
+                _error = null;
+                _status = ToolCatalogStatus.NotConnected;
+                _owner = 0;
+            }
+            NotifyChanged();
+            return true;
+        }
+
+        /// <summary>Unconditional reset.</summary>
         public static void Clear()
         {
             lock (Gate)
@@ -418,6 +462,7 @@ namespace RvtMcp.ToolCatalog
                 _current = null;
                 _error = null;
                 _status = ToolCatalogStatus.NotConnected;
+                _owner = 0;
             }
             NotifyChanged();
         }
