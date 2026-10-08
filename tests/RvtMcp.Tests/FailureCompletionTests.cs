@@ -54,9 +54,20 @@ namespace RvtMcp.Tests
             Assert.Null(operation.MutationApplied);
         }
 
-        [Fact] public void FailedDynamicCodeCannotUseUnverifiedSuccessException()
+        [Fact] public void FailedDynamicCodeWithoutObservedEffectsDoesNotCreateBlanketGate()
         {
-            AssertOutcome(Complete(new FailureCompletionFacts { ExecutionStarted = true }, dynamicCode: true), "unknown", null, true);
+            AssertOutcome(Complete(new FailureCompletionFacts { ExecutionStarted = true }, dynamicCode: true), "unknown", null, false);
+        }
+
+        [Fact] public void FailedDynamicCodeKeepsObservedCommitsAndNativeUncertainty()
+        {
+            AssertOutcome(Complete(new FailureCompletionFacts { ExecutionStarted = true, AnyCommittedChanges = true }, dynamicCode: true), "partial", true, false);
+            Assert.True(Complete(new FailureCompletionFacts { ExecutionStarted = true, NativeOutcomeUnknown = true }, dynamicCode: true).RequiresReview);
+        }
+
+        [Fact] public void DynamicCodeThatNeverStartedIsNotStarted()
+        {
+            AssertOutcome(Complete(new FailureCompletionFacts { ExecutionStarted = false }, dynamicCode: true), "not_started", false, false);
         }
 
         [Fact] public void NativeSaveBeforeBlockedSecondModelRemainsPartial()
@@ -94,9 +105,16 @@ namespace RvtMcp.Tests
                 PolicyStopped = true }), "cancelled", false, false);
         }
 
-        [Fact] public void FailedMutationWithoutOutcomeEvidenceRequiresReview()
+        [Fact] public void FailedTypedMutationWithoutObservedChangeIsRolledBackWithoutReview()
         {
-            AssertOutcome(Complete(new FailureCompletionFacts { ExecutionStarted = true }), "unknown", null, true);
+            AssertOutcome(Complete(new FailureCompletionFacts { ExecutionStarted = true }), "rolled_back", false, false);
+        }
+
+        [Fact] public void FailedTypedMutationWithUncertaintyStillRequiresReview()
+        {
+            AssertOutcome(Complete(new FailureCompletionFacts { ExecutionStarted = true }, captureComplete: false), "unknown", null, true);
+            AssertOutcome(Complete(new FailureCompletionFacts { ExecutionStarted = true, NativeOutcomeUnknown = true }), "unknown", null, true);
+            Assert.True(Complete(new FailureCompletionFacts { ExecutionStarted = true, StorageFailed = true }).RequiresReview);
         }
 
         [Fact] public void ObservedUncertaintyInReadMustNotBeTreatedAsOrdinaryRead()

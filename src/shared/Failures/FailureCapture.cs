@@ -102,6 +102,43 @@ namespace RvtMcp.Failures
             return incident;
         }
 
+        // Written for the agent: it cannot act in Revit UI, but it can read, resurvey and revise its plan.
+        public static string NextStep(string errorCode, bool gateBlocked, bool acceptedWarnings)
+        {
+            const string records = "Read the incidents with revit_get_failure_records (includeDetails=true)";
+            const string decide = "Only the user can rework, abandon or accept it in Revit (History > Issues).";
+            const string reads = "Typed read tools (views, elements, parameters, survey, warnings, history) still work; "
+                + "revit_send_code_to_revit and revit_batch_execute count as writes even when they only read, and other write tools are blocked.";
+            switch (errorCode)
+            {
+                case "REVIT_FAILURE_ROLLED_BACK":
+                    if (gateBlocked) break;
+                    return "Revit rejected your change and rolled it back; this operation left the model unchanged. " + records
+                        + ", survey the listed elements with read tools, and revise the plan. The model stays writable, but the same request "
+                        + "is refused while the incident is open: do not resend it unchanged. The incident stays open for the user to rework, "
+                        + "abandon or accept in Revit (History > Issues); mention it when you report to the user.";
+                case "REVIT_REQUEST_REPEATED":
+                    return "Not started: Revit already rolled back this exact request (incidentIds) and the user has not decided yet. "
+                        + records + ", then change the request based on what you find, or ask the user to accept it in Revit (History > Issues). "
+                        + "Other writes to this model still work.";
+                case "REVIT_MODEL_BLOCKED":
+                    return "Not started: this model has open incidents whose outcome is uncertain (incidentIds). " + records
+                        + ". " + reads + " Tell the user what happened and what you propose. " + decide;
+                case "REVIT_OPERATION_REQUIRES_USER":
+                    return "This native action needs the user in Revit and was not completed by the agent. Check _operation for the actual outcome, "
+                        + "tell the user what you intended, and let them perform or approve it in Revit. Do not retry unchanged.";
+                case "FAILURE_CAPTURE_INCOMPLETE":
+                case "FAILURE_STORAGE_FAILED":
+                    return "The failure could not be fully recorded; treat the outcome as uncertain. Inspect the model with read tools "
+                        + "and ask the user to review it in Revit before further writes. Do not retry unchanged.";
+            }
+            if (errorCode != null || gateBlocked)
+                return "The outcome needs review and writes to this model are blocked. " + records + ", inspect the model with read tools, and tell the user. " + reads + " " + decide;
+            if (acceptedWarnings)
+                return "Committed with warnings the user accepted by rule or one-use grant (see the incident). The warnings remain in the model; this does not certify design quality.";
+            return "Revit reported conditions during this operation. " + records + " before relying on the result.";
+        }
+
         public static JObject Summary(FailureIncident incident, bool? mutationApplied, string gate)
         {
             var bounded = Bound(incident);
@@ -115,7 +152,7 @@ namespace RvtMcp.Failures
                 ["action"] = bounded.Action, ["mutationApplied"] = mutationApplied.HasValue ? (JToken)mutationApplied.Value : JValue.CreateNull(),
                 ["gate"] = gate, ["persistence"] = bounded.Persistence, ["complete"] = bounded.Complete,
                 ["messageCount"] = bounded.MessageCount, ["countKind"] = bounded.CountKind, ["groups"] = groups,
-                ["nextStep"] = "Read the incident, resurvey, and ask the user to handle it in Revit. Do not retry unchanged." };
+                ["nextStep"] = NextStep("REVIT_FAILURE_ROLLED_BACK", gate == "blocked", false) };
             while (Encoding.UTF8.GetByteCount(result.ToString(Newtonsoft.Json.Formatting.None)) > 16 * 1024 && groups.Count > 0)
                 groups.RemoveAt(groups.Count - 1);
             return result;

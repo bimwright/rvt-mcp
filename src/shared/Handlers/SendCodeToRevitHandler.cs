@@ -56,6 +56,7 @@ namespace RvtMcp.Plugin.Handlers
                             .Select(d => d.ToString())
                             .Take(5)
                             .ToArray();
+                        Failures.FailureControl.NotifyCompileFailed();
                         return Fail("Compilation failed:\n" + string.Join("\n", errors));
                     }
 

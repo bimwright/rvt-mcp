@@ -34,10 +34,15 @@ namespace RvtMcp.Failures
                 : applied ? "partial" : "unknown";
             if (facts.NativeOutcomeUnknown) operation.Outcome = applied ? "partial" : "unknown";
 
-            bool unverifiedNoChange = facts.ExecutionStarted && facts.HandlerSucceeded
-                && !facts.PolicyStopped && !applied && !facts.NativeOutcomeUnknown && !facts.StorageFailed
-                && operation.Complete && operation.ObservationCoverage == "dynamic_code_unverified";
+            // No observed effect with complete observation: a calling error, not an uncertain model.
+            // Dynamic code stays unknown (it may act outside observation); a failed typed handler left the model unchanged.
+            // Either way it does not gate the model (an uncommitted transaction rolls back on dispose).
+            bool noObservedChange = facts.ExecutionStarted
+                && !facts.PolicyStopped && !applied && !facts.NativeOutcomeUnknown && !facts.StorageFailed && operation.Complete;
+            bool unverifiedNoChange = noObservedChange && operation.ObservationCoverage == "dynamic_code_unverified";
+            bool typedFailedNoChange = noObservedChange && !unverifiedNoChange && !facts.HandlerSucceeded;
             if (unverifiedNoChange) operation.Outcome = "unknown";
+            if (typedFailedNoChange) operation.Outcome = "rolled_back";
             operation.RequiresReview = !unverifiedNoChange
                 && (operation.Outcome == "unknown" || facts.StorageFailed || !operation.Complete);
 

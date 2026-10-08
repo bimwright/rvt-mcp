@@ -64,6 +64,13 @@ namespace RvtMcp.Plugin.Failures
             if (Active != null) { Active.AnyCommitted = Active.GroupStates.Count > 0 && Active.GroupStates.Peek(); Active.BatchRolledBack = !Active.AnyCommitted; }
         }
 
+        // Dynamic code that failed to compile never ran, so the operation did not start.
+        public static void NotifyCompileFailed()
+        {
+            if (Active != null && Active.GroupStates.Count == 0 && !Active.AnyCommitted && !Active.NativeCommitted)
+                Active.ExecutionStarted = false;
+        }
+
         public static IDisposable BeginBatch() { return new BatchMarker(Active); }
         private sealed class BatchMarker : IDisposable
         {
@@ -271,6 +278,9 @@ namespace RvtMcp.Plugin.Failures
                             var gate = Store.GetGate(state.Model.ModelScopeKey, Operation.OperationId);
                             if (gate.Blocked || UncertainModels.Contains(state.Model.ModelScopeKey))
                             { Stop("REVIT_MODEL_BLOCKED", state); return; }
+                            var repeated = Store.GetRepeatedRequestIncidents(state.Model.ModelScopeKey, Operation.RequestHash);
+                            if (repeated.Count > 0)
+                            { Stop("REVIT_REQUEST_REPEATED", state); _gateIncidentIds.AddRange(repeated); return; }
                             Reserve();
                             if (!Stopped) IndexAndBaseline(state);
                         }
@@ -534,24 +544,32 @@ namespace RvtMcp.Plugin.Failures
 
             internal void Enrich(JObject envelope)
             {
-                if (Incidents.Count > 0 || Stopped)
+                // Existing model warnings stay in the ledger but are not a failure of this call.
+                var baselineIds = new HashSet<string>(Incidents.Where(i => i.Source == "baseline").Select(i => i.IncidentId));
+                var own = Incidents.Where(i => i.Source != "baseline").ToList();
+                if (own.Count > 0 || Stopped)
                 {
-                    var messages = Incidents.Where(i => i.Source != "baseline").SelectMany(i => i.Messages).ToList();
+                    var messages = own.SelectMany(i => i.Messages).ToList();
+                    // Only an uncertain model is gated; a clean Revit rollback or a refused repeat leaves it writable.
+                    bool blocked = Operation.RequiresReview || StorageFailed
+                        || ErrorCode == "REVIT_MODEL_BLOCKED" || ErrorCode == "FAILURE_STORAGE_FAILED" || ErrorCode == "FAILURE_CAPTURE_INCOMPLETE"
+                        || own.Any(i => i.State == "open" && !((i.Action == "rolled_back" || i.Action == "cancelled") && i.Complete));
                     envelope["_failure"] = new JObject
                     {
                         ["schemaVersion"] = 1, ["operationId"] = Operation.OperationId,
-                        ["incidentIds"] = new JArray(Operation.IncidentIds.Concat(_gateIncidentIds).Distinct().Take(100)),
+                        ["incidentIds"] = new JArray(Operation.IncidentIds.Where(id => !baselineIds.Contains(id)).Concat(_gateIncidentIds).Distinct().Take(100)),
                         ["modelScopeKey"] = FailureModelKey ?? Operation.ActiveModelBefore,
                         ["action"] = Operation.Outcome, ["mutationApplied"] = Operation.MutationApplied,
-                        ["gate"] = Stopped || Operation.RequiresReview || Incidents.Any(i => i.State == "open") ? "blocked" : "open",
+                        ["gate"] = blocked ? "blocked" : "open",
                         ["persistence"] = StorageFailed ? "failed" : "recorded",
-                        ["complete"] = Operation.Complete && Incidents.All(i => i.Complete),
-                        ["messageCount"] = Incidents.Sum(i => i.MessageCount), ["observationCoverage"] = Operation.ObservationCoverage,
+                        ["complete"] = Operation.Complete && own.All(i => i.Complete),
+                        ["messageCount"] = own.Sum(i => i.MessageCount), ["observationCoverage"] = Operation.ObservationCoverage,
                         ["groups"] = new JArray(messages.GroupBy(m => new { m.DefinitionId, m.Severity }).Take(20).Select(g => new JObject
                         { ["failureDefinitionId"] = g.Key.DefinitionId, ["severity"] = g.Key.Severity, ["count"] = g.Count(),
                             ["description"] = (g.First().Description ?? "").Substring(0, Math.Min(320, (g.First().Description ?? "").Length)),
                             ["sampleElementIds"] = new JArray(g.SelectMany(m => m.FailingElementIds).Distinct().Take(20)), ["resolutionsApplied"] = false })),
-                        ["nextStep"] = Stopped ? "Read the incident and handle it in Revit History > Issues. Do not retry unchanged." : "Warnings were recorded; review the incident details."
+                        ["nextStep"] = FailureCapture.NextStep(Stopped ? ErrorCode ?? "REVIT_FAILURE_ROLLED_BACK" : null, blocked,
+                            own.Any(i => i.State == "accepted_by_rule" || i.State == "accepted_once"))
                     };
                 }
                 if (!IsRead || Persisted || Stopped)
@@ -561,6 +579,8 @@ namespace RvtMcp.Plugin.Failures
                         ["activeModelBefore"] = Operation.ActiveModelBefore, ["activeModelAfter"] = Operation.ActiveModelAfter,
                         ["complete"] = Operation.Complete, ["requiresReview"] = Operation.RequiresReview,
                         ["observationCoverage"] = Operation.ObservationCoverage };
+                if (baselineIds.Count > 0 && envelope["_operation"] is JObject operation)
+                    operation["baselineIncidentId"] = baselineIds.First();
                 SafetyResponseMetadata.Attach(envelope, envelope);
             }
 

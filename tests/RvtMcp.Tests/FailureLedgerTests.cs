@@ -23,9 +23,10 @@ namespace RvtMcp.Tests
                 RevitYear = 2024, RequestHash = "request_a", DocumentRevision = "revision_a", OperationContext = "edit" };
             Assert.True(store.SaveOperation(op).Recorded); return op;
         }
-        private FailureIncident Incident(FailureLedgerStore store, string scope, FailureOperation op, string code = "warning_a")
+        // Gate tests use an uncertain outcome: a clean Revit rollback stays open but does not gate the model.
+        private FailureIncident Incident(FailureLedgerStore store, string scope, FailureOperation op, string code = "warning_a", string action = "outcome_unknown")
         {
-            var incident = new FailureIncident { ModelScopeKey = scope, OperationId = op.OperationId, RevitYear = op.RevitYear,
+            var incident = new FailureIncident { ModelScopeKey = scope, OperationId = op.OperationId, RevitYear = op.RevitYear, Action = action,
                 RequestHash = op.RequestHash, DocumentRevision = op.DocumentRevision, OperationContext = op.OperationContext,
                 Messages = new List<FailureMessage> { FailureCoreTests.Warning(code, 10) } };
             Assert.True(store.RecordIncident(incident).Recorded); return incident;
@@ -80,13 +81,31 @@ namespace RvtMcp.Tests
             accepted.IncidentId = Guid.NewGuid().ToString("N"); Assert.False(store.RecordIncident(accepted).Recorded);
             Assert.True(store.GetGate(m.ModelScopeKey).Blocked);
         }
+        [Fact] public void CleanRollbackStaysOpenAndRefusesOnlyTheSameRequest()
+        {
+            var store = Store(); var m = Model(store); var op = Operation(store, m.ModelScopeKey);
+            var rolledBack = Incident(store, m.ModelScopeKey, op, action: "rolled_back");
+            Assert.False(store.GetGate(m.ModelScopeKey).Blocked);
+            Assert.False(store.ReserveOperation(new FailureOperation { ModelScopeKeys = new List<string> { m.ModelScopeKey }, RequestHash = "request_b" }).ErrorCode == "REVIT_MODEL_BLOCKED");
+            Assert.Equal(new[] { rolledBack.IncidentId }, store.GetRepeatedRequestIncidents(m.ModelScopeKey, "request_a"));
+            Assert.Empty(store.GetRepeatedRequestIncidents(m.ModelScopeKey, "request_b"));
+            Assert.Empty(store.GetRepeatedRequestIncidents(Model(store, "physical_b").ModelScopeKey, "request_a"));
+            Assert.Equal("open", store.Query(new FailureRecordQuery { ModelScopeKey = m.ModelScopeKey }).Records.Single(r => r.IncidentId == rolledBack.IncidentId).State);
+            Assert.True(store.ApplyDecision(Decision(rolledBack, "abandon")).Recorded);
+            Assert.Empty(store.GetRepeatedRequestIncidents(m.ModelScopeKey, "request_a"));
+            // An incomplete rollback is uncertainty: it gates the model and is not a refusable repeat.
+            var uncertain = new FailureIncident { ModelScopeKey = m.ModelScopeKey, OperationId = op.OperationId, RevitYear = 2024, RequestHash = "request_a",
+                Complete = false, Messages = new List<FailureMessage> { FailureCoreTests.Warning() } };
+            Assert.True(store.RecordIncident(uncertain).Recorded); Assert.True(store.GetGate(m.ModelScopeKey).Blocked);
+            Assert.Empty(store.GetRepeatedRequestIncidents(m.ModelScopeKey, "request_a"));
+        }
         [Fact] public void GroupedAcceptanceIsAtomicAndRulesNeverCrossModels()
         {
             var store = Store(); var m = Model(store); var op = Operation(store, m.ModelScopeKey);
             var incident = new FailureIncident { ModelScopeKey = m.ModelScopeKey, OperationId = op.OperationId, RevitYear = 2024, OperationContext = "edit",
                 Messages = new List<FailureMessage> { FailureCoreTests.Warning("warning_a", 10), FailureCoreTests.Warning("warning_b", 10) } };
             Assert.True(store.RecordIncident(incident).Recorded); var decision = Decision(incident, "create_rule"); decision.Rules.Add(Rule(incident));
-            Assert.Throws<ArgumentException>(() => store.ApplyDecision(decision)); Assert.Empty(store.GetRules(m.ModelScopeKey)); Assert.True(store.GetGate(m.ModelScopeKey).Blocked);
+            Assert.Throws<ArgumentException>(() => store.ApplyDecision(decision)); Assert.Empty(store.GetRules(m.ModelScopeKey)); Assert.False(store.GetGate(m.ModelScopeKey).Blocked);
             var second = Rule(incident); second.DefinitionId = "warning_b"; decision.Rules.Add(second);
             Assert.True(store.ApplyDecision(decision).Recorded); Assert.Equal(2, store.GetRules(m.ModelScopeKey).Count); Assert.False(store.GetGate(m.ModelScopeKey).Blocked);
             var other = Model(store, "physical_b"); Assert.Empty(store.GetRules(other.ModelScopeKey));

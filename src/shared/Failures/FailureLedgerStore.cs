@@ -154,9 +154,13 @@ WHERE a.model_key=$k AND m.transient=0 AND a.scope!=$s;", "$k", identity.ModelKe
                 foreach (var possibleDocument in InverseCandidateScopes(c, tx, file)) conflicts.Add(possibleDocument);
             return conflicts.OrderBy(s => s, StringComparer.Ordinal).ToList();
         }
+        // A complete Revit rollback left the model unchanged: it stays open for the user but does not gate the model.
+        // Only uncertainty (unknown outcome, incomplete capture, storage or identity doubt) gates it.
+        private const string CleanRollback = "(json_extract(payload,'$.action') IN ('rolled_back','cancelled') AND json_extract(payload,'$.complete')=1)";
+        private const string BlockingIncident = "state='open' AND NOT " + CleanRollback;
         private static bool HasDatabaseBlocker(SqliteConnection c, SqliteTransaction tx, string scope, string excludedOperation, bool excludeDerivedIdentity = false)
         {
-            return Scalar(c, tx, @"SELECT 1 FROM incidents WHERE scope=$s AND state='open' AND ($d IS NULL OR operation_id!=$d)
+            return Scalar(c, tx, @"SELECT 1 FROM incidents WHERE scope=$s AND " + BlockingIncident + @" AND ($d IS NULL OR operation_id!=$d)
 UNION SELECT 1 FROM operations o JOIN operation_scopes s ON s.operation_id=o.id
 WHERE s.scope=$s AND ($x IS NULL OR o.id!=$x) AND (o.execution!='completed' OR o.review_required=1)
 AND ($d IS NULL OR o.id!=$d)
@@ -367,7 +371,7 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
                     if (candidate != scope && (HasDatabaseBlocker(c, null, candidate, excludingOperationId, true) || PendingFor(candidate) || IsUncertain(candidate)))
                     { gate.Blocked = true; gate.Reason = "FAILURE_IDENTITY_UNCERTAIN"; }
                     var derivedOperation = candidate == scope ? null : FailureCapture.Fingerprint("identity-uncertain:" + candidate);
-                    using (var cmd = Command(c, null, "SELECT id FROM incidents WHERE scope=$s AND state='open' AND ($d IS NULL OR operation_id!=$d) ORDER BY seq;", "$s", candidate, "$d", derivedOperation))
+                    using (var cmd = Command(c, null, "SELECT id FROM incidents WHERE scope=$s AND " + BlockingIncident + " AND ($d IS NULL OR operation_id!=$d) ORDER BY seq;", "$s", candidate, "$d", derivedOperation))
                     using (var r = cmd.ExecuteReader()) while (r.Read()) gate.IncidentIds.Add(r.GetString(0));
                     using (var cmd = Command(c, null, @"SELECT o.id FROM operations o JOIN operation_scopes s ON s.operation_id=o.id
 WHERE s.scope=$s AND ($d IS NULL OR o.id!=$d) AND ($x IS NULL OR o.id!=$x) AND (o.execution!='completed' OR o.review_required=1)
@@ -379,6 +383,17 @@ AND NOT ((o.execution='completed' OR o.execution='interrupted_unknown') AND EXIS
             gate.Blocked |= gate.IncidentIds.Count > 0 || gate.OperationIds.Count > 0;
             if (gate.Blocked && gate.Reason == null) gate.Reason = "REVIT_MODEL_BLOCKED";
             return gate;
+        }
+        // The same request was already rolled back by Revit and the user has not decided yet.
+        public List<string> GetRepeatedRequestIncidents(string scope, string requestHash)
+        {
+            FailureCapture.RequireKey(scope, "model scope key"); var result = new List<string>();
+            if (string.IsNullOrEmpty(requestHash) || !File.Exists(DatabasePath)) return result;
+            using (var c = Open(false))
+            using (var cmd = Command(c, null, "SELECT id FROM incidents WHERE scope=$s AND state='open' AND " + CleanRollback
+                + " AND json_extract(payload,'$.requestHash')=$h ORDER BY seq;", "$s", scope, "$h", requestHash))
+            using (var r = cmd.ExecuteReader()) while (r.Read()) result.Add(r.GetString(0));
+            return result;
         }
         public FailureRecordPage Query(FailureRecordQuery query)
         {
