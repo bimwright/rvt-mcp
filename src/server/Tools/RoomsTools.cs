@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
@@ -22,15 +21,11 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_create_room_separator", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create room separator lines from an array of {x,y,z} points (mm).")]
         public static async Task<string> CreateRoomSeparator(object[] points, long? viewId = null, string levelName = "", bool closeLoop = false)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("create_room_separator", () =>
             {
                 var parsedPoints = McpJsonInput.RequiredArray(points, nameof(points));
-                var result = await ToolGateway.SendToRevit("create_room_separator", new { points = parsedPoints, view_id = viewId, level_name = levelName, close_loop = closeLoop });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                return new { points = parsedPoints, view_id = viewId, level_name = levelName, close_loop = closeLoop };
+            });
 
         [McpServerTool(Name = "revit_create_area", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create an area element at specified coordinates (mm) in an area plan.")]
         public static async Task<string> CreateArea(double x, double y, long? areaPlanViewId = null, string areaPlanViewName = "", string areaSchemeName = "", string levelName = "", bool createAreaPlanIfMissing = false, string name = "", string number = "")

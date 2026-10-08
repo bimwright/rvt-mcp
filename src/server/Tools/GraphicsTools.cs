@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
@@ -11,15 +10,11 @@ namespace RvtMcp.Server
     {
         [McpServerTool(Name = "revit_create_view_filter", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a parameter-based view filter (ParameterFilterElement) targeting one or more categories. rules is an optional JSON array of {parameter_name, evaluator, value} where evaluator is equals|not_equals|greater|less|contains|begins_with|ends_with. Omit rules for a category-only filter.")]
         public static async Task<string> CreateViewFilter(string name, string[] categories, string rules = "")
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("create_view_filter", () =>
             {
                 var parsedRules = string.IsNullOrWhiteSpace(rules) ? null : JArray.Parse(rules);
-                var result = await ToolGateway.SendToRevit("create_view_filter", new { name, categories, rules = parsedRules });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                return new { name, categories, rules = parsedRules };
+            });
 
         [McpServerTool(Name = "revit_apply_filter_to_view", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Change view filter visibility; restore it with Revit Undo. Add an existing view filter (ParameterFilterElement) to a view's filter list. viewId defaults to the active view. visible sets the initial visibility of matching elements.")]
         public static async Task<string> ApplyFilterToView(long filterId, long? viewId = null, bool visible = true)
@@ -27,24 +22,17 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_set_filter_overrides", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace view filter graphics; restore them with Revit Undo. Set graphic overrides for a filter already applied to a view. Colors are hex '#RRGGBB'. transparency 0-100, projectionLineWeight 1-16. Only supplied properties change; others are preserved. viewId defaults to active view.")]
         public static async Task<string> SetFilterOverrides(long filterId, long? viewId = null, string projectionLineColor = "", string surfaceForegroundColor = "", string cutLineColor = "", int? transparency = null, bool? halftone = null, int? projectionLineWeight = null)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("set_filter_overrides", () => new
             {
-                var result = await ToolGateway.SendToRevit("set_filter_overrides", new
-                {
-                    filter_id = filterId,
-                    view_id = viewId,
-                    projection_line_color = string.IsNullOrEmpty(projectionLineColor) ? null : projectionLineColor,
-                    surface_foreground_color = string.IsNullOrEmpty(surfaceForegroundColor) ? null : surfaceForegroundColor,
-                    cut_line_color = string.IsNullOrEmpty(cutLineColor) ? null : cutLineColor,
-                    transparency,
-                    halftone,
-                    projection_line_weight = projectionLineWeight
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                filter_id = filterId,
+                view_id = viewId,
+                projection_line_color = string.IsNullOrEmpty(projectionLineColor) ? null : projectionLineColor,
+                surface_foreground_color = string.IsNullOrEmpty(surfaceForegroundColor) ? null : surfaceForegroundColor,
+                cut_line_color = string.IsNullOrEmpty(cutLineColor) ? null : cutLineColor,
+                transparency,
+                halftone,
+                projection_line_weight = projectionLineWeight
+            });
 
         [McpServerTool(Name = "revit_list_view_filters", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List all view filter definitions (ParameterFilterElement) in the document. If viewId is supplied, only filters applied to that view. includeUsage lists which views each filter is applied to.")]
         public static async Task<string> ListViewFilters(long? viewId = null, bool includeUsage = false)
@@ -56,24 +44,17 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_override_element_graphics", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace element graphics; restore them with Revit Undo. Apply per-element view-specific graphic overrides (color, transparency, halftone, line weight) to elements in a view. Colors are hex '#RRGGBB'. transparency 0-100, projectionLineWeight 1-16. viewId defaults to active view.")]
         public static async Task<string> OverrideElementGraphics(long[] elementIds, long? viewId = null, string projectionLineColor = "", string surfaceForegroundColor = "", string cutLineColor = "", int? transparency = null, bool? halftone = null, int? projectionLineWeight = null)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("override_element_graphics", () => new
             {
-                var result = await ToolGateway.SendToRevit("override_element_graphics", new
-                {
-                    element_ids = elementIds,
-                    view_id = viewId,
-                    projection_line_color = string.IsNullOrEmpty(projectionLineColor) ? null : projectionLineColor,
-                    surface_foreground_color = string.IsNullOrEmpty(surfaceForegroundColor) ? null : surfaceForegroundColor,
-                    cut_line_color = string.IsNullOrEmpty(cutLineColor) ? null : cutLineColor,
-                    transparency,
-                    halftone,
-                    projection_line_weight = projectionLineWeight
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                element_ids = elementIds,
+                view_id = viewId,
+                projection_line_color = string.IsNullOrEmpty(projectionLineColor) ? null : projectionLineColor,
+                surface_foreground_color = string.IsNullOrEmpty(surfaceForegroundColor) ? null : surfaceForegroundColor,
+                cut_line_color = string.IsNullOrEmpty(cutLineColor) ? null : cutLineColor,
+                transparency,
+                halftone,
+                projection_line_weight = projectionLineWeight
+            });
 
         [McpServerTool(Name = "revit_clear_element_overrides", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Clear saved element graphics; restore them with Revit Undo. Reset per-element view-specific graphic overrides to default. If elementIds is omitted, clears overrides on every element in the view that currently has them. viewId defaults to active view.")]
         public static async Task<string> ClearElementOverrides(long[] elementIds = null, long? viewId = null)

@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
@@ -35,55 +34,39 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_create_schedule", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a new schedule from a declarative spec. Supports three field kinds in one transaction: parameter (existing Revit param), formula (calculated value field), and combined (concatenated parameters with separators). Optional filters, sort/group, and isItemized.")]
         public static async Task<string> CreateSchedule(string category, string name, string fields, string filters = null, string sortGroup = null, bool isItemized = true)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("create_schedule", () =>
             {
                 var parsedFields = JArray.Parse(fields);
                 var parsedFilters = string.IsNullOrWhiteSpace(filters) ? null : JArray.Parse(filters);
                 var parsedSortGroup = string.IsNullOrWhiteSpace(sortGroup) ? null : JArray.Parse(sortGroup);
-                var result = await ToolGateway.SendToRevit("create_schedule", new { category, name, fields = parsedFields, filters = parsedFilters, sortGroup = parsedSortGroup, isItemized });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                return new { category, name, fields = parsedFields, filters = parsedFilters, sortGroup = parsedSortGroup, isItemized };
+            });
 
         [McpServerTool(Name = "revit_add_schedule_field", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Add one new field to an existing schedule. Supports parameter, formula, or combined-parameter kinds via a discriminated-union spec. Optional insertIndex, columnHeading, hidden, columnWidth (mm).")]
         public static async Task<string> AddScheduleField(string field, long? scheduleId = null, string scheduleName = "", int? insertIndex = null, string columnHeading = "", bool hidden = false, double? columnWidth = null)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("add_schedule_field", () =>
             {
                 var parsedField = JObject.Parse(field);
-                var result = await ToolGateway.SendToRevit("add_schedule_field", new { scheduleId, scheduleName, field = parsedField, insertIndex, columnHeading, hidden, columnWidth });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                return new { scheduleId, scheduleName, field = parsedField, insertIndex, columnHeading, hidden, columnWidth };
+            });
 
         [McpServerTool(Name = "revit_update_schedule_field", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Modify existing schedule fields; restore them with Revit Undo. Modify an existing schedule field's properties: columnHeading, hidden, columnWidth, horizontalAlignment, headingOrientation, formula (only if calculated), combinedParameters (only if combined), isTotal, isPercentage, displayType. Cannot change the underlying parameter of a parameter field — use remove + add instead.")]
         public static async Task<string> UpdateScheduleField(string fieldRef, string changes, long? scheduleId = null, string scheduleName = "")
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("update_schedule_field", () =>
             {
                 var parsedFieldRef = JObject.Parse(fieldRef);
                 var parsedChanges = JObject.Parse(changes);
-                var result = await ToolGateway.SendToRevit("update_schedule_field", new { scheduleId, scheduleName, fieldRef = parsedFieldRef, changes = parsedChanges });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                return new { scheduleId, scheduleName, fieldRef = parsedFieldRef, changes = parsedChanges };
+            });
 
         [McpServerTool(Name = "revit_apply_schedule_filter_sort", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace schedule filters and settings; restore them with Revit Undo. Partially update a schedule's filters, sort/group, and settings. filters/sortGroup replace only when supplied; omitted sections are preserved.")]
         public static async Task<string> ApplyScheduleFilterSort(long? scheduleId = null, string scheduleName = "", string filters = null, string sortGroup = null, string settings = null)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("apply_schedule_filter_sort", () =>
             {
                 var parsedFilters = string.IsNullOrWhiteSpace(filters) ? null : JArray.Parse(filters);
                 var parsedSortGroup = string.IsNullOrWhiteSpace(sortGroup) ? null : JArray.Parse(sortGroup);
                 var parsedSettings = string.IsNullOrWhiteSpace(settings) ? null : JObject.Parse(settings);
-                var result = await ToolGateway.SendToRevit("apply_schedule_filter_sort", new { scheduleId, scheduleName, filters = parsedFilters, sortGroup = parsedSortGroup, settings = parsedSettings });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                return new { scheduleId, scheduleName, filters = parsedFilters, sortGroup = parsedSortGroup, settings = parsedSettings };
+            });
     }
 }

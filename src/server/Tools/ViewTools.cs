@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
@@ -30,18 +29,13 @@ namespace RvtMcp.Server
             var blocked = ServerState.BlockIfReadOnly("capture_view_image");
             if (blocked != null) return blocked;
 
-            try
+            return await ToolGateway.CallAsync("capture_view_image", new
             {
-                var result = await ToolGateway.SendToRevit("capture_view_image", new
-                {
-                    view_id,
-                    output_path,
-                    pixel_size,
-                    image_format
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+                view_id,
+                output_path,
+                pixel_size,
+                image_format
+            });
         }
 
         [McpServerTool(Name = "revit_set_view_crop", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace saved view crop settings; restore them with Revit Undo. Modify view crop: enabled, visible, explicit bounds_json (mm), or fit_element_ids with padding_mm. Params: view_id (optional, default active), enabled, visible, bounds_json, fit_element_ids, padding_mm (default 100).")]
@@ -52,13 +46,12 @@ namespace RvtMcp.Server
             var blocked = ServerState.BlockIfReadOnly("set_view_crop");
             if (blocked != null) return blocked;
 
-            try
+            return await ToolGateway.CallWithParamsAsync("set_view_crop", () =>
             {
                 object boundsObj = null;
                 if (!string.IsNullOrWhiteSpace(bounds_json))
                     boundsObj = JObject.Parse(bounds_json);
-
-                var result = await ToolGateway.SendToRevit("set_view_crop", new
+                return new
                 {
                     view_id,
                     enabled,
@@ -66,10 +59,8 @@ namespace RvtMcp.Server
                     bounds = boundsObj,
                     fit_element_ids,
                     padding_mm
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+                };
+            });
         }
 
         [McpServerTool(Name = "revit_set_view_scale", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace a saved view scale; restore it with Revit Undo. Set the graphical scale denominator of a view (e.g., 50 for 1:50). Params: view_id (optional, default active), scale (required, positive integer).")]
@@ -78,12 +69,7 @@ namespace RvtMcp.Server
             var blocked = ServerState.BlockIfReadOnly("set_view_scale");
             if (blocked != null) return blocked;
 
-            try
-            {
-                var result = await ToolGateway.SendToRevit("set_view_scale", new { view_id, scale });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+            return await ToolGateway.CallAsync("set_view_scale", new { view_id, scale });
         }
 
         [McpServerTool(Name = "revit_activate_view", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Set the active view in Revit UI. UI-only operation. Params: view_id OR view_name (required).")]
@@ -92,12 +78,7 @@ namespace RvtMcp.Server
             var blocked = ServerState.BlockIfReadOnly("activate_view");
             if (blocked != null) return blocked;
 
-            try
-            {
-                var result = await ToolGateway.SendToRevit("activate_view", new { view_id, view_name });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+            return await ToolGateway.CallAsync("activate_view", new { view_id, view_name });
         }
 
         [McpServerTool(Name = "revit_show_element_in_view", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Activate view, select elements, zoom to elements. UI-only. Params: element_ids (required), view_id (optional), activate_view (default true), select (default true), zoom (default true).")]
@@ -108,19 +89,14 @@ namespace RvtMcp.Server
             var blocked = ServerState.BlockIfReadOnly("show_element_in_view");
             if (blocked != null) return blocked;
 
-            try
+            return await ToolGateway.CallAsync("show_element_in_view", new
             {
-                var result = await ToolGateway.SendToRevit("show_element_in_view", new
-                {
-                    element_ids,
-                    view_id,
-                    activate_view,
-                    select,
-                    zoom
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+                element_ids,
+                view_id,
+                activate_view,
+                select,
+                zoom
+            });
         }
     }
 }

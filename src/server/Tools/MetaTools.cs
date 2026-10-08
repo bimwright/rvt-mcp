@@ -48,13 +48,7 @@ namespace RvtMcp.Server
             var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
             if (timeoutError != null) return timeoutError;
 
-            try
-            {
-                var parameters = new { path, activate, audit, worksets };
-                var result = await ToolGateway.SendToRevit("open_model", parameters, timeout_seconds);
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+            return await ToolGateway.CallAsync("open_model", new { path, activate, audit, worksets }, timeout_seconds);
         }
 
         [McpServerTool(Name = "revit_show_message", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Show a Revit TaskDialog. Message echo is off by default; opt in with echoMessage and cap it with maxEchoChars.")]
@@ -359,20 +353,15 @@ namespace RvtMcp.Server
             var blocked = ServerState.BlockIfReadOnly("set_project_info");
             if (blocked != null) return blocked;
 
-            try
+            return await ToolGateway.CallAsync("set_project_info", new
             {
-                var result = await ToolGateway.SendToRevit("set_project_info", new
-                {
-                    name,
-                    number,
-                    client_name,
-                    address,
-                    status,
-                    issue_date
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+                name,
+                number,
+                client_name,
+                address,
+                status,
+                issue_date
+            });
         }
 
         [McpServerTool(Name = "revit_purge_unused", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Delete unused family symbols; restore them with Revit Undo. Conservative purge of unused loadable family symbols. MVP supports targets=['families'] only. Skips in-place families and symbols with any placed instance. dry_run defaults to true.")]
@@ -385,17 +374,12 @@ namespace RvtMcp.Server
                 if (blocked != null) return blocked;
             }
 
-            try
+            return await ToolGateway.CallWithParamsAsync("purge_unused", () => new
             {
-                var result = await ToolGateway.SendToRevit("purge_unused", new
-                {
-                    targets = targets ?? new[] { "families" },
-                    dry_run,
-                    limit
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+                targets = targets ?? new[] { "families" },
+                dry_run,
+                limit
+            });
         }
 
         [McpServerTool(Name = "revit_analyze_usage_patterns", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(

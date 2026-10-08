@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
@@ -11,15 +10,11 @@ namespace RvtMcp.Server
     {
         [McpServerTool(Name = "revit_operate_element", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Change element visibility or graphics; restore document changes with Revit Undo. Select/hide/isolate/color elements in current view. operation: select (highlight), hide, unhide, isolate (hide everything else), setcolor (RGB override). elementIds: JSON int array e.g. '[12345, 67890]'. For setcolor: r/g/b 0-255 (default red 255,0,0).")]
         public static async Task<string> OperateElement(string operation, string elementIds, byte r = 255, byte g = 0, byte b = 0)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("operate_element", () =>
             {
                 var parsedIds = JArray.Parse(elementIds).ToObject<long[]>();
-                var result = await ToolGateway.SendToRevit("operate_element", new { operation, elementIds = parsedIds, r, g, b });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                return new { operation, elementIds = parsedIds, r, g, b };
+            });
 
         [McpServerTool(Name = "revit_color_elements", ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Overwrite element graphics; restore them with Revit Undo. Color-code all matching elements by parameter value. maxGroups caps response detail only; mutation summary remains complete.")]
         public static async Task<string> ColorElements(string category, string parameterName, int maxGroups = 100)

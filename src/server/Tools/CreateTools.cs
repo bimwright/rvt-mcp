@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
@@ -19,15 +18,11 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_create_surface_based_element", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a surface-based element (floor, ceiling). Params: elementType, points (JSON array of {x,y} in mm, min 3), level (name), typeId (optional). Example points: [{\"x\":0,\"y\":0},{\"x\":6000,\"y\":0},{\"x\":6000,\"y\":4000},{\"x\":0,\"y\":4000}].")]
         public static async Task<string> CreateSurfaceBasedElement(string elementType, string points, string level = "", long? typeId = null)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("create_surface_based_element", () =>
             {
                 var parsedPoints = JArray.Parse(points);
-                var result = await ToolGateway.SendToRevit("create_surface_based_element", new { elementType, points = parsedPoints, level, typeId });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                return new { elementType, points = parsedPoints, level, typeId };
+            });
 
         [McpServerTool(Name = "revit_create_level", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a level at specified elevation. Params: elevation (mm), name (optional).")]
         public static async Task<string> CreateLevel(double elevation, string name = "")

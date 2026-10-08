@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
@@ -19,12 +18,7 @@ namespace RvtMcp.Server
             var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
             if (timeoutError != null) return timeoutError;
 
-            try
-            {
-                var result = await ToolGateway.SendToRevit("load_family_from_path", new { path, overwrite_existing = overwriteExisting, overwrite_parameter_values = overwriteParameterValues, include_symbols = includeSymbols, max_symbol_results = maxSymbolResults }, timeout_seconds);
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+            return await ToolGateway.CallAsync("load_family_from_path", new { path, overwrite_existing = overwriteExisting, overwrite_parameter_values = overwriteParameterValues, include_symbols = includeSymbols, max_symbol_results = maxSymbolResults }, timeout_seconds);
         }
 
         [McpServerTool(Name = "revit_unload_family", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Delete a family and optionally its instances; restore them with Revit Undo. Remove (purge) a loadable family from the document. Identify by familyId or familyName. cascadeDeleteInstances=true to also delete placed instances; otherwise error if instances exist. dryRun=true returns the projected effect without changing the model. System families cannot be unloaded.")]
@@ -33,15 +27,11 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_duplicate_family_type", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Duplicate a FamilySymbol or system type within its family under newTypeName, optionally setting type parameter overrides (JSON object as string, parameter name → value). Returns the new type id. Works for FamilySymbol and ElementType subclasses (WallType, FloorType, etc.).")]
         public static async Task<string> DuplicateFamilyType(string sourceTypeId, string newTypeName, string typeParameterOverrides = "")
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("duplicate_family_type", () =>
             {
                 var parsedOverrides = string.IsNullOrWhiteSpace(typeParameterOverrides) ? null : JObject.Parse(typeParameterOverrides);
-                var result = await ToolGateway.SendToRevit("duplicate_family_type", new { source_type_id = sourceTypeId, new_type_name = newTypeName, type_parameter_overrides = parsedOverrides });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                return new { source_type_id = sourceTypeId, new_type_name = newTypeName, type_parameter_overrides = parsedOverrides };
+            });
 
         [McpServerTool(Name = "revit_rename_family_type", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Rename an existing type; restore its name with Revit Undo. Rename a FamilySymbol or system type. Must be unique within the family. Catches Autodesk.Revit.Exceptions.ArgumentException for duplicate/invalid names and returns a clean error DTO without throwing.")]
         public static async Task<string> RenameFamilyType(string typeId, string newName)

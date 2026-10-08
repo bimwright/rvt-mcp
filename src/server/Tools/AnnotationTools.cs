@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
@@ -30,28 +29,20 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_create_dimensions", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a dimension element in a view. references: array of Revit element-reference objects.")]
         public static async Task<string> CreateDimensions(object[] references, long? viewId = null, long? dimensionTypeId = null, object line = null)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("create_dimensions", () =>
             {
                 var parsedReferences = McpJsonInput.RequiredArray(references, nameof(references));
                 var parsedLine = McpJsonInput.OptionalObject(line, nameof(line));
-                var result = await ToolGateway.SendToRevit("create_dimensions", new { references = parsedReferences, view_id = viewId, dimension_type_id = dimensionTypeId, line = parsedLine });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                return new { references = parsedReferences, view_id = viewId, dimension_type_id = dimensionTypeId, line = parsedLine };
+            });
 
         [McpServerTool(Name = "revit_create_filled_region", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a filled region element in a view. points: array of {x,y,z} point objects (mm).")]
         public static async Task<string> CreateFilledRegion(object[] points, long? viewId = null, long? filledRegionTypeId = null)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("create_filled_region", () =>
             {
                 var parsedPoints = McpJsonInput.RequiredArray(points, nameof(points));
-                var result = await ToolGateway.SendToRevit("create_filled_region", new { points = parsedPoints, view_id = viewId, filled_region_type_id = filledRegionTypeId });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                return new { points = parsedPoints, view_id = viewId, filled_region_type_id = filledRegionTypeId };
+            });
 
         [McpServerTool(Name = "revit_create_detail_line", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a detail line element in a view.")]
         public static async Task<string> CreateDetailLine(double startX, double startY, double endX, double endY, long? viewId = null, long? lineStyleId = null)

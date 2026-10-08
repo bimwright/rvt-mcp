@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
@@ -26,12 +25,7 @@ namespace RvtMcp.Server
             var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
             if (timeoutError != null) return timeoutError;
 
-            try
-            {
-                var result = await ToolGateway.SendToRevit("link_revit_model", new { path, placement, relative, reuse_existing_type = reuseExistingType }, timeout_seconds);
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+            return await ToolGateway.CallAsync("link_revit_model", new { path, placement, relative, reuse_existing_type = reuseExistingType }, timeout_seconds);
         }
 
         [McpServerTool(Name = "revit_unload_link", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Unload a Revit link type by type or instance ID." +
@@ -46,12 +40,7 @@ namespace RvtMcp.Server
             var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
             if (timeoutError != null) return timeoutError;
 
-            try
-            {
-                var result = await ToolGateway.SendToRevit("reload_link", new { link_type_id = linkTypeId, link_instance_id = linkInstanceId }, timeout_seconds);
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+            return await ToolGateway.CallAsync("reload_link", new { link_type_id = linkTypeId, link_instance_id = linkInstanceId }, timeout_seconds);
         }
 
         [McpServerTool(Name = "revit_get_link_elements", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Retrieve elements from a Revit link instance document.")]

@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
@@ -39,12 +38,7 @@ namespace RvtMcp.Server
             var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
             if (timeoutError != null) return timeoutError;
 
-            try
-            {
-                var result = await ToolGateway.SendToRevit("export_ifc", new { output_folder = outputFolder, file_name = fileName, ifc_version = ifcVersion }, timeout_seconds);
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+            return await ToolGateway.CallAsync("export_ifc", new { output_folder = outputFolder, file_name = fileName, ifc_version = ifcVersion }, timeout_seconds);
         }
 
         [McpServerTool(Name = "revit_export_nwc", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Export the model to Navisworks NWC. outputFolder must be an existing absolute path. Optional exportScopeViewId scopes the export to one view. Requires the Navisworks NWC exporter add-in installed. Do not retry on 60s timeout; Revit may still be running the command." +

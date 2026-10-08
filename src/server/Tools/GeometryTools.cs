@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
@@ -65,11 +64,10 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_find_elements_in_volume", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Find elements inside or intersecting an axis-aligned 3D volume or a room's bounding box")]
         public static async Task<string> FindElementsInVolume(object volume = null, long? roomId = null, string[] categories = null, long? viewId = null, string match = "intersects", int limit = 200)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("find_elements_in_volume", () =>
             {
                 var parsedVolume = McpJsonInput.OptionalObject(volume, nameof(volume));
-                var result = await ToolGateway.SendToRevit("find_elements_in_volume", new
+                return new
                 {
                     volume = parsedVolume,
                     room_id = roomId,
@@ -77,11 +75,8 @@ namespace RvtMcp.Server
                     view_id = viewId,
                     match,
                     limit
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                };
+            });
 
         [McpServerTool(Name = "revit_compute_element_volume", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Compute the geometric solid volume of one or more elements in cubic meters (m3)")]
         public static async Task<string> ComputeElementVolume(long[] elementIds, string detailLevel = "Medium")

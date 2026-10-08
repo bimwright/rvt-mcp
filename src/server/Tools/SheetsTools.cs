@@ -102,21 +102,17 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_set_titleblock_parameters", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace titleblock parameter values; restore them with Revit Undo. Set titleblock instance and type parameters for a sheet. parameters: object map of {paramName: value}.")]
         public static async Task<string> SetTitleblockParameters(IDictionary<string, object> parameters, long? sheetId = null, string sheetNumber = "", string target = "instance")
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("set_titleblock_parameters", () =>
             {
                 var parsedParameters = ToolbakerTools.NormalizeRunBakedToolParams(parameters);
-                var result = await ToolGateway.SendToRevit("set_titleblock_parameters", new
+                return new
                 {
                     sheet_id = sheetId,
                     sheet_number = sheetNumber,
                     target,
                     parameters = parsedParameters
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                };
+            });
 
         [McpServerTool(Name = "revit_get_titleblock_parameters", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Get titleblock instance and type parameters for a sheet")]
         public static async Task<string> GetTitleblockParameters(long? sheetId = null, string sheetNumber = "", string target = "both", bool includeReadOnly = true)
@@ -179,11 +175,10 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_renumber_sheets", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace sheet numbers or names; restore them with Revit Undo. Bulk renumber/rename sheets with collision preflights and cyclic swap support")]
         public static async Task<string> RenumberSheets(object items = null, string find = "", string replace = "", string prefix = "", string suffix = "", bool dryRun = true)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("renumber_sheets", () =>
             {
                 var normalizedItems = NormalizeOptionalJsonArray(items, nameof(items));
-                var result = await ToolGateway.SendToRevit("renumber_sheets", new
+                return new
                 {
                     items = normalizedItems,
                     find,
@@ -191,11 +186,8 @@ namespace RvtMcp.Server
                     prefix,
                     suffix,
                     dry_run = dryRun
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                };
+            });
 
         [McpServerTool(Name = "revit_get_viewport_geometry", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Read viewport positions on a sheet in sheet-space millimetres: visible crop rectangle, view outline, scale, rotation, pinned and crop flags. Sheet coordinates are paper millimetres, not project coordinates. Use startViewport + maxViewports (hard max 500).")]
         public static async Task<string> GetViewportGeometry(long? sheetId = null, string sheetNumber = "", long[] viewportIds = null, int startViewport = 0, int maxViewports = 100)

@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
@@ -55,15 +54,11 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_create_mep_fitting", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Insert an MEP fitting at connectors of existing MEP elements. fittingKind: elbow|tee|union|cross|transition. connectors is a JSON array of {element_id, connector_index} where connector_index is the connector_id from get_mep_element_connectors: elbow/union/transition need 2, tee 3, cross 4.")]
         public static async Task<string> CreateMepFitting(string fittingKind, string connectors)
-        {
-            try
+            => await ToolGateway.CallWithParamsAsync("create_mep_fitting", () =>
             {
                 var parsedConnectors = JArray.Parse(connectors);
-                var result = await ToolGateway.SendToRevit("create_mep_fitting", new { fitting_kind = fittingKind, connectors = parsedConnectors });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+                return new { fitting_kind = fittingKind, connectors = parsedConnectors };
+            });
 
         [McpServerTool(Name = "revit_set_system_classification", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Change MEP system membership; restore it with Revit Undo. Add MEP elements to an existing duct/piping system. If systemId omitted, only reports current system membership (read-only). elementIds is an array of MEP element ids.")]
         public static async Task<string> SetSystemClassification(long[] elementIds, long? systemId = null)

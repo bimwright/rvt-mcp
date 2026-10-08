@@ -121,6 +121,21 @@ namespace RvtMcp.Server
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
+        /// <summary>
+        /// <see cref="CallAsync"/> for shells that parse or normalize input: the parameters are built
+        /// inside the same try, so bad input surfaces as "Error: ..." text and never reaches the wire.
+        /// </summary>
+        internal static async Task<string> CallWithParamsAsync(string command, Func<object> buildParameters, int? timeoutSeconds = null)
+        {
+            try
+            {
+                var parameters = buildParameters();
+                var result = await SendToRevit(command, parameters, timeoutSeconds);
+                return JsonConvert.SerializeObject(result, Formatting.Indented);
+            }
+            catch (Exception ex) { return $"Error: {ex.Message}"; }
+        }
+
         internal static void CaptureHistory(JObject response, ChangeHistoryRequest request)
         {
             if (request == null) return;

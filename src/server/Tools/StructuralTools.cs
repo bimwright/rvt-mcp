@@ -81,22 +81,17 @@ namespace RvtMcp.Server
                 if (blocked != null) return blocked;
             }
 
-            try
+            return await ToolGateway.CallAsync("set_structural_load", new
             {
-                var result = await ToolGateway.SendToRevit("set_structural_load", new
-                {
-                    action,
-                    load_id,
-                    force_x,
-                    force_y,
-                    force_z,
-                    moment_x,
-                    moment_y,
-                    moment_z
-                });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
+                action,
+                load_id,
+                force_x,
+                force_y,
+                force_z,
+                moment_x,
+                moment_y,
+                moment_z
+            });
         }
 
         [McpServerTool(Name = "revit_analyze_structural_connections", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Audit structural joins between columns and beams. Optional element_ids filter (default = all structural framing + columns). Returns joined_count and joined_with per element.")]
