@@ -118,12 +118,18 @@ namespace RvtMcp.Tests
             }
         }
 
-        internal static async Task<string> Invoke(MethodInfo method)
+        internal static Task<string> Invoke(MethodInfo method) => Invoke(method, ProbeArguments(method));
+
+        internal static object[] ProbeArguments(MethodInfo method)
         {
             var toolName = method.GetCustomAttribute<McpServerToolAttribute>().Name;
-            var args = method.GetParameters()
+            return method.GetParameters()
                 .Select(p => Shaped.TryGetValue(toolName + ":" + p.Name, out var shaped) ? shaped : Probe(p))
                 .ToArray();
+        }
+
+        internal static async Task<string> Invoke(MethodInfo method, object[] args)
+        {
             var target = method.IsStatic ? null : Activator.CreateInstance(method.DeclaringType, true);
             var returned = method.Invoke(target, args);
             if (returned is Task<string> task) return await task;

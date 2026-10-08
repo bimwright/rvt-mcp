@@ -1,0 +1,286 @@
+{
+  "revit_create_dimensions:bad_references": {
+    "calls": [],
+    "result": "Error: references must be a JSON array."
+  },
+  "revit_create_dimensions:bad_line": {
+    "calls": [],
+    "result": "Error: line must be a JSON object when supplied."
+  },
+  "revit_create_filled_region:bad_points": {
+    "calls": [],
+    "result": "Error: points must be a JSON array."
+  },
+  "revit_create_room_separator:bad_points": {
+    "calls": [],
+    "result": "Error: points must be a JSON array."
+  },
+  "revit_create_surface_based_element:bad_points": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_delete_element:bad_elementIds": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_operate_element:bad_elementIds": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_duplicate_family_type:bad_typeParameterOverrides": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_find_elements_in_volume:bad_volume": {
+    "calls": [],
+    "result": "Error: volume must be a JSON object when supplied."
+  },
+  "revit_create_view_filter:bad_rules": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_create_mep_fitting:bad_connectors": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_create_schedule:bad_fields": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_create_schedule:bad_filters": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_create_schedule:bad_sortGroup": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_add_schedule_field:bad_field": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_update_schedule_field:bad_fieldRef": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_update_schedule_field:bad_changes": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_apply_schedule_filter_sort:bad_filters": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_apply_schedule_filter_sort:bad_sortGroup": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_apply_schedule_filter_sort:bad_settings": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_set_titleblock_parameters:bad_parameters": {
+    "calls": [
+      {
+        "command": "set_titleblock_parameters",
+        "params": "{\"sheet_id\":null,\"sheet_number\":\"\",\"target\":\"instance\",\"parameters\":{}}",
+        "timeout": null
+      }
+    ],
+    "result": "{\r\n  \"golden_probe\": true\r\n}"
+  },
+  "revit_renumber_sheets:bad_items": {
+    "calls": [],
+    "result": "Error: items must be a JSON array when supplied."
+  },
+  "revit_set_view_crop:bad_bounds_json": {
+    "calls": [],
+    "result": "Error: Unexpected character encountered while parsing value: n. Path '', line 0, position 0."
+  },
+  "revit_set_filter_overrides:colors": {
+    "calls": [
+      {
+        "command": "set_filter_overrides",
+        "params": "{\"filter_id\":1,\"view_id\":null,\"projection_line_color\":\"#FF0000\",\"surface_foreground_color\":null,\"cut_line_color\":null,\"transparency\":null,\"halftone\":null,\"projection_line_weight\":null}",
+        "timeout": null
+      }
+    ],
+    "result": "{\r\n  \"golden_probe\": true\r\n}"
+  },
+  "revit_override_element_graphics:colors": {
+    "calls": [
+      {
+        "command": "override_element_graphics",
+        "params": "{\"element_ids\":null,\"view_id\":null,\"projection_line_color\":null,\"surface_foreground_color\":\"#00FF00\",\"cut_line_color\":null,\"transparency\":null,\"halftone\":null,\"projection_line_weight\":null}",
+        "timeout": null
+      }
+    ],
+    "result": "{\r\n  \"golden_probe\": true\r\n}"
+  },
+  "revit_purge_unused:targets": {
+    "calls": [
+      {
+        "command": "purge_unused",
+        "params": "{\"targets\":[\"materials\"],\"dry_run\":true,\"limit\":500}",
+        "timeout": null
+      }
+    ],
+    "result": "{\r\n  \"golden_probe\": true\r\n}"
+  },
+  "revit_set_view_crop:bounds": {
+    "calls": [
+      {
+        "command": "set_view_crop",
+        "params": "{\"view_id\":null,\"enabled\":null,\"visible\":null,\"bounds\":{\"min_x\":0},\"fit_element_ids\":null,\"padding_mm\":100.0}",
+        "timeout": null
+      }
+    ],
+    "result": "{\r\n  \"golden_probe\": true\r\n}"
+  },
+  "revit_open_model:read_only": {
+    "calls": [],
+    "result": "{\r\n  \"success\": false,\r\n  \"error\": \"read_only_mode\",\r\n  \"tool\": \"open_model\",\r\n  \"message\": \"Tool 'open_model' is disabled because the server is running with --read-only.\"\r\n}"
+  },
+  "revit_set_project_info:read_only": {
+    "calls": [],
+    "result": "{\r\n  \"success\": false,\r\n  \"error\": \"read_only_mode\",\r\n  \"tool\": \"set_project_info\",\r\n  \"message\": \"Tool 'set_project_info' is disabled because the server is running with --read-only.\"\r\n}"
+  },
+  "revit_capture_view_image:read_only": {
+    "calls": [],
+    "result": "{\r\n  \"success\": false,\r\n  \"error\": \"read_only_mode\",\r\n  \"tool\": \"capture_view_image\",\r\n  \"message\": \"Tool 'capture_view_image' is disabled because the server is running with --read-only.\"\r\n}"
+  },
+  "revit_set_view_crop:read_only": {
+    "calls": [],
+    "result": "{\r\n  \"success\": false,\r\n  \"error\": \"read_only_mode\",\r\n  \"tool\": \"set_view_crop\",\r\n  \"message\": \"Tool 'set_view_crop' is disabled because the server is running with --read-only.\"\r\n}"
+  },
+  "revit_set_view_scale:read_only": {
+    "calls": [],
+    "result": "{\r\n  \"success\": false,\r\n  \"error\": \"read_only_mode\",\r\n  \"tool\": \"set_view_scale\",\r\n  \"message\": \"Tool 'set_view_scale' is disabled because the server is running with --read-only.\"\r\n}"
+  },
+  "revit_activate_view:read_only": {
+    "calls": [
+      {
+        "command": "activate_view",
+        "params": "{\"view_id\":null,\"view_name\":null}",
+        "timeout": null
+      }
+    ],
+    "result": "{\r\n  \"golden_probe\": true\r\n}"
+  },
+  "revit_show_element_in_view:read_only": {
+    "calls": [
+      {
+        "command": "show_element_in_view",
+        "params": "{\"element_ids\":null,\"view_id\":null,\"activate_view\":true,\"select\":true,\"zoom\":true}",
+        "timeout": null
+      }
+    ],
+    "result": "{\r\n  \"golden_probe\": true\r\n}"
+  },
+  "revit_purge_unused:read_only_dry_run=False": {
+    "calls": [],
+    "result": "{\r\n  \"success\": false,\r\n  \"error\": \"read_only_mode\",\r\n  \"tool\": \"purge_unused\",\r\n  \"message\": \"Tool 'purge_unused' is disabled because the server is running with --read-only.\"\r\n}"
+  },
+  "revit_purge_unused:read_only_dry_run=True": {
+    "calls": [],
+    "result": "Error: READ_ONLY: this tool can change documents or files and is disabled for this session."
+  },
+  "revit_set_structural_load:read_only_action=update": {
+    "calls": [],
+    "result": "{\r\n  \"success\": false,\r\n  \"error\": \"read_only_mode\",\r\n  \"tool\": \"set_structural_load\",\r\n  \"message\": \"Tool 'set_structural_load' is disabled because the server is running with --read-only.\"\r\n}"
+  },
+  "revit_set_structural_load:read_only_action=create": {
+    "calls": [],
+    "result": "Error: READ_ONLY: this tool can change documents or files and is disabled for this session."
+  },
+  "revit_export_ifc:timeout_0": {
+    "calls": [],
+    "result": "Error: timeout_seconds must be between 1 and 900 seconds (got 0). The default is 600 and the unit is seconds, not milliseconds."
+  },
+  "revit_export_ifc:timeout_901": {
+    "calls": [],
+    "result": "Error: timeout_seconds must be between 1 and 900 seconds (got 901). The default is 600 and the unit is seconds, not milliseconds."
+  },
+  "revit_export_ifc:timeout_900": {
+    "calls": [
+      {
+        "command": "export_ifc",
+        "params": "{\"output_folder\":\"probe\",\"file_name\":\"probe\",\"ifc_version\":\"default\"}",
+        "timeout": 900
+      }
+    ],
+    "result": "{\r\n  \"golden_probe\": true\r\n}"
+  },
+  "revit_load_family_from_path:timeout_0": {
+    "calls": [],
+    "result": "Error: timeout_seconds must be between 1 and 900 seconds (got 0). The default is 600 and the unit is seconds, not milliseconds."
+  },
+  "revit_load_family_from_path:timeout_901": {
+    "calls": [],
+    "result": "Error: timeout_seconds must be between 1 and 900 seconds (got 901). The default is 600 and the unit is seconds, not milliseconds."
+  },
+  "revit_load_family_from_path:timeout_900": {
+    "calls": [
+      {
+        "command": "load_family_from_path",
+        "params": "{\"path\":\"C:\\\\probe\\\\file.dat\",\"overwrite_existing\":true,\"overwrite_parameter_values\":false,\"include_symbols\":false,\"max_symbol_results\":200}",
+        "timeout": 900
+      }
+    ],
+    "result": "{\r\n  \"golden_probe\": true\r\n}"
+  },
+  "revit_link_revit_model:timeout_0": {
+    "calls": [],
+    "result": "Error: timeout_seconds must be between 1 and 900 seconds (got 0). The default is 600 and the unit is seconds, not milliseconds."
+  },
+  "revit_link_revit_model:timeout_901": {
+    "calls": [],
+    "result": "Error: timeout_seconds must be between 1 and 900 seconds (got 901). The default is 600 and the unit is seconds, not milliseconds."
+  },
+  "revit_link_revit_model:timeout_900": {
+    "calls": [
+      {
+        "command": "link_revit_model",
+        "params": "{\"path\":\"C:\\\\probe\\\\file.dat\",\"placement\":\"origin\",\"relative\":false,\"reuse_existing_type\":false}",
+        "timeout": 900
+      }
+    ],
+    "result": "{\r\n  \"golden_probe\": true\r\n}"
+  },
+  "revit_reload_link:timeout_0": {
+    "calls": [],
+    "result": "Error: timeout_seconds must be between 1 and 900 seconds (got 0). The default is 600 and the unit is seconds, not milliseconds."
+  },
+  "revit_reload_link:timeout_901": {
+    "calls": [],
+    "result": "Error: timeout_seconds must be between 1 and 900 seconds (got 901). The default is 600 and the unit is seconds, not milliseconds."
+  },
+  "revit_reload_link:timeout_900": {
+    "calls": [
+      {
+        "command": "reload_link",
+        "params": "{\"link_type_id\":null,\"link_instance_id\":null}",
+        "timeout": 900
+      }
+    ],
+    "result": "{\r\n  \"golden_probe\": true\r\n}"
+  },
+  "revit_open_model:timeout_0": {
+    "calls": [],
+    "result": "Error: timeout_seconds must be between 1 and 900 seconds (got 0). The default is 600 and the unit is seconds, not milliseconds."
+  },
+  "revit_open_model:timeout_901": {
+    "calls": [],
+    "result": "Error: timeout_seconds must be between 1 and 900 seconds (got 901). The default is 600 and the unit is seconds, not milliseconds."
+  },
+  "revit_open_model:timeout_900": {
+    "calls": [
+      {
+        "command": "open_model",
+        "params": "{\"path\":\"C:\\\\probe\\\\file.dat\",\"activate\":true,\"audit\":false,\"worksets\":null}",
+        "timeout": 900
+      }
+    ],
+    "result": "{\r\n  \"golden_probe\": true\r\n}"
+  }
+}
