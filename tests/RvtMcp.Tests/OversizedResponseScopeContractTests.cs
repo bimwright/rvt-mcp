@@ -44,7 +44,7 @@ namespace RvtMcp.Tests
             string[] mcpParameters)
         {
             var root = GetRepoRoot();
-            var program = File.ReadAllText(Path.Combine(root, "src", "server", "Program.cs"));
+            var program = ServerToolSources(root);
             var marker = "Name = \"" + toolName + "\"";
             var markerIndex = program.IndexOf(marker, StringComparison.Ordinal);
             Assert.True(markerIndex >= 0, "Missing tool marker: " + toolName);
@@ -113,7 +113,7 @@ namespace RvtMcp.Tests
         public void Adaptive_suggestion_list_exposes_state_and_bounded_paging()
         {
             var root = GetRepoRoot();
-            var program = File.ReadAllText(Path.Combine(root, "src", "server", "Program.cs"));
+            var program = ServerToolSources(root);
             var handler = File.ReadAllText(Path.Combine(root, "src", "server", "Handlers", "ListBakeSuggestionsHandler.cs"));
 
             Assert.Contains("ListBakeSuggestions(string state", program);
@@ -183,6 +183,16 @@ namespace RvtMcp.Tests
                 }
             }
             return new string(chars.ToArray());
+        }
+
+        // Tool shells live in src/server/Tools/*.cs; Program*.cs holds registration and host setup.
+        private static string ServerToolSources(string root)
+        {
+            var server = Path.Combine(root, "src", "server");
+            var files = Directory.GetFiles(server, "Program*.cs")
+                .Concat(Directory.GetFiles(Path.Combine(server, "Tools"), "*.cs"))
+                .OrderBy(path => path, StringComparer.Ordinal);
+            return string.Join("\n", files.Select(File.ReadAllText));
         }
 
         private static string GetRepoRoot([CallerFilePath] string testFile = "")

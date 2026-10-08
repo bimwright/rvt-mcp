@@ -21,7 +21,7 @@ namespace RvtMcp.Tests
     public sealed class EveryToolContractTests
     {
         // Server-only tools: they answer from local state, so they are exercised by their own tests.
-        private static readonly Dictionary<string, string> ServerOnly = new Dictionary<string, string>
+        internal static readonly Dictionary<string, string> ServerOnly = new Dictionary<string, string>
         {
             ["revit_record_change"] = "ChangeHistoryRuntimeTests",
             ["revit_get_change_records"] = "ChangeHistoryRuntimeTests",
@@ -51,7 +51,7 @@ namespace RvtMcp.Tests
             ["revit_survey_change_impact:elementIds"] = new long[] { 1 },
         };
 
-        private static IEnumerable<(string Name, MethodInfo Method)> AllTools()
+        internal static IEnumerable<(string Name, MethodInfo Method)> AllTools()
         {
             foreach (var type in typeof(ToolGateway).Assembly.GetTypes())
             {
@@ -118,12 +118,18 @@ namespace RvtMcp.Tests
             }
         }
 
-        private static async Task<string> Invoke(MethodInfo method)
+        internal static Task<string> Invoke(MethodInfo method) => Invoke(method, ProbeArguments(method));
+
+        internal static object[] ProbeArguments(MethodInfo method)
         {
             var toolName = method.GetCustomAttribute<McpServerToolAttribute>().Name;
-            var args = method.GetParameters()
+            return method.GetParameters()
                 .Select(p => Shaped.TryGetValue(toolName + ":" + p.Name, out var shaped) ? shaped : Probe(p))
                 .ToArray();
+        }
+
+        internal static async Task<string> Invoke(MethodInfo method, object[] args)
+        {
             var target = method.IsStatic ? null : Activator.CreateInstance(method.DeclaringType, true);
             var returned = method.Invoke(target, args);
             if (returned is Task<string> task) return await task;
