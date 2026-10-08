@@ -34,14 +34,7 @@ namespace RvtMcp.Server
         [McpServerTool(Name = "revit_list_baked_tools", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
             "List baked tools with nameFilter and bounded paging. Use startIndex + limit (hard max 500).")]
         public static async Task<string> ListBakedTools(string nameFilter = "", int startIndex = 0, int limit = 100)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("list_baked_tools", new { name_filter = nameFilter, start_index = startIndex, limit });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("list_baked_tools", new { name_filter = nameFilter, start_index = startIndex, limit });
 
         [McpServerTool(Name = "revit_run_baked_tool", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
             "Run a baked tool by name. Call list_baked_tools first to discover. " +

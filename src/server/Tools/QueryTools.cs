@@ -34,124 +34,47 @@ namespace RvtMcp.Server
     {
         [McpServerTool(Name = "revit_get_current_view_info", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Get active view info. Returns viewName, viewType (FloorPlan/Section/3D/Sheet), level, scale, detailLevel, displayStyle. Call before creating elements to know active level.")]
         public static async Task<string> GetCurrentViewInfo()
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("get_current_view_info");
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("get_current_view_info");
 
         [McpServerTool(Name = "revit_get_selected_elements", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Get currently selected Revit elements with paging. Use startIndex + maxResults (default 200, hard max 1000).")]
         public static async Task<string> GetSelectedElements(int startIndex = 0, int maxResults = 200)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("get_selected_elements", new { start_index = startIndex, max_results = maxResults });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("get_selected_elements", new { start_index = startIndex, max_results = maxResults });
 
         [McpServerTool(Name = "revit_get_available_family_types", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List loadable family types. Returns {familyName, typeName, typeId} grouped by category. Optional: filter by category (e.g. 'Walls', 'Doors', 'Pipes' — NOT 'OST_Walls'). Feed typeId into create_point_based_element.")]
         public static async Task<string> GetAvailableFamilyTypes(string category = "")
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("get_available_family_types", new { category });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("get_available_family_types", new { category });
 
         [McpServerTool(Name = "revit_ai_element_filter", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Filter elements by category + parameter. Numeric values in mm (auto-converted). category uses human name ('Pipes', NOT 'OST_Pipes'). Operators: equals/contains/startswith/greaterthan/lessthan. select=true highlights results. Example: category='Pipes', parameterName='Diameter', parameterValue='200', operator='greaterthan', select=true.")]
         public static async Task<string> AiElementFilter(string category, string parameterName = "", string parameterValue = "", string @operator = "equals", int limit = 100, bool select = false)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("ai_element_filter", new { category, parameterName, parameterValue, @operator, limit, select });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("ai_element_filter", new { category, parameterName, parameterValue, @operator, limit, select });
 
         [McpServerTool(Name = "revit_analyze_model_statistics", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Count elements grouped by category (Walls, Doors, Pipes, etc.). Call to understand project scope before detailed queries. Iteration is capped at maxElements (default 100000); raise it for full accuracy on very large models at the cost of a longer UI freeze.")]
         public static async Task<string> AnalyzeModelStatistics(int? maxElements = null)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("analyze_model_statistics", new { maxElements });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("analyze_model_statistics", new { maxElements });
 
         [McpServerTool(Name = "revit_get_material_quantities", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Sum material quantities (area m², volume m³) by category. Narrow with materialNameFilter and page with startIndex + maxResults (hard max 1000).")]
         public static async Task<string> GetMaterialQuantities(string category, string materialNameFilter = "", int startIndex = 0, int maxResults = 200)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("get_material_quantities", new { category, material_name_filter = materialNameFilter, start_index = startIndex, max_results = maxResults });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("get_material_quantities", new { category, material_name_filter = materialNameFilter, start_index = startIndex, max_results = maxResults });
 
         [McpServerTool(Name = "revit_get_element_details", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Read detailed metadata for one or more elements. Returns identity, category, type, level, workset, phase, owner view, design option, group/assembly ids, location, and bounding box in mm.")]
         public static async Task<string> GetElementDetails(long[] elementIds)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("get_element_details", new { elementIds });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("get_element_details", new { elementIds });
 
         [McpServerTool(Name = "revit_get_element_parameters", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Read instance parameters for one or more elements. Returns storage type, read-only state, display value, raw value, and data/spec ids.")]
         public static async Task<string> GetElementParameters(long[] elementIds, bool includeReadOnly = true)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("get_element_parameters", new { elementIds, includeReadOnly });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("get_element_parameters", new { elementIds, includeReadOnly });
 
         [McpServerTool(Name = "revit_get_type_parameters", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Read type parameters from explicit type ids or from the types of provided element ids.")]
         public static async Task<string> GetTypeParameters(long[] elementIds = null, long[] typeIds = null)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("get_type_parameters", new { elementIds, typeIds });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("get_type_parameters", new { elementIds, typeIds });
 
         [McpServerTool(Name = "revit_list_project_parameters", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List project/shared parameter bindings, including instance/type binding kind and bound categories.")]
         public static async Task<string> ListProjectParameters(bool includeCategories = true)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("list_project_parameters", new { includeCategories });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("list_project_parameters", new { includeCategories });
 
         [McpServerTool(Name = "revit_get_element_relationships", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Read host, group, assembly, owner view, design option, family nesting, and dependent-element relationships for elements.")]
         public static async Task<string> GetElementRelationships(long[] elementIds, bool includeDependents = true)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("get_element_relationships", new { elementIds, includeDependents });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("get_element_relationships", new { elementIds, includeDependents });
 
         [McpServerTool(Name = "revit_survey_change_impact", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false)]
         [System.ComponentModel.Description("Survey ten relationship groups for explicit active-document targets before proposing a change. Returns found/none/not_checked, coverage, exact/lower-bound counts and stopFlags; never an authorization to write. Linked contents and engineering correctness are not covered. Views/schedules are not scanned unless maxViews > 0; native view calls can exceed the soft time budget. Observational parameters are not trusted history baselines.")]
@@ -191,57 +114,22 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_list_groups", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List model/detail/attached groups with type, owner view, parent, and optional member ids.")]
         public static async Task<string> ListGroups(string groupKind = "all", bool includeMembers = false)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("list_groups", new { groupKind, includeMembers });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("list_groups", new { groupKind, includeMembers });
 
         [McpServerTool(Name = "revit_get_group_members", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Read a group instance and a page of member elements. Use startIndex + maxResults (hard max 1000).")]
         public static async Task<string> GetGroupMembers(long groupId, int startIndex = 0, int maxResults = 200)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("get_group_members", new { groupId, start_index = startIndex, max_results = maxResults });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("get_group_members", new { groupId, start_index = startIndex, max_results = maxResults });
 
         [McpServerTool(Name = "revit_list_assemblies", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List a page of assembly instances. maxMembersPerAssembly caps optional member-id previews.")]
         public static async Task<string> ListAssemblies(bool includeMembers = false, int startIndex = 0, int maxResults = 100, int maxMembersPerAssembly = 50)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("list_assemblies", new { includeMembers, start_index = startIndex, max_results = maxResults, max_members_per_assembly = maxMembersPerAssembly });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("list_assemblies", new { includeMembers, start_index = startIndex, max_results = maxResults, max_members_per_assembly = maxMembersPerAssembly });
 
         [McpServerTool(Name = "revit_get_assembly_members", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Read an assembly instance and a page of members. Use startIndex + maxResults (hard max 1000).")]
         public static async Task<string> GetAssemblyMembers(long assemblyId, int startIndex = 0, int maxResults = 200)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("get_assembly_members", new { assemblyId, start_index = startIndex, max_results = maxResults });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("get_assembly_members", new { assemblyId, start_index = startIndex, max_results = maxResults });
 
         [McpServerTool(Name = "revit_list_worksets", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List document worksets and active workset. Optionally includes per-workset element counts.")]
         public static async Task<string> ListWorksets(bool includeElementCounts = false)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("list_worksets", new { includeElementCounts });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("list_worksets", new { includeElementCounts });
     }
 }

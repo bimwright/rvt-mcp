@@ -125,6 +125,21 @@ namespace RvtMcp.Server
             return InterpretResponse(response);
         }
 
+        /// <summary>
+        /// Standard tool-shell call: send the command, return the plug-in data as indented JSON,
+        /// and surface any failure to the agent as "Error: ..." text instead of throwing.
+        /// Shells that parse or validate input must do it inside their own try, not in the arguments here.
+        /// </summary>
+        internal static async Task<string> CallAsync(string command, object parameters = null, int? timeoutSeconds = null)
+        {
+            try
+            {
+                var result = await SendToRevit(command, parameters, timeoutSeconds);
+                return JsonConvert.SerializeObject(result, Formatting.Indented);
+            }
+            catch (Exception ex) { return $"Error: {ex.Message}"; }
+        }
+
         internal static void CaptureHistory(JObject response, ChangeHistoryRequest request)
         {
             if (request == null) return;

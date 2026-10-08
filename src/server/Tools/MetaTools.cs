@@ -36,14 +36,7 @@ namespace RvtMcp.Server
             "Does not open a file. Ask the user which path to open, then call revit_open_model with that absolute path. " +
             "Returns up to 50 entries, most recent first, each with index, path, file name, and whether the file still exists.")]
         public static async Task<string> ListRecentModels()
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("list_recent_models");
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("list_recent_models");
 
         [McpServerTool(Name = "revit_open_model", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
             "Open a Revit model, template or family from disk and make it the active document. " +

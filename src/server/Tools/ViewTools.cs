@@ -33,36 +33,15 @@ namespace RvtMcp.Server
     {
         [McpServerTool(Name = "revit_create_view", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a view (floorplan or 3d). Params: viewType ('floorplan' or '3d'), level (name, required for floorplan), name (optional).")]
         public static async Task<string> CreateView(string viewType, string level = "", string name = "")
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("create_view", new { viewType, level, name });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("create_view", new { viewType, level, name });
 
         [McpServerTool(Name = "revit_place_view_on_sheet", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Place a view on a sheet. Auto-creates sheet if sheetId omitted. Params: viewId (required), sheetId (optional), sheetNumber (optional), sheetName (optional).")]
         public static async Task<string> PlaceViewOnSheet(long viewId, long? sheetId = null, string sheetNumber = "", string sheetName = "MCP Generated Sheet")
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("place_view_on_sheet", new { viewId, sheetId, sheetNumber, sheetName });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("place_view_on_sheet", new { viewId, sheetId, sheetNumber, sheetName });
 
         [McpServerTool(Name = "revit_analyze_sheet_layout", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Analyze title block and a bounded viewport page in mm. Use startViewport + maxViewports (hard max 500).")]
         public static async Task<string> AnalyzeSheetLayout(string sheetNumber = "", long? sheetId = null, int startViewport = 0, int maxViewports = 100)
-        {
-            try
-            {
-                var result = await ToolGateway.SendToRevit("analyze_sheet_layout", new { sheetNumber, sheetId, start_viewport = startViewport, max_viewports = maxViewports });
-                return JsonConvert.SerializeObject(result, Formatting.Indented);
-            }
-            catch (Exception ex) { return $"Error: {ex.Message}"; }
-        }
+            => await ToolGateway.CallAsync("analyze_sheet_layout", new { sheetNumber, sheetId, start_viewport = startViewport, max_viewports = maxViewports });
 
         [McpServerTool(Name = "revit_capture_view_image", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Export a view to a raster image. output_path is optional; if provided it must be absolute and inside %TEMP% or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\. Params: view_id (optional, default active), output_path (optional, defaults under captures), pixel_size (default 1600), image_format ('png'|'jpeg', default 'png')." +
             " May overwrite existing output files. Revit Undo cannot restore them; back up the destination first.")]
