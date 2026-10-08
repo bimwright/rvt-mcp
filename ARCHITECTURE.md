@@ -102,7 +102,7 @@ Wire JSON over 1 MiB is rejected (100 KB logs an S4 warning). Narrow filters / `
 
 ## Progressive disclosure (A3)
 
-Tools are grouped into 10 toolset classes (`QueryTools`, `CreateTools`, `ViewTools`, …). `Program.RegisterToolsets` only calls `.WithTools<T>()` for enabled toolsets, so disabled tools never appear in `tools/list` — the model can't accidentally call what it can't see. `ToolsetFilter.Resolve` handles defaults (`query+create+view+meta`), the `"all"` shortcut, unknown-token tolerance, and `--read-only` post-processing (strips `create`/`modify`/`delete` after expansion).
+Tools are grouped into toolset classes (`QueryTools`, `CreateTools`, `ViewTools`, …), one file each in `src/server/Tools/`. `Program.ResolveRegisteredToolTypes` (`Program.ToolRegistration.cs`) maps the enabled toolsets to their classes, and `Program.RegisterToolsets` registers only those classes' `[McpServerTool]` methods, so disabled tools never appear in `tools/list` — the model can't accidentally call what it can't see. `ToolsetFilter.Resolve` handles defaults (`query+create+view+meta`), the `"all"` shortcut, unknown-token tolerance and the ToolBaker switch. `--read-only` is applied per method during registration: only tools annotated `ReadOnly = true` stay, plus `revit_switch_target` so an agent can always recover its target binding.
 
 ## Batch execution (A6)
 
