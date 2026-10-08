@@ -84,7 +84,7 @@ Community videos of rvt-mcp at work. Install steps shown in a video can be older
 
 ## Tools
 
-Counts below describe the **v1.0.2 development source**; published releases can expose an older catalog.
+Counts below describe the **unreleased development source**; published releases can expose an older catalog.
 
 | Mode | Tools | Notes |
 |------|------:|-------|
@@ -163,7 +163,7 @@ If a prompt's toolsets aren't enabled, it answers with the exact `--toolsets` li
 
 ## Configuration
 
-**v1.0.2 development:** MCP warnings now default to rollback; unresolved issues block writes for that model. Review decisions in **History → Issues**. The new `revit_get_failure_records` and `revit_get_operation_status` tools read local state even while Revit is modal. Do not retry a pending or unknown operation. See [controlled failures and acceptance limits](docs/controlled-failures.md).
+**Unreleased development:** MCP warnings now default to rollback; unresolved issues block writes for that model. Review decisions in **History → Issues**. The new `revit_get_failure_records` and `revit_get_operation_status` tools read local state even while Revit is modal. Do not retry a pending or unknown operation. See [controlled failures and acceptance limits](docs/controlled-failures.md).
 
 Since v1.0.0 the server reports `_changes` and local per-model `_history`. History defaults on independently of call logs; use `--disable-change-history` to disable recording. The `meta` tools `revit_record_change`, `revit_get_change_records` and `revit_resolve_history_identity` attach reasons to explicit call IDs, query stored changes and record the owner's history choice after a copy or Save As. See [change tracking](docs/change-tracking.md) for privacy, limits and recovery.
 

@@ -1,6 +1,6 @@
 # Controlled failures and Revit Issues
 
-This guide describes **v1.0.2 development behavior**. It is not a published release or a completed native acceptance report. Candidate checks on Revit 2022, 2024 and 2027 are pending; Revit 2025/.NET 8 live acceptance has not run. Build coverage alone does not establish native behavior on every supported year.
+This guide describes **unreleased development behavior**. It is not a published release or a completed native acceptance report. Candidate checks on Revit 2022, 2024 and 2027 are pending; Revit 2025/.NET 8 live acceptance has not run. Build coverage alone does not establish native behavior on every supported year.
 
 ## What changes
 

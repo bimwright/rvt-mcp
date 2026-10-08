@@ -23,7 +23,7 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
-## v1.0.2 - Controlled failures and model Issues (unreleased)
+## Unreleased - Controlled failures and model Issues
 
 ### Changed
 

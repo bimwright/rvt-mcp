@@ -85,7 +85,7 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 ## Tools
 
-Counts below describe the **v1.0.2 development source**; published releases can expose an older catalog.
+Counts below describe the **unreleased development source**; published releases can expose an older catalog.
 
 | モード | Tools | 注記 |
 |--------|------:|------|
@@ -164,7 +164,7 @@ v1.0.0 には 6 つの MCP プロンプトがあります。クライアント�
 
 ## 設定
 
-**v1.0.2 development:** Controlled failures, model gates and **History → Issues** decisions are described in the [English guide](docs/controlled-failures.md). `revit_get_failure_records` and `revit_get_operation_status` read local state while Revit is modal. Native acceptance remains pending; do not retry pending or unknown operations.
+**Unreleased development:** Controlled failures, model gates and **History → Issues** decisions are described in the [English guide](docs/controlled-failures.md). `revit_get_failure_records` and `revit_get_operation_status` read local state while Revit is modal. Native acceptance remains pending; do not retry pending or unknown operations.
 
 v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 `_history` を返します。履歴は call log と独立して既定で有効です。記録を止めるには `--disable-change-history` を指定します。`meta` の `revit_record_change` は明示した call ID に理由を関連付け、`revit_get_change_records` は履歴を検索します。プライバシー、制限、復旧は [変更の記録](docs/change-tracking.md) を参照してください。
 
