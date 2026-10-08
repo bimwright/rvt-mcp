@@ -29,10 +29,11 @@ using Newtonsoft.Json.Linq;
 namespace RvtMcp.Server
 {
     // =====================================================================
-    // Toolset classes — one per aspect #3 §A3 group. Registration happens in
-    // Program.RegisterToolsets() driven by config.Toolsets. Each method wraps
-    // ToolGateway.SendToRevit with a catch-all that surfaces the error to the
-    // MCP client as plain text instead of throwing.
+    // Toolset classes — one per aspect #3 §A3 group, in src/server/Tools/.
+    // Registration happens in Program.RegisterToolsets() driven by config.Toolsets.
+    // Each method wraps ToolGateway.SendToRevit with a catch-all that surfaces the
+    // error to the MCP client as plain text instead of throwing (ToolGateway.CallAsync
+    // for shells whose arguments need no parsing).
     // =====================================================================
 
     partial class Program

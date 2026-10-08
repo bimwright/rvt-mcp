@@ -7,7 +7,7 @@ namespace RvtMcp.Plugin
 {
     /// <summary>
     /// Agent-facing recovery guidance for commands whose inline response can be large.
-    /// Parameter names are MCP-facing names from Program.cs, not generic guesses.
+    /// Parameter names are MCP-facing names from src/server/Tools/*.cs, not generic guesses.
     /// </summary>
     public static class ResponseSizePolicyCatalog
     {

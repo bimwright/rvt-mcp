@@ -88,7 +88,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the conceptual model. Quick reference
 
 1. Write the handler in `src/shared/Handlers/<Verb><Noun>Handler.cs` implementing `IRevitCommand`. Return DTOs — never serialize Revit API objects directly.
 2. Register in `src/shared/Infrastructure/CommandDispatcher.cs` constructor: `Register(new Handlers.YourHandler());`.
-3. Add an `[McpServerTool]` method in the appropriate toolset class under `src/server/` (e.g. `QueryTools` or `CreateTools` in `Program.cs`). Use the 4-part description template: what, when-to-use, params, example.
+3. Add an `[McpServerTool]` method in the appropriate toolset class under `src/server/Tools/` (e.g. `QueryTools.cs` or `CreateTools.cs`). Use the 4-part description template: what, when-to-use, params, example. When the arguments are plain values, the body is `=> await ToolGateway.CallAsync("<wire_command>", new { ... });`. When the tool parses or validates input (JSON text, arrays, ranges), keep the work inside the method's own `try` so bad input returns `Error: ...` text instead of throwing. A new toolset class also needs a line in `Program.ResolveRegisteredToolTypes` (`src/server/Program.ToolRegistration.cs`).
 4. Choose the domain toolset and explicitly set all four permission hints for the strongest optional branch. Model/file writes must not be marked read-only; destructive descriptions explain recovery or lack of Undo. Arbitrary send_code intentionally has no annotations. The bare CLI defaults to `query,create,view,meta`; fresh installs seed `all`.
 5. Cover any non-trivial logic with an xUnit test in `tests/RvtMcp.Tests/`. Extract pure functions where possible — `BatchExecutor.Run` is a good template.
 6. Manual smoke test in at least one Revit year before PR.

@@ -16,7 +16,7 @@ using Newtonsoft.Json.Linq;
 namespace RvtMcp.Server
 {
     /// <summary>
-    /// Connection half of <see cref="ToolGateway"/> (see Program.cs for the tool-call
+    /// Connection half of <see cref="ToolGateway"/> (see ToolGateway.cs for the tool-call
     /// half): the socket/pipe lifecycle, response read loop, pending-request
     /// correlation, establishment serialization and the generation-checked write.
     /// Every wire command is gated by <see cref="RevitTargetBinding"/> (spec §6):

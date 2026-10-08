@@ -215,7 +215,7 @@ Pre-v0.5, RvtMcp had this exact failure: 226 tools exposed but Tool Search retur
 
 v0.5 ships both fixes:
 
-1. **Server `instructions` populated** at `src/server/Program.cs` `ConfigureMcpServerOptions()` — ~2 KB of keyword-dense text leading with "rvt-mcp — Model Context Protocol gateway for Autodesk Revit 2022-2027" followed by every relevant domain term (wall, door, MEP, duct, pipe, structural, IFC, DWG, etc.) and a per-toolset tool-name index.
+1. **Server `instructions` populated** at `src/server/Program.ServerOptions.cs` `ConfigureMcpServerOptions()` — ~2 KB of keyword-dense text leading with "rvt-mcp — Model Context Protocol gateway for Autodesk Revit 2022-2027" followed by every relevant domain term (wall, door, MEP, duct, pipe, structural, IFC, DWG, etc.) and a per-toolset tool-name index.
 2. **All 226 tools prefixed with `revit_`** — `create_grid` → `revit_create_grid`, `analyze_structural_connections` → `revit_analyze_structural_connections`. Semantic search of "revit X" now lands directly on the right tool.
 
 The official doc explicitly recommends:

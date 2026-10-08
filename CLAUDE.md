@@ -47,7 +47,9 @@ src/
 │
 ├── server/                   # MCP Server (Console App, .NET 8)
 │   ├── RvtMcp.Server.csproj
-│   └── Program.cs            # MCP tools + transport client to plugin shells
+│   ├── Program*.cs           # Host startup, server options/instructions, toolset registration (partial class)
+│   ├── ToolGateway*.cs       # SendToRevit / CallAsync + transport client to plugin shells
+│   └── Tools/                # One file per toolset class (QueryTools, CreateTools, MetaTools, …)
 │
 ├── shared/                   # Source shared by all plugin shells (glob-included)
 │   ├── Handlers/             # One file per command (send_code, create_grid, batch_execute, …)
@@ -102,7 +104,7 @@ MCP Server runs from `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`.
 
 ### MCP Tools
 - 233 Revit tools with `--toolsets all` (236 with adaptive bake). The bare binary defaults to **46** tools (`query,create,view,meta`); `install.ps1` seeds `rvtmcp.config.json` with `toolsets=all` so installed machines get the full surface. ALL MCP-facing names prefixed `revit_` (e.g. `revit_create_grid`). Server↔plugin wire command names stay unprefixed and unchanged.
-- Tools live in `[McpServerToolType, Toolset("<name>")]` classes grouped by domain (query, create, modify, delete, view, export, annotation, mep, schedule, sheets, materials, geometry, rooms, links, structural, lint, toolbaker, meta). Each tool = `[McpServerTool]` static method with param docs + examples.
+- Tools live in `[McpServerToolType, Toolset("<name>")]` classes grouped by domain (query, create, modify, delete, view, export, annotation, mep, schedule, sheets, materials, geometry, rooms, links, structural, lint, toolbaker, meta), one file each in `src/server/Tools/`. Each tool = `[McpServerTool]` static method with param docs + examples. A shell whose arguments are plain values is `=> await ToolGateway.CallAsync("<wire_command>", new { ... })`; a shell that parses or validates input keeps its own `try` so a bad input still returns `Error: ...` text. New classes must also be added to `Program.ResolveRegisteredToolTypes` (`Program.ToolRegistration.cs`).
 - Progressive disclosure (A3): default toolsets are `query,create,view,meta`. `--toolsets all` (or an explicit CSV) and `--read-only` gate the rest. `structural` is write-capable and **off** unless requested. `--read-only` filters individual tools by their document/file effects, including read tools within otherwise write-capable toolsets, and removes arbitrary code and baked-tool execution.
 - Tool Search (v0.5): server `instructions` field populated at startup (keyword-dense) so MCP clients can discover the surface — it was previously empty, so search returned nothing.
 - `revit_batch_execute` (A6): TransactionGroup-wrapped multi-command call, max 20 sub-commands. `SendToRevit()` helper: transport send + TCS await + 60s timeout (TCS completed on timeout so the UI thread skips the stale request).
