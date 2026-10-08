@@ -21,32 +21,39 @@ Revit API  (UIApplication / Document)
 
 ## Discovery
 
-Every plugin writes a per-version discovery file to `%LOCALAPPDATA%\Bimwright\rvt-mcp\` on startup:
+Every plugin instance writes a per-instance discovery file to `%LOCALAPPDATA%\Bimwright\rvt-mcp\` on startup, named `revit-<year>-<pid>.json`, and additionally publishes the legacy per-year file `revit-<year>.json` for older servers:
 
-| Revit | Discovery file | Transport |
-|-------|----------------|-----------|
-| 2022  | `revit-2022.json` | TCP |
-| 2023  | `revit-2023.json` | TCP |
-| 2024  | `revit-2024.json` | TCP |
-| 2025  | `revit-2025.json` | Named Pipe |
-| 2026  | `revit-2026.json` | Named Pipe |
-| 2027  | `revit-2027.json` | Named Pipe |
+| Revit | Per-instance file | Legacy file | Transport |
+|-------|-------------------|-------------|-----------|
+| 2022  | `revit-2022-<pid>.json` | `revit-2022.json` | TCP |
+| 2023  | `revit-2023-<pid>.json` | `revit-2023.json` | TCP |
+| 2024  | `revit-2024-<pid>.json` | `revit-2024.json` | TCP |
+| 2025  | `revit-2025-<pid>.json` | `revit-2025.json` | Named Pipe |
+| 2026  | `revit-2026-<pid>.json` | `revit-2026.json` | Named Pipe |
+| 2027  | `revit-2027-<pid>.json` | `revit-2027.json` | Named Pipe |
 
-Each file is a self-describing JSON object:
+Each per-instance file is a self-describing JSON object (schema 3; the legacy file keeps the same payload so old servers can read it):
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
+  "host_app": "revit",
+  "host_year": 2024,
   "revit_year": 2024,
+  "target_id": "revit-2024-12345",
+  "pid": 12345,
+  "process_start_utc": "2026-10-06T08:00:00.000Z",
   "transport": "tcp",
   "port": 49152,
   "pipe_name": null,
   "auth_token": "base64...",
-  "pid": 12345
+  "capabilities": ["tool_catalog"]
 }
 ```
 
-Server scans these on connect, verifies the PID is alive, and auto-deletes orphan files. MCP clients register one auto-detect `rvt-mcp` entry (the installer does not edit client configs; see [AGENTS.md](AGENTS.md) Step 3); the agent can call `revit_list_available_targets` to discover which years are running, then `revit_switch_target` (or explicit `--target 2024` at server start) to pin a specific version when multiple Revits run concurrently. **Versions are 4-digit calendar years (`2024`), not R-codes (`R24`) — v0.5+ rejects R-codes with an educational error pointing back to `revit_list_available_targets`.**
+`window_title` is not in the descriptor — the server reads it live from the process. On shutdown the publisher deletes its own per-instance file and, if it owns the legacy file, either deletes it or hands it over to the newest remaining live instance of that year.
+
+The server scans `revit-*.json` on connect, normalizes per-instance and legacy files into candidates (deduplicated by pid), verifies each PID is alive, and auto-deletes only files whose owner is proven dead. It binds to exactly one instance — implicitly on the first call, or explicitly through `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target` with selectors `auto`, a 4-digit year, `pid:<n>` or `id:revit-<year>-<pid>`. Each tool call pins the binding generation; a mid-call switch can never slide a command onto a different instance. MCP clients register one auto-detect `rvt-mcp` entry (the installer wires clients selected by `-Client`; agents must select the requested clients explicitly, or use `-Client none` for MCPB; see [AGENTS.md](AGENTS.md) Steps 2–3); with several instances — including several of the same year — the agent calls `revit_list_available_targets`, picks by `pid`/`window_title`, and pins with `revit_switch_target("pid:<n>")` rather than guessing. **Versions are 4-digit calendar years (`2024`), not R-codes (`R24`) — v0.5+ rejects R-codes with an educational error pointing back to `revit_list_available_targets`.**
 
 ## Multi-version strategy
 
@@ -89,13 +96,13 @@ The **server** is version-agnostic — it just forwards JSON envelopes. All Revi
 6. Response envelope travels back up the same pipe.
 7. `ToolGateway` resolves the `TaskCompletionSource`; MCP tool method returns the DTO.
 
-Timeout: 60s by default. Long-run tools accept `timeout_seconds` from 1–900; IFC export defaults to 600s. The same per-call budget reaches the plugin and gateway, with a short transport grace on the gateway. On expiry the plugin completes the request TCS so a late UI-thread result is skipped; the error tells agents not to retry clash/export until Revit finishes. Listener cancels pending requests on plugin shutdown.
+Timeout: 60s by default. Long-run tools accept `timeout_seconds` from 1–900; IFC export defaults to 600s. The same per-call budget reaches the plugin and gateway, with a short transport grace on the gateway. On expiry the caller receives a `timed_out_running` pending receipt carrying the operation ID — caller delivery and native execution are separate lifetimes, so the operation still reaches a durable final status and ingests history exactly once. `revit_get_operation_status` reconciles by operation ID; the receipt tells agents not to retry the mutation. Listener cancels pending requests on plugin shutdown.
 
 Wire JSON over 1 MiB is rejected (100 KB logs an S4 warning). Narrow filters / `max_results` instead of retrying the same dump.
 
 ## Progressive disclosure (A3)
 
-Tools are grouped into 10 toolset classes (`QueryTools`, `CreateTools`, `ViewTools`, …). `Program.RegisterToolsets` only calls `.WithTools<T>()` for enabled toolsets, so disabled tools never appear in `tools/list` — the model can't accidentally call what it can't see. `ToolsetFilter.Resolve` handles defaults (`query+create+view+meta`), the `"all"` shortcut, unknown-token tolerance, and `--read-only` post-processing (strips `create`/`modify`/`delete` after expansion).
+Tools are grouped into toolset classes (`QueryTools`, `CreateTools`, `ViewTools`, …), one file each in `src/server/Tools/`. `Program.ResolveRegisteredToolTypes` (`Program.ToolRegistration.cs`) maps the enabled toolsets to their classes, and `Program.RegisterToolsets` registers only those classes' `[McpServerTool]` methods, so disabled tools never appear in `tools/list` — the model can't accidentally call what it can't see. `ToolsetFilter.Resolve` handles defaults (`query+create+view+meta`), the `"all"` shortcut, unknown-token tolerance and the ToolBaker switch. `--read-only` is applied per method during registration: only tools annotated `ReadOnly = true` stay, plus `revit_switch_target` so an agent can always recover its target binding.
 
 ## Batch execution (A6)
 
@@ -138,7 +145,7 @@ Hand-rolled parser, no `System.CommandLine` dep. Each field is nullable so "not 
 - Request queue: `ConcurrentQueue<PendingRequest>` + per-request `TaskCompletionSource`.
 - ExternalEvent: Revit calls back on the UI thread; handler drains the queue there.
 - Try/catch per command in the queue drain (no starvation).
-- Stale-command guard: skip if the TCS is already completed (timeout/cancel).
+- Start guard: `PendingRequestLifecycle.TryStart` runs a queued request at most once — a caller-cancelled request never starts native execution, and a timed-out caller stays reconcilable via its operation ID.
 - Shutdown: cancel all pending TCS, stop socket/pipe, dispose ExternalEvent, delete own discovery file.
 
 ## Why this shape

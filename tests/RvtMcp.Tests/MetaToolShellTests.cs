@@ -94,6 +94,7 @@ namespace RvtMcp.Tests
 
             Assert.NotNull(json["pinned_target"]);
             Assert.True(json.ContainsKey("currently_connected_year"));
+            Assert.True(json.ContainsKey("currently_connected_pid"));
         }
 
         [Fact]

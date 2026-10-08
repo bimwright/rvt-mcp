@@ -217,6 +217,130 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public async Task AcceptBakeSuggestion_pending_apply_keeps_receipt_and_operation_link_without_failure()
+        {
+            using var sandbox = new TempDir();
+            using var db = NewDb(sandbox);
+            db.UpsertSuggestion(Suggestion("s1", "preset:create_level:elevation,name", "preset"));
+
+            var json = await AcceptBakeSuggestionHandler.HandleAsync(
+                db,
+                "s1",
+                "make_level",
+                "mcp_only",
+                pluginApply: request => Task.FromResult(new JObject
+                {
+                    ["success"] = false,
+                    ["error"] = "REVIT_OPERATION_REQUIRES_USER",
+                    ["_operation"] = new JObject
+                    {
+                        ["operationId"] = "op-pending-1",
+                        ["execution"] = "timed_out_running",
+                        ["outcome"] = "unknown",
+                        ["complete"] = false,
+                        ["mutationApplied"] = JValue.CreateNull()
+                    }
+                }));
+
+            var root = JObject.Parse(json);
+            Assert.False((bool)root["ok"]!);
+            Assert.Equal("plugin_apply_pending", (string)root["error_code"]);
+            Assert.Equal("op-pending-1", (string)root["operation_id"]);
+            Assert.Equal("op-pending-1", (string)root["_operation"]!["operationId"]);
+            Assert.False((bool)root["_operation"]!["complete"]!);
+
+            var stored = db.GetSuggestion("s1")!;
+            Assert.Equal("open", stored.State);
+            var attempts = (JArray)JObject.Parse(stored.PayloadJson)["accept_attempts"]!;
+            var attempt = Assert.Single(attempts);
+            Assert.True((bool)attempt["pending"]!);
+            Assert.Equal("op-pending-1", (string)attempt["operation_id"]);
+            Assert.Null(attempt["error_code"]);
+            Assert.False(db.ReadRegistryRecords().Any());
+        }
+
+        [Fact]
+        public async Task AcceptBakeSuggestion_blocked_apply_is_not_a_plugin_failure_and_keeps_receipt()
+        {
+            using var sandbox = new TempDir();
+            using var db = NewDb(sandbox);
+            db.UpsertSuggestion(Suggestion("s1", "preset:create_level:elevation,name", "preset"));
+
+            var json = await AcceptBakeSuggestionHandler.HandleAsync(
+                db,
+                "s1",
+                "make_level",
+                "mcp_only",
+                pluginApply: request => Task.FromResult(new JObject
+                {
+                    ["success"] = false,
+                    ["error"] = "REVIT_BUSY: Revit is waiting for native user input. Use the local failure or operation queries.",
+                    ["_operation"] = new JObject
+                    {
+                        ["operationId"] = "op-blocked-1",
+                        ["execution"] = "completed",
+                        ["outcome"] = "not_started",
+                        ["complete"] = true,
+                        ["mutationApplied"] = false
+                    }
+                }));
+
+            var root = JObject.Parse(json);
+            Assert.False((bool)root["ok"]!);
+            Assert.Equal("plugin_apply_blocked", (string)root["error_code"]);
+            Assert.Contains("REVIT_BUSY", (string)root["message"]);
+            Assert.Equal("op-blocked-1", (string)root["_operation"]!["operationId"]);
+
+            var stored = db.GetSuggestion("s1")!;
+            Assert.Equal("open", stored.State);
+            var attempts = (JArray)JObject.Parse(stored.PayloadJson)["accept_attempts"]!;
+            Assert.Equal("plugin_apply_blocked", (string)attempts[0]!["error_code"]);
+            Assert.False(db.ReadRegistryRecords().Any());
+        }
+
+        [Fact]
+        public async Task AcceptBakeSuggestion_failed_apply_lifts_failure_receipt_to_top_level()
+        {
+            using var sandbox = new TempDir();
+            using var db = NewDb(sandbox);
+            db.UpsertSuggestion(Suggestion("s1", "preset:create_level:elevation,name", "preset"));
+
+            var json = await AcceptBakeSuggestionHandler.HandleAsync(
+                db,
+                "s1",
+                "make_level",
+                "mcp_only",
+                pluginApply: request => Task.FromResult(new JObject
+                {
+                    ["success"] = false,
+                    ["error"] = "REVIT_FAILURE_ROLLED_BACK",
+                    ["_failure"] = new JObject
+                    {
+                        ["operationId"] = "op-failed-1",
+                        ["outcome"] = "rolled_back",
+                        ["incidentIds"] = new JArray("inc-1")
+                    },
+                    ["_operation"] = new JObject
+                    {
+                        ["operationId"] = "op-failed-1",
+                        ["execution"] = "completed",
+                        ["outcome"] = "rolled_back",
+                        ["complete"] = true
+                    }
+                }));
+
+            var root = JObject.Parse(json);
+            Assert.False((bool)root["ok"]!);
+            Assert.Equal("op-failed-1", (string)root["_operation"]!["operationId"]);
+            Assert.Equal("op-failed-1", (string)root["_failure"]!["operationId"]);
+            Assert.Equal("rolled_back", (string)root["_operation"]!["outcome"]);
+
+            var stored = db.GetSuggestion("s1")!;
+            Assert.Equal("open", stored.State);
+            Assert.False(db.ReadRegistryRecords().Any());
+        }
+
+        [Fact]
         public async Task AcceptBakeSuggestion_rejects_duplicate_registry_name_before_plugin_apply()
         {
             using var sandbox = new TempDir();

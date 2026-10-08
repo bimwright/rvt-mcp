@@ -59,6 +59,7 @@ namespace RvtMcp.Server
                 }
                 if (afterModelKey != null) return "Error: afterModelKey requires listModels=true.";
                 var model = modelKey == null ? await ActiveModel() : null;
+                if (model != null && ToolGateway.IsFailureOrPending(model)) return model.ToString(Formatting.None);
                 modelKey ??= model.Value<string>("key");
                 return Store.Query(modelKey, elementId, uniqueId, from, until, limit, model).ToString(Formatting.None);
             }
@@ -75,7 +76,12 @@ namespace RvtMcp.Server
         {
             var config = ServerState.Config ?? new RvtMcpConfig();
             if (config.ReadOnlyOrDefault || !config.EnableChangeHistoryOrDefault) return "Error: History identity decisions are disabled in read-only mode or when history recording is off.";
-            try { return Store.ResolveIdentity(await ActiveModel(), sourceModelKey, decision, reason).ToString(Formatting.None); }
+            try
+            {
+                var model = await ActiveModel();
+                if (ToolGateway.IsFailureOrPending(model)) return model.ToString(Formatting.None);
+                return Store.ResolveIdentity(model, sourceModelKey, decision, reason).ToString(Formatting.None);
+            }
             catch (ArgumentException ex) { return "Error: " + ex.Message; }
             catch (Exception ex) { HistoryDiagnostics.Report("history_identity_decision", ex); return "Error: History identity decision could not be stored. Query current history before retrying; no model operation was run."; }
         }
@@ -83,6 +89,7 @@ namespace RvtMcp.Server
         private static async Task<JObject> ActiveModel()
         {
             var context = await ToolGateway.SendToRevit("get_change_records", new { });
+            if (ToolGateway.IsFailureOrPending(context)) return context;
             if (!ChangeHistoryStore.IsModelKey(context.Value<string>("modelKey")))
                 throw new ArgumentException("The active model has no stable history identity. Open a saved model or supply a previously returned modelKey.");
             var model = new JObject { ["key"] = context["modelKey"] };

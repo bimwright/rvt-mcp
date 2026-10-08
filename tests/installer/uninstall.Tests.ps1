@@ -43,7 +43,8 @@ function Test([string]$Name, [scriptblock]$Body) {
     try { & $Body; $results.Add([pscustomobject]@{name=$Name;passed=$true}); Write-Host "PASS $Name" }
     catch { $results.Add([pscustomobject]@{name=$Name;passed=$false;error=$_.Exception.Message}); Write-Host "FAIL $Name : $_" }
 }
-$removableNames = @('rvt','server','spill','revit-2027.json')
+$discoveryNames = @('revit-2024.json','revit-2027.json','revit-2024-12345.json','revit-2027-23456.json','revit-2027-34567.json')
+$removableNames = @('rvt','server','spill') + $discoveryNames
 $keptNames = @('rvtmcp.config.json','locales','bake.db','bake.db-wal','baked','usage.jsonl','bake-audit.jsonl','firm-profiles','shared-parameters.txt','.migrated-from-bimwright','logs','revit-mcp.log','mcp-calls.jsonl','send-code-journal.jsonl','journal','captures','mcp-calls.version','notes.txt','custom')
 function New-RootFixture {
     $root = Join-Path $testRoot ([guid]::NewGuid().ToString('N'))
@@ -66,7 +67,7 @@ function New-RootFixture {
     Set-Content "$root/logs/a.log" 'l'
     Set-Content "$root/rvt/server/0.6.2/rvt-mcp.exe" 'exe'
     Set-Content "$root/server/current/rvt-mcp.exe" 'exe'
-    Set-Content "$root/revit-2027.json" '{}'
+    foreach ($name in $discoveryNames) { Set-Content -LiteralPath (Join-Path $root $name) '{}' }
     Set-Content "$root/spill/x.json" '{}'
     Set-Content "$root/journal/j.json" '{}'
     Set-Content "$root/captures/c.png" 'png'
@@ -120,6 +121,43 @@ try {
         Invoke-Step4 -Root $root -WhatIf
         Assert-RootContents $root ($keptNames + $removableNames)
     }
+    Test 'Uninstall removes both descriptor formats from current and legacy roots without touching siblings' {
+        $fam = Join-Path $testRoot "fam-$([guid]::NewGuid().ToString('N'))"
+        $roots = @("$fam/Bimwright/rvt-mcp", "$fam/RvtMcp")
+        New-Item -ItemType Directory -Path ($roots + @("$fam/Bimwright/ipt-mcp")) -Force | Out-Null
+        Set-Content -LiteralPath "$fam/Bimwright/ipt-mcp/revit-2027-23456.json" '{}'
+        foreach ($root in $roots) {
+            foreach ($name in $discoveryNames) { Set-Content -LiteralPath (Join-Path $root $name) '{}' }
+            Set-Content -LiteralPath "$root/rvtmcp.config.json" '{}'
+            $script:handled=@(); $script:skipped=@(); $script:failed=@()
+            Invoke-Step4 -Root $root
+            Assert-RootContents $root @('rvtmcp.config.json')
+            Assert ($script:handled -contains 'step4-discovery' -and $script:failed.Count -eq 0) 'Cleanup not reported as successful'
+        }
+        Assert (Test-Path -LiteralPath "$fam/Bimwright/ipt-mcp/revit-2027-23456.json") 'Sibling discovery file removed'
+    }
+    Test 'Uninstall keeps lookalike filenames and directories instead of using a broad discovery glob' {
+        $root = New-RootFixture
+        $lookalikes = @('revit-2027-notes.json','revit-2027-12345.json.bak','revit-202-12345.json','revit-2027-.json','revit-2027-12345-67890.json','revit-2027-12345.jsonl','revit-2027-45678.json')
+        foreach ($name in $lookalikes) {
+            if ($name -eq 'revit-2027-45678.json') {
+                New-Item -ItemType Directory -Path (Join-Path $root $name) | Out-Null
+                Set-Content -LiteralPath (Join-Path $root "$name/keep.txt") 'keep'
+            } else { Set-Content -LiteralPath (Join-Path $root $name) 'keep' }
+        }
+        $script:handled=@(); $script:skipped=@(); $script:failed=@()
+        Invoke-Step4 -Root $root
+        Assert-RootContents $root ($keptNames + $lookalikes)
+        Assert ((Get-Content -LiteralPath "$root/revit-2027-45678.json/keep.txt" -Raw).Trim() -eq 'keep') 'Lookalike directory contents removed'
+    }
+    Test 'Uninstall removes a root containing only legacy and per-instance descriptors' {
+        $root = Join-Path $testRoot ([guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $root | Out-Null
+        foreach ($name in $discoveryNames) { Set-Content -LiteralPath (Join-Path $root $name) '{}' }
+        $script:handled=@(); $script:skipped=@(); $script:failed=@()
+        Invoke-Step4 -Root $root
+        Assert (-not (Test-Path -LiteralPath $root)) 'Descriptor-only root survived cleanup'
+    }
     Test 'Uninstall missing root skips step4' {
         $root = Join-Path $testRoot 'missing-root'
         $script:handled=@(); $script:skipped=@(); $script:failed=@()
@@ -169,7 +207,8 @@ try {
             Invoke-Step4 -Root $root 3>$null 6>$null
             Assert (Test-Path -LiteralPath "$root/rvt/server/0.6.2/rvt-mcp.exe") 'Running server copy was deleted'
             Assert ($script:failed -contains 'step4-discovery') 'In-use copy not reported as failure'
-            Assert (-not (Test-Path -LiteralPath "$root/spill") -and -not (Test-Path -LiteralPath "$root/revit-2027.json")) 'Other removables were not removed'
+            Assert (-not (Test-Path -LiteralPath "$root/spill")) 'Spill cache was not removed'
+            foreach ($name in $discoveryNames) { Assert (-not (Test-Path -LiteralPath (Join-Path $root $name))) "Discovery file $name survived alongside an in-use server" }
             Assert (Test-Path -LiteralPath "$root/rvtmcp.config.json") 'Personal data removed'
         } finally { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue; $null = $proc.WaitForExit(5000) }
         Start-Sleep -Milliseconds 300

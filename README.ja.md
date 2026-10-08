@@ -27,6 +27,8 @@
 
 ## これは何か
 
+**Revit 向けの初期のオール C# MCP 実装 — 2026 年 3 月から研究・実装。**
+
 `rvt-mcp` は MCP クライアントと起動中の Revit セッションをつなぐ**ローカル**ブリッジです。.NET 8 のサーバが stdio で MCP を話し、Revit の年ごと（2022–2027）の薄いアドインが Revit 内で動作します。両者は localhost TCP（≤2024）または named pipe（≥2025）で接続します。すべてマシン内で完結し、全体が C# で、ツール境界の長さは mm です。詳細は [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 エージェントには、よくある Revit 作業のための **typed ツール面**、それ以外のための C# の逃げ道、繰り返すパターンを個人ツールにする**任意**の仕組み（ToolBaker）があります。共有ランタイムから始めて、*自分の*ツールを育ててください。Family Editor でのオーサリングは当面対象外です。
@@ -65,11 +67,11 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 **動作確認：** AI クライアントを再起動し、Revit でモデルを開き、リボン（**アドイン**（Add-Ins）→ **RvtMcp**）で MCP を開始して、エージェントに `revit_get_current_view_info` を呼ばせます。アクティブビューの名前と種類が返れば成功です。
 
-**更新：** 新しいリリースのインストーラを同じ手順で実行します。先にアンインストールは不要で、クライアントは再起動だけで済みます。**アンインストール：** 同じフォルダで `uninstall.ps1 -Yes` を実行するとアドインとサーバが削除されます（`-Purge` を付けない限り設定は残ります）。クライアントのエントリも消すには、先に `install.ps1 -Uninstall -Client auto` を実行してください。開発者向け・NuGet を含む詳細：[docs/install.md](docs/install.md)。
+**更新：** Revit と gateway を使用するクライアントを終了し、データフォルダーをバックアップしてから、新しいインストーラで上書き更新します。先にアンインストールは不要で、設定と ToolBaker データは保持されます。MCPB を使用する場合は `-Client none` を指定し、同じリリースの Setup と拡張機能を更新して、再接続前に Desktop の設定と権限を確認してください。[更新手順](docs/install.md#upgrade)を参照してください。**アンインストール：** `uninstall.ps1 -Yes` はアドインとサーバーを削除します。`-Purge` を付けない限り個人データは残ります。クライアントのエントリも削除するには、先に `install.ps1 -Uninstall -Client auto` を実行してください。
 
 **v0.8.1 または v0.6.x からの更新：** これらのバージョンは設定と ToolBaker データを `%LOCALAPPDATA%\RvtMcp\` に保存します。v1.0.0 は `%LOCALAPPDATA%\Bimwright\rvt-mcp\` を使い、インストーラが旧フォルダーをそこへ移動します。先に Revit とすべての MCP クライアントを閉じてください。実行中の旧サーバーがフォルダーをロックするためです。PowerShell で `Test-Path "$env:LOCALAPPDATA\RvtMcp"` を実行すると存在を確認できます。インストーラが `Both … exist` または `Could not move …` で停止した場合、移動した分は元に戻されています。設定と ToolBaker データがあるフォルダーを残し、もう一方は削除せず **名前を変更**（例：`RvtMcp.bak`）し、そのフォルダーを使っていたクライアントを閉じてから、インストーラを再実行してください。
 
-**Claude Desktop 拡張（MCPB、任意）：** エージェントによるインストールでは上の直接設定を既定とします。拡張/設定 UI を使いたい場合は `-Client none` で Setup を実行し、Desktop の拡張 UI から `.mcpb` をインストールします。**どちらか一方だけを使ってください。** `-Client none` は既存の手動登録を削除しません。v1.0.0 の拡張は未署名で、gateway/アドインをインストールせず、同じ release の正確な server build を必要とします。[MCPB のインストールと設定](docs/install.md#claude-desktop-mcpb)を参照してください。
+**Claude Desktop 拡張（MCPB、任意）：** エージェントによるインストールでは上の直接設定を既定とします。拡張/設定 UI を使いたい場合は `-Client none` で Setup を実行し、Desktop の拡張 UI から `.mcpb` をインストールします。**どちらか一方だけを使ってください。** `-Client none` は既存の手動登録を削除しません。Setup と同じ選択済み release の bundle を使用してください。拡張は gateway/アドインをインストールせず、その release の正確な server build を必要とします。署名の状態は release notes で確認してください。[MCPB のインストールと設定](docs/install.md#claude-desktop-mcpb)を参照してください。
 
 ---
 
@@ -174,7 +176,7 @@ v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 
 
 | 設定 | CLI | Env | JSON |
 |------|-----|-----|------|
-| ターゲット年 | `--target 2024` | `BIMWRIGHT_TARGET` | `target` |
+| ターゲットセレクター | `--target 2024` / `--target pid:12345` | `BIMWRIGHT_TARGET` | `target` |
 | Toolsets | `--toolsets query,create` | `BIMWRIGHT_TOOLSETS` | `toolsets` |
 | 読み取り専用 | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
 | send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |
@@ -311,7 +313,6 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
       "mcp__rvt-mcp__revit_show_message",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
       "mcp__rvt-mcp__revit_survey_change_impact",
-      "mcp__rvt-mcp__revit_switch_target",
       "mcp__rvt-mcp__revit_workflow_model_audit"
     ]
   }
@@ -334,6 +335,36 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 | 2027 | .NET 10 (`net10.0-windows7.0`) | Named Pipe |
 
 フル Revit デスクトップのみで、Revit Viewer は非対応です。CI は 6 つのアドインすべてをビルドしますが、実行時の深さは年で差があります — baked ツールとカスタム C# は使う年で再確認してください。
+
+---
+
+## 複数の Revit インスタンス
+
+サーバーは常に正確に 1 つの Revit インスタンスにバインドします — 同年の複数インスタンスが同時に動いていても同じです。初回呼び出しで暗黙に、または `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target` で明示的にバインドします。セレクター: `auto`、4 桁の年（`2024`）、`pid:<n>`、`id:revit-<year>-<pid>`。`R24` などの旧 R コードは拒否されます。
+
+複数インスタンスが動いているとき — 特に同年が複数あるとき — ターゲットを推測しないでください:
+
+1. `revit_list_available_targets` を呼ぶ: 稼働中の全インスタンスが `target_id`, `pid`, `host_year`, `window_title`, `source` 付きで列挙されます。
+2. `pid` や `window_title` でインスタンスを選ぶ。
+3. `revit_switch_target("pid:<n>")` でピン留め — どのセレクター形式でも可、`pid:` が最も明確です。
+4. `revit_get_current_target` が現在のバインド、generation、提案された `next_target_id` を表示します。
+
+ターゲットエラーコードと対処。`TARGET_INTERRUPTED` 以外のすべてのコードは、コマンドが**未送信**であることを意味します:
+
+| コード | 意味 | エージェントの対処 |
+|---|---|---|
+| `NO_TARGET` | セレクターに合う稼働インスタンスがない（暗黙バインド喪失後に候補 0 の場合も） | `revit_list_available_targets` を呼び、Revit / アドインを起動するかセレクターを修正 |
+| `TARGET_UNAVAILABLE` | バインド中のインスタンスは生存しているが到達不能 — リスナー停止/再起動中、ディスクリプタ欠落、トークン拒否。バインドは維持される | すぐに再試行。その Revit で MCP を（再）起動するようユーザーに依頼。ユーザーが望まない限り別インスタンスへ切り替えない |
+| `TARGET_BUSY` | エンドポイントは存在するが 5 秒以内にハンドシェイクが完了しない — 通常は別エージェント/ゲートウェイが唯一の接続を占有しているか、Revit がブロック中 | 後で再試行。1 つのインスタンスに 2 つのゲートウェイを走らせない |
+| `TARGET_LOST` | 明示的にピン留め（`pid:`/`id:`）したインスタンスが終了 | `candidates` を確認し、ユーザーに確認のうえ `revit_switch_target` |
+| `TARGET_CHANGED` | 暗黙バインドしたインスタンスが終了し、代替がちょうど 1 つ存在（または呼び出し受付から送信の間にバインドが変化）。コマンドは**未送信**。確認されるまですべての呼び出しがこのコードを返す | 提案されたインスタンス（`window_title`）を確認し、`revit_switch_target` で確定してから呼び出しを繰り返す |
+| `AMBIGUOUS_TARGET` | 暗黙バインドしたインスタンスが終了し、2 つ以上が一致 | 一覧し、`pid`/`window_title` で選び `revit_switch_target("pid:<n>")` |
+| `TARGET_INTERRUPTED` | コマンドは送信されたが応答前に接続が切断（`sent:true`、`outcome:unknown`） | 書き込みを繰り返す前にモデル状態を確認 |
+| `INVALID_TARGET_SELECTOR` | セレクター形式エラーまたは R コード | `auto`、年、`pid:<n>`、`id:<target_id>` を使用 |
+
+**Revit を再起動した後は（Revit を 1 つしか開いていない場合でも）**、次の呼び出しは `TARGET_CHANGED` を返し、サーバーは `revit_switch_target` が 1 回呼ばれるまでコマンドを送信しません。これは意図的な動作です。再起動した Revit では別のモデルが開いている可能性があるため、サーバーが黙って再バインドすることはありません。ペイロードに提案先のインスタンスが示されるので、確認してから呼び出しを繰り返してください。
+
+`revit_switch_target` はセッションのルーティングを変えるため非 read-only と注釈されていますが、`--read-only` 下でも利用可能で、いつでもバインドを回復できます。
 
 ---
 

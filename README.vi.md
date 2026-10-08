@@ -27,6 +27,8 @@
 
 ## Đây là gì
 
+**Một triển khai MCP thuần C# sớm cho Revit — được nghiên cứu và triển khai từ tháng 3/2026.**
+
 `rvt-mcp` là cầu nối **local** giữa MCP client và một session Revit đang chạy. Server .NET 8 nói MCP qua stdio; mỗi năm Revit (2022–2027) có một add-in mỏng chạy trong Revit, kết nối qua localhost TCP (≤2024) hoặc named pipe (≥2025). Mọi thứ nằm trên máy, toàn bộ bằng C#, độ dài ở biên tool tính bằng mm. Chi tiết: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Agent có **bộ tool typed** cho việc Revit thường gặp, escape hatch C# cho phần còn lại, và đường **tùy chọn** biến pattern lặp lại thành tool cá nhân (ToolBaker): bắt đầu từ một runtime chung rồi phát triển tool *của bạn* phía trên. Family Editor authoring hiện nằm ngoài phạm vi.
@@ -65,11 +67,11 @@ Lệnh này cài add-in cho mọi bản Revit 2022–2027 phát hiện được 
 
 **Kiểm tra:** khởi động lại AI client, mở một model trong Revit, bật MCP trên ribbon (**Add-Ins** → **RvtMcp**) rồi nhờ agent gọi `revit_get_current_view_info`. Kết quả phải là tên và loại của view đang mở.
 
-**Cập nhật:** chạy installer của bản mới theo cùng cách — không cần gỡ trước; client chỉ cần khởi động lại. **Gỡ cài:** `uninstall.ps1 -Yes` trong cùng thư mục gỡ add-in và server (cài đặt được giữ, trừ khi thêm `-Purge`); chạy `install.ps1 -Uninstall -Client auto` trước nếu muốn xóa luôn entry trong client. Thêm, gồm cài developer và NuGet: [docs/install.md](docs/install.md).
+**Cập nhật:** đóng Revit và các client dùng gateway, backup thư mục dữ liệu rồi chạy installer mới để nâng cấp tại chỗ, không gỡ trước. Cài đặt và dữ liệu ToolBaker được giữ. User dùng MCPB chọn `-Client none`, cập nhật Setup và extension cùng release, rồi kiểm tra settings và quyền trong Desktop trước khi kết nối lại. Xem [trình tự nâng cấp](docs/install.md#upgrade). **Gỡ cài:** `uninstall.ps1 -Yes` gỡ add-in và server; dữ liệu cá nhân được giữ trừ khi thêm `-Purge`. Muốn xóa cả entry trong client, chạy `install.ps1 -Uninstall -Client auto` trước.
 
 **Nâng cấp từ v0.8.1 hoặc v0.6.x:** các bản này lưu cài đặt và dữ liệu ToolBaker trong `%LOCALAPPDATA%\RvtMcp\`; v1.0.0 dùng `%LOCALAPPDATA%\Bimwright\rvt-mcp\` và installer sẽ chuyển folder cũ sang đó. Hãy đóng Revit và mọi MCP client trước, vì server cũ đang chạy sẽ khóa folder. Kiểm tra trong PowerShell bằng `Test-Path "$env:LOCALAPPDATA\RvtMcp"`. Nếu installer dừng với thông báo `Both … exist` hoặc `Could not move …`, nó đã hoàn tác phần đã di chuyển: giữ folder đang chứa cài đặt và dữ liệu ToolBaker của bạn, **đổi tên folder còn lại (ví dụ thành `RvtMcp.bak`) thay vì xóa**, đóng các client đang dùng nó rồi chạy lại installer.
 
-**Extension Claude Desktop (MCPB, tùy chọn):** config trực tiếp ở trên là đường mặc định khi agent cài hộ. Nếu muốn UI extension/settings, chạy Setup với `-Client none`, rồi cài `.mcpb` qua UI extension của Desktop. **Chọn một đường, không làm cả hai.** `-Client none` không xóa registration thủ công đã có. Extension v1.0.0 chưa ký, không cài gateway/add-in và yêu cầu đúng server build từ cùng release. Xem [cài MCPB và các setting](docs/install.md#claude-desktop-mcpb).
+**Extension Claude Desktop (MCPB, tùy chọn):** config trực tiếp ở trên là đường mặc định khi agent cài hộ. Nếu muốn UI extension/settings, chạy Setup với `-Client none`, rồi cài `.mcpb` qua UI extension của Desktop. **Chọn một đường, không làm cả hai.** `-Client none` không xóa registration thủ công đã có. Dùng bundle từ cùng release đã chọn với Setup; extension không cài gateway/add-in và yêu cầu đúng server build của release đó. Kiểm tra release notes về trạng thái ký. Xem [cài MCPB và các setting](docs/install.md#claude-desktop-mcpb).
 
 ---
 
@@ -174,7 +176,7 @@ Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cụ
 
 | Setting | CLI | Env | JSON |
 |---------|-----|-----|------|
-| Năm target | `--target 2024` | `BIMWRIGHT_TARGET` | `target` |
+| Selector target | `--target 2024` / `--target pid:12345` | `BIMWRIGHT_TARGET` | `target` |
 | Toolsets | `--toolsets query,create` | `BIMWRIGHT_TOOLSETS` | `toolsets` |
 | Read-only | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
 | send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |
@@ -311,7 +313,6 @@ Annotations mô tả tác động lên document/file của từng tool. Đổi s
       "mcp__rvt-mcp__revit_show_message",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
       "mcp__rvt-mcp__revit_survey_change_impact",
-      "mcp__rvt-mcp__revit_switch_target",
       "mcp__rvt-mcp__revit_workflow_model_audit"
     ]
   }
@@ -334,6 +335,36 @@ Response guard mặc định **bật**: cảnh báo tại 65536 byte UTF-8, cả
 | 2027 | .NET 10 (`net10.0-windows7.0`) | Named Pipe |
 
 Chỉ Revit desktop đầy đủ; Revit Viewer không được hỗ trợ. CI build cả 6 add-in, nhưng độ sâu runtime khác nhau theo năm — kiểm lại baked tool và C# custom trên các năm bạn dùng.
+
+---
+
+## Nhiều phiên bản Revit chạy đồng thời
+
+Server chỉ bind vào đúng một phiên bản Revit — kể cả khi có nhiều phiên bản cùng năm chạy song song. Nó bind ngầm ở lệnh gọi đầu tiên hoặc tường minh qua `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target`. Selector: `auto`, năm 4 chữ số (`2024`), `pid:<n>` hoặc `id:revit-<year>-<pid>`; các mã R cũ như `R24` bị từ chối.
+
+Khi có nhiều phiên bản chạy — nhất là nhiều phiên bản cùng năm — đừng đoán target:
+
+1. Gọi `revit_list_available_targets`: mọi phiên bản đang sống được liệt kê kèm `target_id`, `pid`, `host_year`, `window_title` và `source`.
+2. Chọn phiên bản theo `pid` và/hoặc `window_title`.
+3. Ghim bằng `revit_switch_target("pid:<n>")` — mọi dạng selector đều dùng được, `pid:` là rõ ràng nhất.
+4. `revit_get_current_target` hiển thị binding hiện tại, generation và `next_target_id` được đề xuất.
+
+Mã lỗi target và cách xử lý. Mọi mã trừ `TARGET_INTERRUPTED` nghĩa là lệnh **chưa** được gửi:
+
+| Mã | Ý nghĩa | Hành động của agent |
+|---|---|---|
+| `NO_TARGET` | Không có phiên bản sống nào khớp selector (cũng xảy ra khi implicit binding mất và còn 0 candidate) | Gọi `revit_list_available_targets`; mở Revit / add-in hoặc sửa selector |
+| `TARGET_UNAVAILABLE` | Phiên bản đang bind vẫn sống nhưng không kết nối được — listener đã dừng/đang khởi động lại, descriptor bị thiếu, token bị từ chối. Binding được giữ nguyên | Thử lại sau ít lâu; nhờ người dùng (khởi động lại) MCP trong Revit đó. Đừng đổi sang phiên bản khác trừ khi người dùng muốn |
+| `TARGET_BUSY` | Endpoint tồn tại nhưng handshake không hoàn tất trong 5 s — thường do agent/gateway khác đang giữ kết nối duy nhất, hoặc Revit đang bị chặn | Thử lại sau; đừng chạy hai gateway trên một phiên bản |
+| `TARGET_LOST` | Phiên bản được ghim tường minh (`pid:`/`id:`) đã thoát | Xem `candidates`, xác nhận với người dùng, rồi `revit_switch_target` |
+| `TARGET_CHANGED` | Phiên bản được bind ngầm đã thoát và có đúng một phiên bản thay thế (hoặc binding đổi giữa lúc nhận và gửi lệnh). Lệnh **chưa** được gửi; mọi call đều trả mã này cho tới khi được xác nhận | Kiểm tra phiên bản được đề xuất (`window_title`), xác nhận bằng `revit_switch_target`, rồi gọi lại |
+| `AMBIGUOUS_TARGET` | Phiên bản được bind ngầm đã thoát và ≥2 phiên bản khớp | Liệt kê, chọn theo `pid`/`window_title`, `revit_switch_target("pid:<n>")` |
+| `TARGET_INTERRUPTED` | Lệnh đã được gửi nhưng kết nối đóng trước khi có phản hồi (`sent:true`, `outcome:unknown`) | Kiểm tra trạng thái model trước khi lặp lại bất kỳ thao tác ghi nào |
+| `INVALID_TARGET_SELECTOR` | Selector sai định dạng hoặc mã R | Dùng `auto`, năm, `pid:<n>` hoặc `id:<target_id>` |
+
+**Sau khi khởi động lại Revit — kể cả khi chỉ mở một Revit** — lời gọi tiếp theo trả về `TARGET_CHANGED` và server chờ một lần gọi `revit_switch_target` rồi mới gửi lệnh. Đây là chủ đích: Revit vừa khởi động lại có thể đang mở một model khác, nên server không bao giờ tự bind lại một cách âm thầm. Payload có ghi instance được đề xuất; hãy xác nhận rồi gọi lại lệnh.
+
+`revit_switch_target` được chú thích non-read-only vì nó đổi định tuyến của phiên, nhưng vẫn khả dụng dưới `--read-only` để luôn khôi phục được binding.
 
 ---
 

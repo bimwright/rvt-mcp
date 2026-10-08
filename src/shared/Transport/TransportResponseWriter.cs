@@ -12,8 +12,12 @@ namespace RvtMcp.Plugin
     internal sealed class TransportResponseWriter : IDisposable
     {
         private readonly BlockingCollection<string> _frames = new BlockingCollection<string>();
+        private readonly object _queueGate = new object();
         private readonly StreamWriter _writer;
         private readonly Thread _thread;
+        private bool _closing;
+        private int _pendingFrames;
+        internal static readonly TimeSpan DrainTimeout = TimeSpan.FromSeconds(1);
         private int _inFlight;
         private long _lastActivityTicks = DateTime.UtcNow.Ticks;
         /// <summary>Requests dispatched on this connection whose execution has not completed yet.</summary>
@@ -21,20 +25,47 @@ namespace RvtMcp.Plugin
         internal void Touch() => Interlocked.Exchange(ref _lastActivityTicks, DateTime.UtcNow.Ticks);
         /// <summary>True when nothing is in flight and the connection has been quiet for <paramref name="limit"/>.</summary>
         internal bool IsIdleFor(TimeSpan limit) =>
-            InFlight == 0 && DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastActivityTicks) >= limit.Ticks;
-        internal TransportResponseWriter(StreamWriter writer)
+            InFlight == 0 && Volatile.Read(ref _pendingFrames) == 0
+                && DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastActivityTicks) >= limit.Ticks;
+        internal TransportResponseWriter(StreamWriter writer, Action onWriteFailure = null, Action onDrained = null)
         {
-            _writer = writer;
+            _writer = writer ?? throw new ArgumentNullException(nameof(writer));
             _thread = new Thread(() =>
             {
-                try { foreach (var frame in _frames.GetConsumingEnumerable()) _writer.WriteLine(frame); }
-                catch { _frames.CompleteAdding(); }
+                try
+                {
+                    foreach (var frame in _frames.GetConsumingEnumerable())
+                    {
+                        _writer.WriteLine(frame);
+                        _writer.Flush();
+                        Touch();
+                        Interlocked.Decrement(ref _pendingFrames);
+                    }
+                    onDrained?.Invoke();
+                }
+                catch
+                {
+                    CompleteAdding();
+                    // Wake a transport reader parked on the failed connection so a new client can connect.
+                    try { onWriteFailure?.Invoke(); } catch { }
+                }
+                finally
+                {
+                    // No caller may flush/dispose StreamWriter while this thread is writing it.
+                    try { _writer.Dispose(); } catch { }
+                    lock (_queueGate) { _frames.Dispose(); }
+                }
             }) { IsBackground = true, Name = "RvtMcp.TransportWriter" };
             _thread.Start();
         }
         internal void WriteLine(string frame)
         {
-            try { if (!_frames.IsAddingCompleted) _frames.Add(frame); } catch (InvalidOperationException) { }
+            lock (_queueGate)
+            {
+                if (_closing) return;
+                Interlocked.Increment(ref _pendingFrames);
+                _frames.Add(frame);
+            }
         }
         internal void Dispatch(JObject request, string line, Action<string, TaskCompletionSource<string>> callback)
         {
@@ -76,9 +107,9 @@ namespace RvtMcp.Plugin
             tcs.Task.ContinueWith(task =>
             {
                 timer.Dispose();
-                Interlocked.Decrement(ref _inFlight);
-                Touch();
                 if (task.Status == TaskStatus.RanToCompletion) WriteLine(task.Result);
+                Touch();
+                Interlocked.Decrement(ref _inFlight);
             }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             timer.Change(timeout, Timeout.InfiniteTimeSpan);
             try { callback(line, tcs); }
@@ -87,6 +118,22 @@ namespace RvtMcp.Plugin
                 tcs.TrySetResult(new JObject { ["id"] = id, ["success"] = false, ["error"] = "Request could not be queued." }.ToString(Formatting.None));
             }
         }
-        public void Dispose() { _frames.CompleteAdding(); }
+        private void CompleteAdding()
+        {
+            lock (_queueGate)
+            {
+                if (_closing) return;
+                _closing = true;
+                _frames.CompleteAdding();
+            }
+        }
+
+        public void Dispose()
+        {
+            CompleteAdding();
+            // Drain queued terminal frames, not unfinished Revit operations. If a peer is not reading,
+            // the transport closes its stream after this deadline to abort the blocked writer.
+            if (Thread.CurrentThread != _thread) _thread.Join(DrainTimeout);
+        }
     }
 }

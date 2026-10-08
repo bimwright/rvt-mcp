@@ -38,7 +38,11 @@ namespace RvtMcp.Plugin
             {
                 if (property.Value.Type == JTokenType.String && property.Value.Value<string>().Length > 256)
                     property.Value = property.Value.Value<string>().Substring(0, 256);
-                if (property.Value is JArray array && array.Count > 20) property.Value = new JArray(array.Take(20));
+                if (property.Value is JArray array && array.Count > 20)
+                {
+                    property.Value = new JArray(array.Take(20));
+                    if (property.Name == "incidentIds") minimal["incidentIdsOmitted"] = true;
+                }
             }
             if (Bytes(minimal) > budget && minimal["incidentIds"] is JArray)
             { minimal["incidentIds"] = new JArray(); minimal["incidentIdsOmitted"] = true; }

@@ -17,7 +17,8 @@ namespace RvtMcp.Server
         [McpServerTool(Name = "revit_get_failure_records", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), Description(
             "Read the local failure ledger without dispatching Revit; works while native UI is modal and with history or send-code disabled. " +
             "Supply an issued modelScopeKey, incidentId or operationId; no model is guessed. Filter by state, elementId, ISO UTC from/until, limit 1-100 and returned cursor. " +
-            "includeDetails adds captured evidence. Missing records do not certify a model safe. Decisions and rules can only be changed by the user in Revit.")]
+            "includeDetails adds captured evidence. Missing records do not certify a model safe. Decisions and rules can only be changed by the user in Revit. " +
+            "Example: {operationId: \"<issued-id>\", includeDetails: true}.")]
         public static string GetFailureRecords(string modelScopeKey = null, string incidentId = null, string operationId = null,
             string state = null, long? elementId = null, string from = null, string until = null, int limit = 50, string cursor = null, bool includeDetails = false)
         {
@@ -38,7 +39,8 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_get_operation_status", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), Description(
             "Read the plugin-owned local status of an issued operationId, including execution, final outcome, incident IDs and bounded receipts. " +
-            "Works while Revit is modal; never dispatches, retries or changes Revit. Missing records are unavailable, not proof of failure or permission to retry.")]
+            "Works while Revit is modal; never dispatches, retries or changes Revit. Missing records are unavailable, not proof of failure or permission to retry. " +
+            "Example: {operationId: \"<issued-id>\"}.")]
         public static string GetOperationStatus(string operationId)
         {
             try

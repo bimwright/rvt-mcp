@@ -11,38 +11,81 @@ namespace RvtMcp.Server
         internal readonly TaskCompletionSource<string> Execution = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         internal string OperationId { get; }
         internal long ConnectionId { get; }
-        internal bool WaitingForUser { get; private set; }
-        internal RvtMcp.Plugin.ChangeHistoryRequest History { get; set; }
-        internal GatewayPendingRequest(string operationId, long connectionId) { OperationId = operationId; ConnectionId = connectionId; }
+        private volatile bool _waitingForUser;
+        internal bool WaitingForUser => _waitingForUser;
+        internal RvtMcp.Plugin.ChangeHistoryRequest History { get; }
+        internal JObject HistoryReceipt { get; private set; }
+        private readonly object _gate = new object();
+        private readonly IDisposable _historyLease;
+        private bool _finished;
+        internal GatewayPendingRequest(string operationId, long connectionId, RvtMcp.Plugin.ChangeHistoryRequest history = null)
+        {
+            OperationId = operationId;
+            ConnectionId = connectionId;
+            History = history;
+            _historyLease = history == null ? null : new Memory.HistoryCallLease(history.Id);
+        }
 
         // Event routing precedes final handling. An event can return to the caller but never finishes execution.
         internal bool Route(JObject frame)
         {
-            if (frame.Value<string>("frame") == "event")
+            lock (_gate)
             {
-                if (frame.Value<string>("event") == "dialog_wait")
+                if (_finished) return true;
+                // Catalog handshakes are control-plane requests, not model operations.
+                if (OperationId != null)
                 {
-                    WaitingForUser = true;
-                    Caller.TrySetResult(new JObject { ["success"] = false, ["error"] = "REVIT_OPERATION_REQUIRES_USER",
-                        ["_operation"] = frame["_operation"]?.DeepClone() ?? new JObject {
-                            ["operationId"] = OperationId, ["execution"] = "waiting_for_user", ["outcome"] = "unknown", ["complete"] = false }
-                    }.ToString(Formatting.None));
+                    if (frame.Value<string>("frame") == "event")
+                    {
+                        if (frame.Value<string>("event") == "dialog_wait")
+                        {
+                            _waitingForUser = true;
+                            var receipt = Pending("waiting_for_user");
+                            if (frame["_operation"] != null) receipt["_operation"] = frame["_operation"].DeepClone();
+                            Caller.TrySetResult(receipt.ToString(Formatting.None));
+                        }
+                        return false;
+                    }
+                    var execution = frame["_operation"]?.Value<string>("execution");
+                    if (execution == "waiting_for_user" || execution == "timed_out_running" || execution == "running" || execution == "queued")
+                    {
+                        _waitingForUser = execution == "waiting_for_user";
+                        Caller.TrySetResult(frame.ToString(Formatting.None));
+                        return false;
+                    }
                 }
-                return false;
+                _waitingForUser = false;
+                _finished = true;
+                try { HistoryReceipt = ToolGateway.CaptureHistory(frame, History, recordContext: false); }
+                finally { _historyLease?.Dispose(); }
+                var json = frame.ToString(Formatting.None);
+                Execution.TrySetResult(json);
+                Caller.TrySetResult(json);
+                return true;
             }
-            var execution = frame["_operation"]?.Value<string>("execution");
-            if (execution == "waiting_for_user" || execution == "timed_out_running" || execution == "running" || execution == "queued")
-            {
-                WaitingForUser = execution == "waiting_for_user";
-                Caller.TrySetResult(frame.ToString(Formatting.None));
-                return false;
-            }
-            WaitingForUser = false;
-            var json = frame.ToString(Formatting.None);
-            Execution.TrySetResult(json);
-            Caller.TrySetResult(json);
-            return true;
         }
+
+        internal void Interrupt(Exception error)
+        {
+            lock (_gate)
+            {
+                if (_finished) return;
+                _finished = true;
+                // A pending receipt already returned to the caller must not be replaced.
+                // The native ledger remains authoritative after losing this connection.
+                Caller.TrySetException(error);
+                Execution.TrySetCanceled();
+                _historyLease?.Dispose();
+            }
+        }
+
+        internal bool Timeout() => Caller.TrySetResult(Pending().ToString(Formatting.None));
+
+        internal static JObject NotStarted(string operationId) => new JObject
+        {
+            ["operationId"] = operationId, ["execution"] = "completed", ["outcome"] = "not_started",
+            ["mutationApplied"] = false, ["complete"] = true
+        };
 
         internal JObject Pending(string execution = "timed_out_running") => new JObject
         {

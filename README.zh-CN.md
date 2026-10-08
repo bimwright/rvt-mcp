@@ -27,6 +27,8 @@
 
 ## 这是什么
 
+**面向 Revit 的早期全 C# MCP 实现 — 自 2026 年 3 月起研究并实现。**
+
 `rvt-mcp` 是 MCP 客户端与正在运行的 Revit 会话之间的**本地**桥。.NET 8 server 通过 stdio 提供 MCP；每个 Revit 年份（2022–2027）一个瘦 add-in 在 Revit 内运行，经 localhost TCP（≤2024）或 named pipe（≥2025）连接。数据不出本机，全部为 C#，工具边界的长度单位为 mm。细节：[ARCHITECTURE.md](ARCHITECTURE.md)。
 
 Agent 可以使用覆盖常见 Revit 工作的 **typed 工具面**、应对其余情况的 C# escape hatch，以及把重复模式变成个人工具的**可选**路径（ToolBaker）：从共享运行时出发，在其上长出*你的*工具。Family Editor 创作暂不在范围内。
@@ -64,11 +66,11 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 **验证：** 重启 AI 客户端，在 Revit 中打开模型，在 ribbon（**附加模块**（Add-Ins）→ **RvtMcp**）上启动 MCP，然后让 agent 调用 `revit_get_current_view_info`。返回当前视图的名称和类型即表示成功。
 
-**升级：** 用同样方式运行新版本的安装程序——无需先卸载，客户端只需重启。**卸载：** 在同一文件夹运行 `uninstall.ps1 -Yes` 会移除插件和 server（除非加 `-Purge`，设置会保留）；如需同时删除客户端条目，请先运行 `install.ps1 -Uninstall -Client auto`。更多内容（包括开发者安装和 NuGet）：[docs/install.md](docs/install.md)。
+**升级：** 关闭 Revit 和使用 gateway 的客户端，备份数据目录，然后运行新安装程序就地升级，无需先卸载。设置和 ToolBaker 数据会保留。MCPB 用户使用 `-Client none`，同时更新同一 release 的 Setup 和扩展，并在重新连接前检查 Desktop 的设置和权限。参见[升级步骤](docs/install.md#upgrade)。**卸载：** `uninstall.ps1 -Yes` 删除插件和 server；除非加上 `-Purge`，否则保留个人数据。若也要移除客户端条目，先运行 `install.ps1 -Uninstall -Client auto`。
 
 **从 v0.8.1 或 v0.6.x 升级：** 这些版本把设置和 ToolBaker 数据保存在 `%LOCALAPPDATA%\RvtMcp\`；v1.0.0 使用 `%LOCALAPPDATA%\Bimwright\rvt-mcp\`，安装程序会把旧文件夹移动过去。请先关闭 Revit 和所有 MCP 客户端，因为仍在运行的旧 server 会锁定该文件夹。可在 PowerShell 中用 `Test-Path "$env:LOCALAPPDATA\RvtMcp"` 检查。如果安装程序因 `Both … exist` 或 `Could not move …` 而停止，它会撤销已移动的内容：保留存有你的设置和 ToolBaker 数据的文件夹，**把另一个重命名（例如 `RvtMcp.bak`）而不是删除**，关闭正在使用它的客户端，然后重新运行安装程序。
 
-**Claude Desktop 扩展（MCPB，可选）：** agent 辅助安装默认采用上面的直接配置。如需扩展/设置界面，用 `-Client none` 运行 Setup，再通过 Desktop 扩展界面安装 `.mcpb`。**只选一种方式，不要同时注册。** `-Client none` 不会删除已有的手动注册。v1.0.0 扩展未签名，不安装 gateway/插件，且要求同一 release 的确切 server build。参见 [MCPB 安装与设置](docs/install.md#claude-desktop-mcpb)。
+**Claude Desktop 扩展（MCPB，可选）：** agent 辅助安装默认采用上面的直接配置。如需扩展/设置界面，用 `-Client none` 运行 Setup，再通过 Desktop 扩展界面安装 `.mcpb`。**只选一种方式，不要同时注册。** `-Client none` 不会删除已有的手动注册。使用与 Setup 同一选定 release 的 bundle；扩展不安装 gateway/插件，且要求该 release 的确切 server build。签名状态请查看 release notes。参见 [MCPB 安装与设置](docs/install.md#claude-desktop-mcpb)。
 
 ---
 
@@ -173,7 +175,7 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 
 | 设置 | CLI | Env | JSON |
 |------|-----|-----|------|
-| 目标年份 | `--target 2024` | `BIMWRIGHT_TARGET` | `target` |
+| 目标选择器 | `--target 2024` / `--target pid:12345` | `BIMWRIGHT_TARGET` | `target` |
 | Toolsets | `--toolsets query,create` | `BIMWRIGHT_TOOLSETS` | `toolsets` |
 | 只读 | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
 | send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |
@@ -310,7 +312,6 @@ Annotations 描述每个工具对文档和文件的影响。临时 selection、a
       "mcp__rvt-mcp__revit_show_message",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
       "mcp__rvt-mcp__revit_survey_change_impact",
-      "mcp__rvt-mcp__revit_switch_target",
       "mcp__rvt-mcp__revit_workflow_model_audit"
     ]
   }
@@ -333,6 +334,36 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 | 2027 | .NET 10 (`net10.0-windows7.0`) | Named Pipe |
 
 仅支持完整 Revit 桌面版，不支持 Revit Viewer。CI 会构建全部六个插件，但运行时深度因年份而异 — baked 工具与自定义 C# 请在你使用的年份上复测。
+
+---
+
+## 多个 Revit 实例
+
+服务器始终只绑定一个 Revit 实例 —— 即使同一年份有多个实例同时运行。首次调用时隐式绑定，或通过 `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target` 显式绑定。选择器：`auto`、4 位年份（`2024`）、`pid:<n>` 或 `id:revit-<year>-<pid>`；旧的 R 代码如 `R24` 会被拒绝。
+
+当运行多个实例时 —— 尤其是同一年份的多个实例 —— 不要猜测目标：
+
+1. 调用 `revit_list_available_targets`：列出所有存活实例及其 `target_id`、`pid`、`host_year`、`window_title` 和 `source`。
+2. 按 `pid` 和/或 `window_title` 选择实例。
+3. 用 `revit_switch_target("pid:<n>")` 固定 —— 任何选择器形式都可以，`pid:` 最明确。
+4. `revit_get_current_target` 显示当前绑定、generation 和建议的 `next_target_id`。
+
+目标错误代码及处理方式。除 `TARGET_INTERRUPTED` 外的所有代码都表示命令**未**发送：
+
+| 代码 | 含义 | 代理应执行的操作 |
+|---|---|---|
+| `NO_TARGET` | 没有匹配选择器的存活实例（也包括隐式绑定丢失后剩余 0 个候选的情况） | 调用 `revit_list_available_targets`；启动 Revit / 加载项或修正选择器 |
+| `TARGET_UNAVAILABLE` | 绑定的实例仍然存活但无法连接 —— 监听器已停止/正在重启、描述符缺失或令牌被拒绝。绑定保持不变 | 稍后重试；请用户在该 Revit 中（重新）启动 MCP。除非用户要求，不要切换到其他实例 |
+| `TARGET_BUSY` | 端点存在但 5 秒内未完成握手 —— 通常是另一个代理/网关占用了其唯一连接，或 Revit 被阻塞 | 稍后重试；不要在同一实例上运行两个网关 |
+| `TARGET_LOST` | 显式固定（`pid:`/`id:`）的实例已退出 | 查看 `candidates`，与用户确认后执行 `revit_switch_target` |
+| `TARGET_CHANGED` | 隐式绑定的实例已退出且恰好存在一个替代实例（或绑定在命令到达与发送之间发生变化）。命令**未**发送；在确认之前每次调用都会返回此代码 | 查看建议的实例（`window_title`），用 `revit_switch_target` 确认，然后重复该调用 |
+| `AMBIGUOUS_TARGET` | 隐式绑定的实例已退出且有两个及以上实例匹配 | 列出实例，按 `pid`/`window_title` 选择，执行 `revit_switch_target("pid:<n>")` |
+| `TARGET_INTERRUPTED` | 命令已发送但在收到响应前连接关闭（`sent:true`，`outcome:unknown`） | 重复任何写操作之前先检查模型状态 |
+| `INVALID_TARGET_SELECTOR` | 选择器格式错误或 R 代码 | 使用 `auto`、年份、`pid:<n>` 或 `id:<target_id>` |
+
+**Revit 重启后（即使只打开了一个 Revit）**，下一次调用会返回 `TARGET_CHANGED`，服务器会等待一次 `revit_switch_target` 调用后才发送命令。这是有意为之：重启后的 Revit 可能打开了另一个模型，因此服务器绝不会静默地重新绑定。返回内容中会给出建议的实例；确认后再重复调用即可。
+
+`revit_switch_target` 因改变会话路由而被标注为非只读，但在 `--read-only` 下仍然可用，以便随时恢复绑定。
 
 ---
 

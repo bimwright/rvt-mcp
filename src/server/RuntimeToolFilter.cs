@@ -16,11 +16,34 @@ namespace RvtMcp.Server
             => mcp.WithRequestFilters(filters => filters.AddCallToolFilter(next => async (request, ct) =>
             {
                 var clock = System.Diagnostics.Stopwatch.StartNew();
-                using (var capture = new ChangeCaptureContext())
+                // Pin the binding generation at call entry (spec §6.6/§8). When the
+                // binding layer produced a §6.10 payload the tool result is replaced
+                // with the target envelope — regardless of how the tool formatted it.
+                var targetCtx = TargetCallContext.Begin();
+                try
                 {
-                    var result = await next(request, ct);
-                    return Apply(request.Params, result, config, session, durationMs: clock.ElapsedMilliseconds,
-                        changes: capture.Changes, history: capture.History);
+                    using (var capture = new ChangeCaptureContext())
+                    {
+                        CallToolResult result;
+                        try
+                        {
+                            result = await next(request, ct);
+                        }
+                        catch when (targetCtx.Payload != null)
+                        {
+                            // Even an uncaught TargetException leaves its payload on the
+                            // context — surface the §6.10 envelope, not a bare exception.
+                            result = TextResult(MetaTools.TargetEnvelope(targetCtx.Payload, targetCtx.Operation), failed: true);
+                        }
+                        if (targetCtx.Payload != null)
+                            result = TextResult(MetaTools.TargetEnvelope(targetCtx.Payload, targetCtx.Operation), failed: true);
+                        return Apply(request.Params, result, config, session, durationMs: clock.ElapsedMilliseconds,
+                            changes: capture.Changes, history: capture.History);
+                    }
+                }
+                finally
+                {
+                    TargetCallContext.End(targetCtx);
                 }
             }));
 
@@ -39,7 +62,10 @@ namespace RvtMcp.Server
             var wire = Serialize(result);
             // Reserve room for the JSON-RPC envelope. Measurement includes JSON escaping,
             // content blocks, structured content and metadata, rather than only text length.
-            var limit = Math.Min(config.MaxResponseBytesOrDefault - 512,
+            // At the supported 1 KiB minimum, a fixed 512-byte reserve leaves too little
+            // room for both safety receipts. Keep envelope headroom proportional there.
+            var envelopeReserve = Math.Min(512, config.MaxResponseBytesOrDefault / 4);
+            var limit = Math.Min(config.MaxResponseBytesOrDefault - envelopeReserve,
                 config.EnableResponseGuardOrDefault ? config.ResponseBudgetBytesOrDefault : int.MaxValue);
             var bytes = Encoding.UTF8.GetByteCount(wire);
             if (bytes > limit || (config.EnableResponseGuardOrDefault && bytes >= config.ResponseWarnBytesOrDefault))
@@ -126,15 +152,19 @@ namespace RvtMcp.Server
                 try { preserved = JObject.Parse(result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text ?? "{}"); }
                 catch { preserved = new JObject { ["success"] = !failed }; }
                 SafetyResponseMetadata.Attach(preserved, safety);
+                if (safety["target"] != null) preserved["target"] = safety["target"].DeepClone();
                 if (failed) { preserved["success"] = false; preserved["error"] = safety["error"] ?? preserved["error"]; }
                 result = TextResult(preserved, failed || result.IsError == true);
                 if (Encoding.UTF8.GetByteCount(Serialize(result)) > limit)
                 {
                     preserved = new JObject { ["success"] = !failed, ["error"] = safety["error"], ["response_compacted"] = true };
                     SafetyResponseMetadata.Attach(preserved, safety, compact: true);
+                    if (safety["target"] is JObject target)
+                        preserved["target"] = new JObject { ["code"] = target["code"], ["sent"] = target["sent"],
+                            ["outcome"] = target["outcome"], ["summaryTruncated"] = true };
                     if (history != null) preserved["_history"] = new JObject { ["status"] = history["status"], ["callId"] = history["callId"] };
                     if (changes != null) preserved["_changes"] = ChangeSummary.Omitted();
-                    result = TextResult(preserved, failed || result.IsError == true);
+                    result = McpSafetyResponseCompactor.Fit(preserved, failed || result.IsError == true, limit);
                 }
             }
             text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
@@ -150,7 +180,9 @@ namespace RvtMcp.Server
             try
             {
                 var obj = JObject.Parse(text ?? "{}");
-                return obj.Value<bool?>("ok") == false || obj.Value<bool?>("success") == false
+                return ToolGateway.IsFailureOrPending(obj)
+                    // A successful binding change is distinct from its unsuccessful probe.
+                    || (command == "switch_target" && obj.Value<bool?>("verified") == false && obj.Value<string>("verifyError") != null)
                     || ResponseSizePolicyCatalog.GetOperationError(command, obj) != null;
             }
             catch { return false; }

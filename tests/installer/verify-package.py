@@ -21,6 +21,12 @@ def digest(data):
     return hashlib.sha256(data).hexdigest().upper()
 
 
+def verify_checksum_sidecar(package, actual_sha256):
+    parts = Path(str(package) + '.sha256').read_text(encoding='ascii').split()
+    assert len(parts) == 2 and parts[1] == package.name, 'Setup checksum sidecar filename/format mismatch'
+    assert parts[0].upper() == actual_sha256, 'Setup ZIP checksum mismatch'
+
+
 def safe_path(name):
     path = PurePosixPath(name.replace("\\", "/"))
     assert not path.is_absolute() and ".." not in path.parts and not PureWindowsPath(name).drive, name
@@ -89,6 +95,8 @@ def main():
     report = {"testedAtUtc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "package": package.name, "bytes": package.stat().st_size,
         "sha256": digest(package.read_bytes())}
+    verify_checksum_sidecar(package, report['sha256'])
+    report['checksumSidecarPassed'] = True
     with zipfile.ZipFile(package) as archive:
         assert archive.testzip() is None, "ZIP CRC check failed"
         for name in archive.namelist():
@@ -133,7 +141,7 @@ def main():
         env = None
     report["profileMode"] = "real-profile-live-opt-in" if args.live_2027 else "disposable-package-only"
     all_count = repo_json("tests/RvtMcp.Tests/Golden/tools-list.json")["tool_count"]
-    for mode, flags, expected in (("default", ["--toolsets", "query,create,view,meta"], 46),
+    for mode, flags, expected in (("default", ["--toolsets", "query,create,view,meta"], 48),
                                   ("all", ["--toolsets", "all"], all_count)):
         client = Client(exe, package.parent / f"smoke-{mode}-stderr.log", flags + ["--target", "2027"], env)
         try:

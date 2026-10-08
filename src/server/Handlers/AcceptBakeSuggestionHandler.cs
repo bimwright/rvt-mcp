@@ -101,8 +101,18 @@ namespace RvtMcp.Server.Handlers
 
             if (applyResult == null || applyResult.Value<bool?>("success") != true)
             {
-                var code = (string)applyResult?["error_code"] ?? "plugin_apply_failed";
-                var message = (string)applyResult?["message"] ?? "Plugin apply_bake failed.";
+                if (ToolGateway.IsPendingOrUnknown(applyResult))
+                    return RecordPending(db, suggestion, applyResult, clock);
+
+                var notStarted = string.Equals(
+                    (applyResult?["_operation"] as JObject)?.Value<string>("outcome"),
+                    "not_started",
+                    StringComparison.Ordinal);
+                var code = (string)applyResult?["error_code"]
+                    ?? (notStarted ? "plugin_apply_blocked" : "plugin_apply_failed");
+                var message = (string)applyResult?["message"]
+                    ?? (string)applyResult?["error"]
+                    ?? "Plugin apply_bake failed.";
                 return RecordFailure(db, suggestion, code, message, clock, applyResult ?? new JObject());
             }
 
@@ -383,6 +393,44 @@ namespace RvtMcp.Server.Handlers
             };
             if (diagnostics != null)
                 response["prepared_request"] = diagnostics;
+            // Safety receipts must stay top-level for the MCP filter; the copy under
+            // prepared_request remains for audit detail.
+            if (diagnostics is JObject diagnosticObject)
+                SafetyResponseMetadata.Attach(response, diagnosticObject);
+            return response.ToString(Formatting.None);
+        }
+
+        // A timed-out apply is not a failure: the plugin may still be writing the
+        // tool. Bind the open suggestion to the operation ID so reconciliation
+        // queries the pending work instead of issuing a second apply.
+        private static string RecordPending(
+            BakeDb db,
+            BakeSuggestionRecord suggestion,
+            JObject applyResult,
+            DateTimeOffset now)
+        {
+            var operation = applyResult["_operation"] as JObject;
+            var payload = ParsePayload(suggestion.PayloadJson);
+            AppendArray(payload, "accept_attempts", new JObject
+            {
+                ["attempted_at"] = now.ToString("o"),
+                ["pending"] = true,
+                ["operation_id"] = operation?.Value<string>("operationId")
+            });
+            suggestion.PayloadJson = payload.ToString(Formatting.None);
+            suggestion.UpdatedAt = now.ToString("o");
+            db.UpsertSuggestion(suggestion);
+
+            var response = new JObject
+            {
+                ["ok"] = false,
+                ["error_code"] = "plugin_apply_pending",
+                ["message"] = "The apply request did not reach a final result; the plugin may still complete it. "
+                    + "Query revit_get_operation_status with this operationId before retrying — "
+                    + "do not accept the same suggestion again.",
+                ["operation_id"] = operation?.Value<string>("operationId")
+            };
+            SafetyResponseMetadata.Attach(response, applyResult);
             return response.ToString(Formatting.None);
         }
 

@@ -42,6 +42,21 @@ namespace RvtMcp.Tests
             Assert.False(pending.Execution.Task.IsCompleted);
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task Timeout_and_final_have_one_caller_owner_in_either_order(bool timeoutWins)
+        {
+            var pending = new GatewayPendingRequest("race-operation", 1);
+            var final = new JObject { ["success"] = true, ["data"] = new JObject { ["value"] = 1 },
+                ["_operation"] = new JObject { ["operationId"] = "race-operation", ["execution"] = "completed", ["outcome"] = "committed" } };
+            if (timeoutWins) Assert.True(pending.Timeout());
+            Assert.True(pending.Route(final));
+            Assert.False(pending.Timeout());
+            Assert.Equal(timeoutWins ? "timed_out_running" : "completed", JObject.Parse(await pending.Caller.Task)["_operation"]["execution"]);
+            Assert.Equal("committed", JObject.Parse(await pending.Execution.Task)["_operation"]["outcome"]);
+        }
+
         [Fact]
         public void Gateway_error_conversion_preserves_receipts()
         {
@@ -72,6 +87,25 @@ namespace RvtMcp.Tests
             Assert.Equal("partial", payload["_operation"]["outcome"]);
             Assert.Equal("blocked", payload["_failure"]["gate"]);
             Assert.True(Encoding.UTF8.GetByteCount(RuntimeToolFilter.Serialize(result)) <= 12000);
+        }
+
+        [Fact]
+        public void MCP_compaction_keeps_both_target_and_operation_safety_receipt()
+        {
+            var envelope = new JObject { ["success"] = false, ["error"] = "TARGET_INTERRUPTED",
+                ["target"] = new JObject { ["code"] = "TARGET_INTERRUPTED", ["sent"] = true, ["outcome"] = "unknown",
+                    ["previous"] = new JObject { ["window_title"] = new string('x', 100000) } },
+                ["_operation"] = new JObject { ["operationId"] = "interrupted-op", ["execution"] = "interrupted_unknown",
+                    ["outcome"] = "unknown", ["mutationApplied"] = JValue.CreateNull(), ["complete"] = false } };
+            var config = new RvtMcpConfig { ResponseBudgetBytes = 12000, ResponseStrongWarnBytes = 9000, ResponseWarnBytes = 4000, MaxResponseBytes = 20000 };
+            var response = RuntimeToolFilter.Apply(new CallToolRequestParams { Name = "revit_create_wall" },
+                new CallToolResult { Content = new[] { new TextContentBlock { Text = envelope.ToString() } } }, config);
+            var payload = JObject.Parse(((TextContentBlock)response.Content[0]).Text);
+            Assert.True(response.IsError == true);
+            Assert.Equal("TARGET_INTERRUPTED", payload["target"]["code"]);
+            Assert.Equal("interrupted-op", payload["_operation"]["operationId"]);
+            Assert.Equal(JTokenType.Null, payload["_operation"]["mutationApplied"].Type);
+            Assert.True(Encoding.UTF8.GetByteCount(RuntimeToolFilter.Serialize(response)) <= 12000);
         }
 
         [Fact]

@@ -27,6 +27,8 @@
 
 ## What it is
 
+**An early all-C# MCP implementation for Revit — researched and implemented since March 2026.**
+
 `rvt-mcp` is a **local** bridge between an MCP client and a running Revit session. A .NET 8 server talks MCP over stdio; a thin add-in per Revit year (2022–2027) runs inside Revit and is reached over localhost TCP (≤2024) or a named pipe (≥2025). Nothing leaves the machine, it is C# end to end, and lengths are millimetres at the tool boundary. Details: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Agents get a **typed tool surface** for common Revit work, a C# escape hatch for everything else, and an **optional** way to turn repeated patterns into personal tools (ToolBaker): start from a shared runtime and grow *your* tools on top. Family Editor authoring is out of scope for now.
@@ -64,11 +66,11 @@ This installs the add-in for every detected Revit 2022–2027 and registers `rvt
 
 **Check it works:** restart your AI client, open a model in Revit, start MCP from the ribbon (**Add-Ins** → **RvtMcp**) and ask the agent to call `revit_get_current_view_info`. It should return the active view's name and type.
 
-**Upgrade:** run the new release's installer the same way — no uninstall first; clients only need a restart. **Uninstall:** `uninstall.ps1 -Yes` in the same folder removes the add-ins and the server (settings stay unless you add `-Purge`); run `install.ps1 -Uninstall -Client auto` first to also remove the client entries. More, including developer and NuGet installs: [docs/install.md](docs/install.md).
+**Upgrade:** close Revit and gateway clients, back up the product data folder, then run the new installer in place without uninstalling first. Settings and ToolBaker data are kept. MCPB users use `-Client none`, update Setup and extension from the same release, then check Desktop settings and permissions before reconnecting. See [the upgrade sequence](docs/install.md#upgrade). **Uninstall:** `uninstall.ps1 -Yes` removes add-ins and the server; personal data is kept unless you add `-Purge`. To remove client entries too, first run `install.ps1 -Uninstall -Client auto`.
 
 **Upgrading from v0.8.1 or v0.6.x:** those versions keep your settings and ToolBaker data in `%LOCALAPPDATA%\RvtMcp\`; v1.0.0 uses `%LOCALAPPDATA%\Bimwright\rvt-mcp\`, and the installer moves the old folder there. Close Revit and every MCP client first, because a running old server locks the folder. Check in PowerShell with `Test-Path "$env:LOCALAPPDATA\RvtMcp"`. If the installer stops with `Both … exist` or `Could not move …`, it has undone what it moved: keep the folder that holds your settings and ToolBaker data, **rename the other one (for example to `RvtMcp.bak`) instead of deleting it**, close the clients that were using it, and run the installer again.
 
-**Claude Desktop extension (MCPB, optional):** direct config above is the default for agent-assisted installs. If you want the extension/settings UI, use Setup with `-Client none`, then install the `.mcpb` through Desktop's extension UI. **Choose one route, not both.** `-Client none` does not remove an existing manual registration. The v1.0.0 extension is unsigned, does not install the gateway/add-ins, and requires the exact server build from the same release. See [MCPB installation and settings](docs/install.md#claude-desktop-mcpb).
+**Claude Desktop extension (MCPB, optional):** direct config above is the default for agent-assisted installs. If you want the extension/settings UI, use Setup with `-Client none`, then install the `.mcpb` through Desktop's extension UI. **Choose one route, not both.** `-Client none` does not remove an existing manual registration. Use the bundle from the same selected release as Setup; it does not install the gateway/add-ins and requires that release's exact server build. Check the release notes for its signing status. See [MCPB installation and settings](docs/install.md#claude-desktop-mcpb).
 
 ---
 
@@ -173,7 +175,7 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwr
 
 | Setting | CLI | Env | JSON |
 |---------|-----|-----|------|
-| Target year | `--target 2024` | `BIMWRIGHT_TARGET` | `target` |
+| Target selector | `--target 2024` / `--target pid:12345` | `BIMWRIGHT_TARGET` | `target` |
 | Toolsets | `--toolsets query,create` | `BIMWRIGHT_TOOLSETS` | `toolsets` |
 | Read-only | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
 | send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |
@@ -310,7 +312,6 @@ MCP annotations describe each tool's document/file effects. Transient selection,
       "mcp__rvt-mcp__revit_show_message",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
       "mcp__rvt-mcp__revit_survey_change_impact",
-      "mcp__rvt-mcp__revit_switch_target",
       "mcp__rvt-mcp__revit_workflow_model_audit"
     ]
   }
@@ -333,6 +334,36 @@ The response guard defaults **on**: UTF-8 warnings at 65536 bytes, strong warnin
 | 2027 | .NET 10 (`net10.0-windows7.0`) | Named Pipe |
 
 Full Revit desktop only; Revit Viewer is not a supported target. CI builds all six add-ins, but runtime depth varies by year — recheck baked tools and custom C# on the years you use.
+
+---
+
+## Multiple Revit instances
+
+The server binds to exactly one Revit instance — including when several instances of the same year run at once. It binds implicitly on the first call or explicitly through `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target`. Selectors: `auto`, a 4-digit year (`2024`), `pid:<n>` or `id:revit-<year>-<pid>`; legacy R-codes like `R24` are rejected.
+
+When more than one instance runs — especially several of the same year — do not guess the target:
+
+1. Call `revit_list_available_targets`: every live instance is listed with `target_id`, `pid`, `host_year`, `window_title` and `source`.
+2. Pick the instance by `pid` and/or `window_title`.
+3. Pin it with `revit_switch_target("pid:<n>")` — any selector form works, `pid:` is unambiguous.
+4. `revit_get_current_target` shows the active binding, its generation and the proposed `next_target_id`.
+
+Target error codes and how to react. Every code except `TARGET_INTERRUPTED` means the command was **not** sent:
+
+| Code | Meaning | Agent action |
+|---|---|---|
+| `NO_TARGET` | No live instance matches the selector (also: the implicit binding was lost and zero candidates remain) | Call `revit_list_available_targets`; start Revit / the add-in or fix the selector |
+| `TARGET_UNAVAILABLE` | The bound instance is still alive but cannot be reached — listener stopped or restarting, descriptor missing, token rejected. The binding is kept | Retry shortly; ask the user to (re)start MCP in that Revit. Do not switch to another instance unless the user wants that |
+| `TARGET_BUSY` | The endpoint exists but did not complete the handshake within 5 s — usually another agent or gateway holds its single connection, or Revit is blocked | Retry later; do not run two gateways on one instance |
+| `TARGET_LOST` | The explicitly pinned (`pid:`/`id:`) instance exited | Check `candidates`, confirm with the user, then `revit_switch_target` |
+| `TARGET_CHANGED` | The implicitly bound instance exited and exactly one replacement exists (or the binding changed between call arrival and send). The command was **not** sent; every call returns this until confirmed | Check the proposed instance (`window_title`), confirm with `revit_switch_target`, then repeat the call |
+| `AMBIGUOUS_TARGET` | The implicitly bound instance exited and two or more instances match | List, pick by `pid`/`window_title`, `revit_switch_target("pid:<n>")` |
+| `TARGET_INTERRUPTED` | The command was sent but the connection closed before a response (`sent:true`, `outcome:unknown`) | Inspect the model state before repeating any write |
+| `INVALID_TARGET_SELECTOR` | Malformed selector or R-code | Use `auto`, a year, `pid:<n>` or `id:<target_id>` |
+
+**After a Revit restart — even with a single Revit open** — the next call returns `TARGET_CHANGED` and the server waits for one `revit_switch_target` call before it sends anything. This is deliberate: the restarted Revit can have a different model open, so the server never rebinds to it silently. The payload names the proposed instance; confirm it and repeat the call.
+
+`revit_switch_target` is annotated non-read-only because it changes session routing, but it stays available under `--read-only` so the binding can always be recovered.
 
 ---
 

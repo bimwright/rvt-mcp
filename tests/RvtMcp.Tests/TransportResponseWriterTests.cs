@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -89,6 +90,132 @@ namespace RvtMcp.Tests
             var request = Request("r2");
             writer.Dispatch(request, request.ToString(), (line, tcs) => throw new InvalidOperationException("queue full"));
             await WaitUntil(() => writer.InFlight == 0);
+        }
+
+        [Fact]
+        public void Dispose_drains_and_flushes_all_enqueued_frames_before_returning()
+        {
+            using var wire = new MemoryStream();
+            var streamWriter = new OwnershipWriter(wire);
+            var writer = new TransportResponseWriter(streamWriter);
+            for (var i = 0; i < 100; i++) writer.WriteLine("frame-" + i);
+
+            writer.Dispose();
+            writer.WriteLine("late frame");
+            writer.Dispose();
+
+            var lines = Encoding.UTF8.GetString(wire.ToArray()).Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            Assert.Equal(100, lines.Length);
+            for (var i = 0; i < lines.Length; i++) Assert.Equal("frame-" + i, lines[i]);
+            Assert.True(streamWriter.WasDisposed);
+            Assert.Single(streamWriter.OwnerThreads);
+            Assert.DoesNotContain(Thread.CurrentThread.ManagedThreadId, streamWriter.OwnerThreads);
+        }
+
+        private sealed class OwnershipWriter : StreamWriter
+        {
+            internal readonly HashSet<int> OwnerThreads = new HashSet<int>();
+            internal bool WasDisposed;
+            internal OwnershipWriter(Stream stream) : base(stream, new UTF8Encoding(false), 1024, leaveOpen: true) { }
+            public override void WriteLine(string value)
+            {
+                OwnerThreads.Add(Thread.CurrentThread.ManagedThreadId);
+                base.WriteLine(value);
+            }
+            public override void Flush()
+            {
+                OwnerThreads.Add(Thread.CurrentThread.ManagedThreadId);
+                base.Flush();
+            }
+            protected override void Dispose(bool disposing)
+            {
+                OwnerThreads.Add(Thread.CurrentThread.ManagedThreadId);
+                WasDisposed = true;
+                base.Dispose(disposing);
+            }
+        }
+
+        private sealed class GatedStream : MemoryStream
+        {
+            internal readonly ManualResetEventSlim Entered = new ManualResetEventSlim();
+            internal readonly ManualResetEventSlim Release = new ManualResetEventSlim();
+            internal bool Fail;
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                Entered.Set();
+                Release.Wait();
+                if (Fail) throw new IOException("write failed");
+                base.Write(buffer, offset, count);
+            }
+
+            public override void Write(ReadOnlySpan<byte> buffer)
+            {
+                Entered.Set();
+                Release.Wait();
+                if (Fail) throw new IOException("write failed");
+                base.Write(buffer);
+            }
+        }
+
+        [Fact]
+        public async Task Concurrent_dispose_is_bounded_when_the_peer_does_not_read()
+        {
+            using var wire = new GatedStream();
+            var writer = new TransportResponseWriter(new StreamWriter(wire, new UTF8Encoding(false), 1024, leaveOpen: true));
+            writer.WriteLine("blocked frame");
+            Assert.True(wire.Entered.Wait(TimeSpan.FromSeconds(2)));
+            Assert.False(writer.IsIdleFor(TimeSpan.Zero), "An outstanding write is not an idle connection.");
+            try
+            {
+                var disposing = Task.WhenAll(Task.Run(() => writer.Dispose()), Task.Run(() => writer.Dispose()));
+                await disposing.WaitAsync(TransportResponseWriter.DrainTimeout + TimeSpan.FromSeconds(2));
+                writer.WriteLine("late frame");
+            }
+            finally
+            {
+                wire.Release.Set();
+                writer.Dispose();
+            }
+            Assert.Equal("blocked frame" + Environment.NewLine, Encoding.UTF8.GetString(wire.ToArray()));
+        }
+
+        [Fact]
+        public async Task Dispose_does_not_wait_for_execution_and_late_completion_is_safe()
+        {
+            PendingRequestLifecycle.SetHostBusy(false);
+            using var wire = new MemoryStream();
+            var writer = new TransportResponseWriter(new StreamWriter(wire, new UTF8Encoding(false), 1024, leaveOpen: true));
+            TaskCompletionSource<string> execution = null;
+            var request = Request("late");
+            writer.Dispatch(request, request.ToString(), (line, tcs) => execution = tcs);
+            Assert.Equal(1, writer.InFlight);
+
+            await Task.Run(() => writer.Dispose()).WaitAsync(TimeSpan.FromSeconds(2));
+            execution.TrySetResult("{\"id\":\"late\",\"success\":true}");
+            await WaitUntil(() => writer.InFlight == 0);
+            writer.Dispose();
+            Assert.Empty(wire.ToArray());
+        }
+
+        [Fact]
+        public async Task Write_failure_aborts_the_connection_and_rejects_late_frames()
+        {
+            using var wire = new GatedStream { Fail = true };
+            wire.Release.Set();
+            var failed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var failures = 0;
+            var writer = new TransportResponseWriter(new StreamWriter(wire, new UTF8Encoding(false), 1024, leaveOpen: true), () =>
+            {
+                Interlocked.Increment(ref failures);
+                failed.TrySetResult(true);
+            });
+            writer.WriteLine("failed frame");
+            await failed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            writer.WriteLine("late frame");
+            await Task.WhenAll(Task.Run(() => writer.Dispose()), Task.Run(() => writer.Dispose()));
+            Assert.Equal(1, failures);
+            Assert.Empty(wire.ToArray());
         }
     }
 }
