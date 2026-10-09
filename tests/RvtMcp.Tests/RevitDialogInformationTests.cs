@@ -201,7 +201,8 @@ namespace RvtMcp.Tests
             Assert.Equal(key, UserDialogBuffer.Key(@"c:\models\sample.rvt ", null));
             Assert.Null(UserDialogBuffer.Key("", " "));
             var now = DateTimeOffset.UtcNow;
-            buffer.Add(key, "Sample", new JObject { ["code"] = "TaskDialog_Test_Sample", ["kind"] = "TaskDialog", ["text"] = "Same" }, now);
+            buffer.Add(key, "Sample", new JObject { ["code"] = "TaskDialog_Test_Sample", ["kind"] = "TaskDialog", ["text"] = "Same", ["title"] = "Test",
+                ["buttons"] = new JArray(new JObject { ["id"] = "1001", ["text"] = "First choice" }), ["commonButtons"] = "Close", ["defaultButton"] = "1001" }, now);
             buffer.Add(key, "Sample", new JObject { ["code"] = "TaskDialog_Test_Sample", ["kind"] = "TaskDialog", ["text"] = "Same" }, now);
             buffer.Add(key, "Sample", new JObject { ["code"] = FailureGuid, ["kind"] = "failure", ["severity"] = "Warning", ["text"] = new string('w', 1000) }, now);
             Assert.True(buffer.HasItems(key));
@@ -210,6 +211,11 @@ namespace RvtMcp.Tests
             Assert.Equal("Sample", report["model"]);
             Assert.Equal(UserDialogBuffer.Note, report["note"]);
             Assert.Equal(2, report["items"][0].Value<int>("count"));
+            // A closed dialog keeps what it said, not the choices it offered.
+            Assert.Equal("Test", report["items"][0]["title"]);
+            Assert.Null(report["items"][0]["buttons"]);
+            Assert.Null(report["items"][0]["commonButtons"]);
+            Assert.Null(report["items"][0]["defaultButton"]);
             Assert.True(report["items"][1].Value<string>("text").Length <= UserDialogBuffer.MaxText);
             Assert.Null(buffer.Take(key));
             Assert.False(buffer.HasItems(key));

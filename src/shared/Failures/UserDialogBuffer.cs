@@ -12,7 +12,7 @@ namespace RvtMcp.Failures
     public sealed class UserDialogBuffer
     {
         public const int MaxItems = 20, MaxModels = 50, MaxText = 320, MaxReportBytes = 6144;
-        public const string Note = "Handled by the user in Revit, outside MCP. Revit does not report which button was chosen.";
+        public const string Note = "Already closed: the user answered these in Revit, outside MCP, before this call. Nothing is waiting. Revit does not report which button was chosen.";
 
         private sealed class Model
         {
@@ -38,6 +38,8 @@ namespace RvtMcp.Failures
             var code = item.Value<string>("code");
             if ((string.IsNullOrEmpty(code) || code == "0") && string.IsNullOrWhiteSpace(item.Value<string>("text"))) return;
             var bounded = (JObject)item.DeepClone();
+            // The dialog is closed: button choices would read as a dialog still waiting for an answer.
+            bounded.Remove("buttons"); bounded.Remove("commonButtons"); bounded.Remove("defaultButton");
             if (bounded["text"]?.Type == JTokenType.String) bounded["text"] = FailureCapture.SafeText(bounded.Value<string>("text"), MaxText);
             lock (_gate)
             {

@@ -499,8 +499,12 @@ namespace RvtMcp.Tests
                     };
                     if (kind == "failure") frame["_failure"] = new JObject { ["operationId"] = request["operation_id"], ["gate"] = "blocked" };
                 }
+                else frame["_userDialogs"] = new JObject { ["model"] = "Sample", ["items"] = new JArray(), ["note"] = UserDialogBuffer.Note };
                 host.Send(frame);
             };
+            var finished = new TaskCompletionSource<string>();
+            finished.SetResult(new JObject { ["success"] = true, ["data"] = new JObject { ["opened"] = true } }.ToString());
+            if (kind == "success") ToolGateway.PreviousOperations.Remember("finished-op", "revit_open_model", finished.Task);
             var context = TargetCallContext.Begin();
             try
             {
@@ -511,6 +515,12 @@ namespace RvtMcp.Tests
                 if (kind == "pending" || kind == "busy" || kind == "failure")
                     Assert.Equal(Assert.Single(wire.Requests)["operation_id"], response["_operation"]["operationId"]);
                 if (kind == "failure") Assert.Equal("blocked", response["_failure"]["gate"]);
+                if (kind == "success")
+                {
+                    // The verify probe is the call that receives these once-only reports; they must not be lost there.
+                    Assert.Equal("Sample", response["_userDialogs"]["model"]);
+                    Assert.Equal("finished-op", response["_previousOperation"][0]["operationId"]);
+                }
             }
             finally { TargetCallContext.End(context); }
         }

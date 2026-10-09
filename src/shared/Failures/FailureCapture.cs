@@ -104,7 +104,8 @@ namespace RvtMcp.Failures
 
         // Mechanism only: how to react to the dialog is the agent's judgement.
         public const string WaitingNextStep = "Revit is showing a dialog and waits for the user. Other model calls are refused until it closes. "
-            + "revit_get_operation_status reports the result when it finishes; revit_lookup_message explains a dialog or failure code. Do not retry unchanged.";
+            + "If you can wait, call revit_get_operation_status again later until execution is completed; if you cannot, tell the user the operation is still waiting for them. "
+            + "revit_lookup_message explains a dialog or failure code. Do not retry unchanged.";
 
         // Written for the agent: it cannot act in Revit UI, but it can read, resurvey and revise its plan.
         public static string NextStep(string errorCode, bool gateBlocked, bool acceptedWarnings)
