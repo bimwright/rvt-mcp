@@ -20,8 +20,9 @@ namespace RvtMcp.Tests
             var completed = await tcs.Task;
             Assert.Equal(json, completed);
             Assert.Contains("req-1", json);
-            Assert.Contains("timed out", json, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("do not retry", json, StringComparison.OrdinalIgnoreCase);
+            // Never started, so it says so instead of forbidding a resend.
+            Assert.Contains("before the timeout", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("nothing ran", json, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -42,6 +43,8 @@ namespace RvtMcp.Tests
             Assert.True(lifecycle.TryStart());
             var pending = JObject.Parse(RequestWait.WaitOrTimeout(tcs, "req-running", TimeSpan.FromMilliseconds(20)));
             Assert.Equal("timed_out_running", pending["_operation"]["execution"]);
+            Assert.Equal("REVIT_OPERATION_TIMED_OUT", pending["error"]);
+            Assert.Equal(RvtMcp.Failures.FailureCapture.TimedOutNextStep, pending["_operation"]["nextStep"]);
             Assert.False(tcs.Task.IsCompleted);
             tcs.SetResult("late committed result");
             Assert.Equal("late committed result", await tcs.Task);
@@ -68,6 +71,9 @@ namespace RvtMcp.Tests
                 {
                     Assert.True(tcs.Task.IsCompleted);
                     Assert.Equal("not_started", response["_operation"]["outcome"]);
+                    // Nothing ran, so the agent may send it again; the reason is known here.
+                    Assert.Equal("REVIT_REQUEST_NOT_STARTED", response["error"]);
+                    Assert.Equal(RvtMcp.Failures.FailureCapture.NotStartedNextStep, response["_operation"]["nextStep"]);
                 }
                 Assert.False(lifecycle.TryStart());
             }

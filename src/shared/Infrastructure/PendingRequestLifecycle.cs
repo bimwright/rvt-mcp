@@ -125,10 +125,11 @@ namespace RvtMcp.Plugin
                 if (_execution.Task.Status == TaskStatus.RanToCompletion) return _execution.Task.Result;
                 var notStarted = _state == 0;
                 if (notStarted) _state = 2;
-                var response = Pending(notStarted ? "REVIT_REQUEST_NOT_STARTED" : "REVIT_OPERATION_REQUIRES_USER",
+                var response = Pending(notStarted ? "REVIT_REQUEST_NOT_STARTED" : _waiting ? "REVIT_OPERATION_REQUIRES_USER" : "REVIT_OPERATION_TIMED_OUT",
                     notStarted ? "completed" : _waiting ? "waiting_for_user" : "timed_out_running",
                     notStarted ? "not_started" : "unknown");
-                response["message"] = "Request timed out. Do not retry; query this operation ID before another model operation.";
+                response["message"] = notStarted ? "Revit did not start this request before the timeout because it was busy; nothing ran."
+                    : "Request timed out. Do not retry; query this operation ID before another model operation.";
                 var json = response.ToString(Formatting.None);
                 _caller.TrySetResult(json);
                 if (notStarted) _execution.TrySetResult(json);
@@ -146,7 +147,8 @@ namespace RvtMcp.Plugin
                 ["mutationApplied"] = outcome == "not_started" ? new JValue(false) : JValue.CreateNull(),
                 ["complete"] = outcome == "not_started",
                 ["nextStep"] = execution == "waiting_for_user" ? RvtMcp.Failures.FailureCapture.WaitingNextStep
-                    : "Query revit_get_operation_status with this operationId. Do not retry unchanged."
+                    : outcome == "not_started" ? RvtMcp.Failures.FailureCapture.NotStartedNextStep
+                    : RvtMcp.Failures.FailureCapture.TimedOutNextStep
             }
         };
     }

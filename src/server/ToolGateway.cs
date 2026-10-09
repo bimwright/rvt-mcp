@@ -114,11 +114,32 @@ namespace RvtMcp.Server
             PreviousOperations.Attach(result);
             var execution = (response["_operation"] as JObject)?.Value<string>("execution");
             if (execution == "waiting_for_user" || execution == "timed_out_running" || execution == "running" || execution == "queued")
-                PreviousOperations.Remember(pending.OperationId, "revit_" + command, pending.Execution.Task);
+                PreviousOperations.Remember(pending.OperationId, "revit_" + command, pending.Execution.Task, execution, ToolReadPolicy.IsReadOnly(command));
             return result;
         }
 
         internal static readonly PreviousOperationTracker PreviousOperations = new PreviousOperationTracker();
+
+        /// <summary>
+        /// A tool that sends its own call to Revit and answers with a response it builds itself must pass on
+        /// what that call reported once: dialogs the user handled, and operations that finished after their receipt.
+        /// </summary>
+        internal static void CarryOnce(JObject from, JObject to)
+        {
+            if (from == null || to == null) return;
+            foreach (var key in new[] { "_userDialogs", "_previousOperation" })
+                if (from[key] != null && to[key] == null) to[key] = from[key].DeepClone();
+        }
+
+        /// <summary><see cref="CarryOnce(JObject, JObject)"/> for a tool that answers with JSON text; other text is returned unchanged.</summary>
+        internal static string CarryOnce(JObject from, string json)
+        {
+            if (from == null || (from["_userDialogs"] == null && from["_previousOperation"] == null)) return json;
+            JObject to;
+            try { to = JObject.Parse(json); } catch (JsonException) { return json; }
+            CarryOnce(from, to);
+            return to.ToString(Formatting.None);
+        }
 
         /// <summary>
         /// Standard tool-shell call: send the command, return the plug-in data as indented JSON,

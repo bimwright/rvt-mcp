@@ -58,10 +58,10 @@ namespace RvtMcp.Server
                     return Store.ListModels(afterModelKey, limit).ToString(Formatting.None);
                 }
                 if (afterModelKey != null) return "Error: afterModelKey requires listModels=true.";
-                var model = modelKey == null ? await ActiveModel() : null;
-                if (model != null && ToolGateway.IsFailureOrPending(model)) return model.ToString(Formatting.None);
-                modelKey ??= model.Value<string>("key");
-                return Store.Query(modelKey, elementId, uniqueId, from, until, limit, model).ToString(Formatting.None);
+                if (modelKey != null) return Store.Query(modelKey, elementId, uniqueId, from, until, limit).ToString(Formatting.None);
+                var (model, probe) = await ActiveModel();
+                if (ToolGateway.IsFailureOrPending(model)) return model.ToString(Formatting.None);
+                return Answer(probe, () => Store.Query(model.Value<string>("key"), elementId, uniqueId, from, until, limit, model));
             }
             catch (ArgumentException ex) { return "Error: " + ex.Message; }
             catch (Exception ex) { HistoryDiagnostics.Report("history_query", ex); return "Error: Local change history or the active Revit context is unavailable. No model operation was run; check the connection and local storage."; }
@@ -78,24 +78,39 @@ namespace RvtMcp.Server
             if (config.ReadOnlyOrDefault || !config.EnableChangeHistoryOrDefault) return "Error: History identity decisions are disabled in read-only mode or when history recording is off.";
             try
             {
-                var model = await ActiveModel();
+                var (model, probe) = await ActiveModel();
                 if (ToolGateway.IsFailureOrPending(model)) return model.ToString(Formatting.None);
-                return Store.ResolveIdentity(model, sourceModelKey, decision, reason).ToString(Formatting.None);
+                return Answer(probe, () => Store.ResolveIdentity(model, sourceModelKey, decision, reason));
             }
             catch (ArgumentException ex) { return "Error: " + ex.Message; }
             catch (Exception ex) { HistoryDiagnostics.Report("history_identity_decision", ex); return "Error: History identity decision could not be stored. Query current history before retrying; no model operation was run."; }
         }
 
-        private static async Task<JObject> ActiveModel()
+        // The probe is a real Revit call. Its failure is returned as is; otherwise the tool's own answer,
+        // even an error, carries what the probe reported once.
+        private static async Task<(JObject Model, JObject Probe)> ActiveModel()
         {
             var context = await ToolGateway.SendToRevit("get_change_records", new { });
-            if (ToolGateway.IsFailureOrPending(context)) return context;
+            if (ToolGateway.IsFailureOrPending(context)) return (context, context);
             if (!ChangeHistoryStore.IsModelKey(context.Value<string>("modelKey")))
-                throw new ArgumentException("The active model has no stable history identity. Open a saved model or supply a previously returned modelKey.");
+            {
+                var error = new JObject { ["success"] = false, ["error"] = "The active model has no stable history identity. Open a saved model or supply a previously returned modelKey." };
+                ToolGateway.CarryOnce(context, error);
+                return (error, context);
+            }
             var model = new JObject { ["key"] = context["modelKey"] };
             foreach (var property in new[] { "title", "physicalKey", "lineageKey" })
                 if (context.Property(property) != null) model[property] = context[property];
-            return model;
+            return (model, context);
+        }
+
+        private static string Answer(JObject probe, Func<JObject> build)
+        {
+            JObject result;
+            try { result = build(); }
+            catch (ArgumentException ex) { result = new JObject { ["success"] = false, ["error"] = ex.Message }; }
+            ToolGateway.CarryOnce(probe, result);
+            return result.ToString(Formatting.None);
         }
         private static ChangeHistoryStore Store => ToolGateway.History ??= new ChangeHistoryStore();
         private static JToken Structured(string json)

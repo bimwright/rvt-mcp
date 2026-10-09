@@ -104,8 +104,15 @@ namespace RvtMcp.Failures
 
         // Mechanism only: how to react to the dialog is the agent's judgement.
         public const string WaitingNextStep = "Revit is showing a dialog and waits for the user. Other model calls are refused until it closes. "
-            + "If you can wait, call revit_get_operation_status again later until execution is completed; if you cannot, tell the user the operation is still waiting for them. "
+            + "Call revit_get_operation_status with waitSeconds (up to 90) to wait for the result; if it is still waiting, tell the user the operation is waiting for them in Revit. "
             + "revit_lookup_message explains a dialog or failure code. Do not retry unchanged.";
+
+        // A timeout is not a dialog: nothing reported one, and the request may simply still be running.
+        public const string TimedOutNextStep = "Revit has not finished this request within the timeout and reported no dialog; it may still be running. "
+            + "Call revit_get_operation_status with this operationId and waitSeconds (up to 90) to wait for the result. Do not retry unchanged.";
+
+        public const string NotStartedNextStep = "Not started: Revit was busy (another request was running, or Revit was not idle), so this request never ran and nothing changed. "
+            + "Send it again once Revit is free.";
 
         // Written for the agent: it cannot act in Revit UI, but it can read, resurvey and revise its plan.
         public static string NextStep(string errorCode, bool gateBlocked, bool acceptedWarnings)

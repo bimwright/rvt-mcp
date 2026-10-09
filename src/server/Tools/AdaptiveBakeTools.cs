@@ -33,13 +33,15 @@ namespace RvtMcp.Server
                 var paths = new BakePaths();
                 using var db = new BakeDb(paths);
                 db.Migrate();
-                return await AcceptBakeSuggestionHandler.HandleAsync(
+                Newtonsoft.Json.Linq.JObject applied = null;
+                var json = await AcceptBakeSuggestionHandler.HandleAsync(
                     db,
                     id,
                     name,
                     output_choice,
                     params_schema,
-                    pluginApply: request => ToolGateway.SendToRevit("apply_bake", request));
+                    pluginApply: async request => applied = await ToolGateway.SendToRevit("apply_bake", request));
+                return ToolGateway.CarryOnce(applied, json);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }

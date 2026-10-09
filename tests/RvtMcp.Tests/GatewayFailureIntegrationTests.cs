@@ -259,6 +259,9 @@ namespace RvtMcp.Tests
 
             var receipt = await call.WaitAsync(TimeSpan.FromSeconds(9));
             Assert.Equal("timed_out_running", receipt["_operation"]["execution"]);
+            // No dialog was reported, so the timeout must not read as one.
+            Assert.Equal("REVIT_OPERATION_TIMED_OUT", receipt["error"]);
+            Assert.Equal(FailureCapture.TimedOutNextStep, receipt["_operation"]["nextStep"]);
             Assert.False(pending.Execution.Task.IsCompleted);
             Assert.True(HistoryCallLease.IsActive(operationId));
             _ledger.SaveOperation(new FailureOperation { OperationId = operationId, Execution = "completed", Outcome = "committed", MutationApplied = true, FinalResult = final });
@@ -267,7 +270,7 @@ namespace RvtMcp.Tests
             Assert.False(HistoryCallLease.IsActive(operationId));
             Assert.Equal("recorded", pending.HistoryReceipt["status"]);
             Assert.Equal("timed_out_running", JObject.Parse(await pending.Caller.Task)["_operation"]["execution"]);
-            Assert.Equal("committed", JObject.Parse(FailureTools.GetOperationStatus(operationId))["outcome"]);
+            Assert.Equal("committed", JObject.Parse(await FailureTools.GetOperationStatus(operationId))["outcome"]);
             Assert.Single(ToolGateway.History.Query(capture["activeModel"].Value<string>("key"))["calls"]);
             Assert.Empty(ToolGateway.History.Transfer.PendingFiles());
             Assert.False(ToolGateway.RouteResponse(pending.ConnectionId, final));
@@ -336,7 +339,7 @@ namespace RvtMcp.Tests
             if (readStatus)
             {
                 _ledger.SaveOperation(new FailureOperation { OperationId = operationId, Execution = "completed", Outcome = "committed", MutationApplied = true, FinalResult = final });
-                var status = JObject.Parse(FailureTools.GetOperationStatus(operationId));
+                var status = JObject.Parse(await FailureTools.GetOperationStatus(operationId));
                 Assert.Equal("Test View", status["finalResult"]["data"]["viewName"]);
             }
 
@@ -384,7 +387,7 @@ namespace RvtMcp.Tests
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending.Execution.Task.WaitAsync(TimeSpan.FromSeconds(3)));
             _ledger.SaveOperation(new FailureOperation { OperationId = request.Value<string>("operation_id"), Execution = "completed", Outcome = "rolled_back", MutationApplied = false });
             Assert.Equal(callerResponse, await pending.Caller.Task);
-            Assert.Equal("rolled_back", JObject.Parse(FailureTools.GetOperationStatus(receipt["_operation"].Value<string>("operationId")))["outcome"]);
+            Assert.Equal("rolled_back", JObject.Parse(await FailureTools.GetOperationStatus(receipt["_operation"].Value<string>("operationId")))["outcome"]);
         }
 
         [Fact]
@@ -523,6 +526,93 @@ namespace RvtMcp.Tests
                 }
             }
             finally { TargetCallContext.End(context); }
+        }
+
+        [Fact]
+        public async Task Timed_out_read_has_session_status_and_a_status_wait_returns_when_it_finishes()
+        {
+            using var wire = new WireHost();
+            Descriptor(wire.Port);
+            JObject first = null;
+            wire.OnCommand = (request, host) =>
+            {
+                if (first != null) { host.Send(Final(request)); return; }
+                first = request;
+                // The add-in's own timeout receipt; reads have no ledger record.
+                host.Send(new JObject { ["id"] = request["id"], ["success"] = false, ["error"] = "REVIT_OPERATION_TIMED_OUT",
+                    ["_operation"] = new JObject { ["operationId"] = request["operation_id"], ["execution"] = "timed_out_running",
+                        ["outcome"] = "unknown", ["complete"] = false, ["mutationApplied"] = null } });
+            };
+            var receipt = await Send("list_sheets");
+            var operationId = receipt["_operation"].Value<string>("operationId");
+
+            var status = JObject.Parse(await FailureTools.GetOperationStatus(operationId));
+            Assert.True(status.Value<bool>("available"));
+            Assert.Equal("gateway_session", status["source"]);
+            Assert.Equal("timed_out_running", status["execution"]);
+            Assert.Null(status["waitedSeconds"]);
+
+            var expired = JObject.Parse(await FailureTools.GetOperationStatus(operationId, waitSeconds: 1));
+            Assert.True(expired.Value<bool>("stillWaiting"));
+            Assert.True(expired.Value<double>("waitedSeconds") >= 1);
+
+            var waiting = FailureTools.GetOperationStatus(operationId, waitSeconds: 30);
+            await Task.Delay(200);
+            Assert.False(waiting.IsCompleted);
+            wire.Send(Final(first));
+            var finished = JObject.Parse(await waiting.WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.Equal("completed", finished["execution"]);
+            Assert.Equal("Test View", finished["finalResult"]["data"]["viewName"]);
+            Assert.True(finished.Value<double>("waitedSeconds") < 30);
+            Assert.Null(finished["stillWaiting"]);
+
+            // Read once by status: the next response does not repeat it, and status still answers.
+            Assert.Null((await Send())["_previousOperation"]);
+            Assert.Equal("completed", JObject.Parse(await FailureTools.GetOperationStatus(operationId))["execution"]);
+        }
+
+        [Fact]
+        public async Task Status_wait_follows_the_ledger_when_the_session_does_not_hold_the_request()
+        {
+            var interval = FailureTools.WaitPollInterval;
+            FailureTools.WaitPollInterval = TimeSpan.FromMilliseconds(50);
+            try
+            {
+                _ledger.SaveOperation(new FailureOperation { OperationId = "ledger-op", Execution = "waiting_for_user", Outcome = "unknown" });
+                var waiting = FailureTools.GetOperationStatus("ledger-op", waitSeconds: 30);
+                await Task.Delay(200);
+                Assert.False(waiting.IsCompleted);
+                _ledger.SaveOperation(new FailureOperation { OperationId = "ledger-op", Execution = "completed", Outcome = "committed", MutationApplied = true });
+                var finished = JObject.Parse(await waiting.WaitAsync(TimeSpan.FromSeconds(5)));
+                Assert.Equal("committed", finished["outcome"]);
+                Assert.Null(finished["stillWaiting"]);
+                // Nothing to wait for: an unknown operation answers at once.
+                var unknown = JObject.Parse(await FailureTools.GetOperationStatus("unknown-op", waitSeconds: 30).WaitAsync(TimeSpan.FromSeconds(5)));
+                Assert.False(unknown.Value<bool>("available"));
+            }
+            finally { FailureTools.WaitPollInterval = interval; }
+        }
+
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(91)]
+        public async Task Status_wait_is_bounded(int waitSeconds)
+        {
+            var response = JObject.Parse(await FailureTools.GetOperationStatus("any-op", waitSeconds));
+            Assert.Equal("INVALID_ARGUMENT", response["error"]);
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void Oversized_result_suggests_a_narrower_request_only_for_a_read(bool isRead)
+        {
+            var finished = new TaskCompletionSource<string>();
+            finished.SetResult(new JObject { ["success"] = true, ["data"] = new JObject { ["rows"] = new string('x', PreviousOperationTracker.MaxDataBytes) } }.ToString());
+            ToolGateway.PreviousOperations.Remember("big-op", "revit_list_sheets", finished.Task, "timed_out_running", isRead);
+            var data = ToolGateway.PreviousOperations.Status("big-op")["finalResult"]["data"];
+            Assert.True(data.Value<bool>("omitted"));
+            Assert.Equal(isRead, data.Value<string>("reason").Contains("narrower"));
         }
 
         [Theory]

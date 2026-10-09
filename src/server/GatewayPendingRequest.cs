@@ -98,10 +98,11 @@ namespace RvtMcp.Server
 
         internal JObject Pending(string execution = "timed_out_running") => new JObject
         {
-            ["success"] = false, ["error"] = "REVIT_OPERATION_REQUIRES_USER",
+            ["success"] = false, ["error"] = execution == "waiting_for_user" ? "REVIT_OPERATION_REQUIRES_USER" : "REVIT_OPERATION_TIMED_OUT",
             ["_operation"] = new JObject { ["operationId"] = OperationId, ["execution"] = execution,
                 ["outcome"] = "unknown", ["complete"] = false, ["mutationApplied"] = JValue.CreateNull(),
                 ["nextStep"] = execution == "waiting_for_user" ? RvtMcp.Failures.FailureCapture.WaitingNextStep
+                    : execution == "timed_out_running" ? RvtMcp.Failures.FailureCapture.TimedOutNextStep
                     : "Query revit_get_operation_status. Execution has not been confirmed finished; do not retry." }
         };
 

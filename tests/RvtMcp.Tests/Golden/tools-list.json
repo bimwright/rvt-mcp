@@ -4419,12 +4419,16 @@
     },
     {
       "name": "revit_get_operation_status",
-      "description_hash": "sha256:2c1135a24e49c319c1c79b48aa8622dd337954e0bfaa44ab59cc720000910191",
+      "description_hash": "sha256:c24863a3273ede11f8e218c7560414ff7dab992dee1228445acfb42e7c1ee949",
       "inputSchema": {
         "properties": {
           "operationId": {
             "description": "",
             "type": "String"
+          },
+          "waitSeconds": {
+            "description": "",
+            "type": "Int32"
           }
         },
         "required": [

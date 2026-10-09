@@ -120,10 +120,10 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void Local_queries_require_issued_context_and_do_not_dispatch_Revit()
+        public async Task Local_queries_require_issued_context_and_do_not_dispatch_Revit()
         {
             Assert.Contains("INVALID_ARGUMENT", FailureTools.GetFailureRecords());
-            Assert.Contains("INVALID_ARGUMENT", FailureTools.GetOperationStatus(@"C:\private\model.rvt"));
+            Assert.Contains("INVALID_ARGUMENT", await FailureTools.GetOperationStatus(@"C:\private\model.rvt"));
             var config = new RvtMcpConfig { ReadOnly = true, EnableSendCode = false, EnableChangeHistory = false };
             var catalog = ServerToolCatalogBuilder.Build(ToolsetFilter.Resolve(config), config);
             foreach (var name in new[] { "revit_get_failure_records", "revit_get_operation_status" })
@@ -131,7 +131,7 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void Missing_ledger_queries_create_no_files_and_never_send_to_Revit()
+        public async Task Missing_ledger_queries_create_no_files_and_never_send_to_Revit()
         {
             var root = Path.Combine(Path.GetTempPath(), "rvt-failure-query-" + Guid.NewGuid().ToString("N"));
             var factory = FailureTools.StoreFactory;
@@ -141,7 +141,7 @@ namespace RvtMcp.Tests
                 FailureTools.StoreFactory = () => new FailureLedgerStore(Path.Combine(root, "ledger.db"), readOnly: true);
                 ToolGateway.SendOverride = (_, __, ___) => throw new Exception("Local queries must not dispatch Revit.");
                 Assert.False(JObject.Parse(FailureTools.GetFailureRecords(modelScopeKey: "model1")).Value<bool>("available"));
-                Assert.False(JObject.Parse(FailureTools.GetOperationStatus("operation1")).Value<bool>("available"));
+                Assert.False(JObject.Parse(await FailureTools.GetOperationStatus("operation1")).Value<bool>("available"));
                 Assert.False(Directory.Exists(root));
             }
             finally { FailureTools.StoreFactory = factory; ToolGateway.SendOverride = send; }

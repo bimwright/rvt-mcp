@@ -1,7 +1,9 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Threading.Tasks;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -38,35 +40,83 @@ namespace RvtMcp.Server
             catch { return Error("FAILURE_STORAGE_FAILED", "Local failure records are unavailable. No Revit operation was dispatched; model safety is unknown."); }
         }
 
+        internal const int MaxWaitSeconds = 90;
+        internal static TimeSpan WaitPollInterval = TimeSpan.FromMilliseconds(500);
+
         [McpServerTool(Name = "revit_get_operation_status", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), Description(
             "Read the plugin-owned local status of an issued operationId, including execution, final outcome, incident IDs and bounded receipts; finalResult.data has the command result while this session still holds it. " +
             "Works while Revit is modal; never dispatches, retries or changes Revit. Missing records are unavailable, not proof of failure or permission to retry. " +
-            "Example: {operationId: \"<issued-id>\"}.")]
-        public static string GetOperationStatus(string operationId)
+            "waitSeconds (0-90, default 0) waits here, without holding Revit, while the operation is unfinished (waiting_for_user, timed_out_running, running, queued); " +
+            "it returns as soon as the operation finishes, otherwise with stillWaiting=true. " +
+            "Example: {operationId: \"<issued-id>\", waitSeconds: 60}.")]
+        public static async Task<string> GetOperationStatus(string operationId, int waitSeconds = 0)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(operationId)) throw new ArgumentException("operationId is required.");
                 ValidateKey(operationId);
-                var operation = StoreFactory().GetOperation(operationId);
-                if (operation == null) return new JObject { ["available"] = false, ["operationId"] = operationId,
-                    ["complete"] = false, ["note"] = "No durable operation record is available. Do not infer that execution failed or retry unchanged." }.ToString(Formatting.None);
-                var result = JObject.Parse(FailureJson.Serialize(operation));
-                if (result["finalResult"] is JObject final)
+                if (waitSeconds < 0 || waitSeconds > MaxWaitSeconds)
+                    throw new ArgumentException($"waitSeconds must be between 0 and {MaxWaitSeconds} (got {waitSeconds}). The unit is seconds.");
+                var clock = Stopwatch.StartNew();
+                var limit = TimeSpan.FromSeconds(waitSeconds);
+                while (true)
                 {
-                    var bounded = new JObject { ["success"] = final["success"], ["error"] = final["error"], ["_changes"] = ChangeSummary.ForAgent(final["_changes"] ?? final["changes"]), ["_history"] = final["_history"] ?? final["history_transfer"] };
-                    // The ledger keeps receipts only; the command's own result is available while this session holds it.
-                    var data = operation.Execution == "completed" ? ToolGateway.PreviousOperations.FinalData(operationId) : null;
-                    if (data != null) bounded["data"] = data;
-                    SafetyResponseMetadata.Attach(bounded, final);
-                    result["finalResult"] = bounded;
+                    var status = ReadStatus(operationId);
+                    var unfinished = Unfinished(status);
+                    var remaining = limit - clock.Elapsed;
+                    if (!unfinished || remaining <= TimeSpan.Zero)
+                    {
+                        if (waitSeconds > 0)
+                        {
+                            status["waitedSeconds"] = Math.Round(clock.Elapsed.TotalSeconds, 1);
+                            if (unfinished) status["stillWaiting"] = true;
+                        }
+                        return status.ToString(Formatting.None);
+                    }
+                    // The session's own request wakes the wait as soon as its result arrives; otherwise only the ledger can tell.
+                    var execution = ToolGateway.PreviousOperations.ExecutionOf(operationId);
+                    if (execution != null && !execution.IsCompleted) await Task.WhenAny(execution, Task.Delay(remaining));
+                    else await Task.Delay(remaining < WaitPollInterval ? remaining : WaitPollInterval);
                 }
-                if (operation.Execution == "completed") ToolGateway.PreviousOperations.MarkRead(operationId);
-                result["available"] = true;
-                return result.ToString(Formatting.None);
             }
             catch (ArgumentException ex) { return Error("INVALID_ARGUMENT", ex.Message); }
             catch { return Error("FAILURE_STORAGE_FAILED", "Local operation status is unavailable. Do not retry the model operation."); }
+        }
+
+        private static bool Unfinished(JObject status)
+        {
+            if (status.Value<bool?>("available") != true) return false;
+            var execution = status.Value<string>("execution");
+            return execution == "waiting_for_user" || execution == "timed_out_running" || execution == "running" || execution == "queued";
+        }
+
+        private static JObject ReadStatus(string operationId)
+        {
+            var operation = StoreFactory().GetOperation(operationId);
+            if (operation == null)
+                // Reads have no durable record; this session may still hold the request.
+                return ToolGateway.PreviousOperations.Status(operationId) is JObject session
+                    ? MarkReadIfCompleted(operationId, session)
+                    : new JObject { ["available"] = false, ["operationId"] = operationId,
+                        ["complete"] = false, ["note"] = "No durable operation record is available. Do not infer that execution failed or retry unchanged." };
+            var result = JObject.Parse(FailureJson.Serialize(operation));
+            if (result["finalResult"] is JObject final)
+            {
+                var bounded = new JObject { ["success"] = final["success"], ["error"] = final["error"], ["_changes"] = ChangeSummary.ForAgent(final["_changes"] ?? final["changes"]), ["_history"] = final["_history"] ?? final["history_transfer"] };
+                // The ledger keeps receipts only; the command's own result is available while this session holds it.
+                var data = operation.Execution == "completed" ? ToolGateway.PreviousOperations.FinalData(operationId) : null;
+                if (data != null) bounded["data"] = data;
+                SafetyResponseMetadata.Attach(bounded, final);
+                result["finalResult"] = bounded;
+            }
+            result["available"] = true;
+            return MarkReadIfCompleted(operationId, result);
+        }
+
+        private static JObject MarkReadIfCompleted(string operationId, JObject status)
+        {
+            if (status.Value<string>("execution") == "completed") ToolGateway.PreviousOperations.MarkRead(operationId);
+            return status;
         }
         [McpServerTool(Name = "revit_lookup_message", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), Description(
             "Explain a Revit dialog or failure code from the catalogue of the bound Revit version. Reads a local file and never dispatches Revit, so it works while Revit shows a dialog. " +

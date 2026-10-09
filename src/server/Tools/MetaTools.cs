@@ -302,8 +302,7 @@ namespace RvtMcp.Server
                     }
                     // The probe is a real Revit call: what it reports once (dialogs the user handled,
                     // operations that finished after their receipt) must reach the agent through this response.
-                    foreach (var once in new[] { "_userDialogs", "_previousOperation" })
-                        if (probe[once] != null && verification[once] == null) verification[once] = probe[once].DeepClone();
+                    ToolGateway.CarryOnce(probe, verification);
                     return JsonConvert.SerializeObject(verification, Formatting.Indented);
                 }
                 catch (Exception verifyEx)

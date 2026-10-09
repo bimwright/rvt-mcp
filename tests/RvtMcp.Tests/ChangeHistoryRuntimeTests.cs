@@ -76,6 +76,28 @@ namespace RvtMcp.Tests
         }
 
         [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async System.Threading.Tasks.Task History_query_passes_on_what_its_probe_reported_once(bool saved)
+        {
+            var originalSend = ToolGateway.SendOverride;
+            try
+            {
+                ToolGateway.SendOverride = (command, args, timeout) => System.Threading.Tasks.Task.FromResult(new JObject
+                {
+                    ["modelKey"] = saved ? new string('a', 64) : null,
+                    ["_userDialogs"] = new JObject { ["model"] = "Sample" },
+                    ["_previousOperation"] = new JArray(new JObject { ["operationId"] = "finished-op" })
+                });
+                var result = JObject.Parse(await ChangeHistoryTools.GetChangeRecords());
+                Assert.Equal("Sample", result["_userDialogs"]["model"]);
+                Assert.Equal("finished-op", result["_previousOperation"][0]["operationId"]);
+                if (!saved) Assert.Contains("no stable history identity", result.Value<string>("error"));
+            }
+            finally { ToolGateway.SendOverride = originalSend; }
+        }
+
+        [Theory]
         [InlineData(false)]
         [InlineData(true)]
         public void Storage_failure_preserves_mutation_outcome_and_pending_data_without_paths(bool failed)

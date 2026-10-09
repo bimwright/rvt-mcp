@@ -96,7 +96,7 @@ The **server** is version-agnostic — it just forwards JSON envelopes. All Revi
 6. Response envelope travels back up the same pipe.
 7. `ToolGateway` resolves the `TaskCompletionSource`; MCP tool method returns the DTO.
 
-Timeout: 60s by default. Long-run tools accept `timeout_seconds` from 1–900; IFC export defaults to 600s. The same per-call budget reaches the plugin and gateway, with a short transport grace on the gateway. On expiry the caller receives a `timed_out_running` pending receipt carrying the operation ID — caller delivery and native execution are separate lifetimes, so the operation still reaches a durable final status and ingests history exactly once. `revit_get_operation_status` reconciles by operation ID; the receipt tells agents not to retry the mutation. Listener cancels pending requests on plugin shutdown.
+Timeout: 60s by default. Long-run tools accept `timeout_seconds` from 1–900; IFC export defaults to 600s. The same per-call budget reaches the plugin and gateway, with a short transport grace on the gateway. On expiry the caller receives a `REVIT_OPERATION_TIMED_OUT` / `timed_out_running` pending receipt carrying the operation ID — caller delivery and native execution are separate lifetimes, so the operation still reaches a durable final status and ingests history exactly once. `revit_get_operation_status` reconciles by operation ID and can wait up to 90 s for it (`waitSeconds`); the receipt tells agents not to retry the mutation. Listener cancels pending requests on plugin shutdown.
 
 Wire JSON over 1 MiB is rejected (100 KB logs an S4 warning). Narrow filters / `max_results` instead of retrying the same dump.
 
