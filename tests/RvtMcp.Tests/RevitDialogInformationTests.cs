@@ -224,6 +224,17 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void User_dialog_buffer_skips_dialogs_with_no_id_and_no_text()
+        {
+            var buffer = new UserDialogBuffer();
+            buffer.Add("title:m", "m", new JObject { ["code"] = "0", ["kind"] = "Dialog", ["inCatalog"] = false }, DateTimeOffset.UtcNow);
+            buffer.Add("title:m", "m", new JObject { ["code"] = "", ["kind"] = "Dialog", ["text"] = " " }, DateTimeOffset.UtcNow);
+            Assert.False(buffer.HasItems("title:m"));
+            buffer.Add("title:m", "m", new JObject { ["code"] = "0", ["kind"] = "MessageBox", ["text"] = "Shown by another add-in" }, DateTimeOffset.UtcNow);
+            Assert.True(buffer.HasItems("title:m"));
+        }
+
+        [Fact]
         public void User_dialogs_follow_a_model_that_opens_under_another_path()
         {
             var buffer = new UserDialogBuffer();

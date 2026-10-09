@@ -34,6 +34,9 @@ namespace RvtMcp.Failures
         public void Add(string key, string modelTitle, JObject item, DateTimeOffset now)
         {
             if (key == null || item == null) return;
+            // Some dialogs (Manage Links) come with no id ("0" or empty) and no text: nothing the agent could use.
+            var code = item.Value<string>("code");
+            if ((string.IsNullOrEmpty(code) || code == "0") && string.IsNullOrWhiteSpace(item.Value<string>("text"))) return;
             var bounded = (JObject)item.DeepClone();
             if (bounded["text"]?.Type == JTokenType.String) bounded["text"] = FailureCapture.SafeText(bounded.Value<string>("text"), MaxText);
             lock (_gate)
