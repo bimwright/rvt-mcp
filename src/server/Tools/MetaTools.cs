@@ -39,7 +39,7 @@ namespace RvtMcp.Server
             "Two known refusals: a file already loaded as a link in an open document cannot be opened standalone (close the host document or unload the link first), " +
             "and a central saved in an older Revit version cannot create a local - if that fails after an existing local was renamed aside, the error names the timestamped path it was kept as; nothing is lost. " +
             "timeout_seconds: 1-900, default 600 - opening a model that pulls in many links commonly exceeds 60s (measured: a 20 MB model with 5 links took 64s). " +
-            "Returns: {opened, was_already_open, title, path, saved_in_version, is_workshared, is_family, header_worksharing, central_path, local_path, local_file_created, renamed_existing_local, activated, active_view}. " +
+            "Returns: {opened, was_already_open, title, path, saved_in_version, upgraded_from (the older year Revit upgraded the model from, else null), is_workshared, is_family, header_worksharing, central_path, local_path, local_file_created, renamed_existing_local, activated, active_view}. " +
             "NOTE: opening a model saved in an older Revit upgrades it in memory - that only reaches disk if something saves it.")]
         public static async Task<string> OpenModel(string path, bool activate = true, bool audit = false, string worksets = null, int timeout_seconds = 600)
         {

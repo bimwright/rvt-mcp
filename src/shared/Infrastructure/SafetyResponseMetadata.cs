@@ -16,6 +16,9 @@ namespace RvtMcp.Plugin
                 var receipt = source?[key] as JObject ?? (source?["data"] as JObject)?[key] as JObject;
                 if (receipt != null) target[key] = Bound(receipt, key == "_failure" ? 16384 : 4096, compact);
             }
+            // Dialogs the user handled outside MCP: information only, dropped first when space is short.
+            var userDialogs = source?["_userDialogs"] as JObject ?? (source?["data"] as JObject)?["_userDialogs"] as JObject;
+            if (userDialogs != null && !compact && Bytes(userDialogs) <= 8192) target["_userDialogs"] = userDialogs.DeepClone();
         }
 
         public static JObject Bound(JObject receipt, int budget, bool compact = false)
@@ -29,6 +32,7 @@ namespace RvtMcp.Plugin
                     { group["sampleElementIds"] = new JArray(ids.Take(20)); result["summaryTruncated"] = true; }
             }
             if (!compact && Bytes(result) <= budget) return result;
+            if (!compact && ShrinkDialogs(result) && Bytes(result) <= budget) return result;
             var minimal = new JObject();
             foreach (var key in new[] { "schemaVersion", "operationId", "hostInstanceId", "incidentIds", "modelScopeKey", "action", "execution", "outcome", "mutationApplied", "gate", "persistence", "complete", "requiresReview", "messageCount", "observationCoverage" })
                 if (result[key] != null) minimal[key] = result[key].DeepClone();
@@ -48,6 +52,20 @@ namespace RvtMcp.Plugin
             { minimal["incidentIds"] = new JArray(); minimal["incidentIdsOmitted"] = true; }
             return minimal;
         }
+        // Long dialog text in another language can exceed the receipt budget; keep the code and the start of the text.
+        private static bool ShrinkDialogs(JObject receipt)
+        {
+            bool changed = false;
+            foreach (var dialog in new[] { receipt["dialog"], receipt["blockedBy"]?["dialog"] }.OfType<JObject>())
+            {
+                dialog.Remove("buttons");
+                if (dialog["text"]?.Type == JTokenType.String && dialog.Value<string>("text").Length > 240)
+                    dialog["text"] = dialog.Value<string>("text").Substring(0, 228) + " [truncated]";
+                changed = true;
+            }
+            return changed;
+        }
+
         private static int Bytes(JToken value) => Encoding.UTF8.GetByteCount(value.ToString(Formatting.None));
     }
 }

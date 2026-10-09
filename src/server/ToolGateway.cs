@@ -110,8 +110,15 @@ namespace RvtMcp.Server
             var paramsJson = parameters != null ? JsonConvert.SerializeObject(parameters, RequestJsonSettings) : null;
             UsageLogger?.RecordToolCall(command, paramsJson, response.Value<bool>("success"));
             if (pending.HistoryReceipt != null) ChangeCaptureContext.RecordHistory(pending.HistoryReceipt);
-            return InterpretResponse(response);
+            var result = InterpretResponse(response);
+            PreviousOperations.Attach(result);
+            var execution = (response["_operation"] as JObject)?.Value<string>("execution");
+            if (execution == "waiting_for_user" || execution == "timed_out_running" || execution == "running" || execution == "queued")
+                PreviousOperations.Remember(pending.OperationId, "revit_" + command, pending.Execution.Task);
+            return result;
         }
+
+        internal static readonly PreviousOperationTracker PreviousOperations = new PreviousOperationTracker();
 
         /// <summary>
         /// Standard tool-shell call: send the command, return the plug-in data as indented JSON,

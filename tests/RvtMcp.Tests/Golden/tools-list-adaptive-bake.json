@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 238,
+  "tool_count": 239,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -4481,7 +4481,7 @@
     },
     {
       "name": "revit_get_operation_status",
-      "description_hash": "sha256:3432c3ff22a2230a3059f16ee68b2d3962718d8c1cacdc390393a6a8211b85f8",
+      "description_hash": "sha256:2c1135a24e49c319c1c79b48aa8622dd337954e0bfaa44ab59cc720000910191",
       "inputSchema": {
         "properties": {
           "operationId": {
@@ -5920,6 +5920,28 @@
       }
     },
     {
+      "name": "revit_lookup_message",
+      "description_hash": "sha256:77eb14aa090898a6c55c10c6353a3b65a9939a43ee8860ed0e0d3b045155281d",
+      "inputSchema": {
+        "properties": {
+          "code": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
       "name": "revit_measure_distance_between_elements",
       "description_hash": "sha256:ef9042e27837ed99379476146e501e9c626a0e81f1e53d4f43181228bdbd1abf",
       "inputSchema": {
@@ -5952,7 +5974,7 @@
     },
     {
       "name": "revit_open_model",
-      "description_hash": "sha256:84c803daa618440f788e3c349ea1ba91ee5ddc1bf247663cba126273ac462996",
+      "description_hash": "sha256:ca8e98ab0c30a576c67e92696e9661fe076c6e63dfee5741a4bdef3b27b9413e",
       "inputSchema": {
         "properties": {
           "activate": {

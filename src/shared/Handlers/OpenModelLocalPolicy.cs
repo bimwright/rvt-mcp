@@ -45,6 +45,29 @@ namespace RvtMcp.Plugin.Handlers
         }
 
         /// <summary>
+        /// The Revit year a model was saved in when it is older than the running Revit, which upgrades it on open.
+        /// The header format is normally the year ("2022"); anything without a 4-digit year yields null.
+        /// </summary>
+        public static int? UpgradedFrom(string savedInVersion, string runningVersion)
+        {
+            var saved = FirstYear(savedInVersion);
+            var running = FirstYear(runningVersion);
+            return saved.HasValue && running.HasValue && saved.Value < running.Value ? saved : null;
+        }
+
+        private static int? FirstYear(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return null;
+            for (int i = 0; i + 4 <= value.Length; i++)
+            {
+                if ((i > 0 && char.IsDigit(value[i - 1])) || (i + 4 < value.Length && char.IsDigit(value[i + 4]))) continue;
+                if (int.TryParse(value.Substring(i, 4), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var year)
+                    && year >= 2000 && year <= 2100) return year;
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Whether the input file may be opened at all, and whether a worksets
         /// argument is legal for it. The handler routes the Extract-failure
         /// path through this decision too, so refusing an unclassified file is

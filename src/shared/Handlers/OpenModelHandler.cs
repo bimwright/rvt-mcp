@@ -235,6 +235,7 @@ namespace RvtMcp.Plugin.Handlers
                     title = document.Title,
                     path = document.PathName,
                     saved_in_version = savedInVersion,
+                    upgraded_from = OpenModelLocalPolicy.UpgradedFrom(savedInVersion, app.Application.VersionNumber),
                     is_workshared = document.IsWorkshared,
                     is_family = document.IsFamilyDocument,
                     header_worksharing = headerWorksharing,
@@ -301,6 +302,7 @@ namespace RvtMcp.Plugin.Handlers
                 title = alreadyOpen.Title,
                 path = alreadyOpen.PathName,
                 saved_in_version = savedInVersion,
+                upgraded_from = OpenModelLocalPolicy.UpgradedFrom(savedInVersion, app.Application.VersionNumber),
                 is_workshared = alreadyOpen.IsWorkshared,
                 is_family = alreadyOpen.IsFamilyDocument,
                 note = activate

@@ -40,6 +40,11 @@ namespace RvtMcp.Plugin.Failures
         private static readonly Dictionary<int, DocumentState> Closing = new Dictionary<int, DocumentState>();
         private static readonly Dictionary<Document, SaveIdentity> Saving = new Dictionary<Document, SaveIdentity>();
         private static SaveCorrelation _blockedSave;
+        // Paths the user is opening by hand; dialogs shown meanwhile belong to that model, not the active one.
+        private static readonly List<string> ManualOpening = new List<string>();
+        internal static readonly UserDialogBuffer UserDialogs = new UserDialogBuffer();
+        // Set by revit_show_message around its own dialog: that dialog is the agent's message, not a Revit condition.
+        internal static bool OwnDialogPending;
 
         internal static void Initialize(UIControlledApplication application)
         {
@@ -116,6 +121,8 @@ namespace RvtMcp.Plugin.Failures
             // Readiness is only a host signal. It never completes an in-flight operation.
             PendingRequestLifecycle.SetHostBusy(false);
             _applicationClosing = false; // A cancelled application exit has returned to a live idle UI.
+            ManualOpening.Clear(); // Opening is modal; an idle UI has none in progress.
+            RevitMessageCatalog.EnsureLoaded(application);
             if (application != null) RefreshContext(application);
             if (_blockedSave != null && DateTimeOffset.UtcNow - _blockedSave.Time > TimeSpan.FromMinutes(2))
                 _blockedSave = null;
@@ -144,7 +151,7 @@ namespace RvtMcp.Plugin.Failures
 
         private static void OnFailuresProcessing(object sender, FailuresProcessingEventArgs args)
         {
-            if (!Scoped()) return;
+            if (!Scoped()) { RecordUserFailures(args); return; }
             try { args.SetProcessingResult(Active.Process(args.GetFailuresAccessor(), "global")); }
             catch
             {
@@ -247,7 +254,7 @@ namespace RvtMcp.Plugin.Failures
 
         private static void OnDocumentOpening(object sender, DocumentOpeningEventArgs args)
         {
-            if (!Scoped()) return;
+            if (!Scoped()) { ManualOpening.Add(args.PathName ?? ""); return; }
             try
             {
                 var path = args.PathName;
@@ -277,7 +284,7 @@ namespace RvtMcp.Plugin.Failures
 
         private static void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
-            if (!Scoped()) return;
+            if (!Scoped()) { ManualOpened(args); return; }
             try
             {
                 var attempt = Opening.Count == 0 ? null : Opening[Opening.Count - 1];
@@ -572,19 +579,36 @@ namespace RvtMcp.Plugin.Failures
         private static void OnDialogBoxShowing(object sender, DialogBoxShowingEventArgs args)
         {
             PendingRequestLifecycle.SetHostBusy(true);
+            var application = sender as UIApplication;
+            RevitMessageCatalog.EnsureLoaded(application);
+            var task = args.GetType() == typeof(TaskDialogShowingEventArgs) ? (TaskDialogShowingEventArgs)args : null;
+            var box = args as MessageBoxShowingEventArgs;
+            var kind = task != null ? "TaskDialog" : box != null ? "MessageBox" : "Dialog";
+            var text = task?.Message ?? box?.Message;
             if (!Scoped())
             {
-                // Only readiness/correlation is observed outside MCP. No dialog text or independent actor is captured.
+                // Outside MCP the user handles the dialog exactly as Revit shows it; it is only noted for the next MCP call.
                 if (args.DialogId == "TaskDialog_Project_Not_Saved_Recently" && _blockedSave != null
                     && DateTimeOffset.UtcNow - _blockedSave.Time < TimeSpan.FromMinutes(2))
                     PendingRequestLifecycle.SetHostBusy(true, new JObject { ["correlation"] = "correlated_not_proven",
                         ["operationId"] = _blockedSave.OperationId, ["modelScopeKey"] = _blockedSave.ModelScopeKey });
+                RecordUserDialog(application, args.DialogId, kind, text);
                 return;
             }
 
             try
             {
-                var task = args.GetType() == typeof(TaskDialogShowingEventArgs) ? (TaskDialogShowingEventArgs)args : null;
+                var dialog = RevitMessageLookup.DialogInfo(args.DialogId, kind, text, RevitMessageCatalog.FindDialog(args.DialogId));
+                if (OwnDialogPending && string.IsNullOrEmpty(args.DialogId))
+                {
+                    // revit_show_message waits for its own dialog: report the wait, but it is not a Revit condition.
+                    dialog["kind"] = "agent_message";
+                    Active.Operation.Execution = "waiting_for_user";
+                    Active.SaveOperation();
+                    Active.Lifecycle.EmitDialogWait(new JObject { ["dialogId"] = "", ["manual"] = true, ["dialog"] = dialog,
+                        ["message"] = FailureCapture.SafeText(text ?? "Revit is waiting for a user action.", 1024) });
+                    return;
+                }
                 string context = null;
                 if (Opening.Count > 0 || _lastOpened != null)
                 {
@@ -605,7 +629,7 @@ namespace RvtMcp.Plugin.Failures
                     incident.Severity = "TaskDialog"; incident.MessageCount = 1;
                     incident.Messages.Add(new FailureMessage { DefinitionId = args.DialogId,
                         Severity = task == null ? "Dialog" : "TaskDialog", Source = "dialog",
-                        Description = FailureCapture.SafeText(task?.Message ?? "Native Revit dialog requires user interaction.") });
+                        Description = FailureCapture.SafeText(text ?? "Native Revit dialog requires user interaction.") });
                     var policy = adapter == null || Active.Stopped ? null : FailurePolicy.EvaluateDialog(args.DialogId, Year,
                         context, model.ModelScopeKey, Active.Operation.RequestHash, incident.DocumentRevision,
                         Store.GetRules(model.ModelScopeKey), Store.GetGrants(model.ModelScopeKey));
@@ -627,20 +651,80 @@ namespace RvtMcp.Plugin.Failures
                         receipt.NativeContextDescription = "Exact adapter result " + adapter.Result + ": " + adapter.ButtonSemantic
                             + "; native OverrideResult accepted=" + answered + ".";
                         Active.Record(receipt); // The grant was consumed by the authorization record, once only.
-                        if (answered) { PendingRequestLifecycle.SetHostBusy(false); return; }
+                        if (answered)
+                        {
+                            Active.DialogAnswers[args.DialogId ?? ""] = new JObject { ["button"] = adapter.Result.ToString(), ["meaning"] = adapter.ButtonSemantic };
+                            PendingRequestLifecycle.SetHostBusy(false);
+                            return;
+                        }
                     }
                 }
                 Active.Operation.Execution = "waiting_for_user";
                 Active.SaveOperation();
                 Active.Lifecycle.EmitDialogWait(new JObject { ["dialogId"] = FailureCapture.SafeText(args.DialogId, 128),
-                    ["message"] = FailureCapture.SafeText(task?.Message ?? "Revit is waiting for a user action.", 1024),
-                    ["manual"] = true });
+                    ["message"] = FailureCapture.SafeText(text ?? "Revit is waiting for a user action.", 1024),
+                    ["manual"] = true, ["dialog"] = dialog });
             }
             catch
             {
                 Active.StorageFailure(); Active.Operation.Execution = "waiting_for_user";
                 Active.Lifecycle.EmitDialogWait(new JObject { ["manual"] = true, ["message"] = "Revit is waiting for a user action; recording the dialog failed." });
             }
+        }
+
+        // Attribution: during a manual open, the model being opened; otherwise the active model.
+        private static void RecordUserDialog(UIApplication application, string code, string kind, string text)
+        {
+            try
+            {
+                string path, title;
+                var opening = ManualOpening.Count > 0 ? ManualOpening[ManualOpening.Count - 1] : null;
+                if (!string.IsNullOrEmpty(opening)) { path = opening; title = Path.GetFileNameWithoutExtension(opening); }
+                else { var document = application?.ActiveUIDocument?.Document; path = document?.PathName; title = document?.Title; }
+                UserDialogs.Add(UserDialogBuffer.Key(path, title), title,
+                    RevitMessageLookup.DialogInfo(code, kind, text, RevitMessageCatalog.FindDialog(code), UserDialogBuffer.MaxText), DateTimeOffset.UtcNow);
+            }
+            catch { }
+        }
+
+        // Read only: no processing result is set and no warning is removed, so Revit shows the user what it always shows.
+        private static void RecordUserFailures(FailuresProcessingEventArgs args)
+        {
+            try
+            {
+                var accessor = args.GetFailuresAccessor();
+                var failures = accessor.GetFailureMessages();
+                if (failures.Count == 0) return;
+                var document = accessor.GetDocument();
+                var key = UserDialogBuffer.Key(document?.PathName, document?.Title);
+                if (key == null) return;
+                foreach (var failure in failures.Take(UserDialogBuffer.MaxItems))
+                {
+                    var item = new JObject { ["kind"] = "failure" };
+                    try { item["code"] = failure.GetFailureDefinitionId().Guid.ToString(); } catch { }
+                    try { item["severity"] = failure.GetSeverity().ToString(); } catch { }
+                    try { item["text"] = failure.GetDescriptionText(); } catch { }
+                    var name = RevitMessageCatalog.FindFailure(item.Value<string>("code"))?.Name;
+                    if (name != null) item["name"] = name;
+                    UserDialogs.Add(key, document.Title, item, DateTimeOffset.UtcNow);
+                }
+            }
+            catch { }
+        }
+
+        private static void ManualOpened(DocumentOpenedEventArgs args)
+        {
+            if (ManualOpening.Count == 0) return;
+            var path = ManualOpening[ManualOpening.Count - 1];
+            ManualOpening.RemoveAt(ManualOpening.Count - 1);
+            try
+            {
+                // A new local copy of a central model opens under a path other than the one requested.
+                var document = args.Document;
+                if (args.Status == RevitAPIEventStatus.Succeeded && document != null)
+                    UserDialogs.Rekey(UserDialogBuffer.Key(path, null), UserDialogBuffer.Key(document.PathName, document.Title), document.Title);
+            }
+            catch { }
         }
     }
 }

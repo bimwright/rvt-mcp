@@ -503,15 +503,17 @@ namespace RvtMcp.Server
                         if (_conn == conn && conn.Generation == effectiveGeneration && conn.Closed == 0)
                         {
                             string rejection = null;
+                            GatewayPendingRequest blocking = null;
                             if (!ToolReadPolicy.IsReadOnly(command) && !conn.FailureProtocol)
                                 rejection = "PAIRING_REQUIRED: update the gateway and Revit add-in together before model mutations.";
-                            else if (_pending.Values.Any(value => value.ConnectionId == conn.Epoch && value.WaitingForUser))
-                                rejection = "REVIT_BUSY: Revit is waiting for native user input. Use the local failure or operation queries.";
+                            else if ((blocking = _pending.Values.FirstOrDefault(value => value.ConnectionId == conn.Epoch && value.WaitingForUser)) != null)
+                                rejection = "REVIT_BUSY: Revit is waiting for native user input. _operation.blockedBy names the waiting operation and its dialog. Use the local failure or operation queries.";
                             if (rejection != null)
                             {
+                                var notStarted = GatewayPendingRequest.NotStarted(operationId);
+                                if (blocking != null) notStarted["blockedBy"] = blocking.BlockedBy();
                                 pending = new GatewayPendingRequest(operationId, conn.Epoch);
-                                pending.Route(new JObject { ["success"] = false, ["error"] = rejection,
-                                    ["_operation"] = GatewayPendingRequest.NotStarted(operationId) });
+                                pending.Route(new JObject { ["success"] = false, ["error"] = rejection, ["_operation"] = notStarted });
                                 return (conn, effectiveGeneration, pending);
                             }
                             pending = new GatewayPendingRequest(operationId, conn.Epoch, history);
@@ -619,6 +621,7 @@ namespace RvtMcp.Server
         internal static void ResetForTests()
         {
             BeforeWriteForTests = null;
+            PreviousOperations.Clear();
             lock (_connectLock)
             {
                 var conn = _conn;

@@ -38,6 +38,7 @@
     <Compile Include="..\shared\Failures\FailurePolicy.cs" Link="Shared\Failures\FailurePolicy.cs" />
     <Compile Include="..\shared\Failures\FailureCapture.cs" Link="Shared\Failures\FailureCapture.cs" />
     <Compile Include="..\shared\Failures\FailureLedgerStore.cs" Link="Shared\Failures\FailureLedgerStore.cs" />
+    <Compile Include="..\shared\Failures\RevitMessageCatalogModel.cs" Link="Shared\Failures\RevitMessageCatalogModel.cs" />
     <Compile Include="..\shared\Config\RvtMcpConfig.cs" Link="Shared\RvtMcpConfig.cs" />
     <Compile Include="..\shared\Config\ToastPositionOptions.cs" Link="Shared\ToastPositionOptions.cs" />
     <Compile Include="..\shared\Logging\PersistSendCodeTtl.cs" Link="Shared\PersistSendCodeTtl.cs" />

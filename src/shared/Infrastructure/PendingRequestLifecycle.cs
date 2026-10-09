@@ -104,6 +104,8 @@ namespace RvtMcp.Plugin
                 if (_state != 1) return;
                 if (!_waiting) { _waiting = true; Interlocked.Increment(ref _modalCount); }
                 var pending = Pending("REVIT_OPERATION_REQUIRES_USER", "waiting_for_user", "unknown");
+                if (safePayload?["dialog"] is JObject dialog && pending["_operation"] is JObject operation)
+                    operation["dialog"] = dialog.DeepClone();
                 var frame = new JObject
                 {
                     ["frame"] = "event", ["event"] = "dialog_wait", ["id"] = RequestId,
@@ -143,7 +145,8 @@ namespace RvtMcp.Plugin
                 ["execution"] = execution, ["outcome"] = outcome,
                 ["mutationApplied"] = outcome == "not_started" ? new JValue(false) : JValue.CreateNull(),
                 ["complete"] = outcome == "not_started",
-                ["nextStep"] = "Query revit_get_operation_status with this operationId. Do not retry unchanged."
+                ["nextStep"] = execution == "waiting_for_user" ? RvtMcp.Failures.FailureCapture.WaitingNextStep
+                    : "Query revit_get_operation_status with this operationId. Do not retry unchanged."
             }
         };
     }

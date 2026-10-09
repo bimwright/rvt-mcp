@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -38,7 +39,7 @@ namespace RvtMcp.Server
         }
 
         [McpServerTool(Name = "revit_get_operation_status", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), Description(
-            "Read the plugin-owned local status of an issued operationId, including execution, final outcome, incident IDs and bounded receipts. " +
+            "Read the plugin-owned local status of an issued operationId, including execution, final outcome, incident IDs and bounded receipts; finalResult.data has the command result while this session still holds it. " +
             "Works while Revit is modal; never dispatches, retries or changes Revit. Missing records are unavailable, not proof of failure or permission to retry. " +
             "Example: {operationId: \"<issued-id>\"}.")]
         public static string GetOperationStatus(string operationId)
@@ -54,15 +55,62 @@ namespace RvtMcp.Server
                 if (result["finalResult"] is JObject final)
                 {
                     var bounded = new JObject { ["success"] = final["success"], ["error"] = final["error"], ["_changes"] = ChangeSummary.ForAgent(final["_changes"] ?? final["changes"]), ["_history"] = final["_history"] ?? final["history_transfer"] };
+                    // The ledger keeps receipts only; the command's own result is available while this session holds it.
+                    var data = operation.Execution == "completed" ? ToolGateway.PreviousOperations.FinalData(operationId) : null;
+                    if (data != null) bounded["data"] = data;
                     SafetyResponseMetadata.Attach(bounded, final);
                     result["finalResult"] = bounded;
                 }
+                if (operation.Execution == "completed") ToolGateway.PreviousOperations.MarkRead(operationId);
                 result["available"] = true;
                 return result.ToString(Formatting.None);
             }
             catch (ArgumentException ex) { return Error("INVALID_ARGUMENT", ex.Message); }
             catch { return Error("FAILURE_STORAGE_FAILED", "Local operation status is unavailable. Do not retry the model operation."); }
         }
+        [McpServerTool(Name = "revit_lookup_message", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), Description(
+            "Explain a Revit dialog or failure code from the catalogue of the bound Revit version. Reads a local file and never dispatches Revit, so it works while Revit shows a dialog. " +
+            "Pass a dialog code (_operation.dialog.code, blockedBy.dialog.code) or a failure GUID (failureDefinitionId). Returns the dialog's title, template text and buttons, " +
+            "or the failure's severity, description and resolutions. The add-in builds the catalogue from the Revit installed on this machine; " +
+            "add-in dialogs, Windows dialogs and dialogs without a code are not in it. Example: {code: \"<code from a receipt>\"}.")]
+        public static string LookupMessage(string code)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(code) || code.Length > 256)
+                    throw new ArgumentException("code is required: a dialog code or failure GUID taken from a receipt.");
+                var year = YearProvider();
+                if (year == null)
+                    return Error("TARGET_NOT_BOUND", "No Revit target is bound yet. Call revit_get_current_target or another Revit tool first; this lookup never dispatches Revit.");
+                return RevitMessageLookup.Lookup(Catalog(year.Value), code.Trim(), year.Value).ToString(Formatting.None);
+            }
+            catch (ArgumentException ex) { return Error("INVALID_ARGUMENT", ex.Message); }
+            catch { return Error("CATALOG_UNAVAILABLE", "The local message catalogue could not be read. No Revit operation was dispatched."); }
+        }
+
+        internal static Func<int?> YearProvider = () => int.TryParse(ToolGateway.CurrentRevitVersion, out var year) ? year : (int?)null;
+        private static readonly object CatalogGate = new object();
+        private static string _catalogPath;
+        private static DateTime _catalogStamp;
+        private static RevitMessageCatalogData _catalog;
+
+        // The add-in rewrites the file when Revit's build or language changes.
+        private static RevitMessageCatalogData Catalog(int year)
+        {
+            var path = RevitMessageLookup.CachePath(year);
+            var stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : DateTime.MinValue;
+            lock (CatalogGate)
+            {
+                if (path != _catalogPath || stamp != _catalogStamp)
+                {
+                    _catalog = stamp == DateTime.MinValue ? null : RevitMessageLookup.Read(path);
+                    _catalogPath = path;
+                    _catalogStamp = stamp;
+                }
+                return _catalog;
+            }
+        }
+
         private static string Error(string code, string message) => new JObject { ["success"] = false, ["error"] = code, ["message"] = message }.ToString(Formatting.None);
         private static void ValidateKey(string key)
         {

@@ -222,6 +222,8 @@ namespace RvtMcp.Plugin.Failures
             internal string NativeOutcome;
             internal readonly Stack<bool> GroupStates = new Stack<bool>();
             internal readonly HashSet<string> OpeningPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            internal readonly Dictionary<string, JObject> DialogAnswers = new Dictionary<string, JObject>(StringComparer.Ordinal);
+            private string _userDialogKey;
             private int _capturedMessages, _capturedReferences, _capturedBytes;
             private readonly HashSet<string> _snapshotKeys = new HashSet<string>();
             private bool _finished;
@@ -255,6 +257,8 @@ namespace RvtMcp.Plugin.Failures
 
             internal void Start()
             {
+                try { var current = Application.ActiveUIDocument?.Document; _userDialogKey = UserDialogBuffer.Key(current?.PathName, current?.Title); }
+                catch { }
                 if (Store == null || _storageError != null)
                 {
                     if (!IsRead) Stop("FAILURE_STORAGE_FAILED", null);
@@ -554,6 +558,11 @@ namespace RvtMcp.Plugin.Failures
                     bool blocked = Operation.RequiresReview || StorageFailed
                         || ErrorCode == "REVIT_MODEL_BLOCKED" || ErrorCode == "FAILURE_STORAGE_FAILED" || ErrorCode == "FAILURE_CAPTURE_INCOMPLETE"
                         || own.Any(i => i.State == "open" && !((i.Action == "rolled_back" || i.Action == "cancelled") && i.Complete));
+                    var groups = new JArray(messages.GroupBy(m => new { m.DefinitionId, m.Severity }).Take(20).Select(g => new JObject
+                    { ["failureDefinitionId"] = g.Key.DefinitionId, ["severity"] = g.Key.Severity, ["count"] = g.Count(),
+                        ["description"] = (g.First().Description ?? "").Substring(0, Math.Min(320, (g.First().Description ?? "").Length)),
+                        ["sampleElementIds"] = new JArray(g.SelectMany(m => m.FailingElementIds).Distinct().Take(20)), ["resolutionsApplied"] = false }));
+                    foreach (var group in groups.OfType<JObject>()) DescribeDialog(group);
                     envelope["_failure"] = new JObject
                     {
                         ["schemaVersion"] = 1, ["operationId"] = Operation.OperationId,
@@ -564,10 +573,7 @@ namespace RvtMcp.Plugin.Failures
                         ["persistence"] = StorageFailed ? "failed" : "recorded",
                         ["complete"] = Operation.Complete && own.All(i => i.Complete),
                         ["messageCount"] = own.Sum(i => i.MessageCount), ["observationCoverage"] = Operation.ObservationCoverage,
-                        ["groups"] = new JArray(messages.GroupBy(m => new { m.DefinitionId, m.Severity }).Take(20).Select(g => new JObject
-                        { ["failureDefinitionId"] = g.Key.DefinitionId, ["severity"] = g.Key.Severity, ["count"] = g.Count(),
-                            ["description"] = (g.First().Description ?? "").Substring(0, Math.Min(320, (g.First().Description ?? "").Length)),
-                            ["sampleElementIds"] = new JArray(g.SelectMany(m => m.FailingElementIds).Distinct().Take(20)), ["resolutionsApplied"] = false })),
+                        ["groups"] = groups,
                         ["nextStep"] = FailureCapture.NextStep(Stopped ? ErrorCode ?? "REVIT_FAILURE_ROLLED_BACK" : null, blocked,
                             own.Any(i => i.State == "accepted_by_rule" || i.State == "accepted_once"))
                     };
@@ -581,7 +587,28 @@ namespace RvtMcp.Plugin.Failures
                         ["observationCoverage"] = Operation.ObservationCoverage };
                 if (baselineIds.Count > 0 && envelope["_operation"] is JObject operation)
                     operation["baselineIncidentId"] = baselineIds.First();
+                // An error without a receipt reaches the agent as plain text, so the report would be lost: keep it for the next call.
+                if (_userDialogKey != null && envelope["_userDialogs"] == null
+                    && (envelope.Value<bool?>("success") == true || envelope["_operation"] != null))
+                {
+                    var report = UserDialogs.Take(_userDialogKey);
+                    if (report != null) envelope["_userDialogs"] = report;
+                }
                 SafetyResponseMetadata.Attach(envelope, envelope);
+            }
+
+            // Dialogs carry what the catalogue knows about them and who closed them; Revit does not say which button the user chose.
+            private void DescribeDialog(JObject group)
+            {
+                var severity = group.Value<string>("severity");
+                if (severity != "TaskDialog" && severity != "Dialog") return;
+                var code = group.Value<string>("failureDefinitionId") ?? "";
+                var entry = RevitMessageCatalog.FindDialog(code);
+                if (entry?.Title != null) group["title"] = FailureCapture.SafeText(entry.Title, RevitMessageLookup.MaxTitle);
+                if (entry?.Buttons.Count > 0) group["buttons"] = RevitMessageLookup.Buttons(entry);
+                if (!string.IsNullOrEmpty(entry?.CommonButtons) && entry.CommonButtons != "None") group["commonButtons"] = entry.CommonButtons;
+                if (DialogAnswers.TryGetValue(code, out var answer)) { group["answeredBy"] = "rule"; group["answer"] = answer.DeepClone(); }
+                else group["answeredBy"] = "user";
             }
 
             internal void PersistFinal(JObject envelope)

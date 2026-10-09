@@ -302,6 +302,59 @@ namespace RvtMcp.Tests
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
+        public async Task Dialog_wait_names_the_dialog_busy_calls_point_at_it_and_the_final_reaches_the_agent_once(bool readStatus)
+        {
+            using var wire = new WireHost();
+            Descriptor(wire.Port);
+            JObject first = null;
+            wire.OnCommand = (request, host) =>
+            {
+                if (first != null) { host.Send(Final(request)); return; }
+                first = request;
+                host.Send(new JObject
+                {
+                    ["id"] = request["id"], ["frame"] = "event", ["event"] = "dialog_wait",
+                    ["_operation"] = new JObject { ["operationId"] = request["operation_id"], ["execution"] = "waiting_for_user", ["outcome"] = "unknown",
+                        ["complete"] = false, ["mutationApplied"] = null,
+                        ["dialog"] = new JObject { ["code"] = "TaskDialog_Test_Sample", ["kind"] = "TaskDialog", ["text"] = "Sample text", ["inCatalog"] = false } }
+                });
+            };
+            var receipt = await Send("open_model");
+            var operationId = receipt["_operation"].Value<string>("operationId");
+            Assert.Equal("TaskDialog_Test_Sample", receipt["_operation"]["dialog"]["code"]);
+
+            var blocked = await Send("create_wall");
+            Assert.StartsWith("REVIT_BUSY:", blocked.Value<string>("error"));
+            Assert.Equal(operationId, blocked["_operation"]["blockedBy"]["operationId"]);
+            Assert.Equal("Sample text", blocked["_operation"]["blockedBy"]["dialog"]["text"]);
+            Assert.Null(blocked["_previousOperation"]);
+
+            var pending = Pending[first.Value<string>("id")];
+            var final = Final(first);
+            wire.Send(final);
+            await pending.Execution.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            if (readStatus)
+            {
+                _ledger.SaveOperation(new FailureOperation { OperationId = operationId, Execution = "completed", Outcome = "committed", MutationApplied = true, FinalResult = final });
+                var status = JObject.Parse(FailureTools.GetOperationStatus(operationId));
+                Assert.Equal("Test View", status["finalResult"]["data"]["viewName"]);
+            }
+
+            var next = await Send();
+            if (readStatus) Assert.Null(next["_previousOperation"]);
+            else
+            {
+                var previous = Assert.Single((JArray)next["_previousOperation"]);
+                Assert.Equal(operationId, previous["operationId"]);
+                Assert.Equal("revit_open_model", previous["tool"]);
+                Assert.Equal("committed", previous["outcome"]);
+            }
+            Assert.Null((await Send())["_previousOperation"]);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
         public async Task Dialog_receipt_then_EOF_or_switch_cannot_replace_caller_or_native_outcome(bool switchTarget)
         {
             using var wire = new WireHost();

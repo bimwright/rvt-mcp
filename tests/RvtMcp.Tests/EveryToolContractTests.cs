@@ -27,6 +27,7 @@ namespace RvtMcp.Tests
             ["revit_get_change_records"] = "ChangeHistoryRuntimeTests",
             ["revit_get_failure_records"] = "FailureProtocolTests",
             ["revit_get_operation_status"] = "FailureProtocolTests",
+            ["revit_lookup_message"] = "RevitDialogInformationTests",
             ["revit_resolve_history_identity"] = "ChangeHistoryRuntimeTests",
             ["revit_list_bake_suggestions"] = "ToolBakerHandlersTests",
             ["revit_accept_bake_suggestion"] = "ToolBakerHandlersTests",

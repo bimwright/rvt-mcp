@@ -36,6 +36,7 @@ namespace RvtMcp.Plugin
             "get_change_records",
             "get_failure_records",
             "get_operation_status",
+            "lookup_message",
             "get_element_bounding_box",
             "get_element_centroid",
             "get_element_details",

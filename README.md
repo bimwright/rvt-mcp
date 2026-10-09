@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-235%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-236%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -90,12 +90,12 @@ Counts below describe the **unreleased development source**; published releases 
 
 | Mode | Tools | Notes |
 |------|------:|-------|
-| Fresh install | **235** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **48** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **235** | Full catalog |
-| `all` + adaptive bake | **238** | Adds 3 suggestion-lifecycle tools |
+| Fresh install | **236** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **49** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **236** | Full catalog |
+| `all` + adaptive bake | **239** | Adds 3 suggestion-lifecycle tools |
 
-Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 48-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline.
+Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 49-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline.
 
 | Toolset | What it covers |
 |---------|----------------|
@@ -304,6 +304,7 @@ MCP annotations describe each tool's document/file effects. Transient selection,
       "mcp__rvt-mcp__revit_list_view_templates",
       "mcp__rvt-mcp__revit_list_worksets",
       "mcp__rvt-mcp__revit_load_selection",
+      "mcp__rvt-mcp__revit_lookup_message",
       "mcp__rvt-mcp__revit_measure_distance_between_elements",
       "mcp__rvt-mcp__revit_project_point_onto_face",
       "mcp__rvt-mcp__revit_raycast_from_point",

@@ -47,7 +47,9 @@ namespace RvtMcp.Plugin.Handlers
             if (maxEchoChars < 1 || maxEchoChars > 4096)
                 return CommandResult.Fail("max_echo_chars must be between 1 and the hard maximum of 4096.");
 
-            TaskDialog.Show(title, displayMessage);
+            Failures.FailureControl.OwnDialogPending = true;
+            try { TaskDialog.Show(title, displayMessage); }
+            finally { Failures.FailureControl.OwnDialogPending = false; }
             var echoedMessage = echoMessage
                 ? wireMessage.Substring(0, Math.Min(wireMessage.Length, maxEchoChars))
                 : null;

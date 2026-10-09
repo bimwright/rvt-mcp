@@ -41,18 +41,27 @@ These decisions belong to the person using Revit. There is no public MCP approva
 
 ## Query without waiting for Revit's UI
 
-Both tools are in `meta` and remain exposed when the selected surface is read-only or send-code/history recording is disabled. They do not dispatch an ExternalEvent, retry a request or change the model, so they can answer while a native modal dialog is still open.
+These tools are in `meta` and remain exposed when the selected surface is read-only or send-code/history recording is disabled. They do not dispatch an ExternalEvent, retry a request or change the model, so they can answer while a native modal dialog is still open.
 
 | Tool | Parameters |
 | --- | --- |
 | `revit_get_failure_records` | Supply an issued `modelScopeKey`, `incidentId` or `operationId`. Optional: `state`, `elementId`, ISO date/time `from` and `until`, `limit` (1–100, default 50), returned `cursor`, and `includeDetails` (default false). Follow `nextCursor` for further pages. |
 | `revit_get_operation_status` | Required `operationId`. Returns available execution/outcome information, incident IDs and bounded final receipts. `available=false` means no durable status is available, not that the operation failed to run. |
+| `revit_lookup_message` | Required `code`: a dialog code from `_operation.dialog` or `blockedBy.dialog`, or a failure GUID (`failureDefinitionId`). Returns the catalogue entry of the bound Revit year: a dialog's title, template text and buttons, or a failure's severity, description and resolutions. |
+
+The local ledger keeps receipts, never a command's own result. `revit_get_operation_status` adds `finalResult.data` only while the gateway session that sent the call still holds it.
+
+`revit_lookup_message` reads `%LOCALAPPDATA%\Bimwright\rvt-mcp\catalog\revit-<year>.json`. The add-in writes this file shortly after Revit starts, from the Revit installed on that machine and in its UI language, and rewrites it when the Revit build or language changes. Nothing from Autodesk is packaged with rvt-mcp. Add-in dialogs, Windows dialogs and dialogs without a code are not in the catalogue.
 
 Use identifiers from receipts; these queries do not guess a model from its title and do not accept a file path instead of an identifier. Summaries and captured details have size limits. Use details and paging without claiming omitted evidence was checked.
 
 ## Modal dialogs, busy hosts and late results
 
 Revit failures use the failure APIs. The add-in does not press generic OK/Cancel buttons or override `Dialog_Revit_DocWarnDialog`. Without a matching rule for a supported exact dialog, Revit retains its native dialog for the user and the call can report `REVIT_OPERATION_REQUIRES_USER` with `waiting_for_user`. Other UI-dependent calls to that busy host return `REVIT_BUSY`; inspect Issues/status instead of queueing another model operation.
+
+A dialog shown during an MCP call is information for the agent. The pending receipt carries `_operation.dialog`: `code` (Revit's dialog ID, which can be empty or `0`), `kind`, the live `text`, and from the catalogue the `title`, `buttons`, `commonButtons` and `defaultButton`, plus `inCatalog`. A call refused with `REVIT_BUSY` carries `_operation.blockedBy` with the waiting operation ID and the same dialog. In the final `_failure.groups`, a dialog says `answeredBy`: `rule` with the `answer` an adapter gave, or `user`. Revit does not report which button the user chose. When an operation that returned a pending receipt finishes, the next tool response carries its outcome and bounded result once as `_previousOperation`, unless the agent already read the final status. `revit_show_message` reports its own dialog with `kind=agent_message` and records no incident.
+
+Dialogs and failure messages the user meets outside MCP calls stay exactly as Revit shows them; the add-in answers nothing and removes no warning. It notes them in memory per model: during a manual open, under the model being opened; otherwise under the active model. The next MCP call whose active model matches reports them once as `_userDialogs`, labelled as handled by the user. They create no incident, gate or ledger record and are lost when Revit closes.
 
 The current dialog adapters cover only the observed Unresolved References and Analytical Changed contexts for Revit 2022 and 2027. They require a decision or rule for the exact dialog, year, context and displayed button meaning. Other years and dialogs remain manual. Incompatible central-version dialogs and **Project Not Saved Recently** are manual-only; the add-in does not choose Save or Discard for the user. A delayed reminder associated with an earlier blocked save may be reported as correlated without claiming causation.
 

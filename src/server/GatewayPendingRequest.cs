@@ -13,6 +13,9 @@ namespace RvtMcp.Server
         internal long ConnectionId { get; }
         private volatile bool _waitingForUser;
         internal bool WaitingForUser => _waitingForUser;
+        private JObject _dialog;
+        /// <summary>The dialog this request waits on, as the add-in reported it; null when unknown.</summary>
+        internal JObject Dialog { get { lock (_gate) return (JObject)_dialog?.DeepClone(); } }
         internal RvtMcp.Plugin.ChangeHistoryRequest History { get; }
         internal JObject HistoryReceipt { get; private set; }
         private readonly object _gate = new object();
@@ -42,6 +45,12 @@ namespace RvtMcp.Server
                             _waitingForUser = true;
                             var receipt = Pending("waiting_for_user");
                             if (frame["_operation"] != null) receipt["_operation"] = frame["_operation"].DeepClone();
+                            var dialog = receipt["_operation"]?["dialog"] as JObject ?? frame["payload"]?["dialog"] as JObject;
+                            if (dialog != null)
+                            {
+                                _dialog = (JObject)dialog.DeepClone();
+                                if (receipt["_operation"] is JObject operation) operation["dialog"] = dialog.DeepClone();
+                            }
                             Caller.TrySetResult(receipt.ToString(Formatting.None));
                         }
                         return false;
@@ -92,7 +101,17 @@ namespace RvtMcp.Server
             ["success"] = false, ["error"] = "REVIT_OPERATION_REQUIRES_USER",
             ["_operation"] = new JObject { ["operationId"] = OperationId, ["execution"] = execution,
                 ["outcome"] = "unknown", ["complete"] = false, ["mutationApplied"] = JValue.CreateNull(),
-                ["nextStep"] = "Query revit_get_operation_status. Execution has not been confirmed finished; do not retry." }
+                ["nextStep"] = execution == "waiting_for_user" ? RvtMcp.Failures.FailureCapture.WaitingNextStep
+                    : "Query revit_get_operation_status. Execution has not been confirmed finished; do not retry." }
         };
+
+        /// <summary>What a refused call reports about the request that holds Revit.</summary>
+        internal JObject BlockedBy()
+        {
+            var blockedBy = new JObject { ["operationId"] = OperationId };
+            var dialog = Dialog;
+            if (dialog != null) blockedBy["dialog"] = dialog;
+            return blockedBy;
+        }
     }
 }
