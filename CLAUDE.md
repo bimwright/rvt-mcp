@@ -39,6 +39,10 @@ Discovery file format (`schema_version=3`):
 
 `window_title` is not in the descriptor — the server reads it live from the process. The server binds to exactly one instance by scanning these files (skipping any whose `pid` is dead, deduplicating per-instance vs legacy by pid). Use `--target 2022` / `pid:<n>` / `id:revit-<year>-<pid>` (4-digit calendar year, NOT legacy R-codes) to pin a specific instance when multiple Revits run. Agents should call `revit_list_available_targets` to enumerate live instances and `revit_get_current_target` to inspect the pinned target rather than guessing version strings — `revit_switch_target` hard-fails with an educational error if passed an R-code like `R24`.
 
+Other per-user data under the same root:
+- `failures\ledger.db` — local failure ledger (operations, incidents, user decisions). Never delete it to clear state; open it read-only when inspecting.
+- `catalog\revit-<year>.json` — dialog and failure catalogue the add-in builds at run time from the Revit installed on that machine. It contains Autodesk text: never commit it, package it, or copy its text into tests or docs.
+
 ## Project Structure
 
 ```
@@ -55,12 +59,18 @@ src/
 │   ├── Handlers/             # One file per command (send_code, create_grid, batch_execute, …)
 │   ├── Commands/             # Ribbon button commands
 │   ├── Config/               # Configuration loaders
-│   ├── Infrastructure/       # CommandDispatcher, McpEventHandler, ResponseSizeGuard, …
+│   ├── Infrastructure/       # CommandDispatcher, McpEventHandler, ResponseSizeGuard, PendingRequestLifecycle, …
+│   ├── Failures/             # Controlled failures: warning/dialog capture, policy, local ledger, Revit message catalogue
 │   ├── Transport/            # TcpTransportServer, PipeTransportServer, ITransportServer
 │   ├── Logging/              # McpLogger
 │   ├── Security/             # AuthToken, SecretMasker
+│   ├── Survey/               # Change-impact survey engine
+│   ├── Lint/                 # Firm profiles, view-naming analysis
+│   ├── Localization/         # UI strings for every locale (completeness is tested)
+│   ├── ToolCatalog/          # Tool catalogue models shared with the server
+│   ├── Update/               # Update check and notices
 │   ├── ToolBaker/            # Self-evolution engine (list_baked_tools, run_baked_tool, adaptive suggestions)
-│   └── Views/                # HistoryWindow
+│   └── Views/                # HistoryWindow, History → Issues
 │
 ├── plugin-r22/               # Revit 2022 shell (.NET 4.8, TCP)
 ├── plugin-r23/               # Revit 2023 shell (.NET 4.8, TCP)
@@ -80,6 +90,9 @@ dotnet build src/RvtMcp.sln -c Debug
 
 # If RvtMcp.Server.exe is locked by an active MCP client session,
 # disconnect the client first — do NOT taskkill it blindly.
+
+# Build one shell without deploying (Revit may stay open). In Git Bash use -p:, not /p:.
+dotnet build src/plugin-r24/RvtMcp.Plugin.R24.csproj -c Release -p:RvtMcpSkipDeploy=true
 ```
 
 Each shell auto-deploys to `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\` for its target year, plus a matching `RvtMcp.R<nn>.addin` manifest at the parent level.
@@ -103,11 +116,18 @@ MCP Server runs from `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`.
 - Unit conversion: Revit internal (feet) → mm using SpecTypeId/ForgeTypeId
 
 ### MCP Tools
-- 236 Revit tools with `--toolsets all` (239 with adaptive bake) in this unreleased development source. The bare binary defaults to **49** tools (`query,create,view,meta`); `install.ps1` seeds `rvtmcp.config.json` with `toolsets=all` so installed machines get the full surface. ALL MCP-facing names prefixed `revit_` (e.g. `revit_create_grid`). Server↔plugin wire command names stay unprefixed and unchanged.
+- The bare binary registers the default toolsets (`query,create,view,meta`); `--toolsets all` gives the full surface, plus the adaptive bake tools when enabled. `install.ps1` seeds `rvtmcp.config.json` with `toolsets=all` so installed machines get the full surface. Tool counts are not repeated here: the source of truth is `tests/RvtMcp.Tests/Golden/tools-list*.json`, and the README and CHANGELOG quote them (checked by `ToolCountDocumentationTests`). ALL MCP-facing names prefixed `revit_` (e.g. `revit_create_grid`). Server↔plugin wire command names stay unprefixed and unchanged.
 - Tools live in `[McpServerToolType, Toolset("<name>")]` classes grouped by domain (query, create, modify, delete, view, export, annotation, mep, schedule, sheets, materials, geometry, rooms, links, structural, lint, toolbaker, meta), one file each in `src/server/Tools/`. Each tool = `[McpServerTool]` static method with param docs + examples. A shell whose arguments are plain values is `=> await ToolGateway.CallAsync("<wire_command>", new { ... })`; a shell that parses or normalizes input uses `ToolGateway.CallWithParamsAsync("<wire_command>", () => { ...; return new { ... }; })` so the parsing runs inside the helper's `try` and bad input still returns `Error: ...` text. Read-only and timeout guards stay as statements before the call. New classes must also be added to `Program.ResolveRegisteredToolTypes` (`Program.ToolRegistration.cs`).
 - Progressive disclosure (A3): default toolsets are `query,create,view,meta`. `--toolsets all` (or an explicit CSV) and `--read-only` gate the rest. `structural` is write-capable and **off** unless requested. `--read-only` filters individual tools by their document/file effects, including read tools within otherwise write-capable toolsets, and removes arbitrary code and baked-tool execution.
 - Tool Search (v0.5): server `instructions` field populated at startup (keyword-dense) so MCP clients can discover the surface — it was previously empty, so search returned nothing.
 - `revit_batch_execute` (A6): TransactionGroup-wrapped multi-command call, max 20 sub-commands. Caller timeout is separate from native execution: retain the operation ID and query status before retrying; a started request can complete later.
+
+### Controlled failures (warnings and dialogs)
+- Warnings, errors and dialogs raised during an MCP call are handled in `src/shared/Failures/`. By default a warning or error rolls the change back, records an incident in the local ledger and returns `_failure` / `_operation` receipts to the agent. The model stays writable unless its state is uncertain. Details: [docs/controlled-failures.md](docs/controlled-failures.md).
+- Never add code that dismisses Revit dialogs or deletes warnings just so a call passes. Accepting a warning or answering a dialog needs an explicit, recorded choice (user rules and grants in History → Issues); otherwise it stays with the user, and the agent receives the dialog's information.
+- A call that waits on a dialog or outlives its timeout returns a pending receipt with an `operationId` (`waiting_for_user`, `timed_out_running`). The result arrives later through `revit_get_operation_status` (its `waitSeconds` waits on the server) or once as `_previousOperation`. Never resend the request unchanged.
+- Dialogs and warnings from the user's own work in Revit stay as Revit shows them; the add-in only notes them and reports them once (`_userDialogs`).
+- Non-read commands require a matching gateway and add-in (`controlled_failures_v1`); update both together.
 
 ## Revit 2022 Specifics
 

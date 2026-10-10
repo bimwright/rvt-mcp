@@ -23,9 +23,6 @@ namespace RvtMcp.Tests
                 Assert.Contains("| `all` + adaptive bake | **" + adaptive + "**", readme);
             }
 
-            var claude = File.ReadAllText(Path.Combine(root, "CLAUDE.md"));
-            Assert.Contains(standard + " Revit tools with `--toolsets all` (" + adaptive + " with adaptive bake)", claude);
-
             var changelog = File.ReadAllText(Path.Combine(root, "CHANGELOG.md"));
             Assert.Contains("`--toolsets all` **" + standard + "**, adaptive bake **" + adaptive + "**", changelog);
         }
