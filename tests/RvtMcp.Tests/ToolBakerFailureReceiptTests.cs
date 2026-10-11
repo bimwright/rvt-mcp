@@ -93,5 +93,49 @@ namespace RvtMcp.Tests
                 Directory.Delete(root, true);
             }
         }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task Accepting_a_suggestion_passes_on_what_its_apply_call_reported_once(bool applied)
+        {
+            var root = Path.Combine(Path.GetTempPath(), "rvt-bake-accept-" + Guid.NewGuid().ToString("N"));
+            var path = Path.Combine(root, "bake.db");
+            Directory.CreateDirectory(root);
+            var factory = AdaptiveBakeTools.AcceptStoreFactory;
+            var send = ToolGateway.SendOverride;
+            try
+            {
+                using (var db = new BakeDb(path))
+                {
+                    db.Migrate();
+                    db.UpsertSuggestion(ToolBakerHandlersTests.Suggestion("s1", "preset:create_level:elevation,name", "preset"));
+                }
+                AdaptiveBakeTools.AcceptStoreFactory = () => new BakeDb(path);
+                ToolGateway.SendOverride = (command, args, _) =>
+                {
+                    var request = (JObject)args;
+                    var result = applied
+                        ? new JObject
+                        {
+                            ["success"] = true, ["tool_name"] = request["tool_name"], ["display_name"] = request["display_name"],
+                            ["description"] = request["description"], ["source"] = request["source"], ["source_code"] = "compiled source",
+                            ["params_schema"] = request["params_schema"], ["dll_base64"] = Convert.ToBase64String(new byte[] { 1, 2, 3 }), ["revit_version"] = "2027"
+                        }
+                        : new JObject { ["success"] = false, ["error_code"] = "compile_failed", ["message"] = "Compilation failed" };
+                    result["_userDialogs"] = new JObject { ["model"] = "Sample", ["items"] = new JArray(), ["note"] = "Already closed." };
+                    return Task.FromResult(result);
+                };
+                var response = JObject.Parse(await AdaptiveBakeTools.AcceptBakeSuggestion("s1", "make_level"));
+                Assert.Equal(applied, response.Value<bool>("ok"));
+                Assert.Equal("Sample", response["_userDialogs"]["model"]);
+            }
+            finally
+            {
+                AdaptiveBakeTools.AcceptStoreFactory = factory;
+                ToolGateway.SendOverride = send;
+                Directory.Delete(root, true);
+            }
+        }
     }
 }

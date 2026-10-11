@@ -653,7 +653,9 @@ namespace RvtMcp.Plugin.Failures
                         Active.Record(receipt); // The grant was consumed by the authorization record, once only.
                         if (answered)
                         {
-                            Active.DialogAnswers[args.DialogId ?? ""] = new JObject { ["button"] = adapter.Result.ToString(), ["meaning"] = adapter.ButtonSemantic };
+                            if (!Active.DialogAnswers.TryGetValue(args.DialogId ?? "", out var answers))
+                                Active.DialogAnswers[args.DialogId ?? ""] = answers = new List<JObject>();
+                            answers.Add(new JObject { ["button"] = adapter.Result.ToString(), ["meaning"] = adapter.ButtonSemantic });
                             PendingRequestLifecycle.SetHostBusy(false);
                             return;
                         }
@@ -698,7 +700,8 @@ namespace RvtMcp.Plugin.Failures
                 var document = accessor.GetDocument();
                 var key = UserDialogBuffer.Key(document?.PathName, document?.Title);
                 if (key == null) return;
-                foreach (var failure in failures.Take(UserDialogBuffer.MaxItems))
+                // Bounded read: see UserDialogBuffer.AddFailures (a temporary limit, issue #16 A-F05).
+                UserDialogs.AddFailures(key, document.Title, failures, failure =>
                 {
                     var item = new JObject { ["kind"] = "failure" };
                     try { item["code"] = failure.GetFailureDefinitionId().Guid.ToString(); } catch { }
@@ -706,8 +709,8 @@ namespace RvtMcp.Plugin.Failures
                     try { item["text"] = failure.GetDescriptionText(); } catch { }
                     var name = RevitMessageCatalog.FindFailure(item.Value<string>("code"))?.Name;
                     if (name != null) item["name"] = name;
-                    UserDialogs.Add(key, document.Title, item, DateTimeOffset.UtcNow);
-                }
+                    return item;
+                }, DateTimeOffset.UtcNow);
             }
             catch { }
         }

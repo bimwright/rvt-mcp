@@ -38,7 +38,7 @@ namespace RvtMcp.Server
                         if (targetCtx.Payload != null)
                             result = TextResult(MetaTools.TargetEnvelope(targetCtx.Payload, targetCtx.Operation), failed: true);
                         return Apply(request.Params, result, config, session, durationMs: clock.ElapsedMilliseconds,
-                            changes: capture.Changes, history: capture.History);
+                            changes: capture.Changes, history: capture.History, previousOperations: ToolGateway.PreviousOperations);
                     }
                 }
                 finally
@@ -49,7 +49,7 @@ namespace RvtMcp.Server
 
         internal static CallToolResult Apply(CallToolRequestParams request, CallToolResult result,
             RvtMcpConfig config, SessionContext session = null, ResponseSpillWriter writer = null, long durationMs = 0,
-            JObject changes = null, JObject history = null)
+            JObject changes = null, JObject history = null, PreviousOperationTracker previousOperations = null)
         {
             var name = request?.Name ?? "";
             var command = name.StartsWith("revit_", StringComparison.Ordinal) ? name.Substring(6) : name;
@@ -167,11 +167,39 @@ namespace RvtMcp.Server
                     result = McpSafetyResponseCompactor.Fit(preserved, failed || result.IsError == true, limit);
                 }
             }
+            CarryOnceFields(result, safety, previousOperations, limit);
             text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
             if (IsFailure(text, command)) result.IsError = true;
             session?.RecordCall(command, arguments, result.IsError != true, durationMs,
                 error: result.IsError == true ? text : null, resultJson: text, changes: changes);
             return result;
+        }
+
+        // Reported once, so they are added last, to the response the agent receives: dialogs the user handled (the
+        // add-in has already let go of them) and operations that finished after their pending receipt. A plain-text
+        // response carries neither. A finished operation that does not fit waits for the next response.
+        private static void CarryOnceFields(CallToolResult result, JObject original, PreviousOperationTracker previousOperations, int limit)
+        {
+            var block = result.Content?.OfType<TextContentBlock>().FirstOrDefault();
+            JObject data;
+            try { data = JObject.Parse(block?.Text ?? ""); } catch (JsonException) { return; }
+            var userDialogs = original?["_userDialogs"] as JObject ?? (original?["data"] as JObject)?["_userDialogs"] as JObject;
+            if (userDialogs != null && data["_userDialogs"] == null)
+            {
+                data["_userDialogs"] = userDialogs.DeepClone();
+                if (!TrySetText(result, block, data, limit)) data.Remove("_userDialogs");
+            }
+            var taken = previousOperations?.Attach(data);
+            if (taken?.Count > 0 && !TrySetText(result, block, data, limit)) previousOperations.Return(taken);
+        }
+
+        private static bool TrySetText(CallToolResult result, TextContentBlock block, JObject data, int limit)
+        {
+            var before = block.Text;
+            block.Text = data.ToString(Formatting.None);
+            if (Encoding.UTF8.GetByteCount(Serialize(result)) <= limit) return true;
+            block.Text = before;
+            return false;
         }
 
         internal static bool IsFailure(string text, string command = null)

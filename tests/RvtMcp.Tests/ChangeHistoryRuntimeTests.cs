@@ -78,6 +78,34 @@ namespace RvtMcp.Tests
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
+        public async System.Threading.Tasks.Task Identity_decision_passes_on_what_its_probe_reported_once(bool sourceHasHistory)
+        {
+            var originalSend = ToolGateway.SendOverride;
+            try
+            {
+                ServerState.Config = new RvtMcpConfig();
+                var source = ChangeHistoryTests.Capture(@"C:\fixture\source.rvt");
+                if (sourceHasHistory) ToolGateway.History.Ingest(source);
+                var active = (JObject)ChangeHistoryTests.Capture(@"C:\fixture\copy.rvt")["activeModel"];
+                ToolGateway.SendOverride = (command, args, timeout) =>
+                {
+                    var probe = new JObject { ["modelKey"] = active["key"], ["_userDialogs"] = new JObject { ["model"] = "Sample" } };
+                    foreach (var property in new[] { "title", "physicalKey", "lineageKey" })
+                        if (active[property] != null) probe[property] = active[property];
+                    return System.Threading.Tasks.Task.FromResult(probe);
+                };
+                var result = JObject.Parse(await ChangeHistoryTools.ResolveHistoryIdentity(
+                    source["activeModel"].Value<string>("key"), "separate", "Owner keeps the copy independent."));
+                Assert.Equal("Sample", result["_userDialogs"]["model"]);
+                if (sourceHasHistory) Assert.NotEqual(false, result.Value<bool?>("success"));
+                else Assert.Contains("no local history", result.Value<string>("error"));
+            }
+            finally { ToolGateway.SendOverride = originalSend; }
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
         public async System.Threading.Tasks.Task History_query_passes_on_what_its_probe_reported_once(bool saved)
         {
             var originalSend = ToolGateway.SendOverride;
@@ -86,12 +114,10 @@ namespace RvtMcp.Tests
                 ToolGateway.SendOverride = (command, args, timeout) => System.Threading.Tasks.Task.FromResult(new JObject
                 {
                     ["modelKey"] = saved ? new string('a', 64) : null,
-                    ["_userDialogs"] = new JObject { ["model"] = "Sample" },
-                    ["_previousOperation"] = new JArray(new JObject { ["operationId"] = "finished-op" })
+                    ["_userDialogs"] = new JObject { ["model"] = "Sample" }
                 });
                 var result = JObject.Parse(await ChangeHistoryTools.GetChangeRecords());
                 Assert.Equal("Sample", result["_userDialogs"]["model"]);
-                Assert.Equal("finished-op", result["_previousOperation"][0]["operationId"]);
                 if (!saved) Assert.Contains("no stable history identity", result.Value<string>("error"));
             }
             finally { ToolGateway.SendOverride = originalSend; }

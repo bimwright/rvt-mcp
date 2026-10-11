@@ -11,7 +11,7 @@ namespace RvtMcp.Failures
     // reported once to the next MCP call on that model. Never a ledger record, an incident or a gate.
     public sealed class UserDialogBuffer
     {
-        public const int MaxItems = 20, MaxModels = 50, MaxText = 320, MaxReportBytes = 6144;
+        public const int MaxItems = 20, MaxModels = 50, MaxText = 320, MaxReportBytes = 6144, MaxFailuresRead = 100;
         public const string Note = "Already closed: the user answered these in Revit, outside MCP, before this call. Nothing is waiting. Revit does not report which button was chosen.";
 
         private sealed class Model
@@ -52,6 +52,29 @@ namespace RvtMcp.Failures
                 bounded["count"] = 1;
                 bounded["firstSeenUtc"] = now.UtcDateTime.ToString("o");
                 model.Items.Add(bounded);
+            }
+        }
+
+        // Failures one manual Revit operation reported. Reading each one costs native calls on Revit's UI thread,
+        // so only the first MaxFailuresRead are read; the rest are counted as omitted.
+        // TEMPORARY (issue #16, A-F05, option B): Revit often repeats one warning many times, so a different
+        // warning past the limit is still lost. Root fix, not done yet (option C): read every failure's id and
+        // read the text only for ids not seen yet in this operation.
+        public void AddFailures<T>(string key, string modelTitle, IList<T> failures, Func<T, JObject> read, DateTimeOffset now)
+        {
+            if (key == null || failures == null) return;
+            foreach (var failure in failures.Take(MaxFailuresRead)) Add(key, modelTitle, read(failure), now);
+            if (failures.Count > MaxFailuresRead) AddOmitted(key, modelTitle, failures.Count - MaxFailuresRead);
+        }
+
+        public void AddOmitted(string key, string modelTitle, int count)
+        {
+            if (key == null || count <= 0) return;
+            lock (_gate)
+            {
+                var model = Get(key, create: true);
+                if (!string.IsNullOrWhiteSpace(modelTitle)) model.Title = FailureCapture.SafeText(modelTitle, 256);
+                model.Omitted += count;
             }
         }
 

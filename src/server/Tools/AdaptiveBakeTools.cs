@@ -9,6 +9,7 @@ namespace RvtMcp.Server
     [McpServerToolType, Toolset("toolbaker")]
     public class AdaptiveBakeTools
     {
+        internal static Func<BakeDb> AcceptStoreFactory = () => new BakeDb(new BakePaths());
         [McpServerTool(Name = "revit_list_bake_suggestions", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
             "List bounded adaptive ToolBaker suggestions. Filter by state and page with startIndex + limit (hard max 500).")]
         public static string ListBakeSuggestions(string state = "", int startIndex = 0, int limit = 100)
@@ -30,8 +31,7 @@ namespace RvtMcp.Server
         {
             try
             {
-                var paths = new BakePaths();
-                using var db = new BakeDb(paths);
+                using var db = AcceptStoreFactory();
                 db.Migrate();
                 Newtonsoft.Json.Linq.JObject applied = null;
                 var json = await AcceptBakeSuggestionHandler.HandleAsync(

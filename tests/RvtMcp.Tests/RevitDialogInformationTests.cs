@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
+using ModelContextProtocol.Protocol;
 using Newtonsoft.Json.Linq;
 using RvtMcp.Failures;
 using RvtMcp.Plugin;
@@ -230,6 +232,35 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void User_failures_are_read_up_to_the_limit_and_the_rest_reported_as_omitted()
+        {
+            var buffer = new UserDialogBuffer();
+            var now = DateTimeOffset.UtcNow;
+            JObject Failure(string code) => new JObject { ["kind"] = "failure", ["code"] = code, ["severity"] = "Warning", ["text"] = "t" + code };
+
+            // Many repeats of one warning do not hide a different warning that follows them.
+            var repeated = Enumerable.Repeat("same", 30).Append("other").ToList();
+            buffer.AddFailures("title:m", "m", repeated, Failure, now);
+            var report = buffer.Take("title:m");
+            Assert.Equal(30, report["items"][0].Value<int>("count"));
+            Assert.Equal("other", report["items"][1].Value<string>("code"));
+            Assert.Null(report["omittedItems"]);
+
+            // Past the read limit, failures are counted without being read.
+            int reads = 0;
+            var many = Enumerable.Repeat("same", UserDialogBuffer.MaxFailuresRead + 5).ToList();
+            buffer.AddFailures("title:m", "m", many, code => { reads++; return Failure(code); }, now);
+            report = buffer.Take("title:m");
+            Assert.Equal(UserDialogBuffer.MaxFailuresRead, reads);
+            Assert.Equal(5, report.Value<int>("omittedItems"));
+
+            // Distinct failures past the buffer bound are counted too.
+            buffer.AddFailures("title:m", "m", Enumerable.Range(0, UserDialogBuffer.MaxItems + 5).Select(i => "c" + i).ToList(), Failure, now);
+            report = buffer.Take("title:m");
+            Assert.Equal(5, report.Value<int>("omittedItems"));
+        }
+
+        [Fact]
         public void User_dialog_buffer_skips_dialogs_with_no_id_and_no_text()
         {
             var buffer = new UserDialogBuffer();
@@ -310,6 +341,142 @@ namespace RvtMcp.Tests
             running.SetResult("{\"success\":true}");
             tracker.Attach(next);
             Assert.Equal("running", Assert.Single((JArray)next["_previousOperation"])["operationId"]);
+        }
+
+        private static RvtMcpConfig SmallLimits => new RvtMcpConfig
+        {
+            ResponseWarnBytes = 2048, ResponseStrongWarnBytes = 4096, ResponseBudgetBytes = 8192, MaxResponseBytes = 32768
+        };
+
+        private static PreviousOperationTracker Finished(string operationId, JObject final)
+        {
+            var tracker = new PreviousOperationTracker();
+            var execution = new TaskCompletionSource<string>();
+            execution.SetResult(final.ToString());
+            tracker.Remember(operationId, "revit_open_model", execution.Task);
+            return tracker;
+        }
+
+        // What the agent receives: the tool result after the call filter.
+        private static CallToolResult Delivered(string tool, string text, PreviousOperationTracker tracker,
+            RvtMcpConfig config = null, ResponseSpillWriter writer = null) =>
+            RuntimeToolFilter.Apply(new CallToolRequestParams { Name = tool },
+                new CallToolResult { Content = new[] { new TextContentBlock { Text = text } } }, config ?? new RvtMcpConfig(),
+                writer: writer, previousOperations: tracker);
+
+        private static JObject Json(CallToolResult result) => JObject.Parse(((TextContentBlock)result.Content[0]).Text);
+
+        [Fact]
+        public void Finished_operation_reaches_the_next_structured_response_of_any_tool_once()
+        {
+            var tracker = Finished("op1", new JObject { ["success"] = true, ["data"] = new JObject { ["opened"] = true } });
+            // A plain-text error carries nothing and does not use up the delivery.
+            Assert.DoesNotContain("_previousOperation", ((TextContentBlock)Delivered("revit_open_model", "Error: sample", tracker).Content[0]).Text);
+            // A tool that never calls Revit carries it too.
+            var lookup = Json(Delivered("revit_lookup_message", "{\"code\":\"TaskDialog_Test_Sample\",\"found\":false}", tracker));
+            Assert.Equal("op1", Assert.Single((JArray)lookup["_previousOperation"])["operationId"]);
+            Assert.Null(Json(Delivered("revit_get_current_target", "{\"target\":\"auto\"}", tracker))["_previousOperation"]);
+
+            // An operation that finished before its own pending receipt left the server is carried by that receipt, once.
+            tracker = Finished("op2", new JObject { ["success"] = true });
+            var receipt = new JObject { ["success"] = false, ["error"] = "REVIT_OPERATION_REQUIRES_USER",
+                ["_operation"] = new JObject { ["operationId"] = "op2", ["execution"] = "waiting_for_user", ["complete"] = false } };
+            Assert.Equal("op2", Assert.Single((JArray)Json(Delivered("revit_open_model", receipt.ToString(), tracker))["_previousOperation"])["operationId"]);
+            Assert.Null(Json(Delivered("revit_get_current_target", "{\"target\":\"auto\"}", tracker))["_previousOperation"]);
+        }
+
+        [Fact]
+        public void Finished_operation_waits_for_a_response_with_room_for_it()
+        {
+            // The summary keeps up to 8 KiB of the command's data: more than this response cap has room for.
+            var tracker = Finished("op1", new JObject { ["success"] = true, ["data"] = new JObject { ["rows"] = new string('r', 8150) } });
+            var full = Delivered("revit_get_element_details", "{\"count\":1}", tracker, SmallLimits);
+            Assert.Null(Json(full)["_previousOperation"]);
+            Assert.True(Encoding.UTF8.GetByteCount(RuntimeToolFilter.Serialize(full)) <= 8192);
+            var next = Json(Delivered("revit_get_element_details", "{\"count\":1}", tracker));
+            Assert.Equal("op1", Assert.Single((JArray)next["_previousOperation"])["operationId"]);
+        }
+
+        [Fact]
+        public void Finished_operation_carries_the_user_dialogs_its_final_took_once()
+        {
+            // The final took the report from the add-in's buffer; the agent never read status.
+            var report = new JObject { ["model"] = "Sample", ["items"] = new JArray(new JObject { ["kind"] = "failure", ["code"] = FailureGuid, ["count"] = 1 }),
+                ["note"] = UserDialogBuffer.Note };
+            var tracker = Finished("op1", new JObject { ["success"] = true, ["data"] = new JObject { ["opened"] = true }, ["_userDialogs"] = report });
+            var next = Json(Delivered("revit_get_current_view_info", "{\"viewName\":\"Other\"}", tracker));
+            var entry = Assert.Single((JArray)next["_previousOperation"]);
+            Assert.Equal("Sample", entry["_userDialogs"]["model"]);
+            Assert.Equal(FailureGuid, entry["_userDialogs"]["items"][0]["code"]);
+            Assert.Null(next["_userDialogs"]); // Kept with the operation it came from, not shown as this call's own.
+            Assert.Null(Json(Delivered("revit_get_current_view_info", "{\"viewName\":\"Other\"}", tracker))["_previousOperation"]);
+
+            report["items"] = new JArray(Enumerable.Range(0, 40).Select(i => new JObject { ["code"] = "c" + i, ["text"] = new string('t', 300) }));
+            tracker = Finished("op2", new JObject { ["success"] = true, ["_userDialogs"] = report });
+            var omitted = Assert.Single((JArray)Json(Delivered("revit_get_current_view_info", "{}", tracker))["_previousOperation"])["_userDialogs"];
+            Assert.True(omitted.Value<bool>("omitted"));
+            Assert.Equal("Sample", omitted["model"]);
+            Assert.Null(omitted["items"]);
+        }
+
+        [Fact]
+        public void Dialog_group_names_who_closed_each_occurrence()
+        {
+            JObject Group(int count, params JObject[] ruleAnswers)
+            {
+                var group = new JObject { ["failureDefinitionId"] = "TaskDialog_Test_Sample", ["severity"] = "TaskDialog", ["count"] = count };
+                FailureCapture.DescribeAnswers(group, ruleAnswers.Length == 0 ? null : ruleAnswers);
+                return group;
+            }
+            JObject Answer(string button) => new JObject { ["button"] = button, ["meaning"] = "sample" };
+
+            var user = Group(2);
+            Assert.Equal("user", user["answeredBy"]);
+            Assert.Null(user["answer"]);
+
+            var rule = Group(2, Answer("1001"), Answer("1001"));
+            Assert.Equal("rule", rule["answeredBy"]);
+            Assert.Equal("1001", rule["answer"]["button"]);
+
+            // A rule closed the first occurrence and the user the second: one actor or button must not stand for both.
+            var mixed = Group(2, Answer("1001"));
+            Assert.Equal("mixed", mixed["answeredBy"]);
+            Assert.Equal(1, mixed["answeredCount"].Value<int>("rule"));
+            Assert.Equal(1, mixed["answeredCount"].Value<int>("user"));
+            Assert.Null(mixed["answer"]);
+
+            var differentButtons = Group(2, Answer("1001"), Answer("1002"));
+            Assert.Equal("rule", differentButtons["answeredBy"]);
+            Assert.Null(differentButtons["answer"]);
+
+            // The summary of a late final keeps the split.
+            var tracker = Finished("op1", new JObject { ["success"] = true,
+                ["_failure"] = new JObject { ["action"] = "committed", ["groups"] = new JArray(mixed) } });
+            var response = new JObject();
+            tracker.Attach(response);
+            var group = response["_previousOperation"][0]["_failure"]["groups"][0];
+            Assert.Equal("mixed", group["answeredBy"]);
+            Assert.Equal(1, group["answeredCount"].Value<int>("user"));
+        }
+
+        [Fact]
+        public void Once_only_reports_survive_a_read_rejected_for_size_and_a_spilled_result()
+        {
+            var tracker = Finished("op1", new JObject { ["success"] = true });
+            // A read has no _operation receipt; its _userDialogs were already taken from the add-in's buffer.
+            var read = new JObject { ["detail"] = new string('x', 12000),
+                ["_userDialogs"] = new JObject { ["model"] = "Sample", ["items"] = new JArray(), ["note"] = UserDialogBuffer.Note } };
+            var rejected = Delivered("revit_get_element_details", read.ToString(), tracker, SmallLimits);
+            Assert.True(rejected.IsError);
+            Assert.Contains("RESPONSE_TOO_LARGE", ((TextContentBlock)rejected.Content[0]).Text);
+            Assert.Equal("Sample", Json(rejected)["_userDialogs"]["model"]);
+            Assert.Equal("op1", Assert.Single((JArray)Json(rejected)["_previousOperation"])["operationId"]);
+
+            tracker = Finished("op2", new JObject { ["success"] = true });
+            var spilled = Json(Delivered("revit_send_code_to_revit", new JObject { ["result"] = new string('x', 30000) }.ToString(), tracker,
+                SmallLimits, new ResponseSpillWriter(Path.Combine(_root, "spill"))));
+            Assert.NotNull(spilled["path"]);
+            Assert.Equal("op2", Assert.Single((JArray)spilled["_previousOperation"])["operationId"]);
         }
 
         [Theory]

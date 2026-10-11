@@ -168,6 +168,12 @@ namespace RvtMcp.Tests
             finally { TargetCallContext.End(context); }
         }
 
+        // What the agent receives: the tool result after the call filter, which attaches finished operations.
+        private JObject Delivered(JObject result, string tool = "revit_get_current_view_info") =>
+            JObject.Parse(((TextContentBlock)RuntimeToolFilter.Apply(new CallToolRequestParams { Name = tool },
+                new CallToolResult { Content = new[] { new TextContentBlock { Text = result.ToString() } } }, _config,
+                previousOperations: ToolGateway.PreviousOperations).Content[0]).Text);
+
         private static ConcurrentDictionary<string, GatewayPendingRequest> Pending =>
             (ConcurrentDictionary<string, GatewayPendingRequest>)typeof(ToolGateway).GetField("_pending", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
 
@@ -330,7 +336,7 @@ namespace RvtMcp.Tests
             Assert.StartsWith("REVIT_BUSY:", blocked.Value<string>("error"));
             Assert.Equal(operationId, blocked["_operation"]["blockedBy"]["operationId"]);
             Assert.Equal("Sample text", blocked["_operation"]["blockedBy"]["dialog"]["text"]);
-            Assert.Null(blocked["_previousOperation"]);
+            Assert.Null(Delivered(blocked, "revit_create_wall")["_previousOperation"]);
 
             var pending = Pending[first.Value<string>("id")];
             var final = Final(first);
@@ -343,7 +349,7 @@ namespace RvtMcp.Tests
                 Assert.Equal("Test View", status["finalResult"]["data"]["viewName"]);
             }
 
-            var next = await Send();
+            var next = Delivered(await Send());
             if (readStatus) Assert.Null(next["_previousOperation"]);
             else
             {
@@ -352,7 +358,7 @@ namespace RvtMcp.Tests
                 Assert.Equal("revit_open_model", previous["tool"]);
                 Assert.Equal("committed", previous["outcome"]);
             }
-            Assert.Null((await Send())["_previousOperation"]);
+            Assert.Null(Delivered(await Send())["_previousOperation"]);
         }
 
         [Theory]
@@ -505,9 +511,6 @@ namespace RvtMcp.Tests
                 else frame["_userDialogs"] = new JObject { ["model"] = "Sample", ["items"] = new JArray(), ["note"] = UserDialogBuffer.Note };
                 host.Send(frame);
             };
-            var finished = new TaskCompletionSource<string>();
-            finished.SetResult(new JObject { ["success"] = true, ["data"] = new JObject { ["opened"] = true } }.ToString());
-            if (kind == "success") ToolGateway.PreviousOperations.Remember("finished-op", "revit_open_model", finished.Task);
             var context = TargetCallContext.Begin();
             try
             {
@@ -520,9 +523,8 @@ namespace RvtMcp.Tests
                 if (kind == "failure") Assert.Equal("blocked", response["_failure"]["gate"]);
                 if (kind == "success")
                 {
-                    // The verify probe is the call that receives these once-only reports; they must not be lost there.
+                    // The verify probe is the call that receives this once-only report; it must not be lost there.
                     Assert.Equal("Sample", response["_userDialogs"]["model"]);
-                    Assert.Equal("finished-op", response["_previousOperation"][0]["operationId"]);
                 }
             }
             finally { TargetCallContext.End(context); }
@@ -567,7 +569,7 @@ namespace RvtMcp.Tests
             Assert.Null(finished["stillWaiting"]);
 
             // Read once by status: the next response does not repeat it, and status still answers.
-            Assert.Null((await Send())["_previousOperation"]);
+            Assert.Null(Delivered(await Send())["_previousOperation"]);
             Assert.Equal("completed", JObject.Parse(await FailureTools.GetOperationStatus(operationId))["execution"]);
         }
 

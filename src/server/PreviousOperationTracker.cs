@@ -100,9 +100,10 @@ namespace RvtMcp.Server
             lock (_gate) _entries.Clear();
         }
 
-        internal void Attach(JObject response)
+        /// <summary>Adds finished results not yet delivered and returns their IDs. <see cref="Return"/> undoes it when the response cannot carry them.</summary>
+        internal IReadOnlyList<string> Attach(JObject response)
         {
-            if (response == null) return;
+            if (response == null) return new string[0];
             List<Entry> finished;
             lock (_gate)
             {
@@ -113,6 +114,14 @@ namespace RvtMcp.Server
                 foreach (var entry in finished) entry.Delivered = true;
             }
             if (finished.Count > 0) response["_previousOperation"] = new JArray(finished.Select(Summarize));
+            return finished.Select(e => e.OperationId).ToList();
+        }
+
+        /// <summary>The response did not reach the agent with these results: the next response carries them.</summary>
+        internal void Return(IEnumerable<string> operationIds)
+        {
+            lock (_gate)
+                foreach (var entry in _entries.Where(e => operationIds.Contains(e.OperationId))) entry.Delivered = false;
         }
 
         private static JObject Summarize(Entry entry)
@@ -137,13 +146,19 @@ namespace RvtMcp.Server
                     brief["groups"] = new JArray(groups.OfType<JObject>().Take(5).Select(g =>
                     {
                         var group = new JObject();
-                        foreach (var key in new[] { "failureDefinitionId", "severity", "count", "title", "answeredBy" })
+                        foreach (var key in new[] { "failureDefinitionId", "severity", "count", "title", "answeredBy", "answeredCount" })
                             if (g[key] != null) group[key] = g[key].DeepClone();
                         if (g["description"]?.Type == JTokenType.String) group["description"] = Bounded(g.Value<string>("description"), 200);
                         return group;
                     }));
                 summary["_failure"] = brief;
             }
+            // The add-in let go of these when the operation finished; this summary may be the only place the agent sees them.
+            // They stay inside this entry: they belong to the model this operation ran on, not to the current call.
+            if (final["_userDialogs"] is JObject userDialogs)
+                summary["_userDialogs"] = Encoding.UTF8.GetByteCount(userDialogs.ToString(Formatting.None)) <= MaxDataBytes ? userDialogs.DeepClone()
+                    : new JObject { ["model"] = userDialogs["model"]?.DeepClone(), ["omitted"] = true,
+                        ["reason"] = "Dialogs the user handled were too large to report." };
             summary["note"] = "Finished after its pending receipt. revit_get_operation_status has the full record.";
             return summary;
         }

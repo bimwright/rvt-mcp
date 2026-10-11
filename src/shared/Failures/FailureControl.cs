@@ -222,7 +222,8 @@ namespace RvtMcp.Plugin.Failures
             internal string NativeOutcome;
             internal readonly Stack<bool> GroupStates = new Stack<bool>();
             internal readonly HashSet<string> OpeningPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            internal readonly Dictionary<string, JObject> DialogAnswers = new Dictionary<string, JObject>(StringComparer.Ordinal);
+            // One entry per occurrence a rule answered: the same dialog can appear again in this operation and be closed by the user.
+            internal readonly Dictionary<string, List<JObject>> DialogAnswers = new Dictionary<string, List<JObject>>(StringComparer.Ordinal);
             private string _userDialogKey;
             private int _capturedMessages, _capturedReferences, _capturedBytes;
             private readonly HashSet<string> _snapshotKeys = new HashSet<string>();
@@ -607,8 +608,7 @@ namespace RvtMcp.Plugin.Failures
                 if (entry?.Title != null) group["title"] = FailureCapture.SafeText(entry.Title, RevitMessageLookup.MaxTitle);
                 if (entry?.Buttons.Count > 0) group["buttons"] = RevitMessageLookup.Buttons(entry);
                 if (!string.IsNullOrEmpty(entry?.CommonButtons) && entry.CommonButtons != "None") group["commonButtons"] = entry.CommonButtons;
-                if (DialogAnswers.TryGetValue(code, out var answer)) { group["answeredBy"] = "rule"; group["answer"] = answer.DeepClone(); }
-                else group["answeredBy"] = "user";
+                FailureCapture.DescribeAnswers(group, DialogAnswers.TryGetValue(code, out var answers) ? answers : null);
             }
 
             internal void PersistFinal(JObject envelope)

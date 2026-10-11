@@ -111,7 +111,7 @@ namespace RvtMcp.Server
             UsageLogger?.RecordToolCall(command, paramsJson, response.Value<bool>("success"));
             if (pending.HistoryReceipt != null) ChangeCaptureContext.RecordHistory(pending.HistoryReceipt);
             var result = InterpretResponse(response);
-            PreviousOperations.Attach(result);
+            // Finished pending operations are attached by RuntimeToolFilter, to the response the agent receives.
             var execution = (response["_operation"] as JObject)?.Value<string>("execution");
             if (execution == "waiting_for_user" || execution == "timed_out_running" || execution == "running" || execution == "queued")
                 PreviousOperations.Remember(pending.OperationId, "revit_" + command, pending.Execution.Task, execution, ToolReadPolicy.IsReadOnly(command));
@@ -122,19 +122,19 @@ namespace RvtMcp.Server
 
         /// <summary>
         /// A tool that sends its own call to Revit and answers with a response it builds itself must pass on
-        /// what that call reported once: dialogs the user handled, and operations that finished after their receipt.
+        /// what that call reported once: dialogs the user handled. Finished pending operations need no carrying;
+        /// RuntimeToolFilter attaches them to every response.
         /// </summary>
         internal static void CarryOnce(JObject from, JObject to)
         {
             if (from == null || to == null) return;
-            foreach (var key in new[] { "_userDialogs", "_previousOperation" })
-                if (from[key] != null && to[key] == null) to[key] = from[key].DeepClone();
+            if (from["_userDialogs"] != null && to["_userDialogs"] == null) to["_userDialogs"] = from["_userDialogs"].DeepClone();
         }
 
         /// <summary><see cref="CarryOnce(JObject, JObject)"/> for a tool that answers with JSON text; other text is returned unchanged.</summary>
         internal static string CarryOnce(JObject from, string json)
         {
-            if (from == null || (from["_userDialogs"] == null && from["_previousOperation"] == null)) return json;
+            if (from?["_userDialogs"] == null) return json;
             JObject to;
             try { to = JObject.Parse(json); } catch (JsonException) { return json; }
             CarryOnce(from, to);

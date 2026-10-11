@@ -619,7 +619,7 @@ namespace RvtMcp.Tests
             return db;
         }
 
-        private static BakeSuggestionRecord Suggestion(string id, string key, string source)
+        internal static BakeSuggestionRecord Suggestion(string id, string key, string source)
         {
             return new BakeSuggestionRecord
             {

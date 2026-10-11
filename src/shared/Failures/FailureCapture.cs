@@ -151,6 +151,16 @@ namespace RvtMcp.Failures
             return "Revit reported conditions during this operation. " + records + " before relying on the result.";
         }
 
+        // Who closed a dialog group: a rule answer is kept per occurrence, the rest of the count was closed by the user.
+        // One answer stands for the group only when a rule gave it to every occurrence.
+        public static void DescribeAnswers(JObject group, IReadOnlyList<JObject> ruleAnswers)
+        {
+            int byRule = ruleAnswers?.Count ?? 0, byUser = Math.Max(0, (group.Value<int?>("count") ?? 0) - byRule);
+            group["answeredBy"] = byRule == 0 ? "user" : byUser == 0 ? "rule" : "mixed";
+            if (byRule > 0 && byUser > 0) group["answeredCount"] = new JObject { ["rule"] = byRule, ["user"] = byUser };
+            if (byRule > 0 && byUser == 0 && ruleAnswers.Distinct(JToken.EqualityComparer).Count() == 1) group["answer"] = ruleAnswers[0].DeepClone();
+        }
+
         public static JObject Summary(FailureIncident incident, bool? mutationApplied, string gate)
         {
             var bounded = Bound(incident);
