@@ -407,7 +407,8 @@ namespace RvtMcp.Plugin.Failures
             internal void Stop(string code, DocumentState state)
             {
                 Attach(state); Stopped = true; ErrorCode = code;
-                FailureModelKey = state?.Model.ModelScopeKey ?? FailureModelKey ?? Operation.ActiveModelBefore;
+                FailureModelKey = FailureCapture.ReceiptModelScopeKey(state?.Model.ModelScopeKey ?? FailureModelKey,
+                    Operation.Tool, Operation.ActiveModelBefore, Operation.ModelScopeKeys, null);
                 if (code == "REVIT_MODEL_BLOCKED" && FailureModelKey != null)
                 {
                     try { _gateIncidentIds.AddRange(Store.GetGate(FailureModelKey, Operation.OperationId).IncidentIds); } catch { StorageFailure(); }
