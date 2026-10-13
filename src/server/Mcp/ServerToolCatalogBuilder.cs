@@ -23,7 +23,7 @@ namespace RvtMcp.Server
         private const int LongRunMinimumSeconds = 1;
         private const int LongRunMaximumSeconds = 900;
 
-        private static readonly HashSet<string> LongRunTools = new HashSet<string>(StringComparer.Ordinal)
+        private static readonly HashSet<string> LongRunTools = new(StringComparer.Ordinal)
         {
             "load_family_from_path",
             "open_model",
@@ -31,7 +31,7 @@ namespace RvtMcp.Server
             "reload_link"
         };
 
-        private static readonly HashSet<string> ServerLocalTools = new HashSet<string>(StringComparer.Ordinal)
+        private static readonly HashSet<string> ServerLocalTools = new(StringComparer.Ordinal)
         {
             "list_available_targets",
             "get_current_target",
@@ -45,10 +45,10 @@ namespace RvtMcp.Server
 
         internal static RvtMcp.ToolCatalog.ToolCatalog Build(HashSet<string> enabled, RvtMcpConfig config)
         {
-            if (enabled == null) throw new ArgumentNullException(nameof(enabled));
+            ArgumentNullException.ThrowIfNull(enabled);
 
             var activeTypes = Program.ResolveRegisteredToolTypes(enabled, config);
-            var allTypes = ResolveFullRegistryTypes();
+            var allTypes = ResolveFullRegistryTypes;
             var activeNames = new HashSet<string>(Program.ResolveRegisteredToolMethods(enabled, config)
                 .Select(method => method.GetCustomAttribute<McpServerToolAttribute>().Name), StringComparer.Ordinal);
             var entries = Describe(activeTypes).Where(entry => activeNames.Contains(entry.McpName)).ToArray();
@@ -69,7 +69,7 @@ namespace RvtMcp.Server
 
         internal static IReadOnlyList<ToolCatalogEntry> Describe(IEnumerable<Type> toolTypes)
         {
-            if (toolTypes == null) return Array.Empty<ToolCatalogEntry>();
+            ArgumentNullException.ThrowIfNull(toolTypes);
 
             var entries = new List<ToolCatalogEntry>();
             foreach (var type in toolTypes.Where(t => t != null).Distinct())
@@ -101,37 +101,40 @@ namespace RvtMcp.Server
                 }
             }
 
-            return entries
-                .OrderBy(e => e.McpName, StringComparer.Ordinal)
-                .ToArray();
+            return [.. entries.OrderBy(e => e.McpName, StringComparer.Ordinal)];
         }
 
         private static int CountToolMethods(IEnumerable<Type> toolTypes)
         {
-            return (toolTypes ?? Array.Empty<Type>())
+            ArgumentNullException.ThrowIfNull(toolTypes);
+            return (toolTypes ?? [])
                 .Where(type => type != null)
                 .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic |
                                                     BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly))
                 .Count(method => method.GetCustomAttribute<McpServerToolAttribute>() != null);
         }
 
-        private static IReadOnlyList<Type> ResolveFullRegistryTypes()
+        private static IReadOnlyList<Type> ResolveFullRegistryTypes
         {
-            var config = new RvtMcpConfig
+            get
             {
-                Toolsets = ToolsetFilter.KnownToolsets.ToList(),
-                ReadOnly = false,
-                EnableToolbaker = true,
-                EnableAdaptiveBake = true
-            };
-            return Program.ResolveRegisteredToolTypes(
-                new HashSet<string>(ToolsetFilter.KnownToolsets, StringComparer.OrdinalIgnoreCase), config);
+                ArgumentNullException.ThrowIfNull(ToolsetFilter.KnownToolsets);
+                var config = new RvtMcpConfig
+                {
+                    Toolsets = [.. ToolsetFilter.KnownToolsets],
+                    ReadOnly = false,
+                    EnableToolbaker = true,
+                    EnableAdaptiveBake = true
+                };
+                return Program.ResolveRegisteredToolTypes(
+                    new HashSet<string>(ToolsetFilter.KnownToolsets, StringComparer.OrdinalIgnoreCase), config);
+            }
         }
 
         private static TimeoutPolicy BuildTimeout(string mcpName)
         {
-            var command = mcpName.StartsWith("revit_", StringComparison.Ordinal)
-                ? mcpName.Substring("revit_".Length)
+            string command = mcpName.StartsWith("revit_", StringComparison.Ordinal)
+                ? mcpName["revit_".Length..]
                 : mcpName;
 
             if (ServerLocalTools.Contains(command))

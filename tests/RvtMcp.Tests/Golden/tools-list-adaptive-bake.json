@@ -7746,7 +7746,7 @@
             "type": "String"
           },
           "dryRun": {
-            "description": "",
+            "description": "Preview only: created is zero; would_create and candidate_count report proposed tags.",
             "type": "Boolean"
           },
           "leader": {
@@ -7952,11 +7952,11 @@
       "inputSchema": {
         "properties": {
           "changes": {
-            "description": "",
+            "description": "JSON object of changes, e.g. {\"hidden\":true}.",
             "type": "String"
           },
           "fieldRef": {
-            "description": "",
+            "description": "JSON object identifying a field, e.g. {\"fieldName\":\"Level\"} or {\"fieldIndex\":3}; not a plain name or number.",
             "type": "String"
           },
           "scheduleId": {

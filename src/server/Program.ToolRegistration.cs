@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using RvtMcp.Plugin; // RvtMcpConfig
+using RvtMcp.Server.Prompts;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Server;
 
@@ -18,6 +19,16 @@ namespace RvtMcp.Server
 
     partial class Program
     {
+        private static IMcpServerBuilder RegisterMcpSurface(
+            IMcpServerBuilder mcp, HashSet<string> enabled, RvtMcpConfig config)
+        {
+            mcp = RuntimeToolFilter.Register(mcp, config, ToolGateway.Session);
+            mcp = RegisterToolsets(mcp, enabled, config);
+            mcp.WithResources<RevitResources>();
+            mcp.WithPrompts<RevitPrompts>();
+            return mcp;
+        }
+
         internal static bool IncludeSendCode(HashSet<string> enabled, RvtMcpConfig config)
         {
             var sendCodeOn = config == null || config.EnableSendCodeOrDefault;
