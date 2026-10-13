@@ -573,6 +573,44 @@ namespace RvtMcp.Tests
             Assert.Equal("completed", JObject.Parse(await FailureTools.GetOperationStatus(operationId))["execution"]);
         }
 
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        public async Task Ledger_status_keeps_the_sessions_bounded_user_report_before_marking_it_read(bool summaryFirst, bool oversized)
+        {
+            using var wire = new WireHost();
+            Descriptor(wire.Port);
+            JObject first = null;
+            wire.OnCommand = (request, host) =>
+            {
+                if (first != null) { host.Send(Final(request)); return; }
+                first = request;
+                host.Send(new JObject { ["id"] = request["id"], ["frame"] = "event", ["event"] = "dialog_wait",
+                    ["_operation"] = new JObject { ["operationId"] = request["operation_id"],
+                        ["execution"] = "waiting_for_user", ["complete"] = false } });
+            };
+            var receipt = await Send("open_model");
+            var operationId = receipt["_operation"].Value<string>("operationId");
+            var pending = Pending[first.Value<string>("id")];
+            var final = Final(first);
+            final["_userDialogs"] = new JObject { ["model"] = "Sample", ["items"] = new JArray(
+                new JObject { ["code"] = "OutsideMcp", ["text"] = oversized ? new string('漢', 3000) : "Already closed." }) };
+            _ledger.SaveOperation(new FailureOperation { OperationId = operationId, Execution = "completed",
+                Outcome = "committed", MutationApplied = true, FinalResult = final });
+            Assert.Null(_ledger.GetOperation(operationId).FinalResult["_userDialogs"]); // Ephemeral, never written to the ledger.
+            wire.Send(final);
+            await pending.Execution.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            if (summaryFirst)
+                Assert.Equal("Sample", Assert.Single((JArray)Delivered(await Send())["_previousOperation"])["_userDialogs"]["model"]);
+
+            var status = JObject.Parse(await FailureTools.GetOperationStatus(operationId));
+            Assert.Equal("Test View", status["finalResult"]["data"]["viewName"]);
+            if (oversized) Assert.Null(status["finalResult"]["_userDialogs"]);
+            else Assert.Equal("OutsideMcp", status["finalResult"]["_userDialogs"]?["items"]?[0]?["code"]);
+            Assert.Null(Delivered(await Send())["_previousOperation"]);
+        }
+
         [Fact]
         public async Task Status_wait_follows_the_ledger_when_the_session_does_not_hold_the_request()
         {

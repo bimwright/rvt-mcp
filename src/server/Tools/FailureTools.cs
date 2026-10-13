@@ -107,6 +107,8 @@ namespace RvtMcp.Server
                 var data = operation.Execution == "completed" ? ToolGateway.PreviousOperations.FinalData(operationId) : null;
                 if (data != null) bounded["data"] = data;
                 SafetyResponseMetadata.Attach(bounded, final);
+                if (operation.Execution == "completed")
+                    ToolGateway.CarryOnce(ToolGateway.PreviousOperations.Status(operationId)?["finalResult"] as JObject, bounded);
                 result["finalResult"] = bounded;
             }
             result["available"] = true;
