@@ -232,7 +232,7 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void User_failures_are_read_up_to_the_limit_and_the_rest_reported_as_omitted()
+        public void User_failures_scan_ids_and_bound_metadata_with_explicit_omissions()
         {
             var buffer = new UserDialogBuffer();
             var now = DateTimeOffset.UtcNow;
@@ -240,22 +240,24 @@ namespace RvtMcp.Tests
 
             // Many repeats of one warning do not hide a different warning that follows them.
             var repeated = Enumerable.Repeat("same", 30).Append("other").ToList();
-            buffer.AddFailures("title:m", "m", repeated, Failure, now);
+            buffer.AddFailures("title:m", "m", repeated, code => code, (_, code) => Failure(code), now);
             var report = buffer.Take("title:m");
             Assert.Equal(30, report["items"][0].Value<int>("count"));
             Assert.Equal("other", report["items"][1].Value<string>("code"));
             Assert.Null(report["omittedItems"]);
 
-            // Past the read limit, failures are counted without being read.
-            int reads = 0;
+            // Past the ID scan cap, counts are lower bounds; duplicate text is still read only once.
+            int ids = 0, reads = 0;
             var many = Enumerable.Repeat("same", UserDialogBuffer.MaxFailuresRead + 5).ToList();
-            buffer.AddFailures("title:m", "m", many, code => { reads++; return Failure(code); }, now);
+            buffer.AddFailures("title:m", "m", many, code => { ids++; return code; }, (_, code) => { reads++; return Failure(code); }, now);
             report = buffer.Take("title:m");
-            Assert.Equal(UserDialogBuffer.MaxFailuresRead, reads);
+            Assert.Equal(UserDialogBuffer.MaxFailuresRead, ids);
+            Assert.Equal(1, reads);
             Assert.Equal(5, report.Value<int>("omittedItems"));
+            Assert.Equal(5, report.Value<int>("unreadFailures"));
 
             // Distinct failures past the buffer bound are counted too.
-            buffer.AddFailures("title:m", "m", Enumerable.Range(0, UserDialogBuffer.MaxItems + 5).Select(i => "c" + i).ToList(), Failure, now);
+            buffer.AddFailures("title:m", "m", Enumerable.Range(0, UserDialogBuffer.MaxItems + 5).Select(i => "c" + i).ToList(), code => code, (_, code) => Failure(code), now);
             report = buffer.Take("title:m");
             Assert.Equal(5, report.Value<int>("omittedItems"));
         }

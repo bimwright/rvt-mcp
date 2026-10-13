@@ -700,11 +700,10 @@ namespace RvtMcp.Plugin.Failures
                 var document = accessor.GetDocument();
                 var key = UserDialogBuffer.Key(document?.PathName, document?.Title);
                 if (key == null) return;
-                // Bounded read: see UserDialogBuffer.AddFailures (a temporary limit, issue #16 A-F05).
-                UserDialogs.AddFailures(key, document.Title, failures, failure =>
+                UserDialogs.AddFailures(key, document.Title, failures,
+                    failure => failure.GetFailureDefinitionId().Guid.ToString(), (failure, code) =>
                 {
-                    var item = new JObject { ["kind"] = "failure" };
-                    try { item["code"] = failure.GetFailureDefinitionId().Guid.ToString(); } catch { }
+                    var item = new JObject { ["kind"] = "failure", ["code"] = code };
                     try { item["severity"] = failure.GetSeverity().ToString(); } catch { }
                     try { item["text"] = failure.GetDescriptionText(); } catch { }
                     var name = RevitMessageCatalog.FindFailure(item.Value<string>("code"))?.Name;

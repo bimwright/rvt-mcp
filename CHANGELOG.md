@@ -28,6 +28,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ### Fixed
 
+- Failure receipts identify the model of captured incidents and the target of `open_model` instead of the previously active model. Manual warnings aggregate by definition code, retain warnings after duplicate runs, and report bounded scan/omission details with accurate occurrence counts.
 - Room tags use the native room-tag API; unsuccessful tagging reports individual errors instead of an empty success. `tag_all_rooms` skips rooms already tagged in the current view. Room openings use the room's phase, and sheet schedule counts exclude title-block revision schedules.
 - Schedule Level/reference filters resolve names and element IDs. Sort directions accept `ascending`, `order` and `sortOrder` consistently and reject conflicts. Phase-aware schedule creation uses the active view phase or an explicit `phase`; see [schedule inputs](docs/schedules.md).
 - Schedule data returns rendered text with parallel `rowKinds` metadata for header, blank, text and data rows. `create_view` accepts the documented lowercase `floorplan` and `3d` values.

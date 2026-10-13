@@ -32,6 +32,24 @@ namespace RvtMcp.Failures
         public static void RequireKey(string value, string name)
         { if (!IsKey(value)) throw new ArgumentException("Invalid " + name + ".", name); }
 
+        public static string ReceiptModelScopeKey(string failureModelKey, string tool, string activeModelBefore,
+            IEnumerable<string> modelScopeKeys, IEnumerable<string> incidentModelScopeKeys)
+        {
+            if (!string.IsNullOrWhiteSpace(failureModelKey)) return failureModelKey;
+            var incidentKeys = (incidentModelScopeKeys ?? Enumerable.Empty<string>())
+                .Where(k => !string.IsNullOrWhiteSpace(k)).Distinct(StringComparer.Ordinal).Take(2).ToArray();
+            if (incidentKeys.Length == 1) return incidentKeys[0];
+            if (incidentKeys.Length > 1) return null;
+            // The active document before typed open_model is context, never its mutation target.
+            if (tool == "open_model")
+            {
+                var targets = (modelScopeKeys ?? Enumerable.Empty<string>())
+                    .Where(k => !string.IsNullOrWhiteSpace(k)).Distinct(StringComparer.Ordinal).Take(2).ToArray();
+                return targets.Length == 1 ? targets[0] : null;
+            }
+            return activeModelBefore;
+        }
+
         // Adapters capture before changing native state. This final bound is also enforced at the storage boundary.
         public static FailureIncident Bound(FailureIncident input)
         {

@@ -568,7 +568,8 @@ namespace RvtMcp.Plugin.Failures
                     {
                         ["schemaVersion"] = 1, ["operationId"] = Operation.OperationId,
                         ["incidentIds"] = new JArray(Operation.IncidentIds.Where(id => !baselineIds.Contains(id)).Concat(_gateIncidentIds).Distinct().Take(100)),
-                        ["modelScopeKey"] = FailureModelKey ?? Operation.ActiveModelBefore,
+                        ["modelScopeKey"] = FailureCapture.ReceiptModelScopeKey(FailureModelKey, Operation.Tool,
+                            Operation.ActiveModelBefore, Operation.ModelScopeKeys, own.Select(i => i.ModelScopeKey)),
                         ["action"] = Operation.Outcome, ["mutationApplied"] = Operation.MutationApplied,
                         ["gate"] = blocked ? "blocked" : "open",
                         ["persistence"] = StorageFailed ? "failed" : "recorded",
