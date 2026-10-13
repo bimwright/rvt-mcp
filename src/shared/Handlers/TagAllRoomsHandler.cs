@@ -35,6 +35,16 @@ namespace RvtMcp.Plugin.Handlers
             if (rooms.Count == 0)
                 return CommandResult.Ok(new { tagged = 0, message = "No rooms found in current view." });
 
+            var alreadyTagged = new HashSet<long>(new FilteredElementCollector(doc, view.Id)
+                .OfCategory(BuiltInCategory.OST_RoomTags)
+                .WhereElementIsNotElementType()
+                .Cast<RoomTag>()
+                .Where(t => !t.IsTaggingLink && t.Room != null)
+                .Select(t => RevitCompat.GetId(t.Room.Id)));
+            var untaggedRooms = rooms.Where(r => !alreadyTagged.Contains(RevitCompat.GetId(r.Id))).ToList();
+            if (untaggedRooms.Count == 0)
+                return CommandResult.Ok(new { tagged = 0, totalRooms = rooms.Count, message = "All rooms in current view are already tagged." });
+
             var tagType = new FilteredElementCollector(doc)
                 .OfClass(typeof(FamilySymbol))
                 .OfCategory(BuiltInCategory.OST_RoomTags)
@@ -49,7 +59,7 @@ namespace RvtMcp.Plugin.Handlers
             using (var tx = new Transaction(doc, "MCP: Tag all rooms"))
             {
                 tx.Start();
-                foreach (var room in rooms)
+                foreach (var room in untaggedRooms)
                 {
                     try
                     {
