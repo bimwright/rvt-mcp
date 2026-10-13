@@ -14,7 +14,7 @@ $publicDocs = @(
     'docs/firm-profiles/README.md', 'docs/install.md', 'docs/localization.md',
     'docs/mcp-client-wiring.md', 'docs/mcp-config-claude-clients.md',
     'docs/mcp-config-codex.md', 'docs/mcp-config-opencode-kilo.md',
-    'docs/placement-and-mep-contracts.md', 'docs/send-code.md', 'docs/stairs-workflow.md',
+    'docs/placement-and-mep-contracts.md', 'docs/schedules.md', 'docs/send-code.md', 'docs/stairs-workflow.md',
     'src/server/Prompts/change.md', 'src/server/Prompts/drawing_layout.md',
     'src/server/Prompts/getting_started.md', 'src/server/Prompts/model_audit.md',
     'src/server/Prompts/pre_issue_check.md', 'src/server/Prompts/stairs.md',

@@ -31,7 +31,7 @@ function Expect-Rejection([string]$Repo, [string]$Path) {
 try {
     Test 'Source, prompt assets and approved product documentation are allowed' {
         $repo = New-GitFixture
-        foreach ($path in @('README.md','docs/install.md','docs/controlled-failures.md','src/server/Program.cs','src/server/Prompts/change.md','tests/RvtMcp.Tests/Golden/response-size-scoped-commands.txt')) { Add-FixtureFile $repo $path }
+        foreach ($path in @('README.md','docs/install.md','docs/controlled-failures.md','docs/schedules.md','src/server/Program.cs','src/server/Prompts/change.md','tests/RvtMcp.Tests/Golden/response-size-scoped-commands.txt')) { Add-FixtureFile $repo $path }
         & $checker -RepoRoot $repo
     }
     Test 'Sanitized public benchmark and testing records are allowed' {
