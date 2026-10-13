@@ -196,7 +196,6 @@ namespace RvtMcp.Plugin.Handlers
 
                             var tagPoint = basePoint + offset;
                             Element tag;
-                            XYZ headPosition;
                             if (elem is Room room)
                             {
                                 if (!(view is ViewPlan)) throw new ArgumentException("Room tags require a plan view.");
@@ -207,13 +206,11 @@ namespace RvtMcp.Plugin.Handlers
                                 roomTag.TagOrientation = tagOrientation == TagOrientation.Vertical
                                     ? SpatialElementTagOrientation.Vertical : SpatialElementTagOrientation.Horizontal;
                                 tag = roomTag;
-                                headPosition = roomTag.TagHeadPosition;
                             }
                             else
                             {
                                 var independentTag = IndependentTag.Create(doc, view.Id, new Reference(elem), leader, TagMode.TM_ADDBY_CATEGORY, tagOrientation, tagPoint);
                                 tag = independentTag;
-                                headPosition = independentTag?.TagHeadPosition;
                             }
                             if (tag == null)
                             {
@@ -229,6 +226,9 @@ namespace RvtMcp.Plugin.Handlers
                             {
                                 tag.ChangeTypeId(tagType.Id);
                             }
+
+                            var headPosition = tag is RoomTag resolvedRoomTag
+                                ? resolvedRoomTag.TagHeadPosition : ((IndependentTag)tag).TagHeadPosition;
 
                             createdCount++;
                             var resolvedTagType = doc.GetElement(tag.GetTypeId()) as FamilySymbol;
