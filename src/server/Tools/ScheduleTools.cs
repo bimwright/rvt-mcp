@@ -56,7 +56,10 @@ namespace RvtMcp.Server
             });
 
         [McpServerTool(Name = "revit_update_schedule_field", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Modify existing schedule fields; restore them with Revit Undo. Modify an existing schedule field's properties: columnHeading, hidden, columnWidth, horizontalAlignment, headingOrientation, formula (only if calculated), combinedParameters (only if combined), isTotal, isPercentage, displayType. Cannot change the underlying parameter of a parameter field — use remove + add instead.")]
-        public static async Task<string> UpdateScheduleField(string fieldRef, string changes, long? scheduleId = null, string scheduleName = "")
+        public static async Task<string> UpdateScheduleField(
+            [System.ComponentModel.Description("JSON object identifying a field, e.g. {\"fieldName\":\"Level\"} or {\"fieldIndex\":3}; not a plain name or number.")] string fieldRef,
+            [System.ComponentModel.Description("JSON object of changes, e.g. {\"hidden\":true}.")] string changes,
+            long? scheduleId = null, string scheduleName = "")
             => await ToolGateway.CallWithParamsAsync("update_schedule_field", () =>
             {
                 var parsedFieldRef = JObject.Parse(fieldRef);

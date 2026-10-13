@@ -28,6 +28,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ### Fixed
 
+- Category tagging uses the native room-tag API for Rooms and skips existing room tags. A fully failed tagging call reports failure; dry runs report zero created tags and a separate proposed count. Schedule-field update inputs include JSON examples.
 - Operation status retains bounded user-handled dialog reports from the sending gateway session even when the operation also has a durable ledger record.
 - Failure receipts identify the model of captured incidents and the target of `open_model` instead of the previously active model, including a native pre-open guard refusal before the target document exists. Manual warnings aggregate by definition code, retain warnings after duplicate runs, and report bounded scan/omission details with accurate occurrence counts.
 - Room tags use the native room-tag API; unsuccessful tagging reports individual errors instead of an empty success. `tag_all_rooms` skips rooms already tagged in the current view. Room openings use the room's phase, and sheet schedule counts exclude title-block revision schedules.

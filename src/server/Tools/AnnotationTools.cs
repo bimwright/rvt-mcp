@@ -20,7 +20,8 @@ namespace RvtMcp.Server
             => await ToolGateway.CallAsync("tag_elements", new { element_ids = elementIds, view_id = viewId, tag_type_id = tagTypeId, orientation, leader, offset_x = offsetX, offset_y = offsetY });
 
         [McpServerTool(Name = "revit_tag_all_by_category", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Tag all elements of a specific category in a view.")]
-        public static async Task<string> TagAllByCategory(string category, long? viewId = null, long? tagTypeId = null, bool skipExisting = true, bool leader = false, bool dryRun = false, int limit = 200)
+        public static async Task<string> TagAllByCategory(string category, long? viewId = null, long? tagTypeId = null, bool skipExisting = true, bool leader = false,
+            [System.ComponentModel.Description("Preview only: created is zero; would_create and candidate_count report proposed tags.")] bool dryRun = false, int limit = 200)
             => await ToolGateway.CallAsync("tag_all_by_category", new { category, view_id = viewId, tag_type_id = tagTypeId, skip_existing = skipExisting, leader, dry_run = dryRun, limit });
 
         [McpServerTool(Name = "revit_create_text_note", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a text note element in a view.")]

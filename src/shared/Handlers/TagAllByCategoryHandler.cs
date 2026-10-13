@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -82,6 +83,9 @@ namespace RvtMcp.Plugin.Handlers
             var cat = ResolveCategory(doc, categoryInput);
             if (cat == null)
                 return CommandResult.Fail("Category '" + categoryInput + "' could not be resolved.");
+            var rooms = RevitCompat.GetId(cat.Id) == (long)BuiltInCategory.OST_Rooms;
+            if (rooms && !(view is ViewPlan))
+                return CommandResult.Fail("Room tags require a plan view.");
 
             // Resolve Tag Type if specified
             FamilySymbol tagType = null;
@@ -94,6 +98,9 @@ namespace RvtMcp.Plugin.Handlers
                 if (tagType == null)
                     return CommandResult.Fail("Tag type ID " + tagTypeId.Value + " does not resolve to a FamilySymbol.");
             }
+            if (rooms && tagType != null && (tagType.Category == null
+                || RevitCompat.GetId(tagType.Category.Id) != (long)BuiltInCategory.OST_RoomTags))
+                return CommandResult.Fail("A room requires a Room Tags type.");
 
             // Collect all visible elements of this category in the view
             List<Element> elements;
@@ -102,6 +109,7 @@ namespace RvtMcp.Plugin.Handlers
                 elements = new FilteredElementCollector(doc, view.Id)
                     .OfCategoryId(cat.Id)
                     .WhereElementIsNotElementType()
+                    .Where(e => !(e is Room room) || room.Area > 0)
                     .ToList();
             }
             catch (Exception ex)
@@ -114,16 +122,26 @@ namespace RvtMcp.Plugin.Handlers
             int alreadyTaggedCount = 0;
             try
             {
-                var tagsInView = new FilteredElementCollector(doc, view.Id)
-                    .OfClass(typeof(IndependentTag))
-                    .Cast<IndependentTag>();
-
-                foreach (var tag in tagsInView)
+                if (rooms)
                 {
-                    var taggedIds = GetTaggedElementIds(tag);
-                    foreach (var tid in taggedIds)
+                    foreach (var tag in new FilteredElementCollector(doc, view.Id)
+                        .OfCategory(BuiltInCategory.OST_RoomTags).WhereElementIsNotElementType().Cast<RoomTag>()
+                        .Where(t => !t.IsTaggingLink && t.Room != null))
+                        taggedElementIds.Add(RevitCompat.GetId(tag.Room.Id));
+                }
+                else
+                {
+                    var tagsInView = new FilteredElementCollector(doc, view.Id)
+                        .OfClass(typeof(IndependentTag))
+                        .Cast<IndependentTag>();
+
+                    foreach (var tag in tagsInView)
                     {
-                        taggedElementIds.Add(tid);
+                        var taggedIds = GetTaggedElementIds(tag);
+                        foreach (var tid in taggedIds)
+                        {
+                            taggedElementIds.Add(tid);
+                        }
                     }
                 }
             }
@@ -167,7 +185,6 @@ namespace RvtMcp.Plugin.Handlers
                         ["element_id"] = RevitCompat.GetId(cand.Id)
                     });
                 }
-                createdCount = candidates.Count;
             }
             else
             {
@@ -211,9 +228,15 @@ namespace RvtMcp.Plugin.Handlers
                                 }
 
                                 var tagPoint = basePoint + offset;
-                                var tagRef = new Reference(elem);
-
-                                var tag = IndependentTag.Create(doc, view.Id, tagRef, leader, TagMode.TM_ADDBY_CATEGORY, TagOrientation.Horizontal, tagPoint);
+                                Element tag;
+                                if (elem is Room room)
+                                {
+                                    var roomTag = doc.Create.NewRoomTag(new LinkElementId(room.Id), new UV(tagPoint.X, tagPoint.Y), view.Id);
+                                    roomTag.HasLeader = leader;
+                                    tag = roomTag;
+                                }
+                                else
+                                    tag = IndependentTag.Create(doc, view.Id, new Reference(elem), leader, TagMode.TM_ADDBY_CATEGORY, TagOrientation.Horizontal, tagPoint);
                                 if (tag != null)
                                 {
                                     if (tagType != null)
@@ -258,7 +281,7 @@ namespace RvtMcp.Plugin.Handlers
                 }
             }
 
-            return CommandResult.Ok(new JObject
+            var result = new JObject
             {
                 ["dry_run"] = dryRun,
                 ["category"] = cat.Name,
@@ -272,7 +295,11 @@ namespace RvtMcp.Plugin.Handlers
                 ["failed"] = failedElements,
                 ["truncated"] = truncated,
                 ["error"] = null
-            });
+            };
+            if (dryRun) result["would_create"] = candidates.Count;
+            if (!dryRun && createdCount == 0 && failedElements.Count > 0)
+                return new CommandResult { Success = false, Error = "No elements could be tagged. See failed for individual errors.", Data = result };
+            return CommandResult.Ok(result);
         }
 
         private static bool EnsureViewCanHostAnnotation(View view, out string error)

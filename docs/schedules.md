@@ -22,6 +22,11 @@ Use names present in the active model. A filter or sort field must be included
 in the schedule. ElementId fields accept a numeric ID or an unambiguous name
 within the referenced element category; use an ID when a name is ambiguous.
 
+`revit_update_schedule_field` takes JSON object strings: use
+`fieldRef="{\"fieldName\":\"Level\"}"` and `changes="{\"hidden\":true}"`
+to hide a filter column. `fieldIndex` is an alternative field reference; a plain
+field name or number is not a JSON object.
+
 Both create and apply-filter/sort accept boolean `ascending`, or string
 `order` / `sortOrder` with `Ascending` or `Descending`. Conflicting directions
 and invalid alias values are rejected.
