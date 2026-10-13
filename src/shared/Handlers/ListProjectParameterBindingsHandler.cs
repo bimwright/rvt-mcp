@@ -67,22 +67,24 @@ namespace RvtMcp.Plugin.Handlers
                 var binding = iterator.Current as Binding;
                 if (definition == null || binding == null) continue;
 
-                var extDef = definition as ExternalDefinition;
-                bool isShared = extDef != null;
+                var sharedGuid = SharedParameterGuid.Of(doc, definition);
+                bool isShared = sharedGuid.HasValue;
 
                 if (isShared && !includeShared) continue;
                 if (!isShared && !includeProject) continue;
 
                 if (!string.IsNullOrEmpty(nameFilter) && definition.Name.IndexOf(nameFilter, StringComparison.OrdinalIgnoreCase) < 0) continue;
 
-                if (guidObj != Guid.Empty && (!isShared || extDef.GUID != guidObj)) continue;
+                if (guidObj != Guid.Empty && sharedGuid != guidObj) continue;
 
-                ParameterElement paramElem = null;
-                if (isShared)
+                ParameterElement paramElem = definition is InternalDefinition internalDefinition
+                    ? doc.GetElement(internalDefinition.Id) as ParameterElement
+                    : null;
+                if (paramElem == null && isShared)
                 {
-                    paramElem = parameterElements.FirstOrDefault(pe => pe is SharedParameterElement spe && spe.GuidValue == extDef.GUID);
+                    paramElem = parameterElements.FirstOrDefault(pe => pe is SharedParameterElement spe && spe.GuidValue == sharedGuid.Value);
                 }
-                else
+                else if (paramElem == null)
                 {
                     paramElem = parameterElements.FirstOrDefault(pe => !(pe is SharedParameterElement) && string.Equals(pe.Name, definition.Name, StringComparison.OrdinalIgnoreCase));
                 }
@@ -133,7 +135,7 @@ namespace RvtMcp.Plugin.Handlers
                     name = definition.Name,
                     parameterElementId = parameterElementId,
                     isShared = isShared,
-                    guid = extDef?.GUID.ToString("d"),
+                    guid = sharedGuid?.ToString("d"),
                     bindingKind = bindingKind,
                     parameterGroupId = parameterGroupId,
                     groupLabel = groupLabel,

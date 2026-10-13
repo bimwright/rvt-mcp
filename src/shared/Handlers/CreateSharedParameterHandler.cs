@@ -245,7 +245,7 @@ namespace RvtMcp.Plugin.Handlers
             {
                 case "string":
                 case "text":
-                    return "autodesk.spec.aec:string";
+                    return SpecTypeId.String.Text.TypeId;
                 case "integer":
                 case "int":
                     return "autodesk.spec.aec:int";
