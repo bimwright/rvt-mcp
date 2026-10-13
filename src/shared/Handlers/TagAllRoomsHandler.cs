@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
@@ -21,6 +22,8 @@ namespace RvtMcp.Plugin.Handlers
             var view = doc.ActiveView;
             if (view == null)
                 return CommandResult.Fail("No active view.");
+            if (!(view is ViewPlan))
+                return CommandResult.Fail("Room tags require a plan view.");
 
             var rooms = new FilteredElementCollector(doc, view.Id)
                 .OfCategory(BuiltInCategory.OST_Rooms)
@@ -41,6 +44,8 @@ namespace RvtMcp.Plugin.Handlers
                 return CommandResult.Fail("No room tag family loaded in the project.");
 
             int tagged = 0;
+            var failed = new List<object>();
+            var tagIds = new List<long>();
             using (var tx = new Transaction(doc, "MCP: Tag all rooms"))
             {
                 tx.Start();
@@ -49,19 +54,24 @@ namespace RvtMcp.Plugin.Handlers
                     try
                     {
                         var point = room.Location as LocationPoint;
-                        if (point == null) continue;
-
-                        var tagRef = new Reference(room);
-                        IndependentTag.Create(doc, view.Id, tagRef, false, TagMode.TM_ADDBY_CATEGORY, TagOrientation.Horizontal, point.Point);
+                        if (point == null) throw new InvalidOperationException("Room has no location point.");
+                        var tag = doc.Create.NewRoomTag(new LinkElementId(room.Id), new UV(point.Point.X, point.Point.Y), view.Id);
+                        tag.ChangeTypeId(tagType.Id);
+                        tagIds.Add(RevitCompat.GetId(tag.Id));
                         tagged++;
                     }
-                    catch { }
+                    catch (Exception ex) { failed.Add(new { roomId = RevitCompat.GetId(room.Id), error = ex.Message }); }
+                }
+                if (tagged == 0)
+                {
+                    tx.RollBack();
+                    return new CommandResult { Success = false, Error = "No rooms could be tagged. See failed for individual errors.", Data = new { tagged, totalRooms = rooms.Count, failed } };
                 }
                 if (tx.Commit() != TransactionStatus.Committed)
                     return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
             }
 
-            return CommandResult.Ok(new { tagged, totalRooms = rooms.Count });
+            return CommandResult.Ok(new { tagged, totalRooms = rooms.Count, tagIds, failed });
         }
     }
 }

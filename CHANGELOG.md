@@ -26,6 +26,12 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
+### Fixed
+
+- Room tags use the native room-tag API; unsuccessful tagging reports individual errors instead of an empty success. Room openings use the room's phase, and sheet schedule counts exclude title-block revision schedules.
+- Schedule Level/reference filters resolve names and element IDs. Sort directions accept `ascending`, `order` and `sortOrder` consistently and reject conflicts. Phase-aware schedule creation uses the active view phase or an explicit `phase`; see [schedule inputs](docs/schedules.md).
+- Schedule data returns rendered text with parallel `rowKinds` metadata for header, blank, text and data rows. `create_view` accepts the documented lowercase `floorplan` and `3d` values.
+
 ### Changed
 
 - **Warnings during MCP edits now default to rollback.** The shared helper and native failure event capture the reason before changing failure state. A matching decision or model-specific rule saved in Revit's Issues UI is required to accept supported warnings; Error, Corruption and incomplete capture are not accepted by warning rules. Batch policy stops override `continueOnError=true`. Calls with earlier committed transactions can report partial or unknown outcomes instead of promising whole-call rollback.

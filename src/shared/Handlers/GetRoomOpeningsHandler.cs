@@ -95,7 +95,10 @@ namespace RvtMcp.Plugin.Handlers
                 });
             }
 
-            var phase = room.CreatedPhaseId != ElementId.InvalidElementId ? doc.GetElement(room.CreatedPhaseId) as Phase : null;
+            var phaseId = room.get_Parameter(BuiltInParameter.ROOM_PHASE)?.AsElementId();
+            var phase = phaseId == null ? null : doc.GetElement(phaseId) as Phase;
+            if (phase == null)
+                return CommandResult.Fail("The room has no valid ROOM_PHASE; its openings cannot be resolved reliably.");
 
             // Collect FamilyInstances of category Doors and Windows
             var categories = new List<BuiltInCategory>();
@@ -233,6 +236,7 @@ namespace RvtMcp.Plugin.Handlers
                 room = new { element_id = roomId, name = room.Name, number = room.Number },
                 openings = openingsList,
                 counts = new { doors = doorCount, windows = windowCount },
+                phase = new { element_id = RevitCompat.GetId(phase.Id), name = phase.Name },
                 warnings = warnings
             });
         }

@@ -10,7 +10,7 @@ namespace RvtMcp.Plugin.Handlers
     {
         public string Name => "create_view";
         public string Description => "Create a floor plan, section, or 3D view";
-        public string ParametersSchema => @"{""type"":""object"",""properties"":{""viewType"":{""type"":""string"",""enum"":[""FloorPlan"",""CeilingPlan"",""Section"",""Elevation"",""3D"",""Sheet""]},""level"":{""type"":""string""},""name"":{""type"":""string""}},""required"":[""viewType""]}";
+        public string ParametersSchema => @"{""type"":""object"",""properties"":{""viewType"":{""type"":""string"",""enum"":[""FloorPlan"",""CeilingPlan"",""Section"",""Elevation"",""3D"",""Sheet"",""floorplan"",""3d""]},""level"":{""type"":""string""},""name"":{""type"":""string""}},""required"":[""viewType""]}";
 
         public CommandResult Execute(UIApplication app, string paramsJson)
         {

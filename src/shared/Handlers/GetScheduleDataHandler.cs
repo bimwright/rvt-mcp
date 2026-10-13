@@ -141,17 +141,19 @@ namespace RvtMcp.Plugin.Handlers
             if (absStart > nRows) absStart = nRows;
 
             var rows = new List<string[]>();
+            var rowKinds = new List<string>();
             var cellMeta = includeCellMeta ? new List<object[]>() : null;
 
             for (int r = absStart; r < absEndExclusive; r++)
             {
                 var rowArr = new string[nCols];
+                bool textOnly = true;
                 object[] metaArr = includeCellMeta ? new object[nCols] : null;
 
                 for (int c = 0; c < nCols; c++)
                 {
                     string text = string.Empty;
-                    try { text = bodySection.GetCellText(r, c) ?? string.Empty; }
+                    try { text = schedule.GetCellText(SectionType.Body, r, c) ?? string.Empty; }
                     catch
                     {
                         text = string.Empty;
@@ -159,6 +161,7 @@ namespace RvtMcp.Plugin.Handlers
                             warning = "Some cells failed to render and were returned as empty strings.";
                     }
                     rowArr[c] = text;
+                    if (bodySection.GetCellType(r, c) != CellType.Text) textOnly = false;
 
                     if (includeCellMeta)
                     {
@@ -224,6 +227,9 @@ namespace RvtMcp.Plugin.Handlers
                 }
 
                 rows.Add(rowArr);
+                rowKinds.Add(rowArr.All(string.IsNullOrWhiteSpace) ? "blank"
+                    : textOnly && rowArr.SequenceEqual(columns) ? "header"
+                    : textOnly ? "text" : "data");
                 if (includeCellMeta) cellMeta.Add(metaArr);
             }
 
@@ -245,6 +251,7 @@ namespace RvtMcp.Plugin.Handlers
                     returnedRows = returnedRows,
                     truncated = truncated,
                     rows = rows.ToArray(),
+                    rowKinds = rowKinds.ToArray(),
                     cellMeta = cellMeta.ToArray(),
                     warning = warning
                 });
@@ -260,6 +267,7 @@ namespace RvtMcp.Plugin.Handlers
                 returnedRows = returnedRows,
                 truncated = truncated,
                 rows = rows.ToArray(),
+                rowKinds = rowKinds.ToArray(),
                 warning = warning
             });
         }

@@ -2374,11 +2374,11 @@
             "type": "String"
           },
           "fields": {
-            "description": "",
+            "description": "JSON array of field objects, e.g. [{\"parameterName\":\"Number\"},{\"parameterName\":\"Level\"}].",
             "type": "String"
           },
           "filters": {
-            "description": "",
+            "description": "JSON array of {fieldName,operator,value}; the field must be in fields. ElementId fields such as Level accept names or numeric IDs.",
             "type": "String"
           },
           "isItemized": {
@@ -2389,8 +2389,12 @@
             "description": "",
             "type": "String"
           },
+          "phase": {
+            "description": "Phase name or element ID. Defaults to the active view phase; if unavailable, specify it explicitly.",
+            "type": "String"
+          },
           "sortGroup": {
-            "description": "",
+            "description": "JSON array of {fieldName,ascending}; ascending is boolean. order/sortOrder also accept Ascending or Descending; conflicting values are rejected.",
             "type": "String"
           }
         },

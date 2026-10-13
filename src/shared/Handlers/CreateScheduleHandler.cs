@@ -18,7 +18,7 @@ namespace RvtMcp.Plugin.Handlers
             "(concatenated parameters with separators). Optional filters, sort/group, and isItemized.";
 
         public string ParametersSchema =>
-            @"{""type"":""object"",""properties"":{""category"":{""type"":""string""},""name"":{""type"":""string""},""fields"":{""type"":""array""},""filters"":{""type"":""array""},""sortGroup"":{""type"":""array""},""isItemized"":{""type"":""boolean"",""default"":true}},""required"":[""category"",""name"",""fields""]}";
+            @"{""type"":""object"",""properties"":{""category"":{""type"":""string""},""name"":{""type"":""string""},""fields"":{""type"":""array""},""filters"":{""type"":""array""},""sortGroup"":{""type"":""array""},""phase"":{""type"":""string""},""isItemized"":{""type"":""boolean"",""default"":true}},""required"":[""category"",""name"",""fields""]}";
 
         public CommandResult Execute(UIApplication app, string paramsJson)
         {
@@ -41,6 +41,8 @@ namespace RvtMcp.Plugin.Handlers
             var fieldsToken = request["fields"] as JArray;
             var filtersToken = request["filters"] as JArray;
             var sortGroupToken = request["sortGroup"] as JArray;
+            var phaseInput = request.Value<string>("phase");
+            Phase schedulePhase = null;
             bool? isItemized = null;
             var isItemizedToken = request["isItemized"];
             if (isItemizedToken != null && isItemizedToken.Type != JTokenType.Null)
@@ -122,6 +124,30 @@ namespace RvtMcp.Plugin.Handlers
                         return CommandResult.Fail("Failed to enumerate schedulable fields: " + ex.Message);
                     }
                     if (schedulableFields == null) schedulableFields = new List<SchedulableField>();
+
+                    var phaseParameter = schedule.get_Parameter(BuiltInParameter.VIEW_PHASE);
+                    if (phaseParameter != null && !phaseParameter.IsReadOnly)
+                    {
+                        if (!string.IsNullOrWhiteSpace(phaseInput))
+                        {
+                            if (long.TryParse(phaseInput, out var phaseId) && RevitCompat.CanRepresentElementId(phaseId))
+                                schedulePhase = doc.GetElement(RevitCompat.ToElementId(phaseId)) as Phase;
+                            else
+                                schedulePhase = new FilteredElementCollector(doc).OfClass(typeof(Phase)).Cast<Phase>()
+                                    .FirstOrDefault(p => p.Name.Equals(phaseInput, StringComparison.OrdinalIgnoreCase));
+                            if (schedulePhase == null) throw new ArgumentException("Phase '" + phaseInput + "' was not found.");
+                        }
+                        else
+                        {
+                            var activePhaseId = doc.ActiveView?.get_Parameter(BuiltInParameter.VIEW_PHASE)?.AsElementId();
+                            schedulePhase = activePhaseId == null ? null : doc.GetElement(activePhaseId) as Phase;
+                            if (schedulePhase == null)
+                                throw new ArgumentException("The active view has no valid phase. Supply phase as a phase name or element ID.");
+                        }
+                        phaseParameter.Set(schedulePhase.Id);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(phaseInput))
+                        throw new ArgumentException("This schedule does not support setting a phase.");
 
                     // Map each requested field-name → resulting ScheduleFieldId (for filters/sort lookup).
                     var fieldsAdded = new Dictionary<string, ScheduleFieldId>(StringComparer.OrdinalIgnoreCase);
@@ -437,7 +463,7 @@ namespace RvtMcp.Plugin.Handlers
                             try
                             {
                                 fieldSpecs.TryGetValue(fName, out var fieldSpecForFilter);
-                                scheduleFilter = BuildScheduleFilter(fieldIdForFilter, filterType, valueToken, fieldSpecForFilter);
+                                scheduleFilter = BuildScheduleFilter(doc, schedule, fieldIdForFilter, filterType, valueToken, fieldSpecForFilter);
                             }
                             catch (Exception ex)
                             {
@@ -483,12 +509,7 @@ namespace RvtMcp.Plugin.Handlers
                                     $"sortGroup[{i}].fieldName '{fName}' did not match any added field.");
                             }
 
-                            bool ascending = true;
-                            var ascToken = sSpec["ascending"];
-                            if (ascToken != null && ascToken.Type != JTokenType.Null)
-                            {
-                                try { ascending = ascToken.Value<bool>(); } catch { }
-                            }
+                            bool ascending = ScheduleSortInput.Ascending(sSpec);
 
                             ScheduleSortGroupField sortField;
                             try
@@ -546,6 +567,8 @@ namespace RvtMcp.Plugin.Handlers
                     {
                         scheduleId = RevitCompat.GetId(schedule.Id),
                         scheduleName = schedule.Name,
+                        phaseId = RevitCompat.GetIdOrNull(schedulePhase?.Id),
+                        phaseName = schedulePhase?.Name,
                         fieldIds = fieldIdsDto,
                         filtersApplied = filtersApplied,
                         sortGroupApplied = sortGroupApplied
@@ -703,7 +726,7 @@ namespace RvtMcp.Plugin.Handlers
                 || name.Equals("HasNoValue", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static ScheduleFilter BuildScheduleFilter(ScheduleFieldId fieldId, ScheduleFilterType filterType, JToken valueToken, ForgeTypeId fieldSpec)
+        private static ScheduleFilter BuildScheduleFilter(Document doc, ViewSchedule schedule, ScheduleFieldId fieldId, ScheduleFilterType filterType, JToken valueToken, ForgeTypeId fieldSpec)
         {
             if (IsNoValueFilter(filterType))
             {
@@ -713,6 +736,9 @@ namespace RvtMcp.Plugin.Handlers
 
             if (valueToken == null || valueToken.Type == JTokenType.Null)
                 throw new ArgumentException($"value is required for filter operator '{filterType}'.");
+
+            var elementId = ScheduleElementIdFilter.Resolve(doc, schedule, fieldId, valueToken);
+            if (elementId != null) return new ScheduleFilter(fieldId, filterType, elementId);
 
             switch (valueToken.Type)
             {

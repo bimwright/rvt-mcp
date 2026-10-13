@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -194,9 +195,26 @@ namespace RvtMcp.Plugin.Handlers
                             }
 
                             var tagPoint = basePoint + offset;
-                            var tagRef = new Reference(elem);
-
-                            var tag = IndependentTag.Create(doc, view.Id, tagRef, leader, TagMode.TM_ADDBY_CATEGORY, tagOrientation, tagPoint);
+                            Element tag;
+                            XYZ headPosition;
+                            if (elem is Room room)
+                            {
+                                if (!(view is ViewPlan)) throw new ArgumentException("Room tags require a plan view.");
+                                if (tagType != null && RevitCompat.GetId(tagType.Category.Id) != (long)BuiltInCategory.OST_RoomTags)
+                                    throw new ArgumentException("A room requires a Room Tags type.");
+                                var roomTag = doc.Create.NewRoomTag(new LinkElementId(room.Id), new UV(tagPoint.X, tagPoint.Y), view.Id);
+                                roomTag.HasLeader = leader;
+                                roomTag.TagOrientation = tagOrientation == TagOrientation.Vertical
+                                    ? SpatialElementTagOrientation.Vertical : SpatialElementTagOrientation.Horizontal;
+                                tag = roomTag;
+                                headPosition = roomTag.TagHeadPosition;
+                            }
+                            else
+                            {
+                                var independentTag = IndependentTag.Create(doc, view.Id, new Reference(elem), leader, TagMode.TM_ADDBY_CATEGORY, tagOrientation, tagPoint);
+                                tag = independentTag;
+                                headPosition = independentTag?.TagHeadPosition;
+                            }
                             if (tag == null)
                             {
                                 failedElements.Add(new JObject
@@ -224,9 +242,9 @@ namespace RvtMcp.Plugin.Handlers
                                 ["head_position"] = new JObject
                                 {
                                     ["unit"] = "mm",
-                                    ["x"] = Math.Round(tag.TagHeadPosition.X * 304.8, 1),
-                                    ["y"] = Math.Round(tag.TagHeadPosition.Y * 304.8, 1),
-                                    ["z"] = Math.Round(tag.TagHeadPosition.Z * 304.8, 1)
+                                    ["x"] = Math.Round(headPosition.X * 304.8, 1),
+                                    ["y"] = Math.Round(headPosition.Y * 304.8, 1),
+                                    ["z"] = Math.Round(headPosition.Z * 304.8, 1)
                                 }
                             });
                         }
@@ -251,7 +269,7 @@ namespace RvtMcp.Plugin.Handlers
                 }
             }
 
-            return CommandResult.Ok(new JObject
+            var result = new JObject
             {
                 ["tagged"] = createdCount > 0,
                 ["view_id"] = RevitCompat.GetId(view.Id),
@@ -261,7 +279,10 @@ namespace RvtMcp.Plugin.Handlers
                 ["tags"] = createdTags,
                 ["failed"] = failedElements,
                 ["error"] = null
-            });
+            };
+            if (createdCount == 0 && failedElements.Count > 0)
+                return new CommandResult { Success = false, Error = "No elements could be tagged. See failed for individual errors.", Data = result };
+            return CommandResult.Ok(result);
         }
 
         private static bool EnsureViewCanHostAnnotation(View view, out string error)

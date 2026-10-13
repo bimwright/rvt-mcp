@@ -11,6 +11,12 @@ namespace RvtMcp.Tests
 {
     public class ScheduleToolShellTests
     {
+        [Fact]
+        public async Task Create_schedule_forwards_explicit_phase()
+        {
+            var sent = await Capture.Send(() => ScheduleTools.CreateSchedule("Rooms", "Room schedule", "[]", phase: "Working Drawings"));
+            Assert.Equal("Working Drawings", sent.Json().Value<string>("phase"));
+        }
         private static readonly string[] ScheduleToolsInClass =
         {
             "revit_add_schedule_field",

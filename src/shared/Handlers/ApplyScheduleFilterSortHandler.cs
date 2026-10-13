@@ -185,7 +185,7 @@ namespace RvtMcp.Plugin.Handlers
                             ScheduleFilter filter;
                             try
                             {
-                                filter = BuildFilter(fieldId, filterType, spec["value"], nameToSpec.TryGetValue(fieldName, out var sp) ? sp : null);
+                                filter = BuildFilter(doc, schedule, fieldId, filterType, spec["value"], nameToSpec.TryGetValue(fieldName, out var sp) ? sp : null);
                             }
                             catch (Exception ex)
                             {
@@ -237,7 +237,7 @@ namespace RvtMcp.Plugin.Handlers
                                 return CommandResult.Fail("sortGroup[" + i + "].fieldName '" + fieldName + "' not in schedule.");
                             }
 
-                            bool ascending = spec.Value<bool?>("ascending") ?? true;
+                            bool ascending = ScheduleSortInput.Ascending(spec);
                             var sortOrder = ascending ? ScheduleSortOrder.Ascending : ScheduleSortOrder.Descending;
 
                             ScheduleSortGroupField sgf;
@@ -429,7 +429,7 @@ namespace RvtMcp.Plugin.Handlers
         // Picks the appropriate ScheduleFilter constructor based on operator semantics
         // (no-value for IsEmpty/HasParameter family) and the JSON token type with the
         // field's spec as a tiebreaker for numeric values.
-        private static ScheduleFilter BuildFilter(ScheduleFieldId fieldId, ScheduleFilterType filterType, JToken valueToken, ForgeTypeId fieldSpec)
+        private static ScheduleFilter BuildFilter(Document doc, ViewSchedule schedule, ScheduleFieldId fieldId, ScheduleFilterType filterType, JToken valueToken, ForgeTypeId fieldSpec)
         {
             // No-value operators
             var filterTypeName = filterType.ToString();
@@ -445,6 +445,9 @@ namespace RvtMcp.Plugin.Handlers
 
             if (valueToken == null || valueToken.Type == JTokenType.Null)
                 throw new ArgumentException("value is required for operator '" + filterType + "'.");
+
+            var elementId = ScheduleElementIdFilter.Resolve(doc, schedule, fieldId, valueToken);
+            if (elementId != null) return new ScheduleFilter(fieldId, filterType, elementId);
 
             switch (valueToken.Type)
             {

@@ -91,7 +91,8 @@ namespace RvtMcp.Plugin.Handlers
                     {
                         scheduleCount = new FilteredElementCollector(doc, sheet.Id)
                             .OfClass(typeof(ScheduleSheetInstance))
-                            .Count();
+                            .Cast<ScheduleSheetInstance>()
+                            .Count(instance => !instance.IsTitleblockRevisionSchedule);
                     }
 
                     object titleBlockDto = null;

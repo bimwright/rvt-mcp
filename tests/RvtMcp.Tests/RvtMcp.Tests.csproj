@@ -20,6 +20,7 @@
   -->
   <ItemGroup>
     <Compile Include="../../src/shared/Views/Toast/ToastActivityEntry.cs" Link="ToastActivityEntry.cs" />
+    <Compile Include="../../src/shared/Handlers/ScheduleSortInput.cs" Link="Shared/ScheduleSortInput.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastActivityLog.cs" Link="ToastActivityLog.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastPlacement.cs" Link="ToastPlacement.cs" />
     <Compile Include="../../src/shared/Views/FailureIssuesContext.cs" Link="FailureIssuesContext.cs" />

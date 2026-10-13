@@ -33,13 +33,18 @@ namespace RvtMcp.Server
             => await ToolGateway.CallAsync("find_schedule_elements", new { scheduleId, scheduleName, groupByCategory, includeParameters, limit });
 
         [McpServerTool(Name = "revit_create_schedule", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a new schedule from a declarative spec. Supports three field kinds in one transaction: parameter (existing Revit param), formula (calculated value field), and combined (concatenated parameters with separators). Optional filters, sort/group, and isItemized.")]
-        public static async Task<string> CreateSchedule(string category, string name, string fields, string filters = null, string sortGroup = null, bool isItemized = true)
+        public static async Task<string> CreateSchedule(string category, string name,
+            [System.ComponentModel.Description("JSON array of field objects, e.g. [{\"parameterName\":\"Number\"},{\"parameterName\":\"Level\"}].")] string fields,
+            [System.ComponentModel.Description("JSON array of {fieldName,operator,value}; the field must be in fields. ElementId fields such as Level accept names or numeric IDs.")] string filters = null,
+            [System.ComponentModel.Description("JSON array of {fieldName,ascending}; ascending is boolean. order/sortOrder also accept Ascending or Descending; conflicting values are rejected.")] string sortGroup = null,
+            bool isItemized = true,
+            [System.ComponentModel.Description("Phase name or element ID. Defaults to the active view phase; if unavailable, specify it explicitly.")] string phase = "")
             => await ToolGateway.CallWithParamsAsync("create_schedule", () =>
             {
                 var parsedFields = JArray.Parse(fields);
                 var parsedFilters = string.IsNullOrWhiteSpace(filters) ? null : JArray.Parse(filters);
                 var parsedSortGroup = string.IsNullOrWhiteSpace(sortGroup) ? null : JArray.Parse(sortGroup);
-                return new { category, name, fields = parsedFields, filters = parsedFilters, sortGroup = parsedSortGroup, isItemized };
+                return new { category, name, fields = parsedFields, filters = parsedFilters, sortGroup = parsedSortGroup, isItemized, phase };
             });
 
         [McpServerTool(Name = "revit_add_schedule_field", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Add one new field to an existing schedule. Supports parameter, formula, or combined-parameter kinds via a discriminated-union spec. Optional insertIndex, columnHeading, hidden, columnWidth (mm).")]
