@@ -52,13 +52,13 @@
     <Compile Include="..\..\src\shared\Infrastructure\CaptureOutputResolver.cs" Link="Shared\Infrastructure\CaptureOutputResolver.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\CaptureOutputPath.cs" Link="Shared\Infrastructure\CaptureOutputPath.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\SchemaValidator.cs" Link="Shared\Infrastructure\SchemaValidator.cs" />
-    <Compile Include="..\..\src\shared\Infrastructure\ResponsePaging.cs" Link="Shared\Infrastructure\ResponsePaging.cs" />
-    <Compile Include="..\..\src\shared\Infrastructure\RequestWait.cs" Link="Shared\Infrastructure\RequestWait.cs" />
-    <Compile Include="..\..\src\shared\Infrastructure\PendingRequestLifecycle.cs" Link="Shared\Infrastructure\PendingRequestLifecycle.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\Responses\ResponsePaging.cs" Link="Shared\Infrastructure\Responses\ResponsePaging.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\Execution\RequestWait.cs" Link="Shared\Infrastructure\Execution\RequestWait.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\Execution\PendingRequestLifecycle.cs" Link="Shared\Infrastructure\Execution\PendingRequestLifecycle.cs" />
     <Compile Include="..\..\src\shared\Transport\TransportResponseWriter.cs" Link="Shared\Transport\TransportResponseWriter.cs" />
     <Compile Include="..\..\src\shared\Config\StatusPrivacySection.cs" Link="Shared\Config\StatusPrivacySection.cs" />
     <Compile Include="..\..\src\shared\Handlers\Runtime\BatchExecutor.cs" Link="Shared\Handlers\Runtime\BatchExecutor.cs" />
-    <Compile Include="..\..\src\shared\Infrastructure\CommandOutcome.cs" Link="Shared\Infrastructure\CommandOutcome.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\Execution\CommandOutcome.cs" Link="Shared\Infrastructure\Execution\CommandOutcome.cs" />
     <Compile Include="..\..\src\shared\ToolBaker\BakedToolRegistry.cs" Link="Shared\ToolBaker\BakedToolRegistry.cs" />
     <Compile Include="..\..\src\shared\ToolBaker\BakedToolParameterDefaults.cs" Link="Shared\ToolBaker\BakedToolParameterDefaults.cs" />
     <Compile Include="..\..\src\shared\ToolBaker\BakedToolRuntimeCache.cs" Link="Shared\ToolBaker\BakedToolRuntimeCache.cs" />

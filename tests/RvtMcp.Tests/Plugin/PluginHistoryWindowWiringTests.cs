@@ -145,7 +145,7 @@ namespace RvtMcp.Tests
         public void McpEventHandler_unknown_summary_is_localized_and_preserved()
         {
             var source = File.ReadAllText(Path.Combine(GetRepoRoot(),
-                "src", "shared", "Infrastructure", "McpEventHandler.cs"));
+                "src", "shared", "Infrastructure", "Execution", "McpEventHandler.cs"));
 
             Assert.Contains("history.summary.unknown", source);
             Assert.DoesNotContain("$\"Unknown:", source);

@@ -59,7 +59,10 @@ src/
 │   ├── Handlers/             # Command files grouped by domain; namespaces remain RvtMcp.Plugin.Handlers
 │   ├── Commands/             # Ribbon button commands
 │   ├── Config/               # Configuration loaders
-│   ├── Infrastructure/       # CommandDispatcher, McpEventHandler, ResponseSizeGuard, PendingRequestLifecycle, …
+│   ├── Infrastructure/       # shared Revit/schema/file/permission helpers
+│   │   ├── Execution/        # dispatch, ExternalEvent and request lifecycle
+│   │   ├── Responses/        # response guards, paging, compaction and spill
+│   │   └── ChangeTracking/   # change capture, model identity and history transfer
 │   ├── Failures/             # Controlled failures: warning/dialog capture, policy, local ledger, Revit message catalogue
 │   ├── Transport/            # TcpTransportServer, PipeTransportServer, ITransportServer
 │   ├── Logging/              # McpLogger

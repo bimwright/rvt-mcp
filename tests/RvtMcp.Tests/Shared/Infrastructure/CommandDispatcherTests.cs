@@ -11,7 +11,7 @@ namespace RvtMcp.Tests
         public void RegisterBaked_checks_existing_baked_names_before_assignment()
         {
             var repoRoot = GetRepoRoot();
-            var sourcePath = Path.Combine(repoRoot, "src", "shared", "Infrastructure", "CommandDispatcher.cs");
+            var sourcePath = Path.Combine(repoRoot, "src", "shared", "Infrastructure", "Execution", "CommandDispatcher.cs");
             var source = File.ReadAllText(sourcePath);
 
             var duplicateCheck = source.IndexOf("_bakedCommands.ContainsKey(command.Name)", StringComparison.Ordinal);

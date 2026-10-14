@@ -75,7 +75,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the conceptual model. Quick reference
 | `src/server/` | MCP server, tool registration, stdio/HttpSse entry points |
 | `src/shared/Handlers/` | Command handlers grouped by domain (Schedules, Mep, Views, Sheets, Parameters, etc.); one file per handler; 48 tools on bare CLI, 235 with all toolsets, 238 with all + adaptive bake |
 | `src/shared/Handlers/Runtime/` | Batch execution, including `BatchExecutor` |
-| `src/shared/Infrastructure/` | `CommandDispatcher`, `McpEventHandler`, `SchemaValidator` |
+| `src/shared/Infrastructure/` | Shared helpers, with `Execution/`, `Responses/` and `ChangeTracking/` subfolders |
 | `src/shared/Transport/` | `ITransportServer`, TCP + Named Pipe implementations |
 | `src/shared/Security/` | `AuthToken`, `ErrorSanitizer`, `SecretMasker` |
 | `src/shared/ToolBaker/` | Roslyn-based self-evolution engine |
@@ -91,7 +91,7 @@ The solution exposes the shared C# source under `Shared source`, grouped by its 
 ## Adding a new MCP tool
 
 1. Write the handler in `src/shared/Handlers/<Domain>/<Verb><Noun>Handler.cs` implementing `IRevitCommand`. Return DTOs — never serialize Revit API objects directly.
-2. Register in `src/shared/Infrastructure/CommandDispatcher.cs` constructor: `Register(new Handlers.YourHandler());`.
+2. Register in `src/shared/Infrastructure/Execution/CommandDispatcher.cs` constructor: `Register(new Handlers.YourHandler());`.
 3. Add an `[McpServerTool]` method in the appropriate toolset class under `src/server/Tools/` (e.g. `QueryTools.cs` or `CreateTools.cs`). Use the 4-part description template: what, when-to-use, params, example. When the arguments are plain values, the body is `=> await ToolGateway.CallAsync("<wire_command>", new { ... });`. When the tool parses or normalizes input (JSON text, arrays), use `ToolGateway.CallWithParamsAsync("<wire_command>", () => { ...; return new { ... }; })`: the lambda runs inside the helper's `try`, so bad input returns `Error: ...` text instead of throwing. Never parse in the argument list of `CallAsync` — that runs before the `try`. Guards such as `ServerState.BlockIfReadOnly` or `ToolGateway.ValidateTimeoutSeconds` stay as statements before the call. A new toolset class also needs a line in `Program.ResolveRegisteredToolTypes` (`src/server/Program.ToolRegistration.cs`).
 4. Choose the domain toolset and explicitly set all four permission hints for the strongest optional branch. Model/file writes must not be marked read-only; destructive descriptions explain recovery or lack of Undo. Arbitrary send_code intentionally has no annotations. The bare CLI defaults to `query,create,view,meta`; fresh installs seed `all`.
 5. Cover any non-trivial logic with an xUnit test in `tests/RvtMcp.Tests/`. Extract pure functions where possible — `BatchExecutor.Run` is a good template.

@@ -121,7 +121,7 @@ namespace RvtMcp.Tests
         [Fact]
         public void McpEventHandler_reports_one_outcome_after_the_size_guard()
         {
-            var source = ReadSource("Infrastructure", "McpEventHandler.cs");
+            var source = ReadSource("Infrastructure/Execution", "McpEventHandler.cs");
 
             var guard = source.IndexOf("ResponseEnvelopeGuard.Apply(", StringComparison.Ordinal);
             var normalize = source.IndexOf("CommandOutcome.Normalize(", StringComparison.Ordinal);

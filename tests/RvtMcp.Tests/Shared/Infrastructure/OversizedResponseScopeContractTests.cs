@@ -65,7 +65,7 @@ namespace RvtMcp.Tests
             // Keep the approved command baseline independent of maintainer research notes.
             var group2Tools = File.ReadAllLines(Path.Combine(
                 root, "tests", "RvtMcp.Tests", "Golden", "response-size-scoped-commands.txt"));
-            var catalog = File.ReadAllText(Path.Combine(root, "src", "shared", "Infrastructure", "ResponseSizePolicyCatalog.cs"));
+            var catalog = File.ReadAllText(Path.Combine(root, "src", "shared", "Infrastructure", "Responses", "ResponseSizePolicyCatalog.cs"));
 
             Assert.Equal(94, group2Tools.Length);
             Assert.Equal(group2Tools.Length, group2Tools.Distinct(StringComparer.Ordinal).Count());
@@ -126,7 +126,7 @@ namespace RvtMcp.Tests
         public void Event_boundary_processes_file_and_auto_spill_before_response_guarding()
         {
             var eventHandler = File.ReadAllText(Path.Combine(
-                GetRepoRoot(), "src", "shared", "Infrastructure", "McpEventHandler.cs"));
+                GetRepoRoot(), "src", "shared", "Infrastructure", "Execution", "McpEventHandler.cs"));
             var guardIndex = eventHandler.IndexOf("ResponseEnvelopeGuard.Apply", StringComparison.Ordinal);
             var logIndex = eventHandler.IndexOf("string resultJson = null", StringComparison.Ordinal);
 

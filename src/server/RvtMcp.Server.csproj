@@ -50,19 +50,19 @@
     <Compile Include="..\shared\Infrastructure\ToolReadPolicy.cs" Link="Shared\Infrastructure\ToolReadPolicy.cs" />
     <Compile Include="..\shared\Survey\SurveyContract.cs" Link="Shared\Survey\SurveyContract.cs" />
     <Compile Include="..\shared\Survey\SurveySnapshotCache.cs" Link="Shared\Survey\SurveySnapshotCache.cs" />
-    <Compile Include="..\shared\Infrastructure\ResponseSizeGuard.cs" Link="Shared\Infrastructure\ResponseSizeGuard.cs" />
-    <Compile Include="..\shared\Infrastructure\ResponseSizePolicyCatalog.cs" Link="Shared\Infrastructure\ResponseSizePolicyCatalog.cs" />
-    <Compile Include="..\shared\Infrastructure\MutationResponseCompactor.cs" Link="Shared\Infrastructure\MutationResponseCompactor.cs" />
-    <Compile Include="..\shared\Infrastructure\ResponseSpillWriter.cs" Link="Shared\Infrastructure\ResponseSpillWriter.cs" />
-    <Compile Include="..\shared\Infrastructure\ResponseSpillPolicy.cs" Link="Shared\Infrastructure\ResponseSpillPolicy.cs" />
-    <Compile Include="..\shared\Infrastructure\ResponseSpillProcessor.cs" Link="Shared\Infrastructure\ResponseSpillProcessor.cs" />
-    <Compile Include="..\shared\Infrastructure\ResponseEnvelopeGuard.cs" Link="Shared\Infrastructure\ResponseEnvelopeGuard.cs" />
-    <Compile Include="..\shared\Infrastructure\SafetyResponseMetadata.cs" Link="Shared\Infrastructure\SafetyResponseMetadata.cs" />
-    <Compile Include="..\shared\Infrastructure\DocumentChangeAccumulator.cs" Link="Shared\Infrastructure\DocumentChangeAccumulator.cs" />
-    <Compile Include="..\shared\Infrastructure\ChangeSummary.cs" Link="Shared\Infrastructure\ChangeSummary.cs" />
-    <Compile Include="..\shared\Infrastructure\ChangeHistoryTransfer.cs" Link="Shared\Infrastructure\ChangeHistoryTransfer.cs" />
-    <Compile Include="..\shared\Infrastructure\HistoryDiagnostics.cs" Link="Shared\Infrastructure\HistoryDiagnostics.cs" />
-    <Compile Include="..\shared\Infrastructure\HistoryFileIdentity.cs" Link="Shared\Infrastructure\HistoryFileIdentity.cs" />
+    <Compile Include="..\shared\Infrastructure\Responses\ResponseSizeGuard.cs" Link="Shared\Infrastructure\Responses\ResponseSizeGuard.cs" />
+    <Compile Include="..\shared\Infrastructure\Responses\ResponseSizePolicyCatalog.cs" Link="Shared\Infrastructure\Responses\ResponseSizePolicyCatalog.cs" />
+    <Compile Include="..\shared\Infrastructure\Responses\MutationResponseCompactor.cs" Link="Shared\Infrastructure\Responses\MutationResponseCompactor.cs" />
+    <Compile Include="..\shared\Infrastructure\Responses\ResponseSpillWriter.cs" Link="Shared\Infrastructure\Responses\ResponseSpillWriter.cs" />
+    <Compile Include="..\shared\Infrastructure\Responses\ResponseSpillPolicy.cs" Link="Shared\Infrastructure\Responses\ResponseSpillPolicy.cs" />
+    <Compile Include="..\shared\Infrastructure\Responses\ResponseSpillProcessor.cs" Link="Shared\Infrastructure\Responses\ResponseSpillProcessor.cs" />
+    <Compile Include="..\shared\Infrastructure\Responses\ResponseEnvelopeGuard.cs" Link="Shared\Infrastructure\Responses\ResponseEnvelopeGuard.cs" />
+    <Compile Include="..\shared\Infrastructure\Responses\SafetyResponseMetadata.cs" Link="Shared\Infrastructure\Responses\SafetyResponseMetadata.cs" />
+    <Compile Include="..\shared\Infrastructure\ChangeTracking\DocumentChangeAccumulator.cs" Link="Shared\Infrastructure\ChangeTracking\DocumentChangeAccumulator.cs" />
+    <Compile Include="..\shared\Infrastructure\ChangeTracking\ChangeSummary.cs" Link="Shared\Infrastructure\ChangeTracking\ChangeSummary.cs" />
+    <Compile Include="..\shared\Infrastructure\ChangeTracking\ChangeHistoryTransfer.cs" Link="Shared\Infrastructure\ChangeTracking\ChangeHistoryTransfer.cs" />
+    <Compile Include="..\shared\Infrastructure\ChangeTracking\HistoryDiagnostics.cs" Link="Shared\Infrastructure\ChangeTracking\HistoryDiagnostics.cs" />
+    <Compile Include="..\shared\Infrastructure\ChangeTracking\HistoryFileIdentity.cs" Link="Shared\Infrastructure\ChangeTracking\HistoryFileIdentity.cs" />
     <Compile Include="..\shared\Views\Toast\ToolActivityClassifier.cs" Link="Shared\Views\Toast\ToolActivityClassifier.cs" />
     <Compile Include="..\shared\Security\McpResponsePrivacy.cs" Link="Shared\Security\McpResponsePrivacy.cs" />
     <Compile Include="..\shared\Security\ErrorSanitizer.cs" Link="Shared\Security\ErrorSanitizer.cs" />

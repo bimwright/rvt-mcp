@@ -33,7 +33,7 @@ namespace RvtMcp.Tests
         public void Handler_is_registered_and_reads_all_project_coordinate_references()
         {
             var root = GetRepoRoot();
-            var dispatcher = File.ReadAllText(Path.Combine(root, "src", "shared", "Infrastructure", "CommandDispatcher.cs"));
+            var dispatcher = File.ReadAllText(Path.Combine(root, "src", "shared", "Infrastructure", "Execution", "CommandDispatcher.cs"));
             var handler = File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", "Documents", "GetProjectCoordinateSystemHandler.cs"));
 
             Assert.Contains("Register(new Handlers.GetProjectCoordinateSystemHandler())", dispatcher, StringComparison.Ordinal);
@@ -69,7 +69,7 @@ namespace RvtMcp.Tests
         public void Link_coordinate_handler_is_registered_and_covers_revit_and_cad_links_without_mutation()
         {
             var root = GetRepoRoot();
-            var dispatcher = File.ReadAllText(Path.Combine(root, "src", "shared", "Infrastructure", "CommandDispatcher.cs"));
+            var dispatcher = File.ReadAllText(Path.Combine(root, "src", "shared", "Infrastructure", "Execution", "CommandDispatcher.cs"));
             var handler = File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", "Links", "GetLinkCoordinateSystemHandler.cs"));
 
             Assert.Contains("Register(new Handlers.GetLinkCoordinateSystemHandler())", dispatcher, StringComparison.Ordinal);

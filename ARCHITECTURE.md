@@ -65,7 +65,10 @@ src/
 ├── shared/                # Handlers, CommandDispatcher, Transport, Logging, Security, ToolBaker
 │   ├── Handlers/          # per-command tool handlers, grouped by domain
 │   │   └── Runtime/       # BatchExecuteHandler, BatchExecutor
-│   ├── Infrastructure/    # CommandDispatcher, McpEventHandler, SchemaValidator
+│   ├── Infrastructure/    # shared infrastructure helpers
+│   │   ├── Execution/     # dispatch, ExternalEvent and request lifecycle
+│   │   ├── Responses/     # response guards, paging, compaction and spill
+│   │   └── ChangeTracking/ # change capture, model identity and history transfer
 │   ├── Transport/         # ITransportServer, TcpTransportServer, PipeTransportServer
 │   ├── Security/          # AuthToken, ErrorSanitizer, SecretMasker
 │   ├── ToolBaker/         # Roslyn self-evolution engine
@@ -80,7 +83,7 @@ src/
 └── plugin-r27/            # net10.0-windows7.0, Named Pipe
 ```
 
-`RvtMcp.sln` also presents these C# files under the `Shared source` solution folder. This is a navigation view; each plugin keeps compiling the same recursive source tree. Domain folders under `Handlers/` organize files while preserving the `RvtMcp.Plugin.Handlers` namespace.
+`RvtMcp.sln` also presents these C# files under the `Shared source` solution folder. This is a navigation view; each plugin keeps compiling the same recursive source tree. Domain folders under `Handlers/` organize files while preserving the `RvtMcp.Plugin.Handlers` namespace. Infrastructure subfolders preserve the `RvtMcp.Plugin` namespace.
 
 Year-specific API differences live behind `#if REVIT2024_OR_GREATER` / `#if REVIT2027_OR_GREATER` and the `RevitCompat` helper (e.g. `ElementId.IntegerValue` vs `.Value` across the R2026 cut). Each shell defines its own `DefineConstants` in csproj.
 

@@ -388,38 +388,50 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Infrastructure", "Infrastru
 	ProjectSection(SolutionItems) = preProject
 		shared\Infrastructure\CaptureOutputPath.cs = shared\Infrastructure\CaptureOutputPath.cs
 		shared\Infrastructure\CaptureOutputResolver.cs = shared\Infrastructure\CaptureOutputResolver.cs
-		shared\Infrastructure\ChangeHistoryTransfer.cs = shared\Infrastructure\ChangeHistoryTransfer.cs
-		shared\Infrastructure\ChangeSummary.cs = shared\Infrastructure\ChangeSummary.cs
-		shared\Infrastructure\CommandDispatcher.cs = shared\Infrastructure\CommandDispatcher.cs
-		shared\Infrastructure\CommandOutcome.cs = shared\Infrastructure\CommandOutcome.cs
-		shared\Infrastructure\DocumentChangeAccumulator.cs = shared\Infrastructure\DocumentChangeAccumulator.cs
 		shared\Infrastructure\ExportTransaction.cs = shared\Infrastructure\ExportTransaction.cs
-		shared\Infrastructure\HistoryDiagnostics.cs = shared\Infrastructure\HistoryDiagnostics.cs
-		shared\Infrastructure\HistoryFileIdentity.cs = shared\Infrastructure\HistoryFileIdentity.cs
-		shared\Infrastructure\IRevitCommand.cs = shared\Infrastructure\IRevitCommand.cs
 		shared\Infrastructure\IdlingUpdater.cs = shared\Infrastructure\IdlingUpdater.cs
 		shared\Infrastructure\LegacyDataMigration.cs = shared\Infrastructure\LegacyDataMigration.cs
-		shared\Infrastructure\McpChangeTracker.cs = shared\Infrastructure\McpChangeTracker.cs
-		shared\Infrastructure\McpEventHandler.cs = shared\Infrastructure\McpEventHandler.cs
-		shared\Infrastructure\MutationResponseCompactor.cs = shared\Infrastructure\MutationResponseCompactor.cs
 		shared\Infrastructure\NoDocumentGuidance.cs = shared\Infrastructure\NoDocumentGuidance.cs
-		shared\Infrastructure\PendingRequestLifecycle.cs = shared\Infrastructure\PendingRequestLifecycle.cs
 		shared\Infrastructure\RecentFileList.cs = shared\Infrastructure\RecentFileList.cs
-		shared\Infrastructure\RequestWait.cs = shared\Infrastructure\RequestWait.cs
-		shared\Infrastructure\ResponseEnvelopeGuard.cs = shared\Infrastructure\ResponseEnvelopeGuard.cs
-		shared\Infrastructure\ResponsePaging.cs = shared\Infrastructure\ResponsePaging.cs
-		shared\Infrastructure\ResponseSizeGuard.cs = shared\Infrastructure\ResponseSizeGuard.cs
-		shared\Infrastructure\ResponseSizePolicyCatalog.cs = shared\Infrastructure\ResponseSizePolicyCatalog.cs
-		shared\Infrastructure\ResponseSpillPolicy.cs = shared\Infrastructure\ResponseSpillPolicy.cs
-		shared\Infrastructure\ResponseSpillProcessor.cs = shared\Infrastructure\ResponseSpillProcessor.cs
-		shared\Infrastructure\ResponseSpillWriter.cs = shared\Infrastructure\ResponseSpillWriter.cs
 		shared\Infrastructure\RevitCompat.cs = shared\Infrastructure\RevitCompat.cs
 		shared\Infrastructure\SafeFailuresPreprocessor.cs = shared\Infrastructure\SafeFailuresPreprocessor.cs
-		shared\Infrastructure\SafetyResponseMetadata.cs = shared\Infrastructure\SafetyResponseMetadata.cs
 		shared\Infrastructure\SchemaValidator.cs = shared\Infrastructure\SchemaValidator.cs
 		shared\Infrastructure\SendCodeSourceBuilder.cs = shared\Infrastructure\SendCodeSourceBuilder.cs
 		shared\Infrastructure\SharedParameterGuid.cs = shared\Infrastructure\SharedParameterGuid.cs
 		shared\Infrastructure\ToolReadPolicy.cs = shared\Infrastructure\ToolReadPolicy.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ChangeTracking", "ChangeTracking", "{EDF1EEEA-9C0C-5A15-B67F-6B4894C6976A}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Infrastructure\ChangeTracking\ChangeHistoryTransfer.cs = shared\Infrastructure\ChangeTracking\ChangeHistoryTransfer.cs
+		shared\Infrastructure\ChangeTracking\ChangeSummary.cs = shared\Infrastructure\ChangeTracking\ChangeSummary.cs
+		shared\Infrastructure\ChangeTracking\DocumentChangeAccumulator.cs = shared\Infrastructure\ChangeTracking\DocumentChangeAccumulator.cs
+		shared\Infrastructure\ChangeTracking\HistoryDiagnostics.cs = shared\Infrastructure\ChangeTracking\HistoryDiagnostics.cs
+		shared\Infrastructure\ChangeTracking\HistoryFileIdentity.cs = shared\Infrastructure\ChangeTracking\HistoryFileIdentity.cs
+		shared\Infrastructure\ChangeTracking\McpChangeTracker.cs = shared\Infrastructure\ChangeTracking\McpChangeTracker.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Execution", "Execution", "{BFA93B53-B760-541A-B93A-EC660C48D0B7}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Infrastructure\Execution\CommandDispatcher.cs = shared\Infrastructure\Execution\CommandDispatcher.cs
+		shared\Infrastructure\Execution\CommandOutcome.cs = shared\Infrastructure\Execution\CommandOutcome.cs
+		shared\Infrastructure\Execution\IRevitCommand.cs = shared\Infrastructure\Execution\IRevitCommand.cs
+		shared\Infrastructure\Execution\McpEventHandler.cs = shared\Infrastructure\Execution\McpEventHandler.cs
+		shared\Infrastructure\Execution\PendingRequestLifecycle.cs = shared\Infrastructure\Execution\PendingRequestLifecycle.cs
+		shared\Infrastructure\Execution\RequestWait.cs = shared\Infrastructure\Execution\RequestWait.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Responses", "Responses", "{1DE762E1-11B7-5F1E-8713-9677E4835193}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Infrastructure\Responses\MutationResponseCompactor.cs = shared\Infrastructure\Responses\MutationResponseCompactor.cs
+		shared\Infrastructure\Responses\ResponseEnvelopeGuard.cs = shared\Infrastructure\Responses\ResponseEnvelopeGuard.cs
+		shared\Infrastructure\Responses\ResponsePaging.cs = shared\Infrastructure\Responses\ResponsePaging.cs
+		shared\Infrastructure\Responses\ResponseSizeGuard.cs = shared\Infrastructure\Responses\ResponseSizeGuard.cs
+		shared\Infrastructure\Responses\ResponseSizePolicyCatalog.cs = shared\Infrastructure\Responses\ResponseSizePolicyCatalog.cs
+		shared\Infrastructure\Responses\ResponseSpillPolicy.cs = shared\Infrastructure\Responses\ResponseSpillPolicy.cs
+		shared\Infrastructure\Responses\ResponseSpillProcessor.cs = shared\Infrastructure\Responses\ResponseSpillProcessor.cs
+		shared\Infrastructure\Responses\ResponseSpillWriter.cs = shared\Infrastructure\Responses\ResponseSpillWriter.cs
+		shared\Infrastructure\Responses\SafetyResponseMetadata.cs = shared\Infrastructure\Responses\SafetyResponseMetadata.cs
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Lint", "Lint", "{DBF8799D-4B91-536C-AE85-AEBC45F52619}"
@@ -673,6 +685,9 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{EDF1EEEA-9C0C-5A15-B67F-6B4894C6976A} = {76B77B0F-AA98-5D84-8D31-890D55FA1216}
+		{BFA93B53-B760-541A-B93A-EC660C48D0B7} = {76B77B0F-AA98-5D84-8D31-890D55FA1216}
+		{1DE762E1-11B7-5F1E-8713-9677E4835193} = {76B77B0F-AA98-5D84-8D31-890D55FA1216}
 		{61504156-D139-5B64-AE8F-346114A8075E} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
 		{87B1D97A-0F14-5706-B559-2D5E5BCE3781} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
 		{1BA0E625-CC68-59BD-8075-2AEBF258D71F} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
