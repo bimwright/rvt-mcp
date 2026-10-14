@@ -16,7 +16,14 @@ namespace RvtMcp.Plugin
 
         internal static JObject Capture(UIApplication app)
         {
-            foreach (var closed in Documents.Keys.Where(d => !d.IsValidObject).ToArray()) Documents.Remove(closed);
+            // Removing an invalid Revit Document hashes its dead native wrapper.
+            // Rebuild from live keys so closed documents are never hashed again.
+            var live = Documents.Where(pair => pair.Key.IsValidObject).ToArray();
+            if (live.Length != Documents.Count)
+            {
+                Documents.Clear();
+                foreach (var pair in live) Documents.Add(pair.Key, pair.Value);
+            }
             var doc = app.ActiveUIDocument?.Document;
             string documentId = null;
             if (doc != null && doc.IsValidObject && !Documents.TryGetValue(doc, out documentId))
