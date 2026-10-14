@@ -124,7 +124,7 @@ namespace RvtMcp.Tests
         {
             var code = "var token = \"secret_key\";\n// Path: C:\\Users\\MyUser\\Documents\\file.txt";
             var res = SendCodeJournal.TryAppend(_activeConfig, "session1", code, true, 50, "Some error occurred", "{\"data\":\"result\"}");
-            
+
             Assert.True(res);
             Assert.True(File.Exists(SendCodeJournal.JournalPath));
 
@@ -137,7 +137,7 @@ namespace RvtMcp.Tests
             Assert.Equal(50, entry.Value<long>("duration_ms"));
             Assert.Contains("Some error occurred", entry.Value<string>("error"));
             Assert.Equal(BakeRedactor.HashBody(code), entry.Value<string>("code_hash"));
-            
+
             // Check redaction (path must be redacted to something generic like <PATH>)
             var loggedCode = entry.Value<string>("code");
             Assert.DoesNotContain("C:\\Users\\MyUser", loggedCode);
@@ -154,7 +154,7 @@ namespace RvtMcp.Tests
             // 2. Mark config as inactive and call TryAppend with current time (sets disabled-at marker)
             var now = DateTimeOffset.UtcNow;
             SendCodeJournal.TryAppend(_inactiveConfig, "session1", "var x = 1;", true, 50, null, null, now);
-            
+
             var markerFile = Path.Combine(_tempDir, "send-code-journal.disabled-at");
             Assert.True(File.Exists(markerFile));
             Assert.True(File.Exists(SendCodeJournal.JournalPath)); // Still exists, not 7 days yet
@@ -191,8 +191,7 @@ namespace RvtMcp.Tests
             Assert.True(new FileInfo(SendCodeJournal.JournalPath).Length < 1000);
 
             // Archived file should exist
-            var expectedArchive = Path.Combine(_tempDir, "send-code-journal-20260709-120000.jsonl");
-            Assert.True(File.Exists(expectedArchive));
+            Assert.Single(Directory.GetFiles(_tempDir, "send-code-journal-20260709-120000*.jsonl"));
         }
 
         [Fact]
@@ -282,7 +281,7 @@ namespace RvtMcp.Tests
 
             var markerFile = Path.Combine(_tempDir, "send-code-journal.disabled-at");
             Assert.True(File.Exists(markerFile));
-            
+
             // Read lines to check if a new line was appended (should only have the 1 line from step 1)
             var lines = File.ReadAllLines(SendCodeJournal.JournalPath);
             Assert.Single(lines);

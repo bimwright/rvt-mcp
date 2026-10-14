@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -11,7 +12,10 @@ namespace RvtMcp.Plugin
     /// <summary>One background writer owns the wire; UI and timer callbacks only enqueue immutable frames.</summary>
     internal sealed class TransportResponseWriter : IDisposable
     {
-        private readonly BlockingCollection<string> _frames = new BlockingCollection<string>();
+        private readonly BlockingCollection<string> _frames = new BlockingCollection<string>(256);
+        private const long MaxPendingBytes = 32L * 1024 * 1024;
+        private long _pendingBytes;
+        private readonly Action _onWriteFailure;
         private readonly object _queueGate = new object();
         private readonly StreamWriter _writer;
         private readonly Thread _thread;
@@ -19,17 +23,18 @@ namespace RvtMcp.Plugin
         private int _pendingFrames;
         internal static readonly TimeSpan DrainTimeout = TimeSpan.FromSeconds(1);
         private int _inFlight;
-        private long _lastActivityTicks = DateTime.UtcNow.Ticks;
+        private long _lastActivityTicks = System.Diagnostics.Stopwatch.GetTimestamp();
         /// <summary>Requests dispatched on this connection whose execution has not completed yet.</summary>
         internal int InFlight => Volatile.Read(ref _inFlight);
-        internal void Touch() => Interlocked.Exchange(ref _lastActivityTicks, DateTime.UtcNow.Ticks);
+        internal void Touch() => Interlocked.Exchange(ref _lastActivityTicks, System.Diagnostics.Stopwatch.GetTimestamp());
         /// <summary>True when nothing is in flight and the connection has been quiet for <paramref name="limit"/>.</summary>
         internal bool IsIdleFor(TimeSpan limit) =>
-            InFlight == 0 && Volatile.Read(ref _pendingFrames) == 0
-                && DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastActivityTicks) >= limit.Ticks;
+            !PendingRequestLifecycle.IsHostWaitingForUser && InFlight == 0 && Volatile.Read(ref _pendingFrames) == 0
+                && (System.Diagnostics.Stopwatch.GetTimestamp() - Interlocked.Read(ref _lastActivityTicks)) / (double)System.Diagnostics.Stopwatch.Frequency >= limit.TotalSeconds;
         internal TransportResponseWriter(StreamWriter writer, Action onWriteFailure = null, Action onDrained = null)
         {
             _writer = writer ?? throw new ArgumentNullException(nameof(writer));
+            _onWriteFailure = onWriteFailure;
             _thread = new Thread(() =>
             {
                 try
@@ -40,6 +45,7 @@ namespace RvtMcp.Plugin
                         _writer.Flush();
                         Touch();
                         Interlocked.Decrement(ref _pendingFrames);
+                        Interlocked.Add(ref _pendingBytes, -Encoding.UTF8.GetByteCount(frame));
                     }
                     onDrained?.Invoke();
                 }
@@ -55,20 +61,46 @@ namespace RvtMcp.Plugin
                     try { _writer.Dispose(); } catch { }
                     lock (_queueGate) { _frames.Dispose(); }
                 }
-            }) { IsBackground = true, Name = "RvtMcp.TransportWriter" };
+            })
+            { IsBackground = true, Name = "RvtMcp.TransportWriter" };
             _thread.Start();
         }
         internal void WriteLine(string frame)
         {
+            var overflow = false;
             lock (_queueGate)
             {
                 if (_closing) return;
-                Interlocked.Increment(ref _pendingFrames);
-                _frames.Add(frame);
+                var bytes = Encoding.UTF8.GetByteCount(frame);
+                if (_pendingFrames >= 256 || _pendingBytes + bytes > MaxPendingBytes)
+                {
+                    _closing = true; _frames.CompleteAdding(); overflow = true;
+                }
+                else
+                {
+                    Interlocked.Increment(ref _pendingFrames);
+                    Interlocked.Add(ref _pendingBytes, bytes);
+                    _frames.Add(frame);
+                }
             }
+            if (overflow) { DiagnosticLog.Write("ResponseWriter", "Peer did not drain responses; connection closed. Retrieve operation outcome before retrying writes."); try { _onWriteFailure?.Invoke(); } catch { } }
         }
         internal void Dispatch(JObject request, string line, Action<string, TaskCompletionSource<string>> callback)
         {
+            var reject = false;
+            lock (_queueGate)
+            {
+                if (_closing || _pendingFrames + InFlight >= 256)
+                {
+                    if (!_closing) { _closing = true; _frames.CompleteAdding(); }
+                    reject = true;
+                }
+            }
+            if (reject)
+            {
+                try { _onWriteFailure?.Invoke(); } catch { }
+                return; // No execution was dispatched; prior operations keep their persisted receipts.
+            }
             var id = request.Value<string>("id");
             var command = request.Value<string>("command");
             if (!ToolReadPolicy.IsReadOnly(command) && request.Value<int?>("failure_protocol") != 1)
@@ -83,9 +115,15 @@ namespace RvtMcp.Plugin
                 if (correlated != null)
                     busy["_operation"] = new JObject
                     {
-                        ["operationId"] = request["operation_id"]?.DeepClone(), ["execution"] = "completed", ["outcome"] = "not_started",
-                        ["mutationApplied"] = false, ["complete"] = true, ["hostBusy"] = true,
-                        ["correlation"] = correlated["correlation"], ["correlatedOperationId"] = correlated["operationId"], ["modelScopeKey"] = correlated["modelScopeKey"]
+                        ["operationId"] = request["operation_id"]?.DeepClone(),
+                        ["execution"] = "completed",
+                        ["outcome"] = "not_started",
+                        ["mutationApplied"] = false,
+                        ["complete"] = true,
+                        ["hostBusy"] = true,
+                        ["correlation"] = correlated["correlation"],
+                        ["correlatedOperationId"] = correlated["operationId"],
+                        ["modelScopeKey"] = correlated["modelScopeKey"]
                     };
                 WriteLine(busy.ToString(Formatting.None));
                 return;
@@ -133,7 +171,11 @@ namespace RvtMcp.Plugin
             CompleteAdding();
             // Drain queued terminal frames, not unfinished Revit operations. If a peer is not reading,
             // the transport closes its stream after this deadline to abort the blocked writer.
-            if (Thread.CurrentThread != _thread) _thread.Join(DrainTimeout);
+            if (Thread.CurrentThread != _thread && !_thread.Join(DrainTimeout))
+            {
+                try { _onWriteFailure?.Invoke(); } catch { }
+                if (_onWriteFailure != null && !_thread.Join(DrainTimeout)) throw new TimeoutException("Response writer has not stopped.");
+            }
         }
     }
 }

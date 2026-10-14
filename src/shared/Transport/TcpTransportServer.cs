@@ -15,6 +15,8 @@ namespace RvtMcp.Plugin
         private readonly Action<string> _log;
         private readonly ManualResetEvent _stop = new ManualResetEvent(false);
         private readonly object _clientGate = new object();
+        private readonly object _lifetimeGate = new object();
+        private bool _started, _fullyStopped;
         private TcpListener _listener;
         private Thread _listenThread;
         private volatile bool _running;
@@ -39,32 +41,48 @@ namespace RvtMcp.Plugin
 
         public void Start(Action<string, TaskCompletionSource<string>> onRequest)
         {
-            _onRequest = onRequest ?? throw new ArgumentNullException(nameof(onRequest));
-
-            // S7 fail-closed default: bind loopback only unless BIMWRIGHT_ALLOW_LAN_BIND is
-            // explicitly opted in. Token auth stays active in either mode (see AuthToken).
-            bool allowLan = IsLanBindAllowed();
-            var bindAddress = allowLan ? IPAddress.Any : IPAddress.Loopback;
-
-            _listener = new TcpListener(bindAddress, 0);
-            _listener.Start();
-            _port = ((IPEndPoint)_listener.LocalEndpoint).Port;
-
-            _publisher = AuthToken.GenerateAndPersist(_port, _discoveryDirectory);
-            if (allowLan)
+            if (onRequest == null) throw new ArgumentNullException(nameof(onRequest));
+            lock (_lifetimeGate)
             {
-                const string warn = "[RvtMcp] \u26A0 LAN bind enabled. Token auth active but network exposed.";
-                try { Console.Error.WriteLine(warn); } catch { }
-                Log($"Listening on 0.0.0.0:{_port} (LAN bind, auth: enabled)");
-            }
-            else
-            {
-                Log($"Listening on 127.0.0.1:{_port} (auth: enabled)");
-            }
+                if (_started || _stopped != 0) throw new InvalidOperationException("A transport instance has one lifetime; create a new instance to restart.");
+                _started = true;
+                _onRequest = onRequest;
+                try
+                {
 
-            _running = true;
-            _listenThread = new Thread(ListenLoop) { IsBackground = true, Name = "RvtMcp.TcpTransportServer" };
-            _listenThread.Start();
+                    // S7 fail-closed default: bind loopback only unless BIMWRIGHT_ALLOW_LAN_BIND is
+                    // explicitly opted in. Token auth stays active in either mode (see AuthToken).
+                    bool allowLan = IsLanBindAllowed();
+                    var bindAddress = allowLan ? IPAddress.Any : IPAddress.Loopback;
+
+                    _listener = new TcpListener(bindAddress, 0);
+                    _listener.Start();
+                    _port = ((IPEndPoint)_listener.LocalEndpoint).Port;
+
+                    _publisher = AuthToken.GenerateAndPersist(_port, _discoveryDirectory);
+                    if (allowLan)
+                    {
+                        const string warn = "[RvtMcp] \u26A0 LAN bind enabled. Token auth active but network exposed.";
+                        try { Console.Error.WriteLine(warn); } catch { }
+                        Log($"Listening on 0.0.0.0:{_port} (LAN bind, auth: enabled)");
+                    }
+                    else
+                    {
+                        Log($"Listening on 127.0.0.1:{_port} (auth: enabled)");
+                    }
+
+                    _running = true;
+                    _listenThread = new Thread(ListenLoop) { IsBackground = true, Name = "RvtMcp.TcpTransportServer" };
+                    _listenThread.Start();
+                }
+                catch
+                {
+                    _running = false; _stopped = 1; _fullyStopped = true;
+                    try { _listener?.Stop(); } catch { }
+                    try { _publisher?.Dispose(); } catch { }
+                    throw;
+                }
+            }
         }
 
         internal static bool IsLanBindAllowed()
@@ -79,20 +97,24 @@ namespace RvtMcp.Plugin
 
         public void Stop()
         {
-            if (Interlocked.Exchange(ref _stopped, 1) != 0)
-                return;
-            _running = false;
-            _stop.Set();
-            lock (_clientGate) { try { _activeClient?.Close(); } catch { } }
-            try { _listener?.Stop(); } catch { }
+            lock (_lifetimeGate)
+            {
+                if (_fullyStopped) return;
+                _stopped = 1;
+                _running = false;
+                _stop.Set();
+                lock (_clientGate) { try { _activeClient?.Close(); } catch { } }
+                try { _listener?.Stop(); } catch { }
 
-            if (_listenThread != null && Thread.CurrentThread != _listenThread)
-                _listenThread.Join(2000);
+                if (_listenThread != null && Thread.CurrentThread != _listenThread)
+                    if (!_listenThread.Join(2000)) throw new TimeoutException("TCP listener has not stopped; restart was refused.");
 
-            try { _publisher?.Dispose(); } catch { }
-            _publisher = null;
-
-            Log("Stopped");
+                try { _publisher?.Dispose(); } catch { }
+                _publisher = null;
+                _clientConnected = false;
+                _fullyStopped = true;
+                Log("Stopped");
+            }
         }
 
         public void Dispose()
@@ -110,10 +132,9 @@ namespace RvtMcp.Plugin
                 try
                 {
                     client = _listener.AcceptTcpClient();
-                    hadClient = true;
-                    backoffMs = 100; // a successful connection resets the error back-off
-                    Log("Client connected");
                     HandleClient(client);
+                    hadClient = _clientConnected;
+                    if (hadClient) backoffMs = 100;
                 }
                 catch (SocketException) when (!_running)
                 {
@@ -122,16 +143,18 @@ namespace RvtMcp.Plugin
                 }
                 catch (Exception ex)
                 {
-                    Log($"Listen error: {ex.Message}");
+                    Log($"Listener failed ({ex.HResult:X8}): {ex.Message}");
                     if (_stop.WaitOne(backoffMs))
                         break;
                     backoffMs = Math.Min(backoffMs * 2, 2000);
                 }
                 finally
                 {
+                    hadClient = hadClient || _clientConnected;
                     try { client?.Close(); } catch { }
                     if (hadClient)
                         Log("Client disconnected");
+                    _clientConnected = false;
                 }
             }
         }
@@ -141,7 +164,6 @@ namespace RvtMcp.Plugin
             // No socket read timeout: it would also fire while a request is running or waiting for the user.
             // Idle release is enforced below instead, and only when nothing is in flight.
             client.ReceiveTimeout = 0;
-            _clientConnected = true;
             lock (_clientGate) { _activeClient = client; }
             var conn = ToolCatalogStore.BeginConnection();
             try
@@ -217,10 +239,12 @@ namespace RvtMcp.Plugin
                             success = false,
                             error = "Unauthorized: invalid or missing token."
                         });
-                        try { writer.WriteLine(denied); } catch { }
                         Log("Auth rejected");
+                        try { writer.WriteLine(denied); } catch { }
                         break; // drop the connection on auth failure
                     }
+                    if (!_clientConnected) { _clientConnected = true; Log("Client connected"); }
+                    writer.Touch();
 
                     string id = request.Value<string>("id");
                     string command = request.Value<string>("command");
@@ -270,7 +294,6 @@ namespace RvtMcp.Plugin
             }
             finally
             {
-                _clientConnected = false;
                 lock (_clientGate) { _activeClient = null; }
                 ToolCatalogStore.Clear(conn);
             }
@@ -306,14 +329,7 @@ namespace RvtMcp.Plugin
 
         private static void FileLog(string message)
         {
-            try
-            {
-                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bimwright", "rvt-mcp");
-                Directory.CreateDirectory(dir);
-                var logFile = Path.Combine(dir, "revit-mcp.log");
-                File.AppendAllText(logFile, $"[{DateTime.Now:HH:mm:ss}] [TcpTransportServer] {SecretMasker.Mask(message)}\n");
-            }
-            catch { }
+            DiagnosticLog.Write("TcpTransport", message, AuthToken.RevitVersion);
         }
     }
 }

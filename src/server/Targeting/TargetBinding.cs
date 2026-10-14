@@ -101,6 +101,8 @@ namespace RvtMcp.Server
         public JObject? Operation;
         public JObject? ActualTarget;
         public bool InToolCall;
+        public CancellationToken Cancellation;
+        public long ConnectionDeadlineTicks;
 
         internal static TargetCallContext Begin()
         {

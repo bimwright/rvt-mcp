@@ -61,14 +61,14 @@ namespace RvtMcp.Plugin
             Directory.CreateDirectory(root);
 
             var isActive = config != null && config.IsPersistSendCodeBodiesActive(utc);
-            
+
             // Maintenance: purge if inactive/expired, remove marker if active
             MaybePurge(root, isActive, utc);
 
             if (!isActive)
                 return false;
 
-            RotateIfNeeded(root, utc);
+
 
             var raw = rawCode ?? string.Empty;
             var entry = new
@@ -87,7 +87,7 @@ namespace RvtMcp.Plugin
             try
             {
                 var line = JsonConvert.SerializeObject(entry, Formatting.None);
-                File.AppendAllText(JournalPath, line + "\n");
+                BoundedLogFile.AppendUnderLock(JournalPath, line, "send-code-journal", now: utc);
                 return true;
             }
             catch
@@ -126,10 +126,11 @@ namespace RvtMcp.Plugin
             var dir = Path.GetDirectoryName(JournalPath);
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) yield break;
 
-            if (File.Exists(JournalPath)) yield return JournalPath;
+            var files = BoundedLogFile.Files(dir, "send-code-journal");
+            if (Array.Exists(files, p => string.Equals(p, JournalPath, StringComparison.OrdinalIgnoreCase))) yield return JournalPath;
 
             // Archive names carry a timestamp → ordinal-desc = newest first.
-            var archives = Directory.GetFiles(dir, "send-code-journal-*.jsonl");
+            var archives = Array.FindAll(files, p => !string.Equals(p, JournalPath, StringComparison.OrdinalIgnoreCase));
             Array.Sort(archives, StringComparer.OrdinalIgnoreCase);
             for (var i = archives.Length - 1; i >= 0; i--)
                 yield return archives[i];
@@ -139,7 +140,7 @@ namespace RvtMcp.Plugin
         {
             try
             {
-                foreach (var line in File.ReadLines(path))
+                foreach (var line in BoundedLogFile.ReadLinesSafe(path))
                 {
                     if (string.IsNullOrWhiteSpace(line)) continue;
                     try
@@ -158,6 +159,7 @@ namespace RvtMcp.Plugin
         private static void MaybePurge(string rootDir, bool isActive, DateTimeOffset now)
         {
             var disabledMarker = Path.Combine(rootDir, "send-code-journal.disabled-at");
+            BoundedLogFile.RefuseLink(disabledMarker);
             if (isActive)
             {
                 if (File.Exists(disabledMarker))
@@ -168,8 +170,7 @@ namespace RvtMcp.Plugin
             }
 
             // Write marker if not present and journal files exist
-            var journal = Path.Combine(rootDir, "send-code-journal.jsonl");
-            bool hasFiles = File.Exists(journal) || (Directory.Exists(rootDir) && Directory.GetFiles(rootDir, "send-code-journal-*.jsonl").Length > 0);
+            bool hasFiles = BoundedLogFile.Files(rootDir, "send-code-journal").Length > 0;
             if (hasFiles && !File.Exists(disabledMarker))
             {
                 try
@@ -188,8 +189,7 @@ namespace RvtMcp.Plugin
                     {
                         if (now - disabledAt >= TimeSpan.FromDays(7))
                         {
-                            if (File.Exists(journal)) File.Delete(journal);
-                            foreach (var f in Directory.GetFiles(rootDir, "send-code-journal-*.jsonl"))
+                            foreach (var f in BoundedLogFile.Files(rootDir, "send-code-journal"))
                             {
                                 File.Delete(f);
                             }
@@ -201,19 +201,5 @@ namespace RvtMcp.Plugin
             }
         }
 
-        private static void RotateIfNeeded(string rootDir, DateTimeOffset now)
-        {
-            var journal = Path.Combine(rootDir, "send-code-journal.jsonl");
-            if (File.Exists(journal) && new FileInfo(journal).Length > MaxFileSize)
-            {
-                try
-                {
-                    var archive = Path.Combine(rootDir,
-                        $"send-code-journal-{now.ToString("yyyyMMdd-HHmmss")}.jsonl");
-                    File.Move(journal, archive);
-                }
-                catch { }
-            }
-        }
     }
 }

@@ -163,8 +163,14 @@ namespace RvtMcp.Tests
                                 req.Value<string>("expected_document_id"), TargetStamp.Value<string>("document_id"));
                             if (documentError != null)
                             {
-                                writer.WriteLine(new JObject { ["id"] = id, ["success"] = false, ["error"] = documentError,
-                                    ["_target"] = TargetStamp.DeepClone(), ["_operation"] = new JObject { ["execution"] = "completed", ["outcome"] = "not_started", ["complete"] = true, ["mutationApplied"] = false } }.ToString(Formatting.None));
+                                writer.WriteLine(new JObject
+                                {
+                                    ["id"] = id,
+                                    ["success"] = false,
+                                    ["error"] = documentError,
+                                    ["_target"] = TargetStamp.DeepClone(),
+                                    ["_operation"] = new JObject { ["execution"] = "completed", ["outcome"] = "not_started", ["complete"] = true, ["mutationApplied"] = false }
+                                }.ToString(Formatting.None));
                                 continue;
                             }
                             lock (Commands) Commands.Add(command);
@@ -293,10 +299,16 @@ namespace RvtMcp.Tests
         [Fact]
         public async Task Verified_document_is_pinned_on_writes_and_a_read_cannot_replace_it()
         {
-            using var host = new FakeTcpHost { TargetStamp = new JObject
+            using var host = new FakeTcpHost
             {
-                ["target_id"] = "revit-2024-" + PidA, ["pid"] = PidA, ["host_year"] = 2024, ["document_id"] = "doc-a"
-            } };
+                TargetStamp = new JObject
+                {
+                    ["target_id"] = "revit-2024-" + PidA,
+                    ["pid"] = PidA,
+                    ["host_year"] = 2024,
+                    ["document_id"] = "doc-a"
+                }
+            };
             _probe.Set(PidA, ProcessState.Running, StartA);
             WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok");
             var ctx = BeginCall();
@@ -390,6 +402,85 @@ namespace RvtMcp.Tests
             Assert.True(sw.Elapsed < TimeSpan.FromSeconds(9), "elapsed " + sw.Elapsed);
             Assert.Empty(host.Commands); // command never written
             Assert.Equal(BindingState.None, RevitTargetBinding.Snapshot().State); // no binding on failed first connect
+        }
+
+        [Fact]
+        public async Task Busy_cooldown_avoids_reopening_the_same_target()
+        {
+            using var host = new FakeTcpHost { AnswerHandshake = false };
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok-a");
+            var ctx = BeginCall();
+            try
+            {
+                ctx.ConnectionDeadlineTicks = Stopwatch.GetTimestamp() + Stopwatch.Frequency / 3;
+                var first = await Assert.ThrowsAsync<TargetException>(() => ToolGateway.SendToRevit("get_element_details"));
+                Assert.Equal(TargetCode.TargetBusy, first.Payload.Code);
+                Assert.False(first.Payload.Sent);
+            }
+            finally { TargetCallContext.End(ctx); }
+            var connections = host.Connections;
+            var sw = Stopwatch.StartNew();
+            var second = await SendExpectingFailure("get_element_details");
+            Assert.Equal(TargetCode.TargetBusy, second.Payload.Code);
+            Assert.False(second.Payload.Sent);
+            Assert.True(sw.Elapsed < TimeSpan.FromMilliseconds(500));
+            Assert.Equal(connections, host.Connections);
+            Assert.Empty(host.Commands);
+        }
+
+        [Fact]
+        public async Task Cancellation_while_waiting_for_establishment_sends_no_command()
+        {
+            using var host = new FakeTcpHost { AnswerHandshake = false };
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok-a");
+            var first = Task.Run(async () =>
+            {
+                var ctx = BeginCall();
+                try
+                {
+                    ctx.ConnectionDeadlineTicks = Stopwatch.GetTimestamp() + 2 * Stopwatch.Frequency;
+                    return await Assert.ThrowsAsync<TargetException>(() => ToolGateway.SendToRevit("get_element_details"));
+                }
+                finally { TargetCallContext.End(ctx); }
+            });
+            var deadline = Stopwatch.StartNew();
+            while (host.Handshakes == 0 && deadline.Elapsed < TimeSpan.FromSeconds(1)) await Task.Delay(10);
+            Assert.Equal(1, host.Handshakes);
+            using var cancel = new CancellationTokenSource(100);
+            var waiting = BeginCall();
+            try
+            {
+                waiting.Cancellation = cancel.Token;
+                var sw = Stopwatch.StartNew();
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ToolGateway.SendToRevit("get_element_details"));
+                Assert.True(sw.Elapsed < TimeSpan.FromSeconds(1));
+            }
+            finally { TargetCallContext.End(waiting); }
+            Assert.Equal(TargetCode.TargetBusy, (await first).Payload.Code);
+            Assert.Equal(1, host.Connections);
+            Assert.Empty(host.Commands);
+        }
+
+        [Fact]
+        public async Task Cancellation_during_handshake_closes_the_connection_without_dispatch()
+        {
+            using var host = new FakeTcpHost { AnswerHandshake = false };
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok-a");
+            using var cancel = new CancellationTokenSource(200);
+            var ctx = BeginCall();
+            try
+            {
+                ctx.Cancellation = cancel.Token;
+                var sw = Stopwatch.StartNew();
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ToolGateway.SendToRevit("get_element_details"));
+                Assert.True(sw.Elapsed < TimeSpan.FromSeconds(1));
+                Assert.Null(ToolGateway.ConnectedTargetId);
+                Assert.Empty(host.Commands);
+            }
+            finally { TargetCallContext.End(ctx); }
         }
 
         [Fact]
@@ -865,7 +956,8 @@ namespace RvtMcp.Tests
             {
                 try { while (true) { var c = listener.AcceptTcpClient(); c.Close(); } }
                 catch { }
-            }) { IsBackground = true };
+            })
+            { IsBackground = true };
             closer.Start();
             try
             {

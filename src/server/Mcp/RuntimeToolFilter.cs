@@ -20,6 +20,7 @@ namespace RvtMcp.Server
                 // binding layer produced a §6.10 payload the tool result is replaced
                 // with the target envelope — regardless of how the tool formatted it.
                 var targetCtx = TargetCallContext.Begin();
+                targetCtx.Cancellation = ct;
                 try
                 {
                     using (var capture = new ChangeCaptureContext())

@@ -68,6 +68,7 @@ namespace RvtMcp.Plugin
             foreach (var file in Directory.GetFiles(source).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
             {
                 var name = Path.GetFileName(file);
+                if (name == "revit-mcp.log" || name == "debug.log" || name == "compile-refs.log") continue;
                 if (familyRoot && !FamilyRootFiles.Contains(name, StringComparer.OrdinalIgnoreCase)) continue;
                 if (name.StartsWith(".", StringComparison.Ordinal) || name.EndsWith("-wal", StringComparison.OrdinalIgnoreCase)
                     || name.EndsWith("-shm", StringComparison.OrdinalIgnoreCase)
@@ -93,6 +94,7 @@ namespace RvtMcp.Plugin
             foreach (var file in Directory.GetFiles(source).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
             {
                 if (file.EndsWith("-wal", StringComparison.OrdinalIgnoreCase) || file.EndsWith("-shm", StringComparison.OrdinalIgnoreCase)) continue;
+                if (Path.GetFileName(file) == "compile-refs.log") continue;
                 CopyFile(file, Path.Combine(destination, Path.GetFileName(file)));
             }
             foreach (var directory in Directory.GetDirectories(source).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))

@@ -33,6 +33,8 @@
 
   <!-- Shared config (A9) — pulled in as source so server binary has zero extra deps -->
   <ItemGroup>
+    <Compile Include="..\shared\Logging\BoundedLogFile.cs" Link="Shared\Logging\BoundedLogFile.cs" />
+    <Compile Include="..\shared\Logging\DiagnosticLog.cs" Link="Shared\Logging\DiagnosticLog.cs" />
     <Compile Include="..\shared\Failures\FailureContracts.cs" Link="Shared\Failures\FailureContracts.cs" />
     <Compile Include="..\shared\Failures\FailureCompletion.cs" Link="Shared\Failures\FailureCompletion.cs" />
     <Compile Include="..\shared\Failures\FailurePolicy.cs" Link="Shared\Failures\FailurePolicy.cs" />

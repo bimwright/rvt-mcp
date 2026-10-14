@@ -180,12 +180,6 @@ public class BakedTool_{safeName} : IRevitCommand
                 var conflicts = groups.Where(g => g.Count() > 1).ToList();
                 if (conflicts.Count == 0) return;
 
-                var logDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Bimwright", "rvt-mcp", "baked");
-                Directory.CreateDirectory(logDir);
-                var logPath = Path.Combine(logDir, "compile-refs.log");
-
                 var sb = new System.Text.StringBuilder();
                 sb.AppendLine($"{DateTime.UtcNow:o} Bake-compile assembly dedupe conflicts:");
                 foreach (var g in conflicts)
@@ -194,7 +188,7 @@ public class BakedTool_{safeName} : IRevitCommand
                     var picked = g.OrderByDescending(a => a.GetName().Version).First().GetName().Version?.ToString() ?? "?";
                     sb.AppendLine($"  {g.Key}: versions=[{string.Join(", ", versions)}] → picked {picked}");
                 }
-                File.AppendAllText(logPath, sb.ToString());
+                DiagnosticLog.Write("CompileReferences", sb.ToString(), AuthToken.RevitVersion);
             }
             catch { /* diagnostic path must not break compilation */ }
         }

@@ -23,6 +23,7 @@ namespace RvtMcp.Server
             // gating uses RvtMcpConfig.
             if (!LegacyDataMigration.TryMigrateOnce(Console.Error.WriteLine))
             { Environment.ExitCode = 1; return; }
+            DiagnosticLog.MaintainLegacyLogs();
             AuthToken.CleanupLegacyDiscoveryFiles();
             var config = RvtMcpConfig.Load(args);
             config.ValidateResponseLimits();

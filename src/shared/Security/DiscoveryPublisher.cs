@@ -43,8 +43,9 @@ namespace RvtMcp.Plugin
             _mutexName = DiscoveryCoordination.Name(directory, year);
         }
 
-        public void Publish(string transport, int? port, string pipeName, string token)
+        public bool Publish(string transport, int? port, string pipeName, string token)
         {
+            var published = false;
             WithDiscoveryLock(() =>
             {
                 if (_disposed) return;
@@ -64,12 +65,13 @@ namespace RvtMcp.Plugin
                     ["auth_token"] = token,
                     ["capabilities"] = new JArray("tool_catalog", "controlled_failures_v1", "document_target_v1")
                 }.ToString(Formatting.Indented);
-                Write(FileName, json);
-                Write("revit-" + _year + ".json", json);
+                published = Write(FileName, json);
+                if (published) Write("revit-" + _year + ".json", json);
             }, 5000); // Allow both atomic-write retry windows before skipping publication.
+            return published;
         }
 
-        private void Write(string name, string json) =>
+        private bool Write(string name, string json) =>
             AtomicDescriptorFile.TryWrite(Path.Combine(_directory, name), json, _pid, _restrictAcl, _log);
 
         public void Dispose()

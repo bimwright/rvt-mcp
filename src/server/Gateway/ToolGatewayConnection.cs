@@ -65,6 +65,8 @@ namespace RvtMcp.Server
         private static Conn _conn;
         private static long _nextEpoch;
         private static readonly SemaphoreSlim _establishGate = new SemaphoreSlim(1, 1);
+        private static string _busyIdentity;
+        private static long _busyUntil;
         internal static Action BeforeWriteForTests;
 
         /// <summary>Target id of the instance the open connection serves, or null.</summary>
@@ -81,8 +83,13 @@ namespace RvtMcp.Server
             {
                 var wire = JsonConvert.SerializeObject(new
                 {
-                    id = "warmup", command = "warmup", @params = new { },
-                    token = "warmup", timeout_seconds = 1, runtime = (object)null, history = (object)null
+                    id = "warmup",
+                    command = "warmup",
+                    @params = new { },
+                    token = "warmup",
+                    timeout_seconds = 1,
+                    runtime = (object)null,
+                    history = (object)null
                 }, RequestJsonSettings);
                 _ = wire.Length;
                 _ = JObject.Parse("{\"id\":\"warmup\",\"success\":true,\"data\":{}}");
@@ -102,8 +109,11 @@ namespace RvtMcp.Server
                     client.Connect("127.0.0.1", port);
                     var conn = NewConn(client, new Bimwright.Targeting.TargetDescriptor
                     {
-                        TargetId = "warmup", HostYear = 2024, Transport = "tcp",
-                        Port = port, AuthToken = "warmup"
+                        TargetId = "warmup",
+                        HostYear = 2024,
+                        Transport = "tcp",
+                        Port = port,
+                        AuthToken = "warmup"
                     });
                     conn.Writer.WriteLine("{}");
                     var serverSide = accept.Result;
@@ -129,22 +139,40 @@ namespace RvtMcp.Server
         /// </summary>
         private static (Conn Conn, long EffectiveGeneration) EnsureConnectedFor(long pinned, TargetCallContext callCtx)
         {
+            var cancellation = callCtx?.Cancellation ?? CancellationToken.None;
+            cancellation.ThrowIfCancellationRequested();
+            if (callCtx != null && callCtx.ConnectionDeadlineTicks == 0)
+                callCtx.ConnectionDeadlineTicks = System.Diagnostics.Stopwatch.GetTimestamp() + 10 * System.Diagnostics.Stopwatch.Frequency;
             lock (_connectLock)
                 if (TryFastPath(pinned, callCtx, out var fast, out var fastGen)) return (fast, fastGen);
 
             // Serialize establishment: parallel calls must not open competing sockets
             // against a single-client listener (they would see our own TARGET_BUSY).
-            _establishGate.Wait();
+            int gateWait;
+            try { gateWait = ConnectionWait(callCtx, 10000); }
+            catch (TimeoutException) { throw new TargetException(RevitTargetBinding.Binding.ReportConnectFailure(pinned, ConnectFailure.Busy, Array.Empty<TargetCandidate>())); }
+            if (!_establishGate.Wait(gateWait, cancellation))
+                throw new TargetException(RevitTargetBinding.Binding.ReportConnectFailure(pinned, ConnectFailure.Busy, Array.Empty<TargetCandidate>()));
             try
             {
                 lock (_connectLock)
                     if (TryFastPath(pinned, callCtx, out var fast, out var fastGen)) return (fast, fastGen);
-                return EstablishLocked(pinned, callCtx);
+                try { return EstablishLocked(pinned, callCtx); }
+                catch (TimeoutException) { throw new TargetException(RevitTargetBinding.Binding.ReportConnectFailure(pinned, ConnectFailure.Busy, Array.Empty<TargetCandidate>())); }
             }
             finally
             {
                 _establishGate.Release();
             }
+        }
+
+        private static int ConnectionWait(TargetCallContext context, int maximum)
+        {
+            context?.Cancellation.ThrowIfCancellationRequested();
+            if (context == null || context.ConnectionDeadlineTicks == 0) return maximum;
+            var left = (context.ConnectionDeadlineTicks - System.Diagnostics.Stopwatch.GetTimestamp()) * 1000 / System.Diagnostics.Stopwatch.Frequency;
+            if (left <= 0) throw new TimeoutException("Connection establishment budget expired.");
+            return (int)Math.Min(maximum, left);
         }
 
         /// <summary>
@@ -212,7 +240,12 @@ namespace RvtMcp.Server
                 do
                 {
                     desc = AuthToken.ReadDescriptorFor(cp.Record.Pid, cp.Record.HostYear);
-                    if (desc == null) Thread.Sleep(200);
+                    if (desc == null)
+                    {
+                        var wait = ConnectionWait(callCtx, 200);
+                        if ((callCtx?.Cancellation ?? CancellationToken.None).WaitHandle.WaitOne(wait))
+                            callCtx.Cancellation.ThrowIfCancellationRequested();
+                    }
                 } while (desc == null && DateTime.UtcNow < deadline);
                 if (desc == null)
                     throw new TargetException(binding.ReportConnectFailure(
@@ -314,9 +347,16 @@ namespace RvtMcp.Server
             var tokenRetried = false;
             while (true)
             {
+                var identity = descriptor.TargetId + "|" + descriptor.ProcessStartUtc?.Ticks + "|" + effectiveGeneration;
+                lock (_connectLock)
+                    if (_busyIdentity == identity && System.Diagnostics.Stopwatch.GetTimestamp() < _busyUntil)
+                        throw new TargetException(binding.ReportConnectFailure(effectiveGeneration, ConnectFailure.Busy, live));
                 var conn = OpenTransport(descriptor, out var failure);
                 if (conn == null)
+                {
+                    if (failure == ConnectFailure.Busy) RememberBusy(identity);
                     throw new TargetException(binding.ReportConnectFailure(effectiveGeneration, failure, live));
+                }
 
                 if (!ShouldSendToolCatalog(ServerState.ToolCatalog, descriptor.Capabilities))
                     return conn; // no handshake to send — socket connect counts as success
@@ -329,6 +369,7 @@ namespace RvtMcp.Server
                         // answered within the handshake budget — the connection is live.
                         return conn;
                     case HandshakeResult.TimedOut:
+                        RememberBusy(identity);
                         CloseConn(conn);
                         throw new TargetException(binding.ReportConnectFailure(
                             effectiveGeneration, ConnectFailure.Busy, live));
@@ -353,10 +394,17 @@ namespace RvtMcp.Server
             }
         }
 
+        private static void RememberBusy(string identity)
+        {
+            lock (_connectLock) { _busyIdentity = identity; _busyUntil = System.Diagnostics.Stopwatch.GetTimestamp() + System.Diagnostics.Stopwatch.Frequency; }
+        }
+
         /// <summary>Open the socket/pipe only; distinguishes busy from no-listener (§6.4).</summary>
         private static Conn OpenTransport(TargetDescriptor desc, out ConnectFailure failure)
         {
             failure = ConnectFailure.Unavailable;
+            NamedPipeClientStream openedPipe = null;
+            TcpClient openedTcp = null;
             try
             {
                 if (desc.Transport == "pipe")
@@ -366,13 +414,14 @@ namespace RvtMcp.Server
                     var name = desc.PipeName;
                     if (!PipeExists(name))
                     {
-                        Console.Error.WriteLine($"[RvtMcp] Pipe {name} not present — no listener");
+                        DiagnosticLog.Write("Gateway", $"Pipe {name} not present — no listener", desc.HostYear.ToString());
                         return null;
                     }
                     var pipe = new NamedPipeClientStream(".", name, PipeDirection.InOut, PipeOptions.Asynchronous);
+                    openedPipe = pipe;
                     try
                     {
-                        pipe.Connect(4500);
+                        pipe.ConnectAsync(ConnectionWait(TargetCallContext.Current, 4500), TargetCallContext.Current?.Cancellation ?? CancellationToken.None).GetAwaiter().GetResult();
                     }
                     catch (TimeoutException)
                     {
@@ -381,15 +430,25 @@ namespace RvtMcp.Server
                         return null;
                     }
                     var c = NewConn(pipe, desc);
-                    Console.Error.WriteLine($"[RvtMcp] Connected to {desc.TargetId} via Named Pipe: {name}");
+                    openedPipe = null;
+                    DiagnosticLog.Write("Gateway", $"Connected to {desc.TargetId} via Named Pipe: {name}", c.Year);
                     return c;
                 }
                 else
                 {
                     var tcp = new TcpClient();
+                    openedTcp = tcp;
                     try
                     {
-                        tcp.Connect("127.0.0.1", desc.Port.Value);
+                        if (!tcp.ConnectAsync("127.0.0.1", desc.Port.Value).Wait(ConnectionWait(TargetCallContext.Current, 4500), TargetCallContext.Current?.Cancellation ?? CancellationToken.None))
+                            throw new TimeoutException("TCP connection timed out.");
+                    }
+                    catch (OperationCanceledException) { throw; }
+                    catch (TimeoutException)
+                    {
+                        try { tcp.Close(); } catch { }
+                        failure = ConnectFailure.Busy;
+                        return null;
                     }
                     catch
                     {
@@ -397,13 +456,20 @@ namespace RvtMcp.Server
                         return null; // refused → no listener → Unavailable
                     }
                     var c = NewConn(tcp, desc);
-                    Console.Error.WriteLine($"[RvtMcp] Connected to {desc.TargetId} via TCP on port {desc.Port}");
+                    openedTcp = null;
+                    DiagnosticLog.Write("Gateway", $"Connected to {desc.TargetId} via TCP on port {desc.Port}", c.Year);
                     return c;
                 }
             }
+            catch (OperationCanceledException)
+            {
+                try { openedPipe?.Dispose(); openedTcp?.Dispose(); } catch { }
+                throw;
+            }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[RvtMcp] Connect to {desc.TargetId} failed: {ex.Message}");
+                try { openedPipe?.Dispose(); openedTcp?.Dispose(); } catch { }
+                DiagnosticLog.Write("Gateway", $"Connect to {desc.TargetId} failed ({ex.HResult:X8}): {ex.Message}", desc.HostYear.ToString());
                 return null;
             }
         }
@@ -468,33 +534,47 @@ namespace RvtMcp.Server
             };
             var pending = new GatewayPendingRequest(null, conn.Epoch);
             var tcs = pending.Caller;
+            var cancellation = TargetCallContext.Current?.Cancellation ?? CancellationToken.None;
+            using var budget = new CancellationTokenSource();
             _pending[id] = pending;
             try
             {
+                // The handshake budget includes a blocked catalog write, not just its response.
+                budget.CancelAfter(ConnectionWait(TargetCallContext.Current, 4500));
+                using var abortBudget = budget.Token.Register(() => CloseConn(conn));
+                using var abortCancellation = cancellation.Register(() => CloseConn(conn));
+                cancellation.ThrowIfCancellationRequested();
                 conn.Writer.WriteLine(request.ToString(Formatting.None));
-                if (!tcs.Task.Wait(TimeSpan.FromMilliseconds(4500)))
+                try
                 {
-                    _pending.TryRemove(id, out _);
-                    Console.Error.WriteLine("[RvtMcp] Tool catalog handshake timed out (4.5s) — treating target as busy.");
-                    return HandshakeResult.TimedOut;
+                    if (!tcs.Task.Wait(ConnectionWait(TargetCallContext.Current, 4500), cancellation))
+                    {
+                        DiagnosticLog.Write("Gateway", "Tool catalog handshake timed out — treating target as busy.", conn.Year);
+                        return HandshakeResult.TimedOut;
+                    }
                 }
+                catch when (budget.IsCancellationRequested && !cancellation.IsCancellationRequested) { return HandshakeResult.TimedOut; }
 
                 var response = JObject.Parse(tcs.Task.GetAwaiter().GetResult());
                 if (response.Value<bool>("success")) return HandshakeResult.Ok;
                 var error = response.Value<string>("error") ?? "";
                 if (error.IndexOf("Unauthorized", StringComparison.OrdinalIgnoreCase) >= 0)
                     return HandshakeResult.TokenRejected;
-                Console.Error.WriteLine($"[RvtMcp] Tool catalog rejected: {error}");
+                DiagnosticLog.Write("Gateway", $"Tool catalog rejected: {error}", conn.Year);
                 return HandshakeResult.AnsweredRejected;
             }
+            catch (OperationCanceledException) { CloseConn(conn); throw; }
+            catch (TimeoutException) { return HandshakeResult.TimedOut; }
             catch (Exception ex)
             {
-                _pending.TryRemove(id, out _);
+                if (cancellation.IsCancellationRequested) { CloseConn(conn); cancellation.ThrowIfCancellationRequested(); }
+                if (budget.IsCancellationRequested) return HandshakeResult.TimedOut;
                 // A faulted tcs.Task reaches Wait() wrapped in AggregateException, so a
                 // mid-handshake ConnectionInterruptedException lands here too — both mean Closed.
-                Console.Error.WriteLine($"[RvtMcp] Tool catalog handshake failed: {ex.Message}");
+                DiagnosticLog.Write("Gateway", $"Tool catalog handshake failed ({ex.HResult:X8}): {ex.Message}", conn.Year);
                 return HandshakeResult.Closed; // e.g. write failed on a closing stream → unavailable
             }
+            finally { _pending.TryRemove(id, out _); }
         }
 
         /// <summary>
@@ -518,9 +598,15 @@ namespace RvtMcp.Server
             {
                 var request = JsonConvert.SerializeObject(new
                 {
-                    id, command, @params = parameters ?? new { }, token = conn.Token,
-                    timeout_seconds = timeoutSeconds, runtime = config.ToRuntimeOptions(), history,
-                    operation_id = operationId, failure_protocol = 1,
+                    id,
+                    command,
+                    @params = parameters ?? new { },
+                    token = conn.Token,
+                    timeout_seconds = timeoutSeconds,
+                    runtime = config.ToRuntimeOptions(),
+                    history,
+                    operation_id = operationId,
+                    failure_protocol = 1,
                     expected_document_id = binding.Snapshot().Record?.DocumentId
                 }, RequestJsonSettings);
                 var current = false;
@@ -528,6 +614,7 @@ namespace RvtMcp.Server
                 BeforeWriteForTests?.Invoke();
                 lock (conn.WriteLock)
                 {
+                    callCtx?.Cancellation.ThrowIfCancellationRequested();
                     lock (_connectLock)
                     {
                         if (!binding.CanSend(effectiveGeneration, Array.Empty<Bimwright.Targeting.TargetCandidate>(), out var sendFailure))
@@ -657,6 +744,7 @@ namespace RvtMcp.Server
         {
             BeforeWriteForTests = null;
             PreviousOperations.Clear();
+            lock (_connectLock) { _busyIdentity = null; _busyUntil = 0; }
             lock (_connectLock)
             {
                 var conn = _conn;

@@ -158,6 +158,64 @@ namespace RvtMcp.Tests
             }
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void A_slow_peer_cannot_grow_the_queue_by_frame_count_or_bytes(bool largeFrames)
+        {
+            using var wire = new GatedStream();
+            var aborted = 0;
+            TransportResponseWriter writer = null;
+            writer = new TransportResponseWriter(new StreamWriter(wire, new UTF8Encoding(false), 1024, leaveOpen: true), () =>
+            {
+                Interlocked.Increment(ref aborted);
+                wire.Fail = true;
+                wire.Release.Set();
+            });
+            try
+            {
+                writer.WriteLine("blocked frame");
+                Assert.True(wire.Entered.Wait(TimeSpan.FromSeconds(2)));
+                var frame = largeFrames ? new string('x', 1024 * 1024) : "small";
+                for (var i = 0; i < 300; i++) writer.WriteLine(frame);
+                Assert.True(aborted > 0);
+                var executions = 0;
+                var request = Request("after-overflow");
+                writer.Dispatch(request, request.ToString(), (_, __) => executions++);
+                Assert.Equal(0, executions);
+            }
+            finally { wire.Release.Set(); writer.Dispose(); }
+        }
+
+        [Fact]
+        public void Dispatch_capacity_aborts_outside_the_queue_lock_and_does_not_execute_more_requests()
+        {
+            PendingRequestLifecycle.SetHostBusy(false);
+            using var wire = new MemoryStream();
+            TransportResponseWriter writer = null;
+            var reentered = false;
+            writer = new TransportResponseWriter(new StreamWriter(wire, new UTF8Encoding(false), 1024, leaveOpen: true), () =>
+            {
+                reentered = Task.Run(() => writer.WriteLine("late")).Wait(TimeSpan.FromSeconds(1));
+            });
+            var pending = new List<TaskCompletionSource<string>>();
+            try
+            {
+                for (var i = 0; i < 257; i++)
+                {
+                    var request = Request("capacity-" + i);
+                    writer.Dispatch(request, request.ToString(), (_, tcs) => pending.Add(tcs));
+                }
+                Assert.Equal(256, pending.Count);
+                Assert.True(reentered);
+            }
+            finally
+            {
+                foreach (var tcs in pending) tcs.TrySetResult("{}");
+                writer.Dispose();
+            }
+        }
+
         [Fact]
         public async Task Concurrent_dispose_is_bounded_when_the_peer_does_not_read()
         {

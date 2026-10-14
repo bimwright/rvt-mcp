@@ -223,7 +223,7 @@ namespace RvtMcp.Server.Bake
         private void Append(UsageEvent usageEvent)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_paths.UsageJsonl) ?? ".");
-            File.AppendAllText(_paths.UsageJsonl, JsonConvert.SerializeObject(usageEvent, Formatting.None) + Environment.NewLine);
+            BoundedLogFile.Append(_paths.UsageJsonl, JsonConvert.SerializeObject(usageEvent, Formatting.None));
         }
 
         private void RefreshCandidatesIfDue(DateTimeOffset now)
@@ -244,11 +244,9 @@ namespace RvtMcp.Server.Bake
 
         private IReadOnlyList<UsageEvent> ReadUsageEvents(DateTimeOffset now)
         {
-            if (!File.Exists(_paths.UsageJsonl))
-                return Array.Empty<UsageEvent>();
-
             var cutoff = now.Subtract(MaxReplayWindow);
-            var tail = ReadTailLines(_paths.UsageJsonl, _replayLineLimit);
+            var tail = BoundedLogFile.Files(Path.GetDirectoryName(_paths.UsageJsonl), "usage")
+                .SelectMany(path => BoundedLogFile.ReadLinesSafe(path)).TakeLast(_replayLineLimit);
             var events = new List<UsageEvent>();
             foreach (var line in tail)
             {
@@ -268,20 +266,6 @@ namespace RvtMcp.Server.Bake
 
             return events;
         }
-
-        private static IEnumerable<string> ReadTailLines(string path, int lineLimit)
-        {
-            var queue = new Queue<string>(lineLimit);
-            foreach (var line in File.ReadLines(path))
-            {
-                queue.Enqueue(line);
-                if (queue.Count > lineLimit)
-                    queue.Dequeue();
-            }
-
-            return queue.ToArray();
-        }
-
         private void RecordCaptureFailure(Exception ex)
         {
             var now = DateTimeOffset.UtcNow;

@@ -1,6 +1,9 @@
 ﻿using System;
 using System.IO;
 using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Linq;
+using RvtMcp.Plugin;
 
 namespace RvtMcp.Server.Memory
 {
@@ -38,49 +41,31 @@ namespace RvtMcp.Server.Memory
                 {
                     Directory.CreateDirectory(_journalDir);
                     var line = JsonConvert.SerializeObject(entry, Formatting.None);
-                    File.AppendAllText(_currentPath, line + "\n");
+                    BoundedLogFile.Append(_currentPath, line, "journal");
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine($"[RvtMcp] Journal write failed: {ex.Message}");
+                    DiagnosticLog.Write("Journal", "Journal write failed: " + ex.Message);
                 }
             }
         }
 
-        public JournalEntry[] ReadDay(string date)
-        {
-            lock (_lock)
-            {
-                var path = Path.Combine(_journalDir, $"{date}.jsonl");
-                if (!File.Exists(path)) return Array.Empty<JournalEntry>();
+        public JournalEntry[] ReadDay(string date) => ReadDayEntries(date).ToArray();
 
-                var lines = File.ReadAllLines(path);
-                var entries = new System.Collections.Generic.List<JournalEntry>(lines.Length);
-                foreach (var line in lines)
+        public IEnumerable<JournalEntry> ReadDayEntries(string date)
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(date ?? "", @"^\d{4}-\d{2}-\d{2}$"))
+                throw new ArgumentException("A journal date must use yyyy-MM-dd.", nameof(date));
+            foreach (var file in BoundedLogFile.Files(_journalDir, "journal").Where(p => Path.GetFileName(p).StartsWith(date, StringComparison.Ordinal)))
+                foreach (var line in BoundedLogFile.ReadLinesSafe(file))
                 {
-                    if (string.IsNullOrWhiteSpace(line)) continue;
-                    try
-                    {
-                        entries.Add(JsonConvert.DeserializeObject<JournalEntry>(line));
-                    }
-                    catch { }
+                    JournalEntry entry = null;
+                    try { entry = JsonConvert.DeserializeObject<JournalEntry>(line); } catch { }
+                    if (entry != null) yield return entry;
                 }
-                return entries.ToArray();
-            }
         }
 
-        public string[] ListDates()
-        {
-            lock (_lock)
-            {
-                if (!Directory.Exists(_journalDir)) return Array.Empty<string>();
-                var files = Directory.GetFiles(_journalDir, "*.jsonl");
-                var dates = new string[files.Length];
-                for (int i = 0; i < files.Length; i++)
-                    dates[i] = Path.GetFileNameWithoutExtension(files[i]);
-                Array.Sort(dates);
-                return dates;
-            }
-        }
+        public string[] ListDates() => BoundedLogFile.Files(_journalDir, "journal")
+            .Select(p => Path.GetFileName(p).Substring(0, 10)).Distinct().OrderBy(p => p, StringComparer.Ordinal).ToArray();
     }
 }

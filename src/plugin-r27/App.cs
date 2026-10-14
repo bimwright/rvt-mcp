@@ -12,7 +12,7 @@ namespace RvtMcp.Plugin
         public static App Instance { get; private set; }
 
         public ITransportServer Transport { get; private set; }
-        public bool IsTransportRunning { get; private set; }
+        public bool IsTransportRunning => Transport?.IsRunning == true;
         public McpSessionLog SessionLog { get; private set; }
         public CommandDispatcher CommandDispatcher => _dispatcher;
         public ToolBaker.BakedToolRegistry BakedToolRegistry { get; private set; }
@@ -55,6 +55,7 @@ namespace RvtMcp.Plugin
 
             McpLogger.Initialize();
             if (!LegacyDataMigration.TryMigrateOnce(DebugLog)) return Result.Failed;
+            DiagnosticLog.MaintainLegacyLogs();
             SessionLog = new McpSessionLog();
             Config = RvtMcpConfig.Load(args: null);
             Localization.LocalizationHost.InitializePlugin(
@@ -84,8 +85,8 @@ namespace RvtMcp.Plugin
 
             if (Config.AutoStartTransportOrDefault)
             {
-                CreateAndStartTransport();
-                DebugLog("OnStartup: Transport OK");
+                try { CreateAndStartTransport(); DebugLog("OnStartup: Transport OK"); }
+                catch (Exception ex) { DebugLog("OnStartup: MCP remains OFF: " + ex.Message); }
             }
             else
             {
@@ -117,7 +118,7 @@ namespace RvtMcp.Plugin
             _settingsWindow?.CloseForShutdown();
             _updateNotice?.Shutdown();
 
-            StopTransport();
+            try { StopTransport(); } catch (Exception ex) { DebugLog("Shutdown transport cleanup: " + ex.Message); }
             _handler?.CancelAll();
             ToastNotifier?.Shutdown();
             _externalEvent?.Dispose();
@@ -164,7 +165,6 @@ namespace RvtMcp.Plugin
                 _externalEvent.Raise();
             });
             Transport = pipe;
-            IsTransportRunning = true;
         }
 
         public void StopTransport()
@@ -175,7 +175,6 @@ namespace RvtMcp.Plugin
                 Transport.Dispose();
                 Transport = null;
             }
-            IsTransportRunning = false;
         }
 
         public void ShowOrFocusHistoryWindow()
@@ -288,17 +287,7 @@ namespace RvtMcp.Plugin
 
         internal static void DebugLog(string message)
         {
-            try
-            {
-                var dir = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Bimwright", "rvt-mcp");
-                System.IO.Directory.CreateDirectory(dir);
-                var logFile = System.IO.Path.Combine(dir, "debug.log");
-                System.IO.File.AppendAllText(logFile,
-                    $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}");
-            }
-            catch { }
+            DiagnosticLog.Write("App", message, AuthToken.RevitVersion);
         }
     }
 }

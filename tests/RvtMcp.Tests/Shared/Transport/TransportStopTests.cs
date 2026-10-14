@@ -51,6 +51,7 @@ namespace RvtMcp.Tests
 
             var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
             client.Connect(5000);
+            Authenticate(client);
             Assert.True(server.IsClientConnected || SpinWait.SpinUntil(() => server.IsClientConnected, 2000));
 
             var sw = Stopwatch.StartNew();
@@ -85,6 +86,7 @@ namespace RvtMcp.Tests
 
             var client = new TcpClient();
             client.Connect("127.0.0.1", server.Port);
+            Authenticate(client.GetStream());
             Assert.True(SpinWait.SpinUntil(() => server.IsClientConnected, 2000));
 
             var sw = Stopwatch.StartNew();
@@ -111,49 +113,35 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void Pipe_BusyPipe_BacksOff_ThenServesClient()
+        public void Pipe_busy_start_is_explicit_then_a_fresh_listener_recovers()
         {
-            var pipeName = "rvtmcp-busy-" + Guid.NewGuid().ToString("N");
-            // Hold the only allowed pipe instance externally.
-            var holder = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1);
-            try
+            var name = "rvtmcp-busy-" + Guid.NewGuid().ToString("N");
+            using var holder = new NamedPipeServerStream(name, PipeDirection.InOut, 1);
+            using var refused = new PipeTransportServer(_dir, Sink, name);
+            Assert.Throws<IOException>(() => refused.Start(RespondOk));
+            Assert.False(refused.IsRunning);
+            Assert.False(File.Exists(DescriptorPath()));
+            holder.Dispose();
+            using var recovered = new PipeTransportServer(_dir, Sink, name);
+            recovered.Start(RespondOk);
+            using var client = new NamedPipeClientStream(".", name, PipeDirection.InOut);
+            client.Connect(5000);
+            Authenticate(client);
+            Assert.True(recovered.IsClientConnected);
+        }
+
+        private static void Authenticate(Stream stream)
+        {
+            using var writer = new StreamWriter(stream, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
+            using var reader = new StreamReader(stream, Encoding.UTF8, false, 1024, leaveOpen: true);
+            writer.WriteLine(new JObject
             {
-                var server = new PipeTransportServer(_dir, Sink, pipeName);
-                server.Start(RespondOk);
-
-                System.Threading.Thread.Sleep(5000);
-                Assert.True(ErrorLines <= 10, $"expected bounded error logging, got {ErrorLines} in 5 s (total {LogLines})");
-
-                // Release the external holder; listener must recover within back-off.
-                holder.Dispose();
-                holder = null;
-
-                var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
-                client.Connect(8000);
-
-                var token = JObject.Parse(File.ReadAllText(DescriptorPath())).Value<string>("auth_token");
-                var request = new JObject
-                {
-                    ["id"] = "1",
-                    ["token"] = token,
-                    ["command"] = "set_tool_catalog",
-                    ["params"] = JObject.Parse(
-                        "{\"schema_version\":1,\"server_version\":\"1.1.0\",\"catalogued_built_in_count\":0,\"tools\":[]}"),
-                };
-                var writer = new StreamWriter(client, new UTF8Encoding(false)) { AutoFlush = true };
-                var reader = new StreamReader(client, Encoding.UTF8);
-                writer.WriteLine(request.ToString(Newtonsoft.Json.Formatting.None));
-                var response = reader.ReadLine();
-                Assert.NotNull(response);
-                Assert.True(JObject.Parse(response).Value<bool>("success"));
-
-                server.Dispose();
-                client.Dispose();
-            }
-            finally
-            {
-                try { holder?.Dispose(); } catch { }
-            }
+                ["id"] = "auth",
+                ["token"] = AuthToken.Current,
+                ["command"] = "set_tool_catalog",
+                ["params"] = JObject.Parse("{\"schema_version\":1,\"server_version\":\"1.1.0\",\"catalogued_built_in_count\":0,\"tools\":[]}")
+            }.ToString(Newtonsoft.Json.Formatting.None));
+            Assert.True(JObject.Parse(reader.ReadLine()).Value<bool>("success"));
         }
 
         // ---- stop mid-request / restart with stale client ----
@@ -163,9 +151,13 @@ namespace RvtMcp.Tests
             var token = JObject.Parse(File.ReadAllText(DescriptorPath())).Value<string>("auth_token");
             writer.WriteLine(new JObject
             {
-                ["id"] = id, ["token"] = token, ["command"] = command,
-                ["params"] = new JObject(), ["timeout_seconds"] = 60,
-                ["failure_protocol"] = 1, ["operation_id"] = Guid.NewGuid().ToString("N")
+                ["id"] = id,
+                ["token"] = token,
+                ["command"] = command,
+                ["params"] = new JObject(),
+                ["timeout_seconds"] = 60,
+                ["failure_protocol"] = 1,
+                ["operation_id"] = Guid.NewGuid().ToString("N")
             }.ToString(Newtonsoft.Json.Formatting.None));
             return token;
         }
@@ -193,6 +185,7 @@ namespace RvtMcp.Tests
             server.Start((line, tcs) => pending = tcs);
             var client = new TcpClient();
             client.Connect("127.0.0.1", server.Port);
+            Authenticate(client.GetStream());
             Assert.True(SpinWait.SpinUntil(() => server.IsClientConnected, 2000));
             var writer = new StreamWriter(client.GetStream(), new UTF8Encoding(false)) { AutoFlush = true };
             SendValidRequest(writer, "1", "slow_command");
@@ -220,6 +213,7 @@ namespace RvtMcp.Tests
             server.Start((line, tcs) => pending = tcs);
             var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
             client.Connect(5000);
+            Authenticate(client);
             Assert.True(SpinWait.SpinUntil(() => server.IsClientConnected, 2000));
             var writer = new StreamWriter(client, new UTF8Encoding(false)) { AutoFlush = true };
             SendValidRequest(writer, "1", "slow_command");
@@ -244,6 +238,7 @@ namespace RvtMcp.Tests
             server1.Start(RespondOk);
             var stale = new TcpClient();
             stale.Connect("127.0.0.1", server1.Port);
+            Authenticate(stale.GetStream());
             Assert.True(SpinWait.SpinUntil(() => server1.IsClientConnected, 2000));
 
             server1.Stop();
@@ -257,6 +252,7 @@ namespace RvtMcp.Tests
             Assert.True(File.Exists(DescriptorPath())); // descriptor republished
             var fresh = new TcpClient();
             fresh.Connect("127.0.0.1", server2.Port);
+            Authenticate(fresh.GetStream());
             Assert.True(SpinWait.SpinUntil(() => server2.IsClientConnected, 2000));
             var writer = new StreamWriter(fresh.GetStream(), new UTF8Encoding(false)) { AutoFlush = true };
             var reader = new StreamReader(fresh.GetStream(), Encoding.UTF8);
@@ -277,6 +273,7 @@ namespace RvtMcp.Tests
             server1.Start(RespondOk);
             var stale = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
             stale.Connect(5000);
+            Authenticate(stale);
             Assert.True(SpinWait.SpinUntil(() => server1.IsClientConnected, 2000));
 
             server1.Stop();
@@ -287,6 +284,7 @@ namespace RvtMcp.Tests
             Assert.True(File.Exists(DescriptorPath()));
             var fresh = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
             fresh.Connect(5000);
+            Authenticate(fresh);
             Assert.True(SpinWait.SpinUntil(() => server2.IsClientConnected, 2000));
             var writer = new StreamWriter(fresh, new UTF8Encoding(false)) { AutoFlush = true };
             var reader = new StreamReader(fresh, Encoding.UTF8);

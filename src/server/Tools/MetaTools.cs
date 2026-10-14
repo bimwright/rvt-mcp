@@ -439,7 +439,7 @@ namespace RvtMcp.Server
                 foreach (var date in dates)
                 {
                     if (string.Compare(date, cutoff, StringComparison.Ordinal) < 0) continue;
-                    var entries = journal.ReadDay(date);
+                    var entries = journal.ReadDayEntries(date);
                     foreach (var entry in entries)
                     {
                         historicalTotal++;

@@ -21,6 +21,9 @@ namespace RvtMcp.Plugin
         private readonly string _pipeNameOverride;
         private readonly ManualResetEvent _stop = new ManualResetEvent(false);
         private readonly object _clientGate = new object();
+        private readonly object _lifetimeGate = new object();
+        private readonly CancellationTokenSource _cancel = new CancellationTokenSource();
+        private bool _started, _fullyStopped;
         private Thread _listenThread;
         private volatile bool _running;
         private int _stopped;
@@ -44,50 +47,59 @@ namespace RvtMcp.Plugin
 
         public void Start(Action<string, TaskCompletionSource<string>> onRequest)
         {
-            _onRequest = onRequest ?? throw new ArgumentNullException(nameof(onRequest));
-
-            _pipeName = _pipeNameOverride ?? $"RvtMcp-{Process.GetCurrentProcess().Id}";
-
-            _publisher = AuthToken.GenerateAndPersistPipe(_pipeName, _discoveryDirectory);
-            Log($"Listening on pipe {_pipeName} (auth: enabled)");
-
-            _running = true;
-            _listenThread = new Thread(ListenLoop) { IsBackground = true, Name = "RvtMcp.PipeTransportServer" };
-            _listenThread.Start();
+            if (onRequest == null) throw new ArgumentNullException(nameof(onRequest));
+            lock (_lifetimeGate)
+            {
+                if (_started || _stopped != 0) throw new InvalidOperationException("A transport instance has one lifetime; create a new instance to restart.");
+                _started = true;
+                _onRequest = onRequest;
+                _pipeName = _pipeNameOverride ?? $"RvtMcp-{Process.GetCurrentProcess().Id}";
+                try
+                {
+                    _activeClient = CreatePipe(_pipeName); // Reserve the name before advertising readiness.
+                    _publisher = AuthToken.GenerateAndPersistPipe(_pipeName, _discoveryDirectory);
+                    _running = true;
+                    _listenThread = new Thread(ListenLoop) { IsBackground = true, Name = "RvtMcp.PipeTransportServer" };
+                    _listenThread.Start();
+                    Log($"Listening on pipe {_pipeName} (auth: enabled)");
+                }
+                catch
+                {
+                    _running = false; _stopped = 1; _fullyStopped = true;
+                    try { _activeClient?.Dispose(); } catch { }
+                    try { _publisher?.Dispose(); } catch { }
+                    throw;
+                }
+            }
         }
 
         public void Stop()
         {
-            if (Interlocked.Exchange(ref _stopped, 1) != 0)
-                return;
-            _running = false;
-            _stop.Set();
-            // CancelIoEx first: DisconnectNamedPipe (called by Dispose) blocks while a
-            // synchronous ReadFile is pending on the pipe.
-            lock (_clientGate)
+            lock (_lifetimeGate)
             {
-                try { if (_activeClient != null) CancelIoEx(_activeClient.SafePipeHandle, IntPtr.Zero); }
-                catch { }
-                try { _activeClient?.Dispose(); } catch { }
-            }
-
-            // Wake up a blocked WaitForConnection by connecting briefly
-            try
-            {
-                using (var dummy = new NamedPipeClientStream(".", _pipeName, PipeDirection.Out))
+                if (_fullyStopped) return;
+                _stopped = 1;
+                _running = false;
+                _stop.Set();
+                _cancel.Cancel();
+                // CancelIoEx first: DisconnectNamedPipe (called by Dispose) blocks while a
+                // synchronous ReadFile is pending on the pipe.
+                lock (_clientGate)
                 {
-                    dummy.Connect(100);
+                    try { if (_activeClient != null) CancelIoEx(_activeClient.SafePipeHandle, IntPtr.Zero); }
+                    catch { }
+                    try { _activeClient?.Dispose(); } catch { }
                 }
+
+                if (_listenThread != null && Thread.CurrentThread != _listenThread)
+                    if (!_listenThread.Join(2000)) throw new TimeoutException("Pipe listener has not stopped; restart was refused.");
+
+                try { _publisher?.Dispose(); } catch { }
+                _publisher = null;
+                _clientConnected = false;
+                _fullyStopped = true;
+                Log("Stopped");
             }
-            catch { }
-
-            if (_listenThread != null && Thread.CurrentThread != _listenThread)
-                _listenThread.Join(2000);
-
-            try { _publisher?.Dispose(); } catch { }
-            _publisher = null;
-
-            Log("Stopped");
         }
 
         public void Dispose()
@@ -98,43 +110,56 @@ namespace RvtMcp.Plugin
         private void ListenLoop()
         {
             var backoffMs = 100;
-            while (_running)
+            var pipe = _activeClient;
+            try
             {
-                NamedPipeServerStream pipe = null;
-                var hadClient = false;
-                try
+                while (_running)
                 {
-                    pipe = CreatePipe(_pipeName);
+                    var hadClient = false;
+                    try
+                    {
+                        // Keep the name reserved across clients; Stop cancels the actual wait.
+                        pipe.WaitForConnectionAsync(_cancel.Token).GetAwaiter().GetResult();
 
-                    pipe.WaitForConnection();
+                        if (!_running)
+                            break;
 
-                    if (!_running)
+                        HandleClient(pipe);
+                        hadClient = _clientConnected;
+                        if (hadClient) backoffMs = 100; // Reset only after authenticated traffic.
+                    }
+                    catch (Exception) when (!_running)
+                    {
+                        // Clean shutdown
                         break;
-
-                    hadClient = true;
-                    backoffMs = 100; // a successful connection resets the error back-off
-                    Log("Client connected");
-                    HandleClient(pipe);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Listener failed ({ex.HResult:X8}): {ex.Message}");
+                        // A writer failure may have closed this handle. Rebind only after it is released.
+                        try { pipe.Dispose(); } catch { }
+                        if (_stop.WaitOne(backoffMs))
+                            break;
+                        backoffMs = Math.Min(backoffMs * 2, 2000);
+                        pipe = CreatePipe(_pipeName);
+                        lock (_clientGate) { _activeClient = pipe; }
+                    }
+                    finally
+                    {
+                        hadClient = hadClient || _clientConnected;
+                        try { pipe?.Disconnect(); } catch { }
+                        if (hadClient)
+                            Log("Client disconnected");
+                        _clientConnected = false;
+                    }
                 }
-                catch (IOException) when (!_running)
-                {
-                    // Clean shutdown
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Log($"Listen error: {ex.Message}");
-                    if (_stop.WaitOne(backoffMs))
-                        break;
-                    backoffMs = Math.Min(backoffMs * 2, 2000);
-                }
-                finally
-                {
-                    try { pipe?.Disconnect(); } catch { }
-                    try { pipe?.Dispose(); } catch { }
-                    if (hadClient)
-                        Log("Client disconnected");
-                }
+            }
+            catch (Exception ex) { Log($"Listener stopped after failure ({ex.HResult:X8}): {ex.Message}"); }
+            finally
+            {
+                _running = false; _clientConnected = false;
+                try { pipe?.Dispose(); } catch { }
+                try { _publisher?.Dispose(); } catch { }
             }
         }
 
@@ -145,12 +170,11 @@ namespace RvtMcp.Plugin
 
         private void HandleClient(NamedPipeServerStream pipe)
         {
-            _clientConnected = true;
             lock (_clientGate) { _activeClient = pipe; }
             var conn = ToolCatalogStore.BeginConnection();
             try
             {
-                var reader = new StreamReader(pipe, Encoding.UTF8);
+                using var reader = new StreamReader(pipe, Encoding.UTF8, true, 1024, leaveOpen: true);
                 using var writer = new TransportResponseWriter(
                     new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true },
                     () =>
@@ -161,6 +185,13 @@ namespace RvtMcp.Plugin
                     // DisconnectNamedPipe discards unread bytes. Wait on the writer thread only,
                     // within Dispose's drain deadline, so the peer can read the terminal frame first.
                     () => { if (_running && pipe.IsConnected) pipe.WaitForPipeDrain(); });
+                using var idleGuard = new Timer(_ =>
+                {
+                    if (!writer.IsIdleFor(TimeSpan.FromSeconds(120))) return;
+                    Log("Closing idle client");
+                    try { CancelIoEx(pipe.SafePipeHandle, IntPtr.Zero); } catch { }
+                    try { pipe.Disconnect(); } catch { }
+                }, null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(15));
 
                 var requestTimestamps = new System.Collections.Generic.Queue<DateTime>();
                 const int RateLimitMax = 20;
@@ -190,7 +221,7 @@ namespace RvtMcp.Plugin
                     }
                     catch (IOException)
                     {
-                        Log("Client read error or broken pipe");
+                        if (_running) Log("Client read ended");
                         break;
                     }
                     catch
@@ -220,10 +251,12 @@ namespace RvtMcp.Plugin
                             success = false,
                             error = "Unauthorized: invalid or missing token."
                         });
-                        try { writer.WriteLine(denied); } catch { }
                         Log("Auth rejected");
+                        try { writer.WriteLine(denied); } catch { }
                         break; // drop the connection on auth failure
                     }
+                    if (!_clientConnected) { _clientConnected = true; Log("Client connected"); }
+                    writer.Touch();
 
                     string id = request.Value<string>("id");
                     string command = request.Value<string>("command");
@@ -273,8 +306,6 @@ namespace RvtMcp.Plugin
             }
             finally
             {
-                _clientConnected = false;
-                lock (_clientGate) { _activeClient = null; }
                 ToolCatalogStore.Clear(conn);
             }
         }
@@ -306,14 +337,7 @@ namespace RvtMcp.Plugin
 
         private static void FileLog(string message)
         {
-            try
-            {
-                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bimwright", "rvt-mcp");
-                Directory.CreateDirectory(dir);
-                var logFile = Path.Combine(dir, "revit-mcp.log");
-                File.AppendAllText(logFile, $"[{DateTime.Now:HH:mm:ss}] [PipeTransport] {SecretMasker.Mask(message)}\n");
-            }
-            catch { }
+            DiagnosticLog.Write("PipeTransport", message, AuthToken.RevitVersion);
         }
     }
 }

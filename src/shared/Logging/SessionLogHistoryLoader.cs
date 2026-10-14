@@ -30,17 +30,23 @@ namespace RvtMcp.Plugin
 
             // Archive names carry a timestamp (mcp-calls-yyyyMMdd-HHmmss.jsonl) so
             // ordinal sort = chronological order; the live file is always newest.
-            var files = new List<string>(Directory.GetFiles(logDir, "mcp-calls-*.jsonl"));
-            files.Sort(StringComparer.OrdinalIgnoreCase);
             var current = Path.Combine(logDir, "mcp-calls.jsonl");
-            if (File.Exists(current)) files.Add(current);
+            var files = new List<string>();
+            foreach (var file in BoundedLogFile.Files(logDir, "mcp-calls"))
+                if (!string.Equals(file, current, StringComparison.OrdinalIgnoreCase)) files.Add(file);
+            files.Sort(StringComparer.OrdinalIgnoreCase);
+            if (File.Exists(current) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) == 0) files.Add(current);
 
+            var retained = new Queue<Row>();
+            var capacity = (int)Math.Min(50000L, Math.Max(1L, (long)maxEntries + Math.Max(0, liveSessionCount)));
             foreach (var file in files)
-                foreach (var line in SafeReadAllLines(file))
+                foreach (var line in BoundedLogFile.ReadLinesSafe(file))
                 {
                     var row = ParseLine(line);
-                    if (row != null) rows.Add(row);
+                    if (row != null) { retained.Enqueue(row); if (retained.Count > capacity) retained.Dequeue(); }
                 }
+
+            rows = new List<Row>(retained);
 
             // Hide exactly the live-session rows still in memory — the LAST
             // liveSessionCount of them; file order matches memory order.
@@ -63,18 +69,6 @@ namespace RvtMcp.Plugin
                 entries[i].Index = i - entries.Count;
 
             return entries;
-        }
-
-        private static string[] SafeReadAllLines(string path)
-        {
-            try
-            {
-                // Archives and the live file belong to the same rotation family.
-                // Coordinate readers too: ReadAllLines can deny AppendAllText on Windows.
-                var livePath = Path.Combine(Path.GetDirectoryName(path), "mcp-calls.jsonl");
-                return McpLogger.WithFileLock(livePath, () => File.ReadAllLines(path));
-            }
-            catch { return new string[0]; }
         }
 
         private sealed class Row

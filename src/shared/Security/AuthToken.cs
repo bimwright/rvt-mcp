@@ -32,7 +32,11 @@ namespace RvtMcp.Plugin
                 var publisher = new DiscoveryPublisher(directory ?? DiscoveryDir(), RevitVersion ?? "2022",
                     process.Id, process.StartTime.ToUniversalTime(), restrictAcl: RestrictAcl,
                     log: message => Debug.WriteLine("[RvtMcp] " + message));
-                publisher.Publish(transport, port, pipeName, _token);
+                if (!publisher.Publish(transport, port, pipeName, _token))
+                {
+                    publisher.Dispose();
+                    throw new IOException("The listener descriptor could not be published.");
+                }
                 return publisher;
             }
         }

@@ -72,8 +72,11 @@ profile. They copy settings, ToolBaker data and known user-data folders from `Rv
 or the older shared `Bimwright` root, preserving sources. SQLite uses a consistent
 backup including committed WAL content. Partial copies can resume; differing existing
 files cause `MIGRATION_REQUIRED` and stop startup before fallback settings are loaded.
-Resolve the legacy/current conflict from backups before retrying. Existing current
-diagnostic `.log` files are kept, with legacy originals retained at their source.
+Resolve the legacy/current conflict from backups before retrying. Known diagnostic
+`.log` files are excluded from runtime copying. Background maintenance
+retains a 64 KiB tail of each known legacy diagnostic file and uses the bounded shared
+`rvt-mcp.log` for new diagnostics. Generated record logs have a 30-day / 100 MiB
+retention limit per group; settings, models and databases are preserved.
 Completion markers are written only after successful migration.
 
 Runtime security settings combine with the Revit add-in's settings: read-only applies

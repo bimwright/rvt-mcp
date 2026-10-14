@@ -187,6 +187,18 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void RefreshCandidates_includes_archives_when_startup_rotation_left_no_active_file()
+        {
+            using var sandbox = new TempDir();
+            var paths = new BakePaths(sandbox.Path);
+            Directory.CreateDirectory(paths.Root);
+            File.WriteAllLines(Path.Combine(paths.Root, "usage-20260426-010101.jsonl"), PresetThresholdEvents());
+            var logger = new UsageEventLogger(paths, new RvtMcpConfig { EnableAdaptiveBake = true });
+            Assert.NotEmpty(logger.RefreshCandidates(DateTimeOffset.Parse("2026-04-27T00:00:00Z")));
+            Assert.False(File.Exists(paths.UsageJsonl));
+        }
+
+        [Fact]
         public void RefreshCandidates_does_not_analyze_when_adaptive_bake_disabled()
         {
             using var sandbox = new TempDir();

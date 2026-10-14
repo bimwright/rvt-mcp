@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Newtonsoft.Json;
+using RvtMcp.Plugin;
 
 namespace RvtMcp.Server.Bake
 {
@@ -49,7 +50,8 @@ namespace RvtMcp.Server.Bake
             lock (_lock)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(_auditPath) ?? ".");
-                File.AppendAllText(_auditPath, line + Environment.NewLine);
+                try { BoundedLogFile.Append(_auditPath, line); }
+                catch (Exception ex) { DiagnosticLog.Write("ToolBakerAudit", "Audit write failed: " + ex.Message); }
             }
         }
     }

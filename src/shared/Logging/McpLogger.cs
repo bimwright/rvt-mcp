@@ -55,34 +55,13 @@ namespace RvtMcp.Plugin
         /// synchronous: mutex ownership is thread-affine. Timeout never writes unlocked.
         /// </summary>
         internal static T WithFileLock<T>(string path, Func<T> action, int timeoutMilliseconds = 2000)
-        {
-            var fullPath = Path.GetFullPath(path);
-            var windows = Path.DirectorySeparatorChar == '\\';
-            if (windows) fullPath = fullPath.ToUpperInvariant();
-            // Global covers different Windows sessions of the same user sharing
-            // LocalAppData. Hash the full path, not just the filename (test/profile isolation).
-            var name = (windows ? @"Global\" : "") + "RvtMcp.Log." + BakeRedactor.HashBody(fullPath);
-            using (var mutex = new Mutex(false, name))
-            {
-                var acquired = false;
-                try
-                {
-                    try { acquired = mutex.WaitOne(timeoutMilliseconds); }
-                    catch (AbandonedMutexException) { acquired = true; }
-                    if (!acquired)
-                        throw new TimeoutException("Timed out waiting for the MCP log file lock.");
-                    return action();
-                }
-                finally
-                {
-                    if (acquired) mutex.ReleaseMutex();
-                }
-            }
-        }
+            => BoundedLogFile.WithLock(path, action, timeoutMilliseconds);
 
         private static void RotateIfNeeded(string dir)
         {
             var versionFile = Path.Combine(dir, "mcp-calls.version");
+            BoundedLogFile.RefuseLink(versionFile);
+            BoundedLogFile.RefuseLink(_logPath);
             int currentVersion = 0;
             if (File.Exists(versionFile))
             {
@@ -93,7 +72,7 @@ namespace RvtMcp.Plugin
             if (currentVersion < LogVersion)
             {
                 // Force rotate: format changed (old logs may lack result or send-code redaction)
-                needsRotation = File.Exists(_logPath) || Directory.GetFiles(dir, "mcp-calls-*.jsonl").Length > 0;
+                needsRotation = BoundedLogFile.Files(dir, "mcp-calls").Length > 0;
             }
             else if (File.Exists(_logPath))
             {
@@ -108,7 +87,7 @@ namespace RvtMcp.Plugin
                     if (currentVersion < LogVersion)
                     {
                         File.Delete(_logPath);
-                        foreach (var archive in Directory.GetFiles(dir, "mcp-calls-*.jsonl"))
+                        foreach (var archive in BoundedLogFile.Files(dir, "mcp-calls"))
                             File.Delete(archive);
                     }
                     else
@@ -162,7 +141,7 @@ namespace RvtMcp.Plugin
                 var line = JsonConvert.SerializeObject(entry, Formatting.None);
                 WithFileLock(_logPath, () =>
                 {
-                    File.AppendAllText(_logPath, line + "\n");
+                    BoundedLogFile.AppendUnderLock(_logPath, line, "mcp-calls");
                     return true;
                 });
             }
