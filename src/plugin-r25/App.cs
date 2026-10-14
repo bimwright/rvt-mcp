@@ -148,6 +148,8 @@ namespace RvtMcp.Plugin
                     ParamsJson = request["params"]?.ToString() ?? "{}",
                     RuntimeOptions = request["runtime"]?.ToObject<RvtMcpConfig>(),
                     History = request["history"]?.ToObject<ChangeHistoryRequest>(),
+                    FromMcp = true,
+                    ExpectedDocumentId = request.Value<string>("expected_document_id"),
                     Tcs = tcs
                 };
 

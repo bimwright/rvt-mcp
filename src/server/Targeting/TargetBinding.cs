@@ -99,6 +99,7 @@ namespace RvtMcp.Server
         public long PinnedGeneration;
         public TargetPayload? Payload;
         public JObject? Operation;
+        public JObject? ActualTarget;
         public bool InToolCall;
 
         internal static TargetCallContext Begin()
@@ -194,8 +195,8 @@ namespace RvtMcp.Server
         internal static string? NextTargetId(IReadOnlyList<TargetCandidate> liveOrdered) =>
             Binding.NextTargetId(liveOrdered);
 
-        internal static SwitchResult Switch(TargetSelector selector, IReadOnlyList<TargetCandidate> liveOrdered) =>
-            Binding.Switch(selector, liveOrdered);
+        internal static SwitchResult Switch(TargetSelector selector, IReadOnlyList<TargetCandidate> liveOrdered, bool rebind = false) =>
+            Binding.Switch(selector, liveOrdered, rebind);
     }
 
     /// <summary>

@@ -25,6 +25,8 @@ namespace RvtMcp.Tests
             var envelope = new JObject
             {
                 ["success"] = false, ["error"] = "REVIT_FAILURE_ROLLED_BACK", ["details"] = new string('x', 200000),
+                ["_target"] = new JObject { ["target_id"] = "revit-2027-474747", ["pid"] = 474747, ["host_year"] = 2027,
+                    ["document_id"] = "123456789abcdef0123456789abcdef0", ["window_title"] = new string('x', 1024) },
                 ["_failure"] = new JObject
                 {
                     ["schemaVersion"] = 1, ["operationId"] = operationId, ["hostInstanceId"] = "474747-638955648000000000",
@@ -45,6 +47,8 @@ namespace RvtMcp.Tests
                 new CallToolResult { Content = new[] { new TextContentBlock { Text = envelope.ToString() } } }, config);
             var payload = JObject.Parse(((TextContentBlock)result.Content[0]).Text);
             Assert.True(result.IsError == true);
+            Assert.Equal(474747, payload["_target"].Value<int>("pid"));
+            Assert.Equal("123456789abcdef0123456789abcdef0", payload["_target"].Value<string>("document_id"));
             Assert.Equal(operationId, payload["_operation"]["operationId"]);
             Assert.Equal("rolled_back", payload["_operation"]["outcome"]);
             Assert.False(payload["_operation"].Value<bool>("mutationApplied"));

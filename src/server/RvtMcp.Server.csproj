@@ -44,6 +44,7 @@
     <Compile Include="..\shared\Logging\PersistSendCodeTtl.cs" Link="Shared\Logging\PersistSendCodeTtl.cs" />
     <Compile Include="..\shared\Security\BakeRedactor.cs" Link="Shared\Security\BakeRedactor.cs" />
     <Compile Include="..\shared\Security\SecretMasker.cs" Link="Shared\Security\SecretMasker.cs" />
+    <Compile Include="..\shared\Security\DiscoveryCoordination.cs" Link="Shared\Security\DiscoveryCoordination.cs" />
     <Compile Include="..\shared\ToolBaker\BakedToolRecord.cs" Link="Shared\ToolBaker\BakedToolRecord.cs" />
     <Compile Include="..\shared\ToolBaker\BakedToolRuntimeSource.cs" Link="Shared\ToolBaker\BakedToolRuntimeSource.cs" />
     <Compile Include="..\shared\Infrastructure\LegacyDataMigration.cs" Link="Shared\Infrastructure\LegacyDataMigration.cs" />

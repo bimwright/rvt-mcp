@@ -82,10 +82,27 @@ namespace RvtMcp.Server
             var result = TargetScan.Evaluate(descriptors, probe);
             foreach (var dead in result.ProvenDead)
             {
-                try { File.Delete(Path.Combine(dir, dead.FileName)); } catch { /* best-effort */ }
+                try
+                {
+                    RvtMcp.Plugin.DiscoveryCoordination.Run(RvtMcp.Plugin.DiscoveryCoordination.Name(dir,
+                        dead.HostYear.ToString(System.Globalization.CultureInfo.InvariantCulture)), () =>
+                    {
+                        var path = Path.Combine(dir, dead.FileName);
+                        if (!TryReadDescriptorFile(path, out var current) || !SameOwner(current, dead)) return;
+                        if (LivenessEvaluator.Evaluate(current.ProcessStartUtc, probe.Probe(current.Pid)).Liveness != Liveness.ProvenDead) return;
+                        // A synchronous liveness probe may reenter a publisher on this thread.
+                        if (TryReadDescriptorFile(path, out current) && SameOwner(current, dead)) File.Delete(path);
+                    });
+                }
+                catch { /* best-effort; never delete after losing coordination */ }
             }
             return result;
         }
+
+        private static bool SameOwner(TargetDescriptor current, TargetDescriptor observed) =>
+            current.Pid == observed.Pid && current.HostYear == observed.HostYear
+            && current.ProcessStartUtc == observed.ProcessStartUtc
+            && string.Equals(current.AuthToken, observed.AuthToken, StringComparison.Ordinal);
 
         /// <summary>
         /// Descriptor for one specific bound instance: its per-instance file

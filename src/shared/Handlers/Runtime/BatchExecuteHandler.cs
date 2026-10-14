@@ -43,6 +43,7 @@ namespace RvtMcp.Plugin.Handlers
                 return CommandResult.Fail(BatchExecutor.TooManyCommandsMessage(commandsArr.Count));
 
             var continueOnError = request.Value<bool?>("continueOnError") ?? false;
+            var expectedDocument = DocumentTargetGuard.Capture(app).Value<string>("document_id");
 
             using (FailureControl.BeginBatch())
             using (var tg = new TransactionGroup(doc, "MCP: batch_execute"))
@@ -51,6 +52,9 @@ namespace RvtMcp.Plugin.Handlers
 
                 var outcome = BatchExecutor.Run(commandsArr, continueOnError, (cmdName, subParams) =>
                 {
+                    var documentError = ToolReadPolicy.DocumentRejection(cmdName, expectedDocument,
+                        DocumentTargetGuard.Capture(app).Value<string>("document_id"));
+                    if (documentError != null) return BatchExecutor.InvokeResult.Fail(documentError);
                     var handler = _dispatcher.GetCommand(cmdName);
                     if (handler == null) return BatchExecutor.InvokeResult.Unknown();
                     var r = handler.Execute(app, subParams);

@@ -4,7 +4,7 @@
 # sandbox under the test root for the whole run, so a function that ignores its
 # fixture path cannot reach real user data.
 [CmdletBinding()]
-param([string]$ResultPath, [string]$TestRootParent = [IO.Path]::GetTempPath())
+param([string]$ResultPath, [string]$TestRootParent = [IO.Path]::GetTempPath(), [string]$TestNameFilter)
 $ErrorActionPreference = 'Stop'
 $testRoot = Join-Path $TestRootParent ('rvt-installer-tests-' + [guid]::NewGuid().ToString('N'))
 $sandboxUserProfile = Join-Path $testRoot 'profile\userprofile'
@@ -31,6 +31,7 @@ foreach ($fn in $ast.FindAll({ param($n) $n -is [System.Management.Automation.La
 $results = New-Object System.Collections.Generic.List[object]
 function Assert($Condition, [string]$Message) { if (-not $Condition) { throw $Message } }
 function Test([string]$Name, [scriptblock]$Body) {
+    if ($TestNameFilter -and $Name -notmatch $TestNameFilter) { return }
     try { & $Body; $results.Add([pscustomobject]@{name=$Name;passed=$true}); Write-Host "PASS $Name" }
     catch { $results.Add([pscustomobject]@{name=$Name;passed=$false;error=$_.Exception.Message}); Write-Host "FAIL $Name : $_" }
 }
@@ -708,6 +709,33 @@ try {
         Assert (Test-Path -LiteralPath "$old/rvt/server/current") 'old root moved despite the conflict'
         Assert ($script:installChanges.Count -eq 0) 'a partial move was recorded'
         $script:installChanges = $null
+        Clear-ProductRoots
+    }
+    Test 'Move-LegacyProductRoot: completed migration keeps both roots and current data' {
+        Clear-ProductRoots
+        $old = New-LegacyRootFixture
+        $new = Join-Path $sandboxLocalAppData 'Bimwright\rvt-mcp'
+        New-Item -ItemType Directory -Path $new -Force | Out-Null
+        Set-Content -LiteralPath "$new/.migrated-from-rvtmcp-v2" ([DateTime]::UtcNow.ToString('o'))
+        Set-Content -LiteralPath "$new/rvtmcp.config.json" '{"current":"custom"}'
+        $script:installChanges = New-Object System.Collections.Generic.List[object]
+        Move-LegacyProductRoot -LocalAppData $sandboxLocalAppData
+        Assert ((Get-Content -LiteralPath "$new/rvtmcp.config.json" -Raw).Contains('current')) 'current settings overwritten'
+        Assert (Test-Path -LiteralPath "$old/baked/x/tool.json") 'legacy recovery data removed'
+        Assert ($script:installChanges.Count -eq 0) 'completed migration recorded a move'
+        $script:installChanges = $null
+        Clear-ProductRoots
+    }
+    Test 'Move-LegacyProductRoot: conflicting roots do not stop WhatIf client preview' {
+        Clear-ProductRoots
+        $old = New-LegacyRootFixture
+        $new = Join-Path $sandboxLocalAppData 'Bimwright\rvt-mcp'
+        New-Item -ItemType Directory -Path $new -Force | Out-Null
+        $fixture = New-SetupFixture
+        $output = Invoke-FixtureSetup $fixture -Client 'codex' -WhatIf 3>&1 6>&1 | Out-String -Width 4096
+        Assert ($output -match 'Client\s*:') 'conflict prevented the client preview'
+        Assert ($output -match 'migration.*blocked') 'migration conflict not reported'
+        Assert (Test-Path -LiteralPath "$old/baked/x/tool.json") 'WhatIf changed legacy tools'
         Clear-ProductRoots
     }
     Test 'Move-LegacyProductRoot -WhatIf prints planned moves and writes nothing' {

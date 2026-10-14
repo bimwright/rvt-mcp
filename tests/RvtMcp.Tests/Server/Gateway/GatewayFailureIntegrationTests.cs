@@ -89,9 +89,11 @@ namespace RvtMcp.Tests
             public bool CloseHandshake;
             public Action<JObject, WireHost> OnCommand;
             public readonly ConcurrentQueue<JObject> Requests = new ConcurrentQueue<JObject>();
+            private readonly int _identityPid;
 
-            public WireHost()
+            public WireHost(int identityPid = Pid)
             {
+                _identityPid = identityPid;
                 _listener.Start();
                 Port = ((IPEndPoint)_listener.LocalEndpoint).Port;
                 new Thread(Serve) { IsBackground = true }.Start();
@@ -131,12 +133,20 @@ namespace RvtMcp.Tests
                 catch { }
             }
 
-            public void Send(JObject response) { lock (_gate) _writer.WriteLine(response.ToString(Formatting.None)); }
+            public void Send(JObject response)
+            {
+                if (!(response["_target"] is JObject)) response["_target"] = new JObject
+                {
+                    ["target_id"] = "revit-2024-" + _identityPid, ["pid"] = _identityPid, ["host_year"] = 2024,
+                    ["document_id"] = "doc-" + _identityPid
+                };
+                lock (_gate) _writer.WriteLine(response.ToString(Formatting.None));
+            }
             public void CloseClient() => _client?.Close();
             public void Dispose() { _listener.Stop(); CloseClient(); }
         }
 
-        private void Descriptor(int port, bool protocol = true, int pid = Pid, string token = "test-token", string pipe = null)
+        private void Descriptor(int port, bool protocol = true, int pid = Pid, string token = "test-token", string pipe = null, bool prepareBinding = true)
         {
             var descriptor = new JObject
             {
@@ -144,11 +154,18 @@ namespace RvtMcp.Tests
                 ["pid"] = pid, ["process_start_utc"] = Start.ToString("o"), ["target_id"] = "revit-2024-" + pid,
                 ["transport"] = pipe == null ? "tcp" : "pipe", ["port"] = pipe == null ? (JToken)port : null,
                 ["pipe_name"] = pipe, ["auth_token"] = token,
-                ["capabilities"] = protocol ? new JArray("tool_catalog", "controlled_failures_v1") : new JArray("tool_catalog")
+                ["capabilities"] = protocol ? new JArray("tool_catalog", "controlled_failures_v1", "document_target_v1") : new JArray("tool_catalog")
             };
             var path = Path.Combine(_root, "revit-2024-" + pid + ".json");
             File.WriteAllText(path + ".tmp", descriptor.ToString(Formatting.None));
             File.Move(path + ".tmp", path, overwrite: true);
+            // Failure-protocol cases exercise requests after target/document verification.
+            // Unconfirmed first writes are covered separately by ToolGatewayBindingTests.
+            if (prepareBinding && RevitTargetBinding.Snapshot().State == BindingState.None)
+            {
+                RevitTargetBinding.Switch(TargetSelector.ForPid(pid), RevitTargetBinding.Scan().Live);
+                RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-" + pid);
+            }
         }
 
         private static JObject Final(JObject request) => new JObject
@@ -212,7 +229,7 @@ namespace RvtMcp.Tests
         public async Task MCP_interruption_and_known_not_written_preserve_target_and_operation(string mode)
         {
             using var wire = new WireHost();
-            using var replacement = new WireHost();
+            using var replacement = new WireHost(Pid + 1);
             var notWritten = mode == "not_written";
             Descriptor(wire.Port);
             if (notWritten) ToolGateway.BeforeWriteForTests = ToolGateway.CloseConnection;
@@ -222,7 +239,7 @@ namespace RvtMcp.Tests
                 else
                 {
                     Descriptor(replacement.Port, pid: Pid + 1);
-                    ToolGateway.SwitchBinding(TargetSelector.ForPid(Pid + 1), RevitTargetBinding.Scan().Live);
+                    ToolGateway.SwitchBinding(TargetSelector.ForPid(Pid + 1), RevitTargetBinding.Scan().Live, rebind: true);
                 }
             };
             await WithMcp(async (client, ct) =>
@@ -385,9 +402,9 @@ namespace RvtMcp.Tests
             Assert.Single(wire.Requests);
             if (switchTarget)
             {
-                using var replacement = new WireHost();
+                using var replacement = new WireHost(Pid + 1);
                 Descriptor(replacement.Port, pid: Pid + 1);
-                Assert.True(ToolGateway.SwitchBinding(TargetSelector.ForPid(Pid + 1), RevitTargetBinding.Scan().Live).Ok);
+                Assert.True(ToolGateway.SwitchBinding(TargetSelector.ForPid(Pid + 1), RevitTargetBinding.Scan().Live, rebind: true).Ok);
             }
             else wire.CloseClient();
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending.Execution.Task.WaitAsync(TimeSpan.FromSeconds(3)));
@@ -404,6 +421,7 @@ namespace RvtMcp.Tests
             Descriptor(first.Port, protocol: false);
             await Send();
             var oldEpoch = CurrentEpoch();
+            var generation = RevitTargetBinding.CaptureGeneration();
             var dispatched = new TaskCompletionSource<JObject>(TaskCreationOptions.RunContinuationsAsynchronously);
             second.OnCommand = (request, _) => dispatched.TrySetResult(request);
             var attempts = 0;
@@ -417,7 +435,7 @@ namespace RvtMcp.Tests
             var request = await dispatched.Task.WaitAsync(TimeSpan.FromSeconds(3));
             var pending = Pending[request.Value<string>("id")];
             Assert.True(pending.ConnectionId > oldEpoch);
-            Assert.Equal(1, RevitTargetBinding.Snapshot().Generation);
+            Assert.Equal(generation, RevitTargetBinding.Snapshot().Generation);
             var final = Final(request);
             Assert.False(ToolGateway.RouteResponse(oldEpoch, final));
             Assert.False(call.IsCompleted);
@@ -432,7 +450,7 @@ namespace RvtMcp.Tests
         public async Task Closed_handshake_is_unavailable_not_a_synthetic_operation_answer()
         {
             using var wire = new WireHost { CloseHandshake = true };
-            Descriptor(wire.Port);
+            Descriptor(wire.Port, prepareBinding: false);
             var error = await Assert.ThrowsAsync<TargetException>(() => Send());
             Assert.Equal(TargetCode.TargetUnavailable, error.Payload.Code);
             Assert.Equal("not_started", error.Operation["outcome"]);
@@ -473,7 +491,7 @@ namespace RvtMcp.Tests
                 var response = await client.CallToolAsync("revit_switch_target",
                     new Dictionary<string, object> { ["version"] = "pid:" + Pid, ["verify"] = kind != "skip" }, cancellationToken: ct);
                 var envelope = Text(response);
-                Assert.True(envelope.Value<bool>("ok"));
+                Assert.Equal(!isError, envelope.Value<bool>("ok"));
                 Assert.Equal(kind == "success", envelope.Value<bool>("verified"));
                 Assert.Equal(isError, response.IsError == true);
                 Assert.Equal(Pid, envelope["binding"].Value<int>("bound_pid"));
@@ -509,13 +527,14 @@ namespace RvtMcp.Tests
                     if (kind == "failure") frame["_failure"] = new JObject { ["operationId"] = request["operation_id"], ["gate"] = "blocked" };
                 }
                 else frame["_userDialogs"] = new JObject { ["model"] = "Sample", ["items"] = new JArray(), ["note"] = UserDialogBuffer.Note };
+                if (kind == "error") frame.Remove("_operation"); // A legacy error has no operation receipt.
                 host.Send(frame);
             };
             var context = TargetCallContext.Begin();
             try
             {
                 var response = JObject.Parse(await MetaTools.SwitchTarget("pid:" + Pid, verify: true));
-                Assert.True(response.Value<bool>("ok"));
+                Assert.Equal(verified, response.Value<bool>("ok"));
                 Assert.Equal(verified, response.Value<bool>("verified"));
                 Assert.Null(context.Payload);
                 if (kind == "pending" || kind == "busy" || kind == "failure")

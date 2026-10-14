@@ -109,6 +109,20 @@ namespace RvtMcp.Plugin
 
         public static bool IsReadOnly(string command) => command != null && ReadOnlyCommands.Contains(command);
 
+        // Opening a model establishes the active document; it does not mutate the previous document.
+        public static bool RequiresDocumentConfirmation(string command) => !IsReadOnly(command)
+            && !string.Equals(command, "open_model", StringComparison.OrdinalIgnoreCase);
+
+        public static string DocumentRejection(string command, string expectedDocumentId, string activeDocumentId)
+        {
+            if (!RequiresDocumentConfirmation(command)) return null;
+            if (string.IsNullOrWhiteSpace(expectedDocumentId))
+                return "DOCUMENT_UNCONFIRMED: the command was not started. Confirm the active document with revit_switch_target(verify=true) before writing.";
+            if (!string.Equals(expectedDocumentId, activeDocumentId, StringComparison.Ordinal))
+                return "DOCUMENT_CHANGED: the active document differs from the confirmed document. The command was not started. Review the document and confirm it with revit_switch_target(verify=true).";
+            return null;
+        }
+
         public static string Rejection(string command, bool readOnly, bool enableSendCode)
         {
             if (string.Equals(command, "send_code_to_revit", StringComparison.OrdinalIgnoreCase)

@@ -91,6 +91,8 @@ namespace RvtMcp.Server
                 ["window_title"] = windowTitle != null ? (JToken)windowTitle : JValue.CreateNull(),
                 ["next_target_id"] = (JToken)RevitTargetBinding.NextTargetId(live) ?? JValue.CreateNull(),
                 ["confirmation_required"] = snap.ConfirmationRequired,
+                ["selection_confirmed"] = record?.SelectionConfirmed ?? false,
+                ["confirmed_document_id"] = record?.DocumentId,
                 ["last_switch"] = snap.LastSwitch != null
                     ? new JObject
                     {
@@ -186,7 +188,7 @@ namespace RvtMcp.Server
         [McpServerTool(Name = "revit_get_current_target", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
             "Report which Revit instance this MCP server will route the NEXT command to. " +
             "Returns: {pinned_target, currently_connected_year (or null), currently_connected_pid (or null), discovery_dir, selector, binding, binding_state, generation, bound_target_id, bound_pid, bound_host_year, identity_verified, window_title, next_target_id, confirmation_required, last_switch}. " +
-            "When confirmation_required is true the previous bound Revit is gone — call revit_switch_target to confirm a candidate before repeating the call. " +
+            "selection_confirmed and confirmed_document_id describe write authorization. When confirmation_required is true, select/verify the intended instance and document with revit_switch_target before writing. " +
             "Use to verify routing before sending Revit-modifying commands when multiple Revits are open.")]
         public static string GetCurrentTarget()
         {
@@ -209,18 +211,21 @@ namespace RvtMcp.Server
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_switch_target", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
+        [McpServerTool(Name = "revit_switch_target", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
             "Switch the active Revit binding to a specific instance when multiple Revits are running — including several instances of the same year. " +
             "version: a selector — 'auto', a 4-digit calendar year, 'pid:<n>', or 'id:revit-<year>-<pid>'. " +
             "When several instances share a year, ALWAYS pin with pid:<n> after listing. " +
             "DO NOT pass R-codes like 'R22' or 'R24' — they are rejected with an educational error. " +
             "DO NOT guess. ALWAYS call revit_list_available_targets first to see which instances are actually running (pid, window_title). " +
             "A valid switch after TARGET_CHANGED confirms the proposed replacement — calls keep failing until you confirm. " +
-            "Switching to a different instance closes the old connection; any command still in flight ends as TARGET_INTERRUPTED. " +
+            "Every accepted switch, including same-PID confirmation, advances the generation and closes the previous connection; commands already in flight may end as TARGET_INTERRUPTED. " +
             "Returns: {ok, previous: {target_id, pid}|null, binding: {…}, verified, activeView} plus legacy previousTarget/newTarget strings. " +
             "verify=true (default): immediately attempts get_current_view_info against the new target to confirm connectivity; " +
-            "set verify=false to skip when the new target's document isn't in a view yet (e.g., Revit just launched).")]
-        public static async Task<string> SwitchTarget(string version, bool verify = true)
+            "writes require the verified document. Queries may still use a single automatic target. " +
+            "rebind=true is required to leave a live confirmed target. expectedDocumentId optionally checks the document_id from a previous _target stamp. " +
+            "A failed verify restores the previous live binding if it has not changed concurrently. " +
+            "verify=false selects only the process so open_model can establish a document; verify again before model writes.")]
+        public static async Task<string> SwitchTarget(string version, bool verify = true, bool rebind = false, string expectedDocumentId = null)
         {
             try
             {
@@ -246,7 +251,7 @@ namespace RvtMcp.Server
                 }
 
                 var live = RevitTargetBinding.Scan().Live;
-                var result = ToolGateway.SwitchBinding(selector, live);
+                var result = ToolGateway.SwitchBinding(selector, live, rebind);
                 if (!result.Ok)
                 {
                     var failEnv = TargetEnvelope(result.Failure);
@@ -284,20 +289,28 @@ namespace RvtMcp.Server
                 try
                 {
                     var probe = await ToolGateway.SendToRevit("get_current_view_info");
-                    var verified = !ToolGateway.IsFailureOrPending(probe);
+                    var stamp = probe["_target"] as JObject;
+                    var verified = !ToolGateway.IsFailureOrPending(probe)
+                        && (expectedDocumentId == null || stamp?.Value<string>("document_id") == expectedDocumentId)
+                        && ToolGateway.ConfirmDocument(result.Current.Generation, stamp);
+                    var restored = !verified && ToolGateway.RestoreAfterFailedVerification(snapBefore, result.Current.Generation);
                     var verification = JObject.FromObject(new
                     {
-                        ok = true,
+                        ok = verified,
                         previous,
                         binding = BindingJson(RevitTargetBinding.Snapshot(), live),
                         verified,
+                        restored_previous = restored,
+                        document = verified ? stamp : null,
                         activeView = verified ? probe.Value<string>("viewName") : null,
                         previousTarget,
                         newTarget
                     });
                     if (!verified)
                     {
-                        verification["verifyError"] = probe["error"] ?? "Revit verification is still pending; do not retry the operation.";
+                        verification["verifyError"] = probe["error"] ?? (expectedDocumentId != null && stamp?.Value<string>("document_id") != expectedDocumentId
+                            ? "DOCUMENT_CHANGED: the active document does not match expectedDocumentId. No model write was sent."
+                            : "DOCUMENT_UNCONFIRMED: verification requires a matching gateway/add-in with document_target_v1 and an open document.");
                         SafetyResponseMetadata.Attach(verification, probe);
                     }
                     // The probe is a real Revit call: what it reports once (dialogs the user handled,
@@ -310,18 +323,21 @@ namespace RvtMcp.Server
                     // The switch itself succeeded; a verify failure must not replace this
                     // meta-tool response with the probe's target envelope.
                     if (callCtx != null) { callCtx.Payload = null; callCtx.Operation = null; }
+                    var restored = ToolGateway.RestoreAfterFailedVerification(snapBefore, result.Current.Generation);
                     var verification = JObject.FromObject(new
                     {
-                        ok = true,
+                        ok = false,
                         previous,
                         binding = BindingJson(RevitTargetBinding.Snapshot(), live),
                         verified = false,
+                        restored_previous = restored,
                         verifyError = verifyEx.Message,
                         verify_target = (verifyEx as TargetException)?.Payload is { } vp
                             ? MetaTools.TargetEnvelope(vp)["target"] : null,
                         previousTarget,
                         newTarget,
-                        note = "Target set, but verify failed. The next tool call may still succeed."
+                        note = restored ? "Verification failed; the previous live binding was restored."
+                            : "Verification failed; the current binding is reported above. Writes require a confirmed document."
                     });
                     if (verifyEx is TargetException targetEx && targetEx.Operation != null)
                         verification["_operation"] = targetEx.Operation.DeepClone();

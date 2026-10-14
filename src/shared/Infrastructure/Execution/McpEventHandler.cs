@@ -18,6 +18,8 @@ namespace RvtMcp.Plugin
         public string ParamsJson { get; set; }
         public RvtMcpConfig RuntimeOptions { get; set; }
         public ChangeHistoryRequest History { get; set; }
+        public bool FromMcp { get; set; }
+        public string ExpectedDocumentId { get; set; }
         public TaskCompletionSource<string> Tcs { get; set; }
     }
 
@@ -63,8 +65,16 @@ namespace RvtMcp.Plugin
                 JObject history = null;
                 JObject historyMarker = null;
                 Failures.FailureControl.Scope failureScope = null;
+                JObject actualTarget = null;
                 try
                 {
+                    actualTarget = DocumentTargetGuard.Capture(app);
+                    if (request.FromMcp)
+                    {
+                        var documentRejection = ToolReadPolicy.DocumentRejection(request.CommandName,
+                            request.ExpectedDocumentId, actualTarget.Value<string>("document_id"));
+                        if (documentRejection != null) throw new InvalidOperationException(documentRejection);
+                    }
                     runtimeConfig = RvtMcpConfig.LoadReadOnly().WithRuntimeOptions(request.RuntimeOptions);
                     var rejection = ToolReadPolicy.Rejection(request.CommandName, runtimeConfig.ReadOnlyOrDefault, runtimeConfig.EnableSendCodeOrDefault);
                     if (rejection != null) throw new InvalidOperationException(rejection);
@@ -183,6 +193,8 @@ namespace RvtMcp.Plugin
                         }
                     }
                     failureScope.Complete(result);
+                    if (request.CommandName == "open_model" && result.Success)
+                        actualTarget = DocumentTargetGuard.Capture(app);
                     Survey.SurveyHistoryBridge.Remember(app, request, runtimeConfig.EnableChangeHistoryOrDefault, result);
                     sw.Stop();
                     // Spill may replace result.Data; the outcome is judged on the handler's own data.
@@ -198,6 +210,7 @@ namespace RvtMcp.Plugin
                         error = McpResponsePrivacy.RedactErrorForResponse(NoDocumentGuidance.ForAgent(result.Error))
                     });
                     var envelope = JObject.Parse(preSpillResponse);
+                    envelope["_target"] = actualTarget;
                     failureScope.Enrich(envelope);
                     if (changes != null) envelope["changes"] = changes;
                     // Reserve the small receipt marker in the response budget before writing the capture.
@@ -319,6 +332,14 @@ namespace RvtMcp.Plugin
                         error = exError
                     });
                     failureScope?.Enrich(errorEnvelope);
+                    if (actualTarget != null) errorEnvelope["_target"] = actualTarget;
+                    if (exError.StartsWith("DOCUMENT_UNCONFIRMED:", StringComparison.Ordinal)
+                        || exError.StartsWith("DOCUMENT_CHANGED:", StringComparison.Ordinal))
+                        errorEnvelope["_operation"] = new JObject
+                        {
+                            ["operationId"] = PendingRequestLifecycle.For(request.Tcs).OperationId,
+                            ["execution"] = "completed", ["outcome"] = "not_started", ["mutationApplied"] = false, ["complete"] = true
+                        };
                     if (changes != null) errorEnvelope["changes"] = changes;
                     historyMarker = historyMarker ?? PublishHistory(request, history, false, null, app.Application.VersionNumber);
                     if (historyMarker != null) errorEnvelope["history_transfer"] = historyMarker;

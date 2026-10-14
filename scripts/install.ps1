@@ -299,6 +299,15 @@ function Move-LegacyProductRoot {
     $newRoot = Join-Path $LocalAppData 'Bimwright\rvt-mcp'
     if (-not (Test-Path -LiteralPath $oldRoot -PathType Container)) { return }
     if (Test-Path -LiteralPath $newRoot) {
+        # Runtime migration copies user data and retains the source as recovery data.
+        if (Test-Path -LiteralPath (Join-Path $newRoot '.migrated-from-rvtmcp-v2') -PathType Leaf) {
+            Write-Host "[migrate] completed migration marker found; keeping current data and legacy recovery files."
+            return
+        }
+        if ($WhatIfPreference) {
+            Write-Warning "[migration] blocked: both $oldRoot and $newRoot exist without a completed migration marker. Actual installation will stop; continuing the client preview without changing data."
+            return
+        }
         throw "Both $oldRoot and $newRoot exist. Move or remove one of them manually, then run the installer again - nothing was changed."
     }
     $nestedServer = Join-Path $newRoot 'rvt\server'

@@ -11,6 +11,23 @@ namespace RvtMcp.Plugin
     {
         public static void Attach(JObject target, JObject source, bool compact = false)
         {
+            var actualTarget = source?["_target"] as JObject ?? (source?["data"] as JObject)?["_target"] as JObject;
+            if (actualTarget != null)
+            {
+                var stamp = new JObject();
+                var keys = compact ? new[] { "target_id", "pid", "host_year", "document_id" }
+                    : new[] { "target_id", "pid", "host_year", "process_start_utc", "window_title", "document_id", "document_title", "is_family_document" };
+                foreach (var key in keys)
+                    if (actualTarget[key] != null)
+                    {
+                        var value = actualTarget[key].DeepClone();
+                        var max = key == "window_title" ? 512 : key == "document_title" ? 256 : 128;
+                        if (value.Type == JTokenType.String && value.Value<string>().Length > max)
+                            value = new JValue(value.Value<string>().Substring(0, max));
+                        stamp[key] = value;
+                    }
+                target["_target"] = stamp;
+            }
             foreach (var key in new[] { "_failure", "_operation" })
             {
                 var receipt = source?[key] as JObject ?? (source?["data"] as JObject)?[key] as JObject;

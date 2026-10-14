@@ -12,6 +12,7 @@ namespace RvtMcp.Tests
     /// Server binding facade over the shared core: snapshot shape, generation
     /// pinning, switch semantics, next-target proposal — with a fake probe.
     /// </summary>
+    [Collection("ServerStateConfig")]
     public class RevitTargetBindingTests : IDisposable
     {
         private const int PidA = 424242;
@@ -68,6 +69,91 @@ namespace RvtMcp.Tests
         });
 
         [Fact]
+        public void Fresh_auto_binding_with_multiple_instances_requires_selection()
+        {
+            var plan = RevitTargetBinding.Binding.PlanCall(0, Live());
+
+            var failure = Assert.IsType<FailPlan>(plan);
+            Assert.Equal(TargetCode.AmbiguousTarget, failure.Payload.Code);
+            Assert.Equal(2, failure.Payload.Candidates.Count);
+            Assert.False(failure.Payload.Sent);
+            Assert.Equal(BindingState.None, RevitTargetBinding.Snapshot().State);
+        }
+
+        [Fact]
+        public void Ambiguous_switch_preserves_existing_binding()
+        {
+            var live = Live();
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), live);
+            var before = RevitTargetBinding.Snapshot();
+
+            var result = RevitTargetBinding.Switch(TargetSelector.Auto, live);
+
+            Assert.False(result.Ok);
+            Assert.Equal(TargetCode.AmbiguousTarget, result.Failure.Code);
+            Assert.Equal(before, RevitTargetBinding.Snapshot());
+        }
+
+        [Fact]
+        public void Confirmed_target_requires_rebind_before_switching_to_another_live_instance()
+        {
+            var live = Live();
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), live);
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-a");
+            var before = RevitTargetBinding.Snapshot();
+
+            var result = RevitTargetBinding.Switch(TargetSelector.ForPid(PidB), live);
+
+            Assert.False(result.Ok);
+            Assert.Equal(TargetCode.TargetRebindRequired, result.Failure.Code);
+            Assert.Equal(before, RevitTargetBinding.Snapshot());
+        }
+
+        [Fact]
+        public void Reconfirming_another_document_invalidates_calls_that_arrived_before_confirmation()
+        {
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), Live());
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-a");
+            var pinned = RevitTargetBinding.CaptureGeneration();
+
+            RevitTargetBinding.Binding.ConfirmDocument(pinned, "doc-b");
+
+            Assert.False(RevitTargetBinding.Binding.CanSend(pinned, Live(), out var failure));
+            Assert.Equal(TargetCode.TargetChanged, failure.Code);
+            Assert.Equal("doc-b", RevitTargetBinding.Snapshot().Record.DocumentId);
+        }
+
+        [Fact]
+        public void Failed_verification_cannot_undo_a_newer_switch_to_the_same_pid()
+        {
+            var live = Live();
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), live);
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-a");
+            var before = RevitTargetBinding.Snapshot();
+            var provisional = RevitTargetBinding.Switch(TargetSelector.ForPid(PidB), live, rebind: true);
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidB), live);
+
+            var restored = RevitTargetBinding.Binding.RestoreAfterFailedVerification(before, provisional.Current.Generation);
+
+            Assert.False(restored);
+            Assert.Equal(PidB, RevitTargetBinding.Snapshot().Record.Pid);
+        }
+
+        [Fact]
+        public void Selecting_the_same_process_requires_fresh_document_verification()
+        {
+            var live = Live();
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), live);
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-a");
+
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), live);
+
+            Assert.False(RevitTargetBinding.Binding.CanWrite(RevitTargetBinding.CaptureGeneration(), true, out var failure));
+            Assert.Equal(TargetCode.TargetUnconfirmed, failure.Code);
+            Assert.Null(RevitTargetBinding.Snapshot().Record.DocumentId);
+        }
+
+        [Fact]
         public void Fresh_binding_is_none_with_generation_zero()
         {
             var snap = RevitTargetBinding.Snapshot();
@@ -92,7 +178,7 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void Switch_to_same_instance_keeps_generation_and_updates_selector()
+        public void Switch_to_same_instance_advances_generation_and_updates_selector()
         {
             var live = Live();
             RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), live);
@@ -103,7 +189,7 @@ namespace RvtMcp.Tests
             Assert.True(result.Ok);
             Assert.False(result.InstanceChanged);
             var snap = RevitTargetBinding.Snapshot();
-            Assert.Equal(before.Generation, snap.Generation);
+            Assert.True(snap.Generation > before.Generation);
             Assert.Equal(PidA, snap.Record.Pid);
             Assert.Equal(SelectorKind.TargetId, snap.Record.Selector.Kind);
         }
@@ -114,7 +200,7 @@ namespace RvtMcp.Tests
             var live = Live();
             RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), live);
 
-            var result = RevitTargetBinding.Switch(TargetSelector.ForPid(PidB), live);
+            var result = RevitTargetBinding.Switch(TargetSelector.ForPid(PidB), live, rebind: true);
 
             Assert.True(result.Ok);
             Assert.True(result.InstanceChanged);
@@ -155,10 +241,10 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void NextTargetId_proposes_first_match_when_unbound()
+        public void NextTargetId_does_not_propose_one_of_several_unbound_matches()
         {
             // §6.3 order: same year → later start first → B (StartB > StartA).
-            Assert.Equal("revit-2024-" + PidB, RevitTargetBinding.NextTargetId(Live()));
+            Assert.Null(RevitTargetBinding.NextTargetId(Live()));
         }
 
         [Fact]
@@ -173,7 +259,7 @@ namespace RvtMcp.Tests
         {
             RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), Live());
             var pinned = RevitTargetBinding.CaptureGeneration();
-            RevitTargetBinding.Switch(TargetSelector.ForPid(PidB), Live());
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidB), Live(), rebind: true);
 
             var ok = RevitTargetBinding.Binding.CanSend(pinned, Live(), out var failure);
 
@@ -205,7 +291,7 @@ namespace RvtMcp.Tests
             Assert.True(result.Ok);
             var snap = RevitTargetBinding.Snapshot();
             Assert.Equal(PidB, snap.Record.Pid);
-            Assert.False(snap.ConfirmationRequired);
+            Assert.True(snap.ConfirmationRequired); // Process selected; its document is not verified yet.
             Assert.True(RevitTargetBinding.Binding.CanSend(snap.Generation, onlyB, out _));
         }
 

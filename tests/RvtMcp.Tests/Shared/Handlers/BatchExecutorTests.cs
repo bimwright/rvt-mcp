@@ -38,6 +38,21 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void Batch_cannot_open_another_model_outside_its_confirmed_document()
+        {
+            var invoked = false;
+            var outcome = BatchExecutor.Run(Cmds(("open_model", new { path = "other.rvt" })), true, (_, __) =>
+            {
+                invoked = true;
+                return BatchExecutor.InvokeResult.Ok(null);
+            });
+
+            Assert.False(invoked);
+            Assert.True(outcome.AnyFailed);
+            Assert.Contains("open_model", Newtonsoft.Json.JsonConvert.SerializeObject(outcome.Results));
+        }
+
+        [Fact]
         public void Policy_stop_before_first_command_prevents_dispatch()
         {
             var invoked = false;

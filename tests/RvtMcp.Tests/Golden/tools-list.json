@@ -3899,7 +3899,7 @@
     },
     {
       "name": "revit_get_current_target",
-      "description_hash": "sha256:ac244d75aed3150785df853e67fc9e8d1d426a6cfd9f3b5b067cdc33464779e2",
+      "description_hash": "sha256:af95b822a6160b00265828d355e823d5714f6ddf0310826141d662f40e70e901",
       "inputSchema": {
         "properties": {},
         "required": [],
@@ -7586,9 +7586,17 @@
     },
     {
       "name": "revit_switch_target",
-      "description_hash": "sha256:d6a24a4c4c0317586121753c036027eed5f2b8de581de30df0afebcaca9478b8",
+      "description_hash": "sha256:f10eeed507ea94f9f61503380b2b45fe04fe11c9d784ebd39eba5f8e241a9132",
       "inputSchema": {
         "properties": {
+          "expectedDocumentId": {
+            "description": "",
+            "type": "String"
+          },
+          "rebind": {
+            "description": "",
+            "type": "Boolean"
+          },
           "verify": {
             "description": "",
             "type": "Boolean"
@@ -7605,7 +7613,7 @@
       },
       "annotations": {
         "destructiveHint": false,
-        "idempotentHint": true,
+        "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
       }

@@ -107,6 +107,14 @@ namespace RvtMcp.Plugin.Handlers
                     continue;
                 }
 
+                if (string.Equals(cmdName, "open_model", StringComparison.OrdinalIgnoreCase))
+                {
+                    outcome.Results.Add(new { index = i, ok = false, error = "open_model cannot be invoked through batch_execute; open and confirm the document before starting a batch." });
+                    outcome.AnyFailed = true;
+                    if (!continueOnError) return outcome;
+                    continue;
+                }
+
                 if (isBakedCommand != null && isBakedCommand(cmdName))
                 {
                     outcome.Results.Add(new { index = i, ok = false, error = BakedCommandNotSupportedMessage(cmdName) });

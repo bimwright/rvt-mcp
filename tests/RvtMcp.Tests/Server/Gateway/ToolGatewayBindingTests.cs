@@ -85,6 +85,8 @@ namespace RvtMcp.Tests
 
             public int Port { get; }
             public List<string> Commands { get; } = new List<string>();
+            public List<JObject> Requests { get; } = new List<JObject>();
+            public JObject TargetStamp { get; set; }
             public int Handshakes;
             public int Connections;
             public bool AnswerHandshake = true;
@@ -156,9 +158,18 @@ namespace RvtMcp.Tests
                                     writer.WriteLine(new JObject { ["id"] = id, ["success"] = true, ["data"] = new JObject() }.ToString(Formatting.None));
                                 continue;
                             }
+                            lock (Requests) Requests.Add(req);
+                            var documentError = TargetStamp == null ? null : ToolReadPolicy.DocumentRejection(command,
+                                req.Value<string>("expected_document_id"), TargetStamp.Value<string>("document_id"));
+                            if (documentError != null)
+                            {
+                                writer.WriteLine(new JObject { ["id"] = id, ["success"] = false, ["error"] = documentError,
+                                    ["_target"] = TargetStamp.DeepClone(), ["_operation"] = new JObject { ["execution"] = "completed", ["outcome"] = "not_started", ["complete"] = true, ["mutationApplied"] = false } }.ToString(Formatting.None));
+                                continue;
+                            }
                             lock (Commands) Commands.Add(command);
                             if (CloseOnCommand) return; // close stream → client sees EOF mid-request
-                            writer.WriteLine(new JObject { ["id"] = id, ["success"] = true, ["data"] = new JObject { ["ok"] = true } }.ToString(Formatting.None));
+                            writer.WriteLine(new JObject { ["id"] = id, ["success"] = true, ["data"] = new JObject { ["ok"] = true }, ["_target"] = TargetStamp?.DeepClone() }.ToString(Formatting.None));
                             if (command == "__park__") StopReading = true; // park before the next read
                         }
                     }
@@ -244,7 +255,7 @@ namespace RvtMcp.Tests
                 ["port"] = transport == "tcp" ? port : null,
                 ["pipe_name"] = transport == "pipe" ? pipeName : null,
                 ["auth_token"] = token,
-                ["capabilities"] = new JArray("tool_catalog", "controlled_failures_v1"),
+                ["capabilities"] = new JArray("tool_catalog", "controlled_failures_v1", "document_target_v1"),
             };
             var path = Path.Combine(_dir, $"revit-{year}-{pid}.json");
             var tmp = path + ".tmp";
@@ -278,6 +289,72 @@ namespace RvtMcp.Tests
         }
 
         // ---- §6.4 connect outcomes ----
+
+        [Fact]
+        public async Task Verified_document_is_pinned_on_writes_and_a_read_cannot_replace_it()
+        {
+            using var host = new FakeTcpHost { TargetStamp = new JObject
+            {
+                ["target_id"] = "revit-2024-" + PidA, ["pid"] = PidA, ["host_year"] = 2024, ["document_id"] = "doc-a"
+            } };
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok");
+            var ctx = BeginCall();
+            try
+            {
+                var switched = JObject.Parse(await MetaTools.SwitchTarget("pid:" + PidA, expectedDocumentId: "doc-a"));
+                Assert.True(switched.Value<bool>("verified"));
+            }
+            finally { TargetCallContext.End(ctx); }
+            await Send("create_level");
+            Assert.Equal("doc-a", host.Requests.Last().Value<string>("expected_document_id"));
+
+            host.TargetStamp["document_id"] = "doc-b";
+            await Send("get_current_view_info");
+            var rejected = await Send("create_level");
+
+            Assert.Equal("doc-a", host.Requests.Last().Value<string>("expected_document_id"));
+            Assert.StartsWith("DOCUMENT_CHANGED:", rejected.Value<string>("error"));
+            Assert.Equal("not_started", rejected["_operation"].Value<string>("outcome"));
+            Assert.Equal(1, host.Commands.Count(command => command == "create_level"));
+        }
+
+        [Fact]
+        public async Task Failed_switch_verification_restores_previous_binding()
+        {
+            using var hostA = new FakeTcpHost();
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", hostA.Port, null, "tok-a");
+            await Send("get_current_view_info");
+            var before = RevitTargetBinding.Snapshot();
+            using var hostB = new FakeTcpHost { CloseOnCommand = true };
+            _probe.Set(PidB, ProcessState.Running, StartB);
+            WritePerInstanceDescriptor(PidB, 2024, StartB, "tcp", hostB.Port, null, "tok-b");
+            var ctx = BeginCall();
+            try
+            {
+                var response = JObject.Parse(await MetaTools.SwitchTarget("pid:" + PidB));
+
+                Assert.False(response.Value<bool>("verified"));
+                Assert.Equal(before.Record.Pid, RevitTargetBinding.Snapshot().Record.Pid);
+                Assert.True(RevitTargetBinding.CaptureGeneration() > before.Generation);
+            }
+            finally { TargetCallContext.End(ctx); }
+        }
+
+        [Fact]
+        public async Task First_write_on_implicit_binding_is_not_sent()
+        {
+            using var host = new FakeTcpHost();
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok");
+
+            var failure = await SendExpectingFailure("create_level");
+
+            Assert.Equal("TARGET_UNCONFIRMED", TargetPayload.CodeName(failure.Payload.Code));
+            Assert.False(failure.Payload.Sent);
+            Assert.Empty(host.Commands);
+        }
 
         [Fact]
         public async Task First_call_binds_and_routes_command_to_live_target()
@@ -444,6 +521,8 @@ namespace RvtMcp.Tests
             WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", hostA.Port, null, "tok-a");
             WritePerInstanceDescriptor(PidB, 2024, StartB, "tcp", hostB.Port, null, "tok-b");
 
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), RevitTargetBinding.Scan().Live);
+
             await Send("get_current_view_info");
             var boundPid = RevitTargetBinding.Snapshot().Record.Pid;
             var otherPid = boundPid == PidA ? PidB : PidA;
@@ -454,7 +533,7 @@ namespace RvtMcp.Tests
             try
             {
                 var live = RevitTargetBinding.Scan().Live;
-                var switched = RevitTargetBinding.Switch(TargetSelector.ForPid(otherPid), live);
+                var switched = RevitTargetBinding.Switch(TargetSelector.ForPid(otherPid), live, rebind: true);
                 Assert.True(switched.Ok && switched.InstanceChanged);
                 ToolGateway.CloseConnection();
 
@@ -577,6 +656,7 @@ namespace RvtMcp.Tests
             _probe.Set(PidB, ProcessState.Running, StartB, "Revit B");
             WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", hostA.Port, null, "tok-a");
             WritePerInstanceDescriptor(PidB, 2024, StartB, "tcp", hostB.Port, null, "tok-b");
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), RevitTargetBinding.Scan().Live);
             await Send("get_current_view_info");
             var boundPid = RevitTargetBinding.Snapshot().Record.Pid;
             var otherPid = boundPid == PidA ? PidB : PidA;
@@ -584,7 +664,7 @@ namespace RvtMcp.Tests
             var newHost = boundPid == PidA ? hostB : hostA;
 
             var live = RevitTargetBinding.Scan().Live;
-            var result = ToolGateway.SwitchBinding(TargetSelector.ForPid(otherPid), live);
+            var result = ToolGateway.SwitchBinding(TargetSelector.ForPid(otherPid), live, rebind: true);
 
             Assert.True(result.Ok && result.InstanceChanged);
             Assert.Null(ToolGateway.ConnectedTargetId); // closed atomically with the switch
@@ -607,6 +687,7 @@ namespace RvtMcp.Tests
             _probe.Set(PidB, ProcessState.Running, StartB, "Revit B");
             WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", hostA.Port, null, "tok-a");
             WritePerInstanceDescriptor(PidB, 2024, StartB, "tcp", hostB.Port, null, "tok-b");
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), RevitTargetBinding.Scan().Live);
             await Send("get_current_view_info");
             var boundPid = RevitTargetBinding.Snapshot().Record.Pid;
             var otherPid = boundPid == PidA ? PidB : PidA;
@@ -616,7 +697,7 @@ namespace RvtMcp.Tests
             // Simulate the pre-fix race window: the binding moved to generation 2
             // while the open connection still serves generation 1.
             var live = RevitTargetBinding.Scan().Live;
-            var switched = RevitTargetBinding.Switch(TargetSelector.ForPid(otherPid), live);
+            var switched = RevitTargetBinding.Switch(TargetSelector.ForPid(otherPid), live, rebind: true);
             Assert.True(switched.Ok && switched.InstanceChanged);
             Assert.Equal("revit-2024-" + boundPid, ToolGateway.ConnectedTargetId);
 
@@ -641,11 +722,12 @@ namespace RvtMcp.Tests
             var victimCtx = BeginCall(); // binding none → pinned 0
             try
             {
+                RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), RevitTargetBinding.Scan().Live);
                 await Send("get_current_view_info"); // another call binds (generation 1)
                 var boundPid = RevitTargetBinding.Snapshot().Record.Pid;
                 var otherPid = boundPid == PidA ? PidB : PidA;
                 var live = RevitTargetBinding.Scan().Live;
-                var switched = ToolGateway.SwitchBinding(TargetSelector.ForPid(otherPid), live); // generation 2
+                var switched = ToolGateway.SwitchBinding(TargetSelector.ForPid(otherPid), live, rebind: true); // generation 2
                 Assert.True(switched.Ok && switched.InstanceChanged);
 
                 var ex = await Assert.ThrowsAsync<TargetException>(
@@ -681,7 +763,7 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public async Task Switch_verify_failure_preserves_success_response_with_verify_target()
+        public async Task Switch_verify_failure_restores_previous_binding_with_verify_target()
         {
             using var hostA = new FakeTcpHost();
             _probe.Set(PidA, ProcessState.Running, StartA, "Revit A");
@@ -706,11 +788,12 @@ namespace RvtMcp.Tests
             finally { TargetCallContext.End(ctx); }
 
             var json = JObject.Parse(text);
-            Assert.True(json.Value<bool>("ok"));
+            Assert.False(json.Value<bool>("ok"));
             Assert.False(json.Value<bool>("verified"));
             Assert.Equal("TARGET_UNAVAILABLE", json["verify_target"]?.Value<string>("code"));
             Assert.Contains("TARGET_UNAVAILABLE", json.Value<string>("verifyError"));
-            Assert.Equal(PidB, RevitTargetBinding.Snapshot().Record.Pid); // the switch itself held
+            Assert.Equal(PidA, RevitTargetBinding.Snapshot().Record.Pid);
+            Assert.True(json.Value<bool>("restored_previous"));
             Assert.Equal(new[] { "get_current_view_info" }, hostA.Commands);
         }
 
@@ -731,6 +814,8 @@ namespace RvtMcp.Tests
             RevitTargetBinding.ResetForTests(_probe, TargetSelector.ForPid(PidA)); // pin A explicitly
             await Send("get_current_view_info"); // bound + connected to A
             Assert.Equal("revit-2024-" + PidA, ToolGateway.ConnectedTargetId);
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-a");
+            ToolGateway.CloseConnection();
             await Send("__park__"); // host answers, then stops reading — like a busy plugin
 
             var bigParams = new { payload = new string('x', 16 * 1024 * 1024) };
@@ -753,7 +838,7 @@ namespace RvtMcp.Tests
 
             var sw = Stopwatch.StartNew();
             var live = RevitTargetBinding.Scan().Live;
-            var result = ToolGateway.SwitchBinding(TargetSelector.ForPid(PidB), live);
+            var result = ToolGateway.SwitchBinding(TargetSelector.ForPid(PidB), live, rebind: true);
             sw.Stop();
 
             Assert.True(result.Ok && result.InstanceChanged);

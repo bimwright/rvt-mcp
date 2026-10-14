@@ -2,7 +2,6 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Newtonsoft.Json;
@@ -41,12 +40,7 @@ namespace RvtMcp.Plugin
             _restrictAcl = restrictAcl;
             _log = log;
             _enumerateFiles = enumerateFiles ?? (pattern => Directory.GetFiles(_directory, pattern));
-            var descriptorPath = Path.GetFullPath(Path.Combine(directory, "revit-" + year + ".json"));
-            var windows = Path.DirectorySeparatorChar == '\\';
-            if (windows) descriptorPath = descriptorPath.ToUpperInvariant();
-            using (var sha = SHA256.Create())
-                _mutexName = (windows ? @"Global\" : "") + "RvtMcp.Discovery." +
-                    BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(descriptorPath))).Replace("-", "");
+            _mutexName = DiscoveryCoordination.Name(directory, year);
         }
 
         public void Publish(string transport, int? port, string pipeName, string token)
@@ -68,7 +62,7 @@ namespace RvtMcp.Plugin
                     ["port"] = port.HasValue ? new JValue(port.Value) : JValue.CreateNull(),
                     ["pipe_name"] = pipeName == null ? JValue.CreateNull() : new JValue(pipeName),
                     ["auth_token"] = token,
-                    ["capabilities"] = new JArray("tool_catalog", "controlled_failures_v1")
+                    ["capabilities"] = new JArray("tool_catalog", "controlled_failures_v1", "document_target_v1")
                 }.ToString(Formatting.Indented);
                 Write(FileName, json);
                 Write("revit-" + _year + ".json", json);
@@ -129,26 +123,11 @@ namespace RvtMcp.Plugin
 
         private void WithDiscoveryLock(Action action, int timeoutMilliseconds = 2000)
         {
-            Mutex mutex;
-            try { mutex = new Mutex(false, _mutexName); }
-            catch (Exception ex) { Log("Discovery coordination failed: " + ex.Message); return; }
-            using (mutex)
+            DiscoveryCoordination.Run(_mutexName, () =>
             {
-                var acquired = false;
-                try
-                {
-                    try { acquired = mutex.WaitOne(timeoutMilliseconds); }
-                    catch (AbandonedMutexException) { acquired = true; }
-                    catch (Exception ex) { Log("Discovery coordination failed: " + ex.Message); return; }
-                    if (!acquired) { Log("Discovery coordination timed out; descriptors were left unchanged."); return; }
-                    // All publishers take the directory/year mutex before their own gate.
-                    lock (_gate) action();
-                }
-                finally
-                {
-                    if (acquired) mutex.ReleaseMutex();
-                }
-            }
+                // All publishers take the directory/year mutex before their own gate.
+                lock (_gate) action();
+            }, timeoutMilliseconds, Log);
         }
 
         private void TryDelete(string path)

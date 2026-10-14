@@ -32,12 +32,17 @@ namespace RvtMcp.Tests
         private sealed class FakeProbe : IProcessProbe
         {
             private readonly Dictionary<int, ProcessProbeResult> _byPid = new();
+            public Action<int> DuringProbe;
 
             public void Set(int pid, ProcessState state, DateTime? start = null, string title = null)
                 => _byPid[pid] = new ProcessProbeResult(state, start, title);
 
             public ProcessProbeResult Probe(int pid)
-                => _byPid.TryGetValue(pid, out var r) ? r : new ProcessProbeResult(ProcessState.NotFound, null, null);
+            {
+                var result = _byPid.TryGetValue(pid, out var r) ? r : new ProcessProbeResult(ProcessState.NotFound, null, null);
+                DuringProbe?.Invoke(pid);
+                return result;
+            }
         }
 
         private const int Pid = 424242;
@@ -85,6 +90,26 @@ namespace RvtMcp.Tests
             var probe = new FakeProbe();
             foreach (var pid in pids) probe.Set(pid, ProcessState.Running, Start, "Revit " + pid);
             return probe;
+        }
+
+        [Fact]
+        public void Scan_does_not_delete_a_replacement_published_during_liveness_evaluation()
+        {
+            Write("revit-2024-" + Pid + ".json", PerInstanceJson());
+            Write("revit-2024.json", LegacyJson());
+            var probe = new FakeProbe();
+            using var replacement = new RvtMcp.Plugin.DiscoveryPublisher(_dir, "2024", Pid, Start.AddHours(1), (_, __) => true);
+            probe.DuringProbe = _ =>
+            {
+                probe.DuringProbe = null;
+                replacement.Publish("pipe", null, "new-listener", "fresh-token");
+                probe.Set(Pid, ProcessState.Running, Start.AddHours(1));
+            };
+
+            AuthToken.Scan(probe, _dir);
+
+            foreach (var name in new[] { replacement.FileName, "revit-2024.json" })
+                Assert.Equal("fresh-token", JObject.Parse(File.ReadAllText(Path.Combine(_dir, name))).Value<string>("auth_token"));
         }
 
         [Fact]

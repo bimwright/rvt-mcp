@@ -55,6 +55,15 @@ namespace RvtMcp.Server
             var command = name.StartsWith("revit_", StringComparison.Ordinal) ? name.Substring(6) : name;
             var arguments = System.Text.Json.JsonSerializer.Serialize(request?.Arguments);
             var text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
+            if (TargetCallContext.Current?.ActualTarget is JObject actualTarget)
+            {
+                JObject routed;
+                try { routed = JObject.Parse(text ?? "{}"); }
+                catch { routed = new JObject { ["result"] = text }; }
+                SafetyResponseMetadata.Attach(routed, new JObject { ["_target"] = actualTarget });
+                result = TextResult(routed, result.IsError == true);
+                text = routed.ToString(Formatting.None);
+            }
             JObject safety = null;
             try { safety = JObject.Parse(text ?? "{}"); } catch { }
             var failed = result.IsError == true || IsFailure(text, command);
@@ -146,7 +155,7 @@ namespace RvtMcp.Server
                         }, result.IsError == true);
                 }
             }
-            if (safety?["_failure"] != null || safety?["_operation"] != null)
+            if (safety?["_failure"] != null || safety?["_operation"] != null || safety?["_target"] != null)
             {
                 JObject preserved;
                 try { preserved = JObject.Parse(result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text ?? "{}"); }

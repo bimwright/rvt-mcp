@@ -340,14 +340,16 @@ Full Revit desktop only; Revit Viewer is not a supported target. CI builds all s
 
 ## Multiple Revit instances
 
-The server binds to exactly one Revit instance — including when several instances of the same year run at once. It binds implicitly on the first call or explicitly through `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target`. Selectors: `auto`, a 4-digit year (`2024`), `pid:<n>` or `id:revit-<year>-<pid>`; legacy R-codes like `R24` are rejected.
+The server binds to exactly one Revit instance — including when several instances of the same year run at once. A query can bind automatically only when exactly one instance matches. Multiple matches return `AMBIGUOUS_TARGET`; model/file writes require a selected target and model writes also require a verified document. Selectors: `auto`, a 4-digit year (`2024`), `pid:<n>` or `id:revit-<year>-<pid>`; legacy R-codes like `R24` are rejected.
 
 When more than one instance runs — especially several of the same year — do not guess the target:
 
 1. Call `revit_list_available_targets`: every live instance is listed with `target_id`, `pid`, `host_year`, `window_title` and `source`.
 2. Pick the instance by `pid` and/or `window_title`.
-3. Pin it with `revit_switch_target("pid:<n>")` — any selector form works, `pid:` is unambiguous.
-4. `revit_get_current_target` shows the active binding, its generation and the proposed `next_target_id`.
+3. Select the process with `revit_switch_target(version="pid:<n>", verify=false)`, query its active view/document, then confirm with `revit_switch_target(version="pid:<n>", verify=true, expectedDocumentId="<document_id>")`. Copy the identity from the query's `_target` stamp; omitting `expectedDocumentId` confirms the document reported by the verify probe. `auto`/year selectors are accepted only with one matching instance.
+4. `revit_get_current_target` shows the binding, generation, `selection_confirmed`, `confirmed_document_id` and `confirmation_required`. Successful host responses carry `_target` with the actual PID, year and document identity, including after response compaction.
+
+Leaving a live selected instance requires `rebind=true`. Every accepted switch advances the generation so earlier calls cannot adopt a later confirmation. Failed verification restores the previous live binding if no newer switch intervened. A closed/reopened document, another project or Edit Family has a different document identity; the add-in checks the expected identity on the Revit UI thread before executing each write. Reading a different document never changes the write pin. Review and confirm that document before writing. `open_model` establishes a document: select the process with `verify=false`, open the model, then verify it. It cannot run inside `batch_execute`.
 
 Target error codes and how to react. Every code except `TARGET_INTERRUPTED` means the command was **not** sent:
 
@@ -358,13 +360,17 @@ Target error codes and how to react. Every code except `TARGET_INTERRUPTED` mean
 | `TARGET_BUSY` | The endpoint exists but did not complete the handshake within 5 s — usually another agent or gateway holds its single connection, or Revit is blocked | Retry later; do not run two gateways on one instance |
 | `TARGET_LOST` | The explicitly pinned (`pid:`/`id:`) instance exited | Check `candidates`, confirm with the user, then `revit_switch_target` |
 | `TARGET_CHANGED` | The implicitly bound instance exited and exactly one replacement exists (or the binding changed between call arrival and send). The command was **not** sent; every call returns this until confirmed | Check the proposed instance (`window_title`), confirm with `revit_switch_target`, then repeat the call |
-| `AMBIGUOUS_TARGET` | The implicitly bound instance exited and two or more instances match | List, pick by `pid`/`window_title`, `revit_switch_target("pid:<n>")` |
+| `AMBIGUOUS_TARGET` | First selection or a switch matches multiple instances | List, pick by `pid`/`window_title`, then use `pid:`/`id:` |
+| `TARGET_UNCONFIRMED` | The selected target/document has not been confirmed for writes | Verify the intended PID and document with `revit_switch_target` |
+| `TARGET_REBIND_REQUIRED` | A live selected target would be replaced | Review the binding, then switch with `rebind=true` if intended |
 | `TARGET_INTERRUPTED` | The command was sent but the connection closed before a response (`sent:true`, `outcome:unknown`) | Inspect the model state before repeating any write |
 | `INVALID_TARGET_SELECTOR` | Malformed selector or R-code | Use `auto`, a year, `pid:<n>` or `id:<target_id>` |
 
 **After a Revit restart — even with a single Revit open** — the next call returns `TARGET_CHANGED` and the server waits for one `revit_switch_target` call before it sends anything. This is deliberate: the restarted Revit can have a different model open, so the server never rebinds to it silently. The payload names the proposed instance; confirm it and repeat the call.
 
 `revit_switch_target` is annotated non-read-only because it changes session routing, but it stays available under `--read-only` so the binding can always be recovered.
+
+`DOCUMENT_UNCONFIRMED` and `DOCUMENT_CHANGED` are add-in refusals: the request reached Revit but the model operation did not start. Check the reported `_target`, then confirm the intended document. Gateway and add-ins must both support `document_target_v1`; update them together.
 
 ---
 

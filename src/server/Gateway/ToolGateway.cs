@@ -194,6 +194,8 @@ namespace RvtMcp.Server
 
         internal static JObject InterpretResponse(JObject response)
         {
+            if (response["_target"] is JObject actualTarget && TargetCallContext.Current != null)
+                TargetCallContext.Current.ActualTarget = (JObject)actualTarget.DeepClone();
             var changes = ChangeSummary.ForAgent(response["changes"]);
             ChangeCaptureContext.Record(changes);
 
@@ -210,7 +212,7 @@ namespace RvtMcp.Server
             else
             {
                 var error = response.Value<string>("error") ?? "Unknown error from Revit";
-                if (response["_failure"] != null || response["_operation"] != null)
+                if (response["_failure"] != null || response["_operation"] != null || response["_target"] != null)
                 {
                     var data = new JObject { ["success"] = false, ["error"] = error };
                     if (changes != null) data["_changes"] = changes;

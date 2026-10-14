@@ -684,6 +684,8 @@ namespace Bimwright.Targeting
         AmbiguousTarget,
         TargetChanged,
         TargetInterrupted,
+        TargetUnconfirmed,
+        TargetRebindRequired,
         InvalidTargetSelector,
     }
 
@@ -714,6 +716,8 @@ namespace Bimwright.Targeting
             TargetCode.AmbiguousTarget => "AMBIGUOUS_TARGET",
             TargetCode.TargetChanged => "TARGET_CHANGED",
             TargetCode.TargetInterrupted => "TARGET_INTERRUPTED",
+            TargetCode.TargetUnconfirmed => "TARGET_UNCONFIRMED",
+            TargetCode.TargetRebindRequired => "TARGET_REBIND_REQUIRED",
             TargetCode.InvalidTargetSelector => "INVALID_TARGET_SELECTOR",
             _ => c.ToString(),
         };
@@ -799,6 +803,8 @@ namespace Bimwright.Targeting
                     TargetCode.TargetLost => switchTool,
                     TargetCode.AmbiguousTarget => switchTool,
                     TargetCode.TargetInterrupted => null,
+                    TargetCode.TargetUnconfirmed => switchTool,
+                    TargetCode.TargetRebindRequired => switchTool,
                     _ => listTool,
                 };
             }
@@ -822,11 +828,15 @@ namespace Bimwright.Targeting
                 TargetCode.TargetLost =>
                     $"The bound {app} instance is gone. Review the candidates and call {switchTool} to bind a new instance.",
                 TargetCode.AmbiguousTarget =>
-                    $"The previous {app} is gone and several instances match the selector. The call was not sent. Call {switchTool} with the intended instance.",
+                    $"Several {app} instances match the selector. The call was not sent. Call {switchTool} with pid:<n> or id:<target_id> for the intended instance.",
                 TargetCode.TargetChanged =>
                     $"The call was not sent. The previous {app} is gone. Check the proposed instance, call {switchTool} to confirm it, then call again if still intended.",
                 TargetCode.TargetInterrupted =>
                     $"The command was sent and its outcome is unknown. Check the model state in {app} before retrying a write command.",
+                TargetCode.TargetUnconfirmed =>
+                    $"The write was not sent. Select the intended instance with {switchTool}(version=\"pid:<n>\", verify=true) to confirm its active document before writing.",
+                TargetCode.TargetRebindRequired =>
+                    $"A live target is already confirmed. Review the current binding before switching with rebind=true.",
                 TargetCode.InvalidTargetSelector =>
                     $"Invalid target selector. Use auto, a year 2022..2027, pid:<n> or id:<target_id>. Call {listTool} to see running instances.",
                 _ => "",
@@ -865,7 +875,11 @@ namespace Bimwright.Targeting
         DateTime? ObservedStartUtc,
         int HostYear,
         bool IdentityVerified,
-        DateTime BoundAtUtc);
+        DateTime BoundAtUtc)
+    {
+        internal bool SelectionConfirmed { get; init; }
+        internal string? DocumentId { get; init; }
+    }
 
     internal sealed record SwitchInfo(string? From, string To, DateTime AtUtc);
 
@@ -914,7 +928,8 @@ namespace Bimwright.Targeting
             lock (_gate)
             {
                 return new BindingSnapshot(_state, _selector, _generation, _record, _lastSwitch,
-                    _state == BindingState.Lost);
+                    _state == BindingState.Lost || (_state == BindingState.Bound
+                        && (!_record!.SelectionConfirmed || string.IsNullOrEmpty(_record.DocumentId))));
             }
         }
 
@@ -952,6 +967,9 @@ namespace Bimwright.Targeting
                 if (matches.Count == 0)
                     return new FailPlan(Payload(TargetCode.NoTarget, null, null,
                         CandidatesFor(_selector, liveOrdered)));
+                if (matches.Count > 1)
+                    return new FailPlan(Payload(TargetCode.AmbiguousTarget, null, null,
+                        CandidatesFor(_selector, liveOrdered)));
                 return new ConnectPlan(matches[0], null, 0);
             }
         }
@@ -986,7 +1004,7 @@ namespace Bimwright.Targeting
                         start,
                         candidate.HostYear,
                         candidate.IdentityVerified && start != null,
-                        _utcNow());
+                        _utcNow()) { SelectionConfirmed = _selector.IsExplicit };
                     _state = BindingState.Bound;
                     effectiveGeneration = 1;
                     failure = null;
@@ -1029,6 +1047,47 @@ namespace Bimwright.Targeting
                 failure = Payload(TargetCode.TargetChanged, null, RefWithTitle(_record, liveOrdered),
                     CandidatesFor(_selector, liveOrdered), generationChanged: true);
                 return false;
+            }
+        }
+
+        internal bool CanWrite(long generation, bool requiresDocument, out TargetPayload? failure)
+        {
+            lock (_gate)
+            {
+                if (!CanSend(generation, Array.Empty<TargetCandidate>(), out failure)) return false;
+                if (_record!.SelectionConfirmed && (!requiresDocument || !string.IsNullOrEmpty(_record.DocumentId)))
+                    return true;
+                failure = Payload(TargetCode.TargetUnconfirmed, null, Ref(_record), Array.Empty<CandidateInfo>());
+                return false;
+            }
+        }
+
+        internal bool ConfirmDocument(long generation, string documentId)
+        {
+            lock (_gate)
+            {
+                if (_state != BindingState.Bound || _generation != generation || _record == null
+                    || string.IsNullOrWhiteSpace(documentId)) return false;
+                if (!string.Equals(_record.DocumentId, documentId, StringComparison.Ordinal)) _generation++;
+                _record = _record with { Generation = _generation, SelectionConfirmed = true, DocumentId = documentId };
+                return true;
+            }
+        }
+
+        internal bool RestoreAfterFailedVerification(BindingSnapshot previous, long provisionalGeneration)
+        {
+            lock (_gate)
+            {
+                // Never overwrite a concurrent switch or resurrect a lost/replaced process.
+                if (_generation != provisionalGeneration || previous.State != BindingState.Bound || previous.Record == null
+                    || LivenessEvaluator.Evaluate(previous.Record.ObservedStartUtc,
+                        _probe.Probe(previous.Record.Pid)).Liveness == Liveness.ProvenDead) return false;
+                _generation++;
+                _record = previous.Record with { Generation = _generation };
+                _selector = previous.Selector;
+                _state = BindingState.Bound;
+                _lastSwitch = previous.LastSwitch;
+                return true;
             }
         }
 
@@ -1089,7 +1148,7 @@ namespace Bimwright.Targeting
             }
         }
 
-        internal SwitchResult Switch(TargetSelector selector, IReadOnlyList<TargetCandidate> liveOrdered)
+        internal SwitchResult Switch(TargetSelector selector, IReadOnlyList<TargetCandidate> liveOrdered, bool rebind = false)
         {
             lock (_gate)
             {
@@ -1100,6 +1159,10 @@ namespace Bimwright.Targeting
                         Payload(TargetCode.NoTarget, Ref(_record), null,
                             CandidatesFor(selector, liveOrdered), selector));
                 }
+                if (matches.Count > 1)
+                    return new SwitchResult(false, false, _record, _record,
+                        Payload(TargetCode.AmbiguousTarget, Ref(_record), null,
+                            CandidatesFor(selector, liveOrdered), selector));
 
                 var chosen = matches[0];
                 var previous = _record;
@@ -1113,16 +1176,27 @@ namespace Bimwright.Targeting
                             CandidatesFor(selector, liveOrdered), selector));
                 }
 
+                bool differentInstance = previous != null
+                    && (previous.Pid != chosen.Pid || !SameStart(previous.ObservedStartUtc, chosen.ObservedStartUtc));
+                if (differentInstance && _state == BindingState.Bound && previous!.SelectionConfirmed && !rebind
+                    && LivenessEvaluator.Evaluate(previous.ObservedStartUtc, _probe.Probe(previous.Pid)).Liveness != Liveness.ProvenDead)
+                    return new SwitchResult(false, false, previous, previous,
+                        Payload(TargetCode.TargetRebindRequired, Ref(previous), Ref(previous), CandidatesFor(selector, liveOrdered), selector));
+
                 if (_state == BindingState.Bound
                     && previous != null
                     && previous.Pid == chosen.Pid
                     && SameStart(previous.ObservedStartUtc, chosen.ObservedStartUtc))
                 {
                     _selector = selector;
+                    _generation++; // Every accepted switch is a new intent, including same-PID confirmation.
                     _record = previous with
                     {
+                        Generation = _generation,
                         Selector = selector,
                         Kind = selector.IsExplicit ? BindingKind.Explicit : BindingKind.Implicit,
+                        SelectionConfirmed = true,
+                        DocumentId = null,
                     };
                     return new SwitchResult(true, false, previous, _record, null);
                 }
@@ -1137,10 +1211,7 @@ namespace Bimwright.Targeting
                     start,
                     chosen.HostYear,
                     chosen.IdentityVerified && start != null,
-                    _utcNow());
-
-                bool differentInstance = previous != null
-                    && (previous.Pid != chosen.Pid || !SameStart(previous.ObservedStartUtc, chosen.ObservedStartUtc));
+                    _utcNow()) { SelectionConfirmed = true };
 
                 _generation = record.Generation;
                 _record = record;
@@ -1157,7 +1228,10 @@ namespace Bimwright.Targeting
             lock (_gate)
             {
                 if (_state == BindingState.None)
-                    return TargetScan.Filter(_selector, liveOrdered).FirstOrDefault()?.TargetId;
+                {
+                    var matches = TargetScan.Filter(_selector, liveOrdered);
+                    return matches.Count == 1 ? matches[0].TargetId : null;
+                }
                 if (_state == BindingState.Lost
                     && _record != null
                     && _record.Kind == BindingKind.Implicit)

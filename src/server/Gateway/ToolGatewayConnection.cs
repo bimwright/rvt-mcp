@@ -40,6 +40,7 @@ namespace RvtMcp.Server
             public int Pid;
             public int Closed;
             public bool FailureProtocol;
+            public bool DocumentGuard;
             /// <summary>
             /// Serializes wire writes on this connection so a blocked writer (plugin
             /// not reading) stalls only this call — never <c>_connectLock</c>, so
@@ -258,12 +259,13 @@ namespace RvtMcp.Server
         /// under one <c>_connectLock</c>, so no call captured under the new generation can reach
         /// the old instance's still-open connection (§6.6, §6.8).
         /// </summary>
-        internal static SwitchResult SwitchBinding(TargetSelector selector, IReadOnlyList<Bimwright.Targeting.TargetCandidate> live)
+        internal static SwitchResult SwitchBinding(TargetSelector selector, IReadOnlyList<Bimwright.Targeting.TargetCandidate> live, bool rebind = false)
         {
             lock (_connectLock)
             {
-                var result = RevitTargetBinding.Switch(selector, live);
-                if (result.Ok && result.InstanceChanged)
+                var before = RevitTargetBinding.CaptureGeneration();
+                var result = RevitTargetBinding.Switch(selector, live, rebind);
+                if (result.Ok && RevitTargetBinding.CaptureGeneration() != before)
                 {
                     var conn = _conn;
                     _conn = null;
@@ -274,6 +276,34 @@ namespace RvtMcp.Server
         }
 
         private enum HandshakeResult { Ok, AnsweredRejected, TokenRejected, TimedOut, Closed }
+
+        internal static bool ConfirmDocument(long generation, JObject stamp)
+        {
+            lock (_connectLock)
+            {
+                var record = RevitTargetBinding.Snapshot().Record;
+                if (record == null || record.Generation != generation || stamp?.Value<int?>("pid") != record.Pid
+                    || stamp.Value<string>("target_id") != record.TargetId || _conn?.DocumentGuard != true
+                    || !RevitTargetBinding.Binding.ConfirmDocument(generation, stamp.Value<string>("document_id"))) return false;
+                var confirmed = RevitTargetBinding.CaptureGeneration();
+                if (confirmed != generation) { var conn = _conn; _conn = null; CloseConnLocked(conn); }
+                if (TargetCallContext.Current != null) TargetCallContext.Current.PinnedGeneration = confirmed;
+                return true;
+            }
+        }
+
+        internal static bool RestoreAfterFailedVerification(BindingSnapshot before, long provisionalGeneration)
+        {
+            lock (_connectLock)
+            {
+                if (!RevitTargetBinding.Binding.RestoreAfterFailedVerification(before, provisionalGeneration)) return false;
+                var conn = _conn;
+                _conn = null;
+                CloseConnLocked(conn);
+                if (TargetCallContext.Current != null) TargetCallContext.Current.PinnedGeneration = RevitTargetBinding.CaptureGeneration();
+                return true;
+            }
+        }
 
         /// <summary>§6.4 connect: busy vs no-listener distinction, handshake precondition.</summary>
         private static Conn ConnectAndHandshake(TargetDescriptor desc, long effectiveGeneration,
@@ -402,6 +432,7 @@ namespace RvtMcp.Server
                 Year = desc.HostYear.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 Pid = desc.Pid,
                 FailureProtocol = desc.Capabilities?.Any(c => string.Equals(c, "controlled_failures_v1", StringComparison.OrdinalIgnoreCase)) == true,
+                DocumentGuard = desc.Capabilities?.Any(c => string.Equals(c, "document_target_v1", StringComparison.OrdinalIgnoreCase)) == true,
             };
             if (transport is TcpClient tcp)
             {
@@ -489,7 +520,8 @@ namespace RvtMcp.Server
                 {
                     id, command, @params = parameters ?? new { }, token = conn.Token,
                     timeout_seconds = timeoutSeconds, runtime = config.ToRuntimeOptions(), history,
-                    operation_id = operationId, failure_protocol = 1
+                    operation_id = operationId, failure_protocol = 1,
+                    expected_document_id = binding.Snapshot().Record?.DocumentId
                 }, RequestJsonSettings);
                 var current = false;
                 GatewayPendingRequest pending = null;
@@ -500,11 +532,14 @@ namespace RvtMcp.Server
                     {
                         if (!binding.CanSend(effectiveGeneration, Array.Empty<Bimwright.Targeting.TargetCandidate>(), out var sendFailure))
                             throw new TargetException(sendFailure);
+                        if (!ToolReadPolicy.IsReadOnly(command)
+                            && !binding.CanWrite(effectiveGeneration, command != "open_model", out var writeFailure))
+                            throw new TargetException(writeFailure);
                         if (_conn == conn && conn.Generation == effectiveGeneration && conn.Closed == 0)
                         {
                             string rejection = null;
                             GatewayPendingRequest blocking = null;
-                            if (!ToolReadPolicy.IsReadOnly(command) && !conn.FailureProtocol)
+                            if (!ToolReadPolicy.IsReadOnly(command) && (!conn.FailureProtocol || !conn.DocumentGuard))
                                 rejection = "PAIRING_REQUIRED: update the gateway and Revit add-in together before model mutations.";
                             else if ((blocking = _pending.Values.FirstOrDefault(value => value.ConnectionId == conn.Epoch && value.WaitingForUser)) != null)
                                 rejection = "REVIT_BUSY: Revit is waiting for native user input. _operation.blockedBy names the waiting operation and its dialog. Use the local failure or operation queries.";
