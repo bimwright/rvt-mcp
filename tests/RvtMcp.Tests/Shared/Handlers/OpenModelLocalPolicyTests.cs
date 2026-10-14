@@ -153,7 +153,7 @@ namespace RvtMcp.Tests
         public void Handler_routes_both_refusal_guards_through_the_tested_policy()
         {
             var repoRoot = GetRepoRoot();
-            var source = File.ReadAllText(Path.Combine(repoRoot, "src", "shared", "Handlers", "OpenModelHandler.cs"));
+            var source = File.ReadAllText(Path.Combine(repoRoot, "src", "shared", "Handlers", "Documents", "OpenModelHandler.cs"));
 
             Assert.Contains("OpenModelLocalPolicy.DecideInput", source);
             Assert.Contains("InputDecision.RefuseUnclassified", source);

@@ -40,7 +40,7 @@ namespace RvtMcp.Tests
         private static MethodInfo CompileProbe([CallerFilePath] string testFile = "")
         {
             var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "..", "..", ".."));
-            var source = File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", "MepConnectionSystemType.cs"));
+            var source = File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", "Mep", "MepConnectionSystemType.cs"));
             var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
                 .Select(p => MetadataReference.CreateFromFile(p));
             var compilation = CSharpCompilation.Create("ConnectionTypeProbe_" + Guid.NewGuid().ToString("N"),

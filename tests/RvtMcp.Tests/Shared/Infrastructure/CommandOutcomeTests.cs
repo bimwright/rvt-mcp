@@ -113,7 +113,7 @@ namespace RvtMcp.Tests
         [Fact]
         public void BatchExecuteHandler_still_returns_the_shape_the_outcome_reads()
         {
-            var source = ReadSource("Handlers", "BatchExecuteHandler.cs");
+            var source = ReadSource("Handlers/Runtime", "BatchExecuteHandler.cs");
 
             Assert.Contains("new { results = outcome.Results, rolledBack }", source);
         }

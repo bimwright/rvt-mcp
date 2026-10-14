@@ -56,7 +56,7 @@ src/
 │   └── Tools/                # One file per toolset class (QueryTools, CreateTools, MetaTools, …)
 │
 ├── shared/                   # Source shared by all plugin shells (glob-included)
-│   ├── Handlers/             # One file per command (send_code, create_grid, batch_execute, …)
+│   ├── Handlers/             # Command files grouped by domain; namespaces remain RvtMcp.Plugin.Handlers
 │   ├── Commands/             # Ribbon button commands
 │   ├── Config/               # Configuration loaders
 │   ├── Infrastructure/       # CommandDispatcher, McpEventHandler, ResponseSizeGuard, PendingRequestLifecycle, …
@@ -111,7 +111,7 @@ MCP Server runs from `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`.
 ### Commands
 - IRevitCommand interface: Name, Description, Execute(UIApplication, paramsJson) → CommandResult
 - Explicit dictionary registration in CommandDispatcher (not reflection until 10+ commands)
-- Each handler = 1 file in Handlers/
+- Each handler = 1 file in `Handlers/<Domain>/`; keep namespace `RvtMcp.Plugin.Handlers`. The solution-level `Shared source` folder displays the same physical source files.
 - All return DTOs (anonymous objects) — NEVER serialize Revit API objects directly
 - Unit conversion: Revit internal (feet) → mm using SpecTypeId/ForgeTypeId
 

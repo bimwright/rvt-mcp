@@ -34,7 +34,7 @@ namespace RvtMcp.Tests
         {
             var root = GetRepoRoot();
             var dispatcher = File.ReadAllText(Path.Combine(root, "src", "shared", "Infrastructure", "CommandDispatcher.cs"));
-            var handler = File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", "GetProjectCoordinateSystemHandler.cs"));
+            var handler = File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", "Documents", "GetProjectCoordinateSystemHandler.cs"));
 
             Assert.Contains("Register(new Handlers.GetProjectCoordinateSystemHandler())", dispatcher, StringComparison.Ordinal);
             Assert.Contains("InternalOrigin.Get(doc)", handler, StringComparison.Ordinal);
@@ -70,7 +70,7 @@ namespace RvtMcp.Tests
         {
             var root = GetRepoRoot();
             var dispatcher = File.ReadAllText(Path.Combine(root, "src", "shared", "Infrastructure", "CommandDispatcher.cs"));
-            var handler = File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", "GetLinkCoordinateSystemHandler.cs"));
+            var handler = File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", "Links", "GetLinkCoordinateSystemHandler.cs"));
 
             Assert.Contains("Register(new Handlers.GetLinkCoordinateSystemHandler())", dispatcher, StringComparison.Ordinal);
             Assert.Contains("element as RevitLinkInstance", handler, StringComparison.Ordinal);

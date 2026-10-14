@@ -20,7 +20,7 @@
   -->
   <ItemGroup>
     <Compile Include="../../src/shared/Views/Toast/ToastActivityEntry.cs" Link="Shared/Views/Toast/ToastActivityEntry.cs" />
-    <Compile Include="../../src/shared/Handlers/ScheduleSortInput.cs" Link="Shared/Handlers/ScheduleSortInput.cs" />
+    <Compile Include="../../src/shared/Handlers/Schedules/ScheduleSortInput.cs" Link="Shared/Handlers/Schedules/ScheduleSortInput.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastActivityLog.cs" Link="Shared/Views/Toast/ToastActivityLog.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastPlacement.cs" Link="Shared/Views/Toast/ToastPlacement.cs" />
     <Compile Include="../../src/shared/Views/FailureIssuesContext.cs" Link="Shared/Views/FailureIssuesContext.cs" />
@@ -28,10 +28,10 @@
     <Compile Include="..\..\src\shared\Infrastructure\SendCodeSourceBuilder.cs" Link="Shared\Infrastructure\SendCodeSourceBuilder.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\NoDocumentGuidance.cs" Link="Shared\Infrastructure\NoDocumentGuidance.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\RecentFileList.cs" Link="Shared\Infrastructure\RecentFileList.cs" />
-    <Compile Include="..\..\src\shared\Handlers\MepMembershipPolicy.cs" Link="Shared\Handlers\MepMembershipPolicy.cs" />
-    <Compile Include="..\..\src\shared\Handlers\OpenModelLocalPolicy.cs" Link="Shared\Handlers\OpenModelLocalPolicy.cs" />
+    <Compile Include="..\..\src\shared\Handlers\Mep\MepMembershipPolicy.cs" Link="Shared\Handlers\Mep\MepMembershipPolicy.cs" />
+    <Compile Include="..\..\src\shared\Handlers\Documents\OpenModelLocalPolicy.cs" Link="Shared\Handlers\Documents\OpenModelLocalPolicy.cs" />
     <Compile Include="..\..\src\shared\Failures\UserDialogBuffer.cs" Link="Shared\Failures\UserDialogBuffer.cs" />
-    <Compile Include="..\..\src\shared\Handlers\ViewportLayoutMath.cs" Link="Shared\Handlers\ViewportLayoutMath.cs" />
+    <Compile Include="..\..\src\shared\Handlers\Sheets\ViewportLayoutMath.cs" Link="Shared\Handlers\Sheets\ViewportLayoutMath.cs" />
     <Compile Include="..\..\src\shared\Security\PathAllowlist.cs" Link="Shared\Security\PathAllowlist.cs" />
     <Compile Include="..\..\src\shared\Security\DiscoveryPublisher.cs" Link="Shared\Security\DiscoveryPublisher.cs" />
     <Compile Include="..\..\src\shared\Security\AuthToken.cs" Link="Shared\Security\AuthToken.cs" />
@@ -57,7 +57,7 @@
     <Compile Include="..\..\src\shared\Infrastructure\PendingRequestLifecycle.cs" Link="Shared\Infrastructure\PendingRequestLifecycle.cs" />
     <Compile Include="..\..\src\shared\Transport\TransportResponseWriter.cs" Link="Shared\Transport\TransportResponseWriter.cs" />
     <Compile Include="..\..\src\shared\Config\StatusPrivacySection.cs" Link="Shared\Config\StatusPrivacySection.cs" />
-    <Compile Include="..\..\src\shared\Handlers\BatchExecutor.cs" Link="Shared\Handlers\BatchExecutor.cs" />
+    <Compile Include="..\..\src\shared\Handlers\Runtime\BatchExecutor.cs" Link="Shared\Handlers\Runtime\BatchExecutor.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\CommandOutcome.cs" Link="Shared\Infrastructure\CommandOutcome.cs" />
     <Compile Include="..\..\src\shared\ToolBaker\BakedToolRegistry.cs" Link="Shared\ToolBaker\BakedToolRegistry.cs" />
     <Compile Include="..\..\src\shared\ToolBaker\BakedToolParameterDefaults.cs" Link="Shared\ToolBaker\BakedToolParameterDefaults.cs" />

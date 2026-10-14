@@ -135,7 +135,7 @@ namespace RvtMcp.Tests
         public void ShowMessage_wire_payload_stays_english_while_display_localizes()
         {
             var source = File.ReadAllText(Path.Combine(GetRepoRoot(),
-                "src", "shared", "Handlers", "ShowMessageHandler.cs"));
+                "src", "shared", "Handlers", "Runtime", "ShowMessageHandler.cs"));
 
             Assert.Contains("TaskDialog.Show(title, displayMessage)", source);
             Assert.Contains("message_char_count = wireMessage.Length", source);

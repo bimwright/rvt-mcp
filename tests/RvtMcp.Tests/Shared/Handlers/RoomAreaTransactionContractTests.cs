@@ -44,7 +44,7 @@ namespace RvtMcp.Tests
         private static string ReadHandler(string name, [CallerFilePath] string testFile = "")
         {
             var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "..", "..", ".."));
-            return File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", name));
+            return File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", "Rooms", name));
         }
     }
 }

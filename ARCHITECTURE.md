@@ -63,13 +63,15 @@ Six plugin shells share one source tree. Each csproj glob-includes `src/shared/*
 src/
 ├── server/                # RvtMcp.Server (.NET 8)
 ├── shared/                # Handlers, CommandDispatcher, Transport, Logging, Security, ToolBaker
-│   ├── Handlers/          # per-command tool handlers
-│   ├── Infrastructure/    # CommandDispatcher, McpEventHandler, SchemaValidator, BatchExecutor
+│   ├── Handlers/          # per-command tool handlers, grouped by domain
+│   │   └── Runtime/       # BatchExecuteHandler, BatchExecutor
+│   ├── Infrastructure/    # CommandDispatcher, McpEventHandler, SchemaValidator
 │   ├── Transport/         # ITransportServer, TcpTransportServer, PipeTransportServer
 │   ├── Security/          # AuthToken, ErrorSanitizer, SecretMasker
 │   ├── ToolBaker/         # Roslyn self-evolution engine
 │   ├── Config/            # RvtMcpConfig — 3-layer precedence
-│   └── Views/             # HistoryWindow
+│   ├── Views/             # HistoryWindow
+│   └── RibbonSetup.cs     # ribbon setup shared by all plugin shells
 ├── plugin-r22/            # net48, TCP
 ├── plugin-r23/            # net48, TCP
 ├── plugin-r24/            # net48, TCP
@@ -77,6 +79,8 @@ src/
 ├── plugin-r26/            # net8.0-windows7.0, Named Pipe
 └── plugin-r27/            # net10.0-windows7.0, Named Pipe
 ```
+
+`RvtMcp.sln` also presents these C# files under the `Shared source` solution folder. This is a navigation view; each plugin keeps compiling the same recursive source tree. Domain folders under `Handlers/` organize files while preserving the `RvtMcp.Plugin.Handlers` namespace.
 
 Year-specific API differences live behind `#if REVIT2024_OR_GREATER` / `#if REVIT2027_OR_GREATER` and the `RevitCompat` helper (e.g. `ElementId.IntegerValue` vs `.Value` across the R2026 cut). Each shell defines its own `DefineConstants` in csproj.
 

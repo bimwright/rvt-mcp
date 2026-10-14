@@ -122,7 +122,7 @@ public class PointBasedPlacementTests
     private static MethodInfo CompileAt([CallerFilePath] string file = "")
     {
         var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(file)!, "..", "..", "..", ".."));
-        var source = File.ReadAllText(Path.Combine(root, "src/shared/Handlers/CreatePointBasedElementHandler.cs"));
+        var source = File.ReadAllText(Path.Combine(root, "src/shared/Handlers/Elements/CreatePointBasedElementHandler.cs"));
         var refs = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
             .Append(typeof(JObject).Assembly.Location).Distinct().Select(p => MetadataReference.CreateFromFile(p));
         var compilation = CSharpCompilation.Create("PlacementProbe_" + Guid.NewGuid().ToString("N"),

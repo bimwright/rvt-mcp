@@ -35,7 +35,7 @@ namespace RvtMcp.Tests
             var pattern = new Regex(@"public\s+string\s+Name\s*=>\s*""([^""]+)""", RegexOptions.Compiled);
             var count = 0;
 
-            foreach (var file in Directory.EnumerateFiles(handlersDir, "*Handler.cs", SearchOption.TopDirectoryOnly))
+            foreach (var file in Directory.EnumerateFiles(handlersDir, "*Handler.cs", SearchOption.AllDirectories))
             {
                 var text = File.ReadAllText(file);
                 foreach (Match match in pattern.Matches(text))

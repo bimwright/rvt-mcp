@@ -72,7 +72,7 @@ public class MepConnectionHandlerTests
     {
         var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(file)!, "..", "..", "..", ".."));
         var sources = new[] { "ConnectMepElementsHandler.cs", "MepConnectionSystemType.cs" }
-            .Select(name => File.ReadAllText(Path.Combine(root, "src/shared/Handlers", name))).Append(Doubles);
+            .Select(name => File.ReadAllText(Path.Combine(root, "src/shared/Handlers/Mep", name))).Append(Doubles);
         var refs = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
             .Append(typeof(JObject).Assembly.Location).Distinct().Select(p => MetadataReference.CreateFromFile(p));
         var compilation = CSharpCompilation.Create("ConnectionHandlerProbe_" + Guid.NewGuid().ToString("N"),

@@ -21,6 +21,547 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RvtMcp.Tests", "..\tests\RvtMcp.Tests\RvtMcp.Tests.csproj", "{BD45F68F-C4F1-425B-8BCB-A518D22A507A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared source", "Shared source", "{D9236F70-E4F6-575A-A362-AFCE340FB9D2}"
+	ProjectSection(SolutionItems) = preProject
+		shared\RibbonSetup.cs = shared\RibbonSetup.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Commands", "Commands", "{61504156-D139-5B64-AE8F-346114A8075E}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Commands\CopyConnectionInfoCommand.cs = shared\Commands\CopyConnectionInfoCommand.cs
+		shared\Commands\RunBakedRibbonSlotCommands.cs = shared\Commands\RunBakedRibbonSlotCommands.cs
+		shared\Commands\ShowBakeInboxCommand.cs = shared\Commands\ShowBakeInboxCommand.cs
+		shared\Commands\ShowHistoryCommand.cs = shared\Commands\ShowHistoryCommand.cs
+		shared\Commands\ShowSettingsCommand.cs = shared\Commands\ShowSettingsCommand.cs
+		shared\Commands\ShowSettingsLanguageCommand.cs = shared\Commands\ShowSettingsLanguageCommand.cs
+		shared\Commands\ToggleMcpCommand.cs = shared\Commands\ToggleMcpCommand.cs
+		shared\Commands\ToggleToastCommand.cs = shared\Commands\ToggleToastCommand.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Config", "Config", "{87B1D97A-0F14-5706-B559-2D5E5BCE3781}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Config\RvtMcpConfig.cs = shared\Config\RvtMcpConfig.cs
+		shared\Config\StatusPrivacySection.cs = shared\Config\StatusPrivacySection.cs
+		shared\Config\ToastPositionOptions.cs = shared\Config\ToastPositionOptions.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Failures", "Failures", "{1BA0E625-CC68-59BD-8075-2AEBF258D71F}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Failures\FailureCapture.cs = shared\Failures\FailureCapture.cs
+		shared\Failures\FailureCompletion.cs = shared\Failures\FailureCompletion.cs
+		shared\Failures\FailureContracts.cs = shared\Failures\FailureContracts.cs
+		shared\Failures\FailureControl.cs = shared\Failures\FailureControl.cs
+		shared\Failures\FailureLedgerStore.cs = shared\Failures\FailureLedgerStore.cs
+		shared\Failures\FailureNativeEvents.cs = shared\Failures\FailureNativeEvents.cs
+		shared\Failures\FailurePolicy.cs = shared\Failures\FailurePolicy.cs
+		shared\Failures\RevitMessageCatalog.cs = shared\Failures\RevitMessageCatalog.cs
+		shared\Failures\RevitMessageCatalogModel.cs = shared\Failures\RevitMessageCatalogModel.cs
+		shared\Failures\UserDialogBuffer.cs = shared\Failures\UserDialogBuffer.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Handlers", "Handlers", "{8ABA3581-C0E6-510C-9BED-F55EBA1B9499}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Annotations", "Annotations", "{F036AB0B-C7CE-525A-BB5B-AF053F53FD30}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Annotations\ApplyKeynoteToElementHandler.cs = shared\Handlers\Annotations\ApplyKeynoteToElementHandler.cs
+		shared\Handlers\Annotations\CreateDetailLineHandler.cs = shared\Handlers\Annotations\CreateDetailLineHandler.cs
+		shared\Handlers\Annotations\CreateDimensionsHandler.cs = shared\Handlers\Annotations\CreateDimensionsHandler.cs
+		shared\Handlers\Annotations\CreateFilledRegionHandler.cs = shared\Handlers\Annotations\CreateFilledRegionHandler.cs
+		shared\Handlers\Annotations\CreateTextNoteHandler.cs = shared\Handlers\Annotations\CreateTextNoteHandler.cs
+		shared\Handlers\Annotations\FindUndimensionedElementsHandler.cs = shared\Handlers\Annotations\FindUndimensionedElementsHandler.cs
+		shared\Handlers\Annotations\FindUntaggedElementsHandler.cs = shared\Handlers\Annotations\FindUntaggedElementsHandler.cs
+		shared\Handlers\Annotations\ListKeynotesHandler.cs = shared\Handlers\Annotations\ListKeynotesHandler.cs
+		shared\Handlers\Annotations\TagAllByCategoryHandler.cs = shared\Handlers\Annotations\TagAllByCategoryHandler.cs
+		shared\Handlers\Annotations\TagAllWallsHandler.cs = shared\Handlers\Annotations\TagAllWallsHandler.cs
+		shared\Handlers\Annotations\TagElementsHandler.cs = shared\Handlers\Annotations\TagElementsHandler.cs
+		shared\Handlers\Annotations\WipeEmptyTagsHandler.cs = shared\Handlers\Annotations\WipeEmptyTagsHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documents", "Documents", "{68A29963-E239-55B0-8373-5657C11ECA8D}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Documents\AnalyzeModelStatisticsHandler.cs = shared\Handlers\Documents\AnalyzeModelStatisticsHandler.cs
+		shared\Handlers\Documents\GetChangeHistoryContextHandler.cs = shared\Handlers\Documents\GetChangeHistoryContextHandler.cs
+		shared\Handlers\Documents\GetModelOverviewHandler.cs = shared\Handlers\Documents\GetModelOverviewHandler.cs
+		shared\Handlers\Documents\GetModelWarningsSummaryHandler.cs = shared\Handlers\Documents\GetModelWarningsSummaryHandler.cs
+		shared\Handlers\Documents\GetProjectCoordinateSystemHandler.cs = shared\Handlers\Documents\GetProjectCoordinateSystemHandler.cs
+		shared\Handlers\Documents\ListPhasesHandler.cs = shared\Handlers\Documents\ListPhasesHandler.cs
+		shared\Handlers\Documents\ListRecentModelsHandler.cs = shared\Handlers\Documents\ListRecentModelsHandler.cs
+		shared\Handlers\Documents\OpenModelHandler.cs = shared\Handlers\Documents\OpenModelHandler.cs
+		shared\Handlers\Documents\OpenModelLocalPolicy.cs = shared\Handlers\Documents\OpenModelLocalPolicy.cs
+		shared\Handlers\Documents\PurgeUnusedHandler.cs = shared\Handlers\Documents\PurgeUnusedHandler.cs
+		shared\Handlers\Documents\SetProjectBasePointHandler.cs = shared\Handlers\Documents\SetProjectBasePointHandler.cs
+		shared\Handlers\Documents\SetProjectInfoHandler.cs = shared\Handlers\Documents\SetProjectInfoHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Elements", "Elements", "{2BC69304-6D73-5C82-B84B-2F6277E8E58C}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Elements\AiElementFilterHandler.cs = shared\Handlers\Elements\AiElementFilterHandler.cs
+		shared\Handlers\Elements\ChangeElementTypeHandler.cs = shared\Handlers\Elements\ChangeElementTypeHandler.cs
+		shared\Handlers\Elements\CreateLineBasedElementHandler.cs = shared\Handlers\Elements\CreateLineBasedElementHandler.cs
+		shared\Handlers\Elements\CreatePointBasedElementHandler.cs = shared\Handlers\Elements\CreatePointBasedElementHandler.cs
+		shared\Handlers\Elements\CreateSurfaceBasedElementHandler.cs = shared\Handlers\Elements\CreateSurfaceBasedElementHandler.cs
+		shared\Handlers\Elements\DeleteElementHandler.cs = shared\Handlers\Elements\DeleteElementHandler.cs
+		shared\Handlers\Elements\GetElementDetailsHandler.cs = shared\Handlers\Elements\GetElementDetailsHandler.cs
+		shared\Handlers\Elements\GetElementRelationshipsHandler.cs = shared\Handlers\Elements\GetElementRelationshipsHandler.cs
+		shared\Handlers\Elements\GetSelectedElementsHandler.cs = shared\Handlers\Elements\GetSelectedElementsHandler.cs
+		shared\Handlers\Elements\OperateElementHandler.cs = shared\Handlers\Elements\OperateElementHandler.cs
+		shared\Handlers\Elements\SelectElementsHandler.cs = shared\Handlers\Elements\SelectElementsHandler.cs
+		shared\Handlers\Elements\ShowElementInViewHandler.cs = shared\Handlers\Elements\ShowElementInViewHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Export", "Export", "{201449E1-1E5D-543D-AF8B-E7B7E08F14FC}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Export\BatchExportSheetsHandler.cs = shared\Handlers\Export\BatchExportSheetsHandler.cs
+		shared\Handlers\Export\ExportDgnHandler.cs = shared\Handlers\Export\ExportDgnHandler.cs
+		shared\Handlers\Export\ExportDwfHandler.cs = shared\Handlers\Export\ExportDwfHandler.cs
+		shared\Handlers\Export\ExportDwgHandler.cs = shared\Handlers\Export\ExportDwgHandler.cs
+		shared\Handlers\Export\ExportElementsDataHandler.cs = shared\Handlers\Export\ExportElementsDataHandler.cs
+		shared\Handlers\Export\ExportFbxHandler.cs = shared\Handlers\Export\ExportFbxHandler.cs
+		shared\Handlers\Export\ExportGbxmlHandler.cs = shared\Handlers\Export\ExportGbxmlHandler.cs
+		shared\Handlers\Export\ExportIfcHandler.cs = shared\Handlers\Export\ExportIfcHandler.cs
+		shared\Handlers\Export\ExportImageHandler.cs = shared\Handlers\Export\ExportImageHandler.cs
+		shared\Handlers\Export\ExportNwcHandler.cs = shared\Handlers\Export\ExportNwcHandler.cs
+		shared\Handlers\Export\ExportPdfHandler.cs = shared\Handlers\Export\ExportPdfHandler.cs
+		shared\Handlers\Export\ListExportSettingsHandler.cs = shared\Handlers\Export\ListExportSettingsHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Families", "Families", "{CE884C6D-D63A-5E9A-BCE6-0AC293832991}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Families\AuditFamiliesHandler.cs = shared\Handlers\Families\AuditFamiliesHandler.cs
+		shared\Handlers\Families\DuplicateFamilyTypeHandler.cs = shared\Handlers\Families\DuplicateFamilyTypeHandler.cs
+		shared\Handlers\Families\ExportFamilyToPathHandler.cs = shared\Handlers\Families\ExportFamilyToPathHandler.cs
+		shared\Handlers\Families\GetFamilyInstancesHandler.cs = shared\Handlers\Families\GetFamilyInstancesHandler.cs
+		shared\Handlers\Families\GetFamilyTypesHandler.cs = shared\Handlers\Families\GetFamilyTypesHandler.cs
+		shared\Handlers\Families\ListFamilyTypesInFamilyHandler.cs = shared\Handlers\Families\ListFamilyTypesInFamilyHandler.cs
+		shared\Handlers\Families\ListLoadedFamiliesHandler.cs = shared\Handlers\Families\ListLoadedFamiliesHandler.cs
+		shared\Handlers\Families\LoadFamilyFromPathHandler.cs = shared\Handlers\Families\LoadFamilyFromPathHandler.cs
+		shared\Handlers\Families\RenameFamilyTypeHandler.cs = shared\Handlers\Families\RenameFamilyTypeHandler.cs
+		shared\Handlers\Families\ReplaceFamilyTypeHandler.cs = shared\Handlers\Families\ReplaceFamilyTypeHandler.cs
+		shared\Handlers\Families\UnloadFamilyHandler.cs = shared\Handlers\Families\UnloadFamilyHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Geometry", "Geometry", "{08A68AB4-C633-5977-A39F-DB74BC84AE76}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Geometry\AnalyzeGeometryComplexityHandler.cs = shared\Handlers\Geometry\AnalyzeGeometryComplexityHandler.cs
+		shared\Handlers\Geometry\ComputeElementAreaHandler.cs = shared\Handlers\Geometry\ComputeElementAreaHandler.cs
+		shared\Handlers\Geometry\ComputeElementVolumeHandler.cs = shared\Handlers\Geometry\ComputeElementVolumeHandler.cs
+		shared\Handlers\Geometry\FindElementsInVolumeHandler.cs = shared\Handlers\Geometry\FindElementsInVolumeHandler.cs
+		shared\Handlers\Geometry\FindOverlappingElementsHandler.cs = shared\Handlers\Geometry\FindOverlappingElementsHandler.cs
+		shared\Handlers\Geometry\GetElementBoundingBoxHandler.cs = shared\Handlers\Geometry\GetElementBoundingBoxHandler.cs
+		shared\Handlers\Geometry\GetElementCentroidHandler.cs = shared\Handlers\Geometry\GetElementCentroidHandler.cs
+		shared\Handlers\Geometry\GetElementGeometryHandler.cs = shared\Handlers\Geometry\GetElementGeometryHandler.cs
+		shared\Handlers\Geometry\MeasureDistanceBetweenElementsHandler.cs = shared\Handlers\Geometry\MeasureDistanceBetweenElementsHandler.cs
+		shared\Handlers\Geometry\ProjectPointOntoFaceHandler.cs = shared\Handlers\Geometry\ProjectPointOntoFaceHandler.cs
+		shared\Handlers\Geometry\RaycastFromPointHandler.cs = shared\Handlers\Geometry\RaycastFromPointHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Graphics", "Graphics", "{CDD52D0F-9B39-5DA4-97E9-4D587ECDD052}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Graphics\ApplyFilterToViewHandler.cs = shared\Handlers\Graphics\ApplyFilterToViewHandler.cs
+		shared\Handlers\Graphics\ClearElementOverridesHandler.cs = shared\Handlers\Graphics\ClearElementOverridesHandler.cs
+		shared\Handlers\Graphics\ColorElementsHandler.cs = shared\Handlers\Graphics\ColorElementsHandler.cs
+		shared\Handlers\Graphics\CreateViewFilterHandler.cs = shared\Handlers\Graphics\CreateViewFilterHandler.cs
+		shared\Handlers\Graphics\ListViewFiltersHandler.cs = shared\Handlers\Graphics\ListViewFiltersHandler.cs
+		shared\Handlers\Graphics\OverrideElementGraphicsHandler.cs = shared\Handlers\Graphics\OverrideElementGraphicsHandler.cs
+		shared\Handlers\Graphics\RemoveFilterFromViewHandler.cs = shared\Handlers\Graphics\RemoveFilterFromViewHandler.cs
+		shared\Handlers\Graphics\SetCategoryVisibilityHandler.cs = shared\Handlers\Graphics\SetCategoryVisibilityHandler.cs
+		shared\Handlers\Graphics\SetFilterOverridesHandler.cs = shared\Handlers\Graphics\SetFilterOverridesHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Links", "Links", "{EE2C4C22-0963-5C14-ABE0-8D9A72EB1755}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Links\AcquireCoordinatesFromLinkHandler.cs = shared\Handlers\Links\AcquireCoordinatesFromLinkHandler.cs
+		shared\Handlers\Links\GetLinkCoordinateSystemHandler.cs = shared\Handlers\Links\GetLinkCoordinateSystemHandler.cs
+		shared\Handlers\Links\GetLinkElementsHandler.cs = shared\Handlers\Links\GetLinkElementsHandler.cs
+		shared\Handlers\Links\ImportCadToViewHandler.cs = shared\Handlers\Links\ImportCadToViewHandler.cs
+		shared\Handlers\Links\LinkRevitModelHandler.cs = shared\Handlers\Links\LinkRevitModelHandler.cs
+		shared\Handlers\Links\ListLinkedCadHandler.cs = shared\Handlers\Links\ListLinkedCadHandler.cs
+		shared\Handlers\Links\ListLinkedModelsHandler.cs = shared\Handlers\Links\ListLinkedModelsHandler.cs
+		shared\Handlers\Links\PublishCoordinatesToLinkHandler.cs = shared\Handlers\Links\PublishCoordinatesToLinkHandler.cs
+		shared\Handlers\Links\ReloadLinkHandler.cs = shared\Handlers\Links\ReloadLinkHandler.cs
+		shared\Handlers\Links\UnloadLinkHandler.cs = shared\Handlers\Links\UnloadLinkHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Lint", "Lint", "{C6F54E88-3BB0-5B27-AD58-E8DEB0B63A38}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Lint\AnalyzeViewNamingPatternsHandler.cs = shared\Handlers\Lint\AnalyzeViewNamingPatternsHandler.cs
+		shared\Handlers\Lint\DetectFirmProfileHandler.cs = shared\Handlers\Lint\DetectFirmProfileHandler.cs
+		shared\Handlers\Lint\SuggestViewNameCorrectionsHandler.cs = shared\Handlers\Lint\SuggestViewNameCorrectionsHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Materials", "Materials", "{59EC3694-322D-5177-B912-3F73C993E592}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Materials\AssignMaterialToElementHandler.cs = shared\Handlers\Materials\AssignMaterialToElementHandler.cs
+		shared\Handlers\Materials\CreateMaterialHandler.cs = shared\Handlers\Materials\CreateMaterialHandler.cs
+		shared\Handlers\Materials\DuplicateMaterialHandler.cs = shared\Handlers\Materials\DuplicateMaterialHandler.cs
+		shared\Handlers\Materials\GetMaterialPropertiesHandler.cs = shared\Handlers\Materials\GetMaterialPropertiesHandler.cs
+		shared\Handlers\Materials\GetMaterialQuantitiesHandler.cs = shared\Handlers\Materials\GetMaterialQuantitiesHandler.cs
+		shared\Handlers\Materials\GetMaterialTakeoffHandler.cs = shared\Handlers\Materials\GetMaterialTakeoffHandler.cs
+		shared\Handlers\Materials\ListMaterialsHandler.cs = shared\Handlers\Materials\ListMaterialsHandler.cs
+		shared\Handlers\Materials\SetMaterialAppearanceHandler.cs = shared\Handlers\Materials\SetMaterialAppearanceHandler.cs
+		shared\Handlers\Materials\SetMaterialIdentityHandler.cs = shared\Handlers\Materials\SetMaterialIdentityHandler.cs
+		shared\Handlers\Materials\SetMaterialStructuralAssetHandler.cs = shared\Handlers\Materials\SetMaterialStructuralAssetHandler.cs
+		shared\Handlers\Materials\SetMaterialThermalAssetHandler.cs = shared\Handlers\Materials\SetMaterialThermalAssetHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Mep", "Mep", "{C95923EB-ACBA-5E47-AAA7-659F031C80C3}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Mep\AnalyzeMepNetworkHandler.cs = shared\Handlers\Mep\AnalyzeMepNetworkHandler.cs
+		shared\Handlers\Mep\ConnectMepElementsHandler.cs = shared\Handlers\Mep\ConnectMepElementsHandler.cs
+		shared\Handlers\Mep\CreateAirTerminalHandler.cs = shared\Handlers\Mep\CreateAirTerminalHandler.cs
+		shared\Handlers\Mep\CreateCableTrayHandler.cs = shared\Handlers\Mep\CreateCableTrayHandler.cs
+		shared\Handlers\Mep\CreateConduitHandler.cs = shared\Handlers\Mep\CreateConduitHandler.cs
+		shared\Handlers\Mep\CreateDuctHandler.cs = shared\Handlers\Mep\CreateDuctHandler.cs
+		shared\Handlers\Mep\CreateLightingFixtureHandler.cs = shared\Handlers\Mep\CreateLightingFixtureHandler.cs
+		shared\Handlers\Mep\CreateMepFittingHandler.cs = shared\Handlers\Mep\CreateMepFittingHandler.cs
+		shared\Handlers\Mep\CreatePipeHandler.cs = shared\Handlers\Mep\CreatePipeHandler.cs
+		shared\Handlers\Mep\DetectSystemElementsHandler.cs = shared\Handlers\Mep\DetectSystemElementsHandler.cs
+		shared\Handlers\Mep\FindMepDisconnectsHandler.cs = shared\Handlers\Mep\FindMepDisconnectsHandler.cs
+		shared\Handlers\Mep\GetMepElementConnectorsHandler.cs = shared\Handlers\Mep\GetMepElementConnectorsHandler.cs
+		shared\Handlers\Mep\GetPanelScheduleHandler.cs = shared\Handlers\Mep\GetPanelScheduleHandler.cs
+		shared\Handlers\Mep\GetSystemInventoryHandler.cs = shared\Handlers\Mep\GetSystemInventoryHandler.cs
+		shared\Handlers\Mep\ListMepSystemsHandler.cs = shared\Handlers\Mep\ListMepSystemsHandler.cs
+		shared\Handlers\Mep\MepConnectionSystemType.cs = shared\Handlers\Mep\MepConnectionSystemType.cs
+		shared\Handlers\Mep\MepMembershipPolicy.cs = shared\Handlers\Mep\MepMembershipPolicy.cs
+		shared\Handlers\Mep\MepSystemMembership.cs = shared\Handlers\Mep\MepSystemMembership.cs
+		shared\Handlers\Mep\SetSystemClassificationHandler.cs = shared\Handlers\Mep\SetSystemClassificationHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Organization", "Organization", "{9319C9A8-B2C0-5DC9-8CB2-3F012D2B084B}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Organization\AssignElementsToWorksetHandler.cs = shared\Handlers\Organization\AssignElementsToWorksetHandler.cs
+		shared\Handlers\Organization\CreateGridHandler.cs = shared\Handlers\Organization\CreateGridHandler.cs
+		shared\Handlers\Organization\CreateGroupFromElementsHandler.cs = shared\Handlers\Organization\CreateGroupFromElementsHandler.cs
+		shared\Handlers\Organization\CreateLevelHandler.cs = shared\Handlers\Organization\CreateLevelHandler.cs
+		shared\Handlers\Organization\DeleteSavedSelectionHandler.cs = shared\Handlers\Organization\DeleteSavedSelectionHandler.cs
+		shared\Handlers\Organization\GetAssemblyMembersHandler.cs = shared\Handlers\Organization\GetAssemblyMembersHandler.cs
+		shared\Handlers\Organization\GetGroupMembersHandler.cs = shared\Handlers\Organization\GetGroupMembersHandler.cs
+		shared\Handlers\Organization\ListAssembliesHandler.cs = shared\Handlers\Organization\ListAssembliesHandler.cs
+		shared\Handlers\Organization\ListGroupsHandler.cs = shared\Handlers\Organization\ListGroupsHandler.cs
+		shared\Handlers\Organization\ListSavedSelectionsHandler.cs = shared\Handlers\Organization\ListSavedSelectionsHandler.cs
+		shared\Handlers\Organization\ListWorksetsHandler.cs = shared\Handlers\Organization\ListWorksetsHandler.cs
+		shared\Handlers\Organization\LoadSelectionHandler.cs = shared\Handlers\Organization\LoadSelectionHandler.cs
+		shared\Handlers\Organization\SaveSelectionHandler.cs = shared\Handlers\Organization\SaveSelectionHandler.cs
+		shared\Handlers\Organization\SetElementPhaseHandler.cs = shared\Handlers\Organization\SetElementPhaseHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Parameters", "Parameters", "{4B28023D-8BE1-552B-99A4-C6E4E1515B3E}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Parameters\BindSharedParameterHandler.cs = shared\Handlers\Parameters\BindSharedParameterHandler.cs
+		shared\Handlers\Parameters\CreateProjectParameterHandler.cs = shared\Handlers\Parameters\CreateProjectParameterHandler.cs
+		shared\Handlers\Parameters\CreateSharedParameterHandler.cs = shared\Handlers\Parameters\CreateSharedParameterHandler.cs
+		shared\Handlers\Parameters\ExportSharedParameterFileHandler.cs = shared\Handlers\Parameters\ExportSharedParameterFileHandler.cs
+		shared\Handlers\Parameters\GetElementParametersHandler.cs = shared\Handlers\Parameters\GetElementParametersHandler.cs
+		shared\Handlers\Parameters\GetTypeParametersHandler.cs = shared\Handlers\Parameters\GetTypeParametersHandler.cs
+		shared\Handlers\Parameters\ListProjectParameterBindingsHandler.cs = shared\Handlers\Parameters\ListProjectParameterBindingsHandler.cs
+		shared\Handlers\Parameters\ListProjectParametersHandler.cs = shared\Handlers\Parameters\ListProjectParametersHandler.cs
+		shared\Handlers\Parameters\ListSharedParametersHandler.cs = shared\Handlers\Parameters\ListSharedParametersHandler.cs
+		shared\Handlers\Parameters\RemoveParameterBindingHandler.cs = shared\Handlers\Parameters\RemoveParameterBindingHandler.cs
+		shared\Handlers\Parameters\SetElementParameterValuesHandler.cs = shared\Handlers\Parameters\SetElementParameterValuesHandler.cs
+		shared\Handlers\Parameters\SetParameterValueByGuidHandler.cs = shared\Handlers\Parameters\SetParameterValueByGuidHandler.cs
+		shared\Handlers\Parameters\SetTypeParameterValuesHandler.cs = shared\Handlers\Parameters\SetTypeParameterValuesHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Rooms", "Rooms", "{894A33FF-DB61-5D7F-A4D9-4DE7736CBE6B}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Rooms\AutoCreateRoomsFromWallsHandler.cs = shared\Handlers\Rooms\AutoCreateRoomsFromWallsHandler.cs
+		shared\Handlers\Rooms\ComputeRoomFinishesHandler.cs = shared\Handlers\Rooms\ComputeRoomFinishesHandler.cs
+		shared\Handlers\Rooms\CreateAreaHandler.cs = shared\Handlers\Rooms\CreateAreaHandler.cs
+		shared\Handlers\Rooms\CreateRoomHandler.cs = shared\Handlers\Rooms\CreateRoomHandler.cs
+		shared\Handlers\Rooms\CreateRoomSeparatorHandler.cs = shared\Handlers\Rooms\CreateRoomSeparatorHandler.cs
+		shared\Handlers\Rooms\CreateSpaceHandler.cs = shared\Handlers\Rooms\CreateSpaceHandler.cs
+		shared\Handlers\Rooms\ExportRoomDataHandler.cs = shared\Handlers\Rooms\ExportRoomDataHandler.cs
+		shared\Handlers\Rooms\GetRoomBoundariesHandler.cs = shared\Handlers\Rooms\GetRoomBoundariesHandler.cs
+		shared\Handlers\Rooms\GetRoomOpeningsHandler.cs = shared\Handlers\Rooms\GetRoomOpeningsHandler.cs
+		shared\Handlers\Rooms\ListAreasHandler.cs = shared\Handlers\Rooms\ListAreasHandler.cs
+		shared\Handlers\Rooms\ListRoomsHandler.cs = shared\Handlers\Rooms\ListRoomsHandler.cs
+		shared\Handlers\Rooms\TagAllAreasHandler.cs = shared\Handlers\Rooms\TagAllAreasHandler.cs
+		shared\Handlers\Rooms\TagAllRoomsHandler.cs = shared\Handlers\Rooms\TagAllRoomsHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Runtime", "Runtime", "{0C572579-35FF-57C7-B7C1-6789D4B1FE7C}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Runtime\BatchExecuteHandler.cs = shared\Handlers\Runtime\BatchExecuteHandler.cs
+		shared\Handlers\Runtime\BatchExecutor.cs = shared\Handlers\Runtime\BatchExecutor.cs
+		shared\Handlers\Runtime\SendCodeToRevitHandler.cs = shared\Handlers\Runtime\SendCodeToRevitHandler.cs
+		shared\Handlers\Runtime\ShowMessageHandler.cs = shared\Handlers\Runtime\ShowMessageHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Schedules", "Schedules", "{32E88DC5-A46D-5D96-91FF-E9CB892D35E0}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Schedules\AddScheduleFieldHandler.cs = shared\Handlers\Schedules\AddScheduleFieldHandler.cs
+		shared\Handlers\Schedules\ApplyScheduleFilterSortHandler.cs = shared\Handlers\Schedules\ApplyScheduleFilterSortHandler.cs
+		shared\Handlers\Schedules\CreateScheduleHandler.cs = shared\Handlers\Schedules\CreateScheduleHandler.cs
+		shared\Handlers\Schedules\ExportScheduleCsvHandler.cs = shared\Handlers\Schedules\ExportScheduleCsvHandler.cs
+		shared\Handlers\Schedules\FindScheduleElementsHandler.cs = shared\Handlers\Schedules\FindScheduleElementsHandler.cs
+		shared\Handlers\Schedules\GetSchedulableFieldsHandler.cs = shared\Handlers\Schedules\GetSchedulableFieldsHandler.cs
+		shared\Handlers\Schedules\GetScheduleDataHandler.cs = shared\Handlers\Schedules\GetScheduleDataHandler.cs
+		shared\Handlers\Schedules\GetScheduleDefinitionHandler.cs = shared\Handlers\Schedules\GetScheduleDefinitionHandler.cs
+		shared\Handlers\Schedules\GetScheduleFormulasHandler.cs = shared\Handlers\Schedules\GetScheduleFormulasHandler.cs
+		shared\Handlers\Schedules\ListSchedulesHandler.cs = shared\Handlers\Schedules\ListSchedulesHandler.cs
+		shared\Handlers\Schedules\ScheduleElementIdFilter.cs = shared\Handlers\Schedules\ScheduleElementIdFilter.cs
+		shared\Handlers\Schedules\ScheduleSortInput.cs = shared\Handlers\Schedules\ScheduleSortInput.cs
+		shared\Handlers\Schedules\UpdateScheduleFieldHandler.cs = shared\Handlers\Schedules\UpdateScheduleFieldHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sheets", "Sheets", "{67C0EE23-91A0-50D5-A88E-1DA802174064}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Sheets\AlignViewportsHandler.cs = shared\Handlers\Sheets\AlignViewportsHandler.cs
+		shared\Handlers\Sheets\AnalyzeSheetLayoutHandler.cs = shared\Handlers\Sheets\AnalyzeSheetLayoutHandler.cs
+		shared\Handlers\Sheets\AssignRevisionToSheetHandler.cs = shared\Handlers\Sheets\AssignRevisionToSheetHandler.cs
+		shared\Handlers\Sheets\CreatePlaceholderSheetHandler.cs = shared\Handlers\Sheets\CreatePlaceholderSheetHandler.cs
+		shared\Handlers\Sheets\CreateRevisionHandler.cs = shared\Handlers\Sheets\CreateRevisionHandler.cs
+		shared\Handlers\Sheets\CreateSheetHandler.cs = shared\Handlers\Sheets\CreateSheetHandler.cs
+		shared\Handlers\Sheets\CreateViewSheetSetHandler.cs = shared\Handlers\Sheets\CreateViewSheetSetHandler.cs
+		shared\Handlers\Sheets\DuplicateSheetHandler.cs = shared\Handlers\Sheets\DuplicateSheetHandler.cs
+		shared\Handlers\Sheets\GetPrintSettingsHandler.cs = shared\Handlers\Sheets\GetPrintSettingsHandler.cs
+		shared\Handlers\Sheets\GetTitleblockParametersHandler.cs = shared\Handlers\Sheets\GetTitleblockParametersHandler.cs
+		shared\Handlers\Sheets\GetViewportGeometryHandler.cs = shared\Handlers\Sheets\GetViewportGeometryHandler.cs
+		shared\Handlers\Sheets\ListRevisionsHandler.cs = shared\Handlers\Sheets\ListRevisionsHandler.cs
+		shared\Handlers\Sheets\ListSheetsHandler.cs = shared\Handlers\Sheets\ListSheetsHandler.cs
+		shared\Handlers\Sheets\ListTitleblocksHandler.cs = shared\Handlers\Sheets\ListTitleblocksHandler.cs
+		shared\Handlers\Sheets\PlaceScheduleOnSheetHandler.cs = shared\Handlers\Sheets\PlaceScheduleOnSheetHandler.cs
+		shared\Handlers\Sheets\PlaceViewOnSheetHandler.cs = shared\Handlers\Sheets\PlaceViewOnSheetHandler.cs
+		shared\Handlers\Sheets\RenumberSheetsHandler.cs = shared\Handlers\Sheets\RenumberSheetsHandler.cs
+		shared\Handlers\Sheets\SetTitleblockParametersHandler.cs = shared\Handlers\Sheets\SetTitleblockParametersHandler.cs
+		shared\Handlers\Sheets\ViewportLayoutMath.cs = shared\Handlers\Sheets\ViewportLayoutMath.cs
+		shared\Handlers\Sheets\ViewportSheetSupport.cs = shared\Handlers\Sheets\ViewportSheetSupport.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Structural", "Structural", "{F06F3E68-00AD-5856-A74E-EEA40D990D21}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Structural\AnalyzeStructuralConnectionsHandler.cs = shared\Handlers\Structural\AnalyzeStructuralConnectionsHandler.cs
+		shared\Handlers\Structural\CreateFoundationIsolatedHandler.cs = shared\Handlers\Structural\CreateFoundationIsolatedHandler.cs
+		shared\Handlers\Structural\CreateFoundationWallHandler.cs = shared\Handlers\Structural\CreateFoundationWallHandler.cs
+		shared\Handlers\Structural\CreateRebarSetHandler.cs = shared\Handlers\Structural\CreateRebarSetHandler.cs
+		shared\Handlers\Structural\CreateRebarStirrupHandler.cs = shared\Handlers\Structural\CreateRebarStirrupHandler.cs
+		shared\Handlers\Structural\CreateStructuralBeamHandler.cs = shared\Handlers\Structural\CreateStructuralBeamHandler.cs
+		shared\Handlers\Structural\CreateStructuralColumnHandler.cs = shared\Handlers\Structural\CreateStructuralColumnHandler.cs
+		shared\Handlers\Structural\CreateStructuralWallHandler.cs = shared\Handlers\Structural\CreateStructuralWallHandler.cs
+		shared\Handlers\Structural\GetStructuralLoadsHandler.cs = shared\Handlers\Structural\GetStructuralLoadsHandler.cs
+		shared\Handlers\Structural\ListRebarHandler.cs = shared\Handlers\Structural\ListRebarHandler.cs
+		shared\Handlers\Structural\SetStructuralLoadHandler.cs = shared\Handlers\Structural\SetStructuralLoadHandler.cs
+		shared\Handlers\Structural\TagStructuralFramingHandler.cs = shared\Handlers\Structural\TagStructuralFramingHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ToolBaker", "ToolBaker", "{56AD6EB1-AF3D-5938-B436-88691AE639D8}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\ToolBaker\ApplyBakeSuggestionHandler.cs = shared\Handlers\ToolBaker\ApplyBakeSuggestionHandler.cs
+		shared\Handlers\ToolBaker\ListBakedToolsHandler.cs = shared\Handlers\ToolBaker\ListBakedToolsHandler.cs
+		shared\Handlers\ToolBaker\RunBakedToolHandler.cs = shared\Handlers\ToolBaker\RunBakedToolHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Views", "Views", "{25C54EB3-63FD-55FE-BDD9-0F1F342F7F9E}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Views\ActivateViewHandler.cs = shared\Handlers\Views\ActivateViewHandler.cs
+		shared\Handlers\Views\ApplyViewTemplateHandler.cs = shared\Handlers\Views\ApplyViewTemplateHandler.cs
+		shared\Handlers\Views\CaptureViewImageHandler.cs = shared\Handlers\Views\CaptureViewImageHandler.cs
+		shared\Handlers\Views\CreateCalloutViewHandler.cs = shared\Handlers\Views\CreateCalloutViewHandler.cs
+		shared\Handlers\Views\CreateViewHandler.cs = shared\Handlers\Views\CreateViewHandler.cs
+		shared\Handlers\Views\CreateViewTemplateFromViewHandler.cs = shared\Handlers\Views\CreateViewTemplateFromViewHandler.cs
+		shared\Handlers\Views\DeleteViewTemplateHandler.cs = shared\Handlers\Views\DeleteViewTemplateHandler.cs
+		shared\Handlers\Views\DuplicateViewTemplateHandler.cs = shared\Handlers\Views\DuplicateViewTemplateHandler.cs
+		shared\Handlers\Views\GetCurrentViewHandler.cs = shared\Handlers\Views\GetCurrentViewHandler.cs
+		shared\Handlers\Views\GetViewVisibilityHandler.cs = shared\Handlers\Views\GetViewVisibilityHandler.cs
+		shared\Handlers\Views\ListViewTemplatesHandler.cs = shared\Handlers\Views\ListViewTemplatesHandler.cs
+		shared\Handlers\Views\SetViewCropHandler.cs = shared\Handlers\Views\SetViewCropHandler.cs
+		shared\Handlers\Views\SetViewPhaseHandler.cs = shared\Handlers\Views\SetViewPhaseHandler.cs
+		shared\Handlers\Views\SetViewScaleHandler.cs = shared\Handlers\Views\SetViewScaleHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflows", "Workflows", "{57BF7457-969D-57D9-8AD0-60789F5535F5}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Handlers\Workflows\ClashDetectionHandler.cs = shared\Handlers\Workflows\ClashDetectionHandler.cs
+		shared\Handlers\Workflows\SurveyChangeImpactHandler.cs = shared\Handlers\Workflows\SurveyChangeImpactHandler.cs
+		shared\Handlers\Workflows\WorkflowClashReviewHandler.cs = shared\Handlers\Workflows\WorkflowClashReviewHandler.cs
+		shared\Handlers\Workflows\WorkflowDataRoundtripHandler.cs = shared\Handlers\Workflows\WorkflowDataRoundtripHandler.cs
+		shared\Handlers\Workflows\WorkflowModelAuditHandler.cs = shared\Handlers\Workflows\WorkflowModelAuditHandler.cs
+		shared\Handlers\Workflows\WorkflowNamingNormalizationHandler.cs = shared\Handlers\Workflows\WorkflowNamingNormalizationHandler.cs
+		shared\Handlers\Workflows\WorkflowRoomDocumentationHandler.cs = shared\Handlers\Workflows\WorkflowRoomDocumentationHandler.cs
+		shared\Handlers\Workflows\WorkflowSheetSetHandler.cs = shared\Handlers\Workflows\WorkflowSheetSetHandler.cs
+		shared\Handlers\Workflows\WorkflowSupport.cs = shared\Handlers\Workflows\WorkflowSupport.cs
+		shared\Handlers\Workflows\WorkflowTakeoffReportHandler.cs = shared\Handlers\Workflows\WorkflowTakeoffReportHandler.cs
+		shared\Handlers\Workflows\WorkflowViewCleanupHandler.cs = shared\Handlers\Workflows\WorkflowViewCleanupHandler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Infrastructure", "Infrastructure", "{76B77B0F-AA98-5D84-8D31-890D55FA1216}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Infrastructure\CaptureOutputPath.cs = shared\Infrastructure\CaptureOutputPath.cs
+		shared\Infrastructure\CaptureOutputResolver.cs = shared\Infrastructure\CaptureOutputResolver.cs
+		shared\Infrastructure\ChangeHistoryTransfer.cs = shared\Infrastructure\ChangeHistoryTransfer.cs
+		shared\Infrastructure\ChangeSummary.cs = shared\Infrastructure\ChangeSummary.cs
+		shared\Infrastructure\CommandDispatcher.cs = shared\Infrastructure\CommandDispatcher.cs
+		shared\Infrastructure\CommandOutcome.cs = shared\Infrastructure\CommandOutcome.cs
+		shared\Infrastructure\DocumentChangeAccumulator.cs = shared\Infrastructure\DocumentChangeAccumulator.cs
+		shared\Infrastructure\ExportTransaction.cs = shared\Infrastructure\ExportTransaction.cs
+		shared\Infrastructure\HistoryDiagnostics.cs = shared\Infrastructure\HistoryDiagnostics.cs
+		shared\Infrastructure\HistoryFileIdentity.cs = shared\Infrastructure\HistoryFileIdentity.cs
+		shared\Infrastructure\IRevitCommand.cs = shared\Infrastructure\IRevitCommand.cs
+		shared\Infrastructure\IdlingUpdater.cs = shared\Infrastructure\IdlingUpdater.cs
+		shared\Infrastructure\LegacyDataMigration.cs = shared\Infrastructure\LegacyDataMigration.cs
+		shared\Infrastructure\McpChangeTracker.cs = shared\Infrastructure\McpChangeTracker.cs
+		shared\Infrastructure\McpEventHandler.cs = shared\Infrastructure\McpEventHandler.cs
+		shared\Infrastructure\MutationResponseCompactor.cs = shared\Infrastructure\MutationResponseCompactor.cs
+		shared\Infrastructure\NoDocumentGuidance.cs = shared\Infrastructure\NoDocumentGuidance.cs
+		shared\Infrastructure\PendingRequestLifecycle.cs = shared\Infrastructure\PendingRequestLifecycle.cs
+		shared\Infrastructure\RecentFileList.cs = shared\Infrastructure\RecentFileList.cs
+		shared\Infrastructure\RequestWait.cs = shared\Infrastructure\RequestWait.cs
+		shared\Infrastructure\ResponseEnvelopeGuard.cs = shared\Infrastructure\ResponseEnvelopeGuard.cs
+		shared\Infrastructure\ResponsePaging.cs = shared\Infrastructure\ResponsePaging.cs
+		shared\Infrastructure\ResponseSizeGuard.cs = shared\Infrastructure\ResponseSizeGuard.cs
+		shared\Infrastructure\ResponseSizePolicyCatalog.cs = shared\Infrastructure\ResponseSizePolicyCatalog.cs
+		shared\Infrastructure\ResponseSpillPolicy.cs = shared\Infrastructure\ResponseSpillPolicy.cs
+		shared\Infrastructure\ResponseSpillProcessor.cs = shared\Infrastructure\ResponseSpillProcessor.cs
+		shared\Infrastructure\ResponseSpillWriter.cs = shared\Infrastructure\ResponseSpillWriter.cs
+		shared\Infrastructure\RevitCompat.cs = shared\Infrastructure\RevitCompat.cs
+		shared\Infrastructure\SafeFailuresPreprocessor.cs = shared\Infrastructure\SafeFailuresPreprocessor.cs
+		shared\Infrastructure\SafetyResponseMetadata.cs = shared\Infrastructure\SafetyResponseMetadata.cs
+		shared\Infrastructure\SchemaValidator.cs = shared\Infrastructure\SchemaValidator.cs
+		shared\Infrastructure\SendCodeSourceBuilder.cs = shared\Infrastructure\SendCodeSourceBuilder.cs
+		shared\Infrastructure\SharedParameterGuid.cs = shared\Infrastructure\SharedParameterGuid.cs
+		shared\Infrastructure\ToolReadPolicy.cs = shared\Infrastructure\ToolReadPolicy.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Lint", "Lint", "{DBF8799D-4B91-536C-AE85-AEBC45F52619}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Lint\FirmProfile.cs = shared\Lint\FirmProfile.cs
+		shared\Lint\FirmProfileLibrary.cs = shared\Lint\FirmProfileLibrary.cs
+		shared\Lint\ViewNamingAnalyzer.cs = shared\Lint\ViewNamingAnalyzer.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Localization", "Localization", "{34394478-1F8D-5C77-BA9B-FE6B45A373FE}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Localization\EmbeddedCatalog.cs = shared\Localization\EmbeddedCatalog.cs
+		shared\Localization\L.cs = shared\Localization\L.cs
+		shared\Localization\LocaleResolver.cs = shared\Localization\LocaleResolver.cs
+		shared\Localization\LocalizationHost.cs = shared\Localization\LocalizationHost.cs
+		shared\Localization\LocalizationReport.cs = shared\Localization\LocalizationReport.cs
+		shared\Localization\OverrideFolderWatcher.cs = shared\Localization\OverrideFolderWatcher.cs
+		shared\Localization\OverrideValidator.cs = shared\Localization\OverrideValidator.cs
+		shared\Localization\StringTable.cs = shared\Localization\StringTable.cs
+		shared\Localization\ToolSummaryCatalog.cs = shared\Localization\ToolSummaryCatalog.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Logging", "Logging", "{51BE4DF1-509B-532D-8240-6AC819876A29}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Logging\McpLogger.cs = shared\Logging\McpLogger.cs
+		shared\Logging\McpSessionLog.cs = shared\Logging\McpSessionLog.cs
+		shared\Logging\PersistSendCodeTtl.cs = shared\Logging\PersistSendCodeTtl.cs
+		shared\Logging\SendCodeJournal.cs = shared\Logging\SendCodeJournal.cs
+		shared\Logging\SendCodeJournalGate.cs = shared\Logging\SendCodeJournalGate.cs
+		shared\Logging\SessionLogHistoryLoader.cs = shared\Logging\SessionLogHistoryLoader.cs
+		shared\Logging\SummaryGenerator.cs = shared\Logging\SummaryGenerator.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Properties", "Properties", "{FA6A47F9-C5B0-540C-B587-21F30C042C97}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Properties\PlatformSupport.cs = shared\Properties\PlatformSupport.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Security", "Security", "{E340C0AF-4E4A-5987-9F81-44B9C8394783}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Security\AuthToken.cs = shared\Security\AuthToken.cs
+		shared\Security\BakeRedactor.cs = shared\Security\BakeRedactor.cs
+		shared\Security\DiscoveryPublisher.cs = shared\Security\DiscoveryPublisher.cs
+		shared\Security\ErrorSanitizer.cs = shared\Security\ErrorSanitizer.cs
+		shared\Security\McpResponsePrivacy.cs = shared\Security\McpResponsePrivacy.cs
+		shared\Security\PathAllowlist.cs = shared\Security\PathAllowlist.cs
+		shared\Security\SecretMasker.cs = shared\Security\SecretMasker.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Survey", "Survey", "{F50C56BE-082B-508D-B652-E6885961542F}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Survey\SurveyContract.cs = shared\Survey\SurveyContract.cs
+		shared\Survey\SurveyEngine.cs = shared\Survey\SurveyEngine.cs
+		shared\Survey\SurveyHistoryBridge.cs = shared\Survey\SurveyHistoryBridge.cs
+		shared\Survey\SurveySnapshotCache.cs = shared\Survey\SurveySnapshotCache.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ToolBaker", "ToolBaker", "{CA0E7FB5-7F6B-5C03-89C2-275157CB8D5D}"
+	ProjectSection(SolutionItems) = preProject
+		shared\ToolBaker\BakeCompilerPolicy.cs = shared\ToolBaker\BakeCompilerPolicy.cs
+		shared\ToolBaker\BakedToolDispatchAuthorizer.cs = shared\ToolBaker\BakedToolDispatchAuthorizer.cs
+		shared\ToolBaker\BakedToolParameterDefaults.cs = shared\ToolBaker\BakedToolParameterDefaults.cs
+		shared\ToolBaker\BakedToolRecord.cs = shared\ToolBaker\BakedToolRecord.cs
+		shared\ToolBaker\BakedToolRegistry.cs = shared\ToolBaker\BakedToolRegistry.cs
+		shared\ToolBaker\BakedToolRuntimeCache.cs = shared\ToolBaker\BakedToolRuntimeCache.cs
+		shared\ToolBaker\BakedToolRuntimeCommandFactory.cs = shared\ToolBaker\BakedToolRuntimeCommandFactory.cs
+		shared\ToolBaker\BakedToolRuntimeSource.cs = shared\ToolBaker\BakedToolRuntimeSource.cs
+		shared\ToolBaker\ToolCompiler.cs = shared\ToolBaker\ToolCompiler.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ToolCatalog", "ToolCatalog", "{E7DFD894-314B-5A89-912C-BC3B8E324140}"
+	ProjectSection(SolutionItems) = preProject
+		shared\ToolCatalog\ToolCatalogModels.cs = shared\ToolCatalog\ToolCatalogModels.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Transport", "Transport", "{C628617E-BA46-5813-BB2A-53863A131244}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Transport\ITransportServer.cs = shared\Transport\ITransportServer.cs
+		shared\Transport\PipeTransportServer.cs = shared\Transport\PipeTransportServer.cs
+		shared\Transport\TcpTransportServer.cs = shared\Transport\TcpTransportServer.cs
+		shared\Transport\TransportResponseWriter.cs = shared\Transport\TransportResponseWriter.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Update", "Update", "{69B2E4FD-E76E-5870-988D-D05B18BAE2D9}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Update\UpdateCheck.cs = shared\Update\UpdateCheck.cs
+		shared\Update\UpdateNoticeCoordinator.cs = shared\Update\UpdateNoticeCoordinator.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Views", "Views", "{9D79F3AE-FA71-57E5-AA2D-04E53C9F7719}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Views\BakeInboxWindow.cs = shared\Views\BakeInboxWindow.cs
+		shared\Views\BimwrightStyles.cs = shared\Views\BimwrightStyles.cs
+		shared\Views\BrandAssets.cs = shared\Views\BrandAssets.cs
+		shared\Views\FailureIssuesContext.cs = shared\Views\FailureIssuesContext.cs
+		shared\Views\FailureIssuesPresentation.cs = shared\Views\FailureIssuesPresentation.cs
+		shared\Views\FailureIssuesView.cs = shared\Views\FailureIssuesView.cs
+		shared\Views\HistoryWindow.cs = shared\Views\HistoryWindow.cs
+		shared\Views\ScrollBarFadeBehavior.cs = shared\Views\ScrollBarFadeBehavior.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Settings", "Settings", "{F894AB56-21C4-5889-95B0-459ABF6A6981}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Views\Settings\AboutInfo.cs = shared\Views\Settings\AboutInfo.cs
+		shared\Views\Settings\LicenseWindow.cs = shared\Views\Settings\LicenseWindow.cs
+		shared\Views\Settings\SettingsModels.cs = shared\Views\Settings\SettingsModels.cs
+		shared\Views\Settings\SettingsPresentation.cs = shared\Views\Settings\SettingsPresentation.cs
+		shared\Views\Settings\SettingsStyles.cs = shared\Views\Settings\SettingsStyles.cs
+		shared\Views\Settings\SettingsText.cs = shared\Views\Settings\SettingsText.cs
+		shared\Views\Settings\SettingsViewModel.cs = shared\Views\Settings\SettingsViewModel.cs
+		shared\Views\Settings\SettingsWindow.Host.cs = shared\Views\Settings\SettingsWindow.Host.cs
+		shared\Views\Settings\SettingsWindow.cs = shared\Views\Settings\SettingsWindow.cs
+		shared\Views\Settings\ToolRow.cs = shared\Views\Settings\ToolRow.cs
+		shared\Views\Settings\ToolsViewModel.cs = shared\Views\Settings\ToolsViewModel.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Toast", "Toast", "{C46F8B14-20C4-5235-96F9-B7D965B18F9F}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Views\Toast\ActivityAggregator.cs = shared\Views\Toast\ActivityAggregator.cs
+		shared\Views\Toast\McpToastHost.cs = shared\Views\Toast\McpToastHost.cs
+		shared\Views\Toast\McpToastManager.cs = shared\Views\Toast\McpToastManager.cs
+		shared\Views\Toast\McpToastNotifier.cs = shared\Views\Toast\McpToastNotifier.cs
+		shared\Views\Toast\McpToastTheme.cs = shared\Views\Toast\McpToastTheme.cs
+		shared\Views\Toast\McpToastViewModel.cs = shared\Views\Toast\McpToastViewModel.cs
+		shared\Views\Toast\McpToastWindow.cs = shared\Views\Toast\McpToastWindow.cs
+		shared\Views\Toast\RollingToastNumber.cs = shared\Views\Toast\RollingToastNumber.cs
+		shared\Views\Toast\ToastActivityEntry.cs = shared\Views\Toast\ToastActivityEntry.cs
+		shared\Views\Toast\ToastActivityLog.cs = shared\Views\Toast\ToastActivityLog.cs
+		shared\Views\Toast\ToastActivityPanel.cs = shared\Views\Toast\ToastActivityPanel.cs
+		shared\Views\Toast\ToastContentBuilder.cs = shared\Views\Toast\ToastContentBuilder.cs
+		shared\Views\Toast\ToastPlacement.cs = shared\Views\Toast\ToastPlacement.cs
+		shared\Views\Toast\ToastScrollBarStyles.cs = shared\Views\Toast\ToastScrollBarStyles.cs
+		shared\Views\Toast\ToastThumbnailLoader.cs = shared\Views\Toast\ToastThumbnailLoader.cs
+		shared\Views\Toast\ToolActivityClassifier.cs = shared\Views\Toast\ToolActivityClassifier.cs
+		shared\Views\Toast\ToolNameFormatter.cs = shared\Views\Toast\ToolNameFormatter.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Update", "Update", "{0305F48E-318C-5233-B943-0DB8EBCA8ACE}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Views\Update\UpdateNoticeWindow.cs = shared\Views\Update\UpdateNoticeWindow.cs
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -132,6 +673,46 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{61504156-D139-5B64-AE8F-346114A8075E} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{87B1D97A-0F14-5706-B559-2D5E5BCE3781} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{1BA0E625-CC68-59BD-8075-2AEBF258D71F} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{8ABA3581-C0E6-510C-9BED-F55EBA1B9499} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{F036AB0B-C7CE-525A-BB5B-AF053F53FD30} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{68A29963-E239-55B0-8373-5657C11ECA8D} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{2BC69304-6D73-5C82-B84B-2F6277E8E58C} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{201449E1-1E5D-543D-AF8B-E7B7E08F14FC} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{CE884C6D-D63A-5E9A-BCE6-0AC293832991} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{08A68AB4-C633-5977-A39F-DB74BC84AE76} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{CDD52D0F-9B39-5DA4-97E9-4D587ECDD052} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{EE2C4C22-0963-5C14-ABE0-8D9A72EB1755} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{C6F54E88-3BB0-5B27-AD58-E8DEB0B63A38} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{59EC3694-322D-5177-B912-3F73C993E592} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{C95923EB-ACBA-5E47-AAA7-659F031C80C3} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{9319C9A8-B2C0-5DC9-8CB2-3F012D2B084B} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{4B28023D-8BE1-552B-99A4-C6E4E1515B3E} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{894A33FF-DB61-5D7F-A4D9-4DE7736CBE6B} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{0C572579-35FF-57C7-B7C1-6789D4B1FE7C} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{32E88DC5-A46D-5D96-91FF-E9CB892D35E0} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{67C0EE23-91A0-50D5-A88E-1DA802174064} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{F06F3E68-00AD-5856-A74E-EEA40D990D21} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{56AD6EB1-AF3D-5938-B436-88691AE639D8} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{25C54EB3-63FD-55FE-BDD9-0F1F342F7F9E} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{57BF7457-969D-57D9-8AD0-60789F5535F5} = {8ABA3581-C0E6-510C-9BED-F55EBA1B9499}
+		{76B77B0F-AA98-5D84-8D31-890D55FA1216} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{DBF8799D-4B91-536C-AE85-AEBC45F52619} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{34394478-1F8D-5C77-BA9B-FE6B45A373FE} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{51BE4DF1-509B-532D-8240-6AC819876A29} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{FA6A47F9-C5B0-540C-B587-21F30C042C97} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{E340C0AF-4E4A-5987-9F81-44B9C8394783} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{F50C56BE-082B-508D-B652-E6885961542F} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{CA0E7FB5-7F6B-5C03-89C2-275157CB8D5D} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{E7DFD894-314B-5A89-912C-BC3B8E324140} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{C628617E-BA46-5813-BB2A-53863A131244} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{69B2E4FD-E76E-5870-988D-D05B18BAE2D9} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{9D79F3AE-FA71-57E5-AA2D-04E53C9F7719} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{F894AB56-21C4-5889-95B0-459ABF6A6981} = {9D79F3AE-FA71-57E5-AA2D-04E53C9F7719}
+		{C46F8B14-20C4-5235-96F9-B7D965B18F9F} = {9D79F3AE-FA71-57E5-AA2D-04E53C9F7719}
+		{0305F48E-318C-5233-B943-0DB8EBCA8ACE} = {9D79F3AE-FA71-57E5-AA2D-04E53C9F7719}
 		{BD45F68F-C4F1-425B-8BCB-A518D22A507A} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

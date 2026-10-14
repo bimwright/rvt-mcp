@@ -50,7 +50,7 @@ namespace RvtMcp.Tests
             Assert.True(markerIndex >= 0, "Missing tool marker: " + toolName);
             var toolBlock = program.Substring(markerIndex, Math.Min(1800, program.Length - markerIndex));
 
-            var handler = File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", handlerFile));
+            var handler = File.ReadAllText(Directory.EnumerateFiles(Path.Combine(root, "src", "shared", "Handlers"), handlerFile, SearchOption.AllDirectories).Single());
             foreach (var parameter in mcpParameters)
             {
                 Assert.Contains(parameter, toolBlock);
@@ -85,7 +85,7 @@ namespace RvtMcp.Tests
         [InlineData("GetModelWarningsSummaryHandler.cs")]
         public void Existing_limit_scope_declares_a_schema_hard_maximum(string handlerFile)
         {
-            var source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "shared", "Handlers", handlerFile));
+            var source = File.ReadAllText(Directory.EnumerateFiles(Path.Combine(GetRepoRoot(), "src", "shared", "Handlers"), handlerFile, SearchOption.AllDirectories).Single());
             Assert.Contains("maximum", source);
         }
 
@@ -100,7 +100,7 @@ namespace RvtMcp.Tests
         [InlineData("WorkflowDataRoundtripHandler.cs")]
         public void Approved_group4_handler_schemas_accept_only_inline_or_file_output(string handlerFile)
         {
-            var source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "shared", "Handlers", handlerFile));
+            var source = File.ReadAllText(Directory.EnumerateFiles(Path.Combine(GetRepoRoot(), "src", "shared", "Handlers"), handlerFile, SearchOption.AllDirectories).Single());
             var outputIndex = source.IndexOf("\"\"output\"\"", StringComparison.Ordinal);
             Assert.True(outputIndex >= 0, "Missing output schema property in " + handlerFile);
             var outputSchema = source.Substring(outputIndex, Math.Min(300, source.Length - outputIndex));
@@ -150,7 +150,7 @@ namespace RvtMcp.Tests
         [Fact]
         public void Apply_bake_omits_source_and_dll_bodies_from_plugin_response()
         {
-            var source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "shared", "Handlers", "ApplyBakeSuggestionHandler.cs"));
+            var source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "shared", "Handlers", "ToolBaker", "ApplyBakeSuggestionHandler.cs"));
             var responseStart = source.IndexOf("return CommandResult.Ok(new", StringComparison.Ordinal);
             Assert.True(responseStart >= 0);
             var response = source.Substring(responseStart, Math.Min(1000, source.Length - responseStart));

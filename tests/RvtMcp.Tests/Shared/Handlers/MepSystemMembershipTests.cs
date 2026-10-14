@@ -49,7 +49,7 @@ namespace RvtMcp.Tests
         {
             var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "..", "..", ".."));
             var sources = new[] { "MepSystemMembership.cs", "MepMembershipPolicy.cs" }
-                .Select(name => File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", name)))
+                .Select(name => File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", "Mep", name)))
                 .Append(ApiAndProbe).Select(source => CSharpSyntaxTree.ParseText(source));
             var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
                 .Split(Path.PathSeparator).Select(path => MetadataReference.CreateFromFile(path));

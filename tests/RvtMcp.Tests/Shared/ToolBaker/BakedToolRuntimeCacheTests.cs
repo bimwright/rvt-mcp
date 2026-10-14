@@ -79,7 +79,7 @@ namespace RvtMcp.Tests
         public void Apply_bake_runtime_marker_path_checks_suggestion_source()
         {
             var repoRoot = GetRepoRoot();
-            var sourcePath = Path.Combine(repoRoot, "src", "shared", "Handlers", "ApplyBakeSuggestionHandler.cs");
+            var sourcePath = Path.Combine(repoRoot, "src", "shared", "Handlers", "ToolBaker", "ApplyBakeSuggestionHandler.cs");
             var source = File.ReadAllText(sourcePath);
 
             Assert.Contains("BakedToolRuntimeSource.IsAllowedForSuggestionSource(source)", source);

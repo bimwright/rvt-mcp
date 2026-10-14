@@ -29,7 +29,7 @@ namespace RvtMcp.Tests
         private static MethodInfo CompileProbe([CallerFilePath] string testFile = "")
         {
             var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "..", "..", ".."));
-            var source = File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", "AnalyzeMepNetworkHandler.cs"));
+            var source = File.ReadAllText(Path.Combine(root, "src", "shared", "Handlers", "Mep", "AnalyzeMepNetworkHandler.cs"));
             // Execute the production connector traversal and manager lookup with API doubles.
             var methods = CSharpSyntaxTree.ParseText(source).GetRoot().DescendantNodes()
                 .OfType<MethodDeclarationSyntax>()
