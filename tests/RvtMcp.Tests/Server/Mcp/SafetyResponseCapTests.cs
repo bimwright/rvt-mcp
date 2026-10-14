@@ -13,6 +13,47 @@ namespace RvtMcp.Tests
     public sealed class SafetyResponseCapTests
     {
         [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Home_target_stamp_preserves_nullable_strings_before_serialization(bool compact)
+        {
+            string noDocument = null;
+            var source = new JObject
+            {
+                ["_target"] = new JObject
+                {
+                    ["target_id"] = "revit-2024-87724", ["pid"] = 87724, ["host_year"] = 2024,
+                    ["document_id"] = noDocument, ["document_title"] = noDocument
+                }
+            };
+            // A JSON round-trip changes this to Null and would conceal the host-side defect.
+            Assert.Equal(JTokenType.String, source["_target"]["document_id"].Type);
+            var result = new JObject();
+            SafetyResponseMetadata.Attach(result, source, compact);
+            Assert.Equal(87724, result["_target"].Value<int>("pid"));
+            Assert.Null(result["_target"].Value<string>("document_id"));
+            if (!compact) Assert.Null(result["_target"].Value<string>("document_title"));
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Receipt_compaction_accepts_nullable_scope_and_dialog_text(bool compact)
+        {
+            string absent = null;
+            var receipt = new JObject
+            {
+                ["operationId"] = "0123456789abcdef0123456789abcdef", ["execution"] = "completed",
+                ["outcome"] = "not_started", ["mutationApplied"] = false, ["modelScopeKey"] = absent,
+                ["dialog"] = new JObject { ["text"] = absent }, ["padding"] = new string('x', 5000)
+            };
+            var result = SafetyResponseMetadata.Bound(receipt, 1024, compact);
+            Assert.Equal("not_started", result.Value<string>("outcome"));
+            Assert.False(result.Value<bool>("mutationApplied"));
+            Assert.Null(result.Value<string>("modelScopeKey"));
+        }
+
+        [Theory]
         [InlineData(1024, 1024)]
         [InlineData(1536, 2048)]
         [InlineData(4096, 5120)]

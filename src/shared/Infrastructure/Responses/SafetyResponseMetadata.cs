@@ -22,7 +22,7 @@ namespace RvtMcp.Plugin
                     {
                         var value = actualTarget[key].DeepClone();
                         var max = key == "window_title" ? 512 : key == "document_title" ? 256 : 128;
-                        if (value.Type == JTokenType.String && value.Value<string>().Length > max)
+                        if (value.Type == JTokenType.String && (value.Value<string>()?.Length ?? 0) > max)
                             value = new JValue(value.Value<string>().Substring(0, max));
                         stamp[key] = value;
                     }
@@ -57,7 +57,7 @@ namespace RvtMcp.Plugin
             // Identifiers are bounded by the producer; still defend against malformed older plugins.
             foreach (var property in minimal.Properties().ToList())
             {
-                if (property.Value.Type == JTokenType.String && property.Value.Value<string>().Length > 256)
+                if (property.Value.Type == JTokenType.String && (property.Value.Value<string>()?.Length ?? 0) > 256)
                     property.Value = property.Value.Value<string>().Substring(0, 256);
                 if (property.Value is JArray array && array.Count > 20)
                 {
@@ -76,7 +76,7 @@ namespace RvtMcp.Plugin
             foreach (var dialog in new[] { receipt["dialog"], receipt["blockedBy"]?["dialog"] }.OfType<JObject>())
             {
                 dialog.Remove("buttons");
-                if (dialog["text"]?.Type == JTokenType.String && dialog.Value<string>("text").Length > 240)
+                if (dialog["text"]?.Type == JTokenType.String && (dialog.Value<string>("text")?.Length ?? 0) > 240)
                     dialog["text"] = dialog.Value<string>("text").Substring(0, 228) + " [truncated]";
                 changed = true;
             }
