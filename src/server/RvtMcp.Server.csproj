@@ -39,35 +39,35 @@
     <Compile Include="..\shared\Failures\FailureCapture.cs" Link="Shared\Failures\FailureCapture.cs" />
     <Compile Include="..\shared\Failures\FailureLedgerStore.cs" Link="Shared\Failures\FailureLedgerStore.cs" />
     <Compile Include="..\shared\Failures\RevitMessageCatalogModel.cs" Link="Shared\Failures\RevitMessageCatalogModel.cs" />
-    <Compile Include="..\shared\Config\RvtMcpConfig.cs" Link="Shared\RvtMcpConfig.cs" />
-    <Compile Include="..\shared\Config\ToastPositionOptions.cs" Link="Shared\ToastPositionOptions.cs" />
-    <Compile Include="..\shared\Logging\PersistSendCodeTtl.cs" Link="Shared\PersistSendCodeTtl.cs" />
-    <Compile Include="..\shared\Security\BakeRedactor.cs" Link="Shared\BakeRedactor.cs" />
-    <Compile Include="..\shared\Security\SecretMasker.cs" Link="Shared\SecretMasker.cs" />
-    <Compile Include="..\shared\ToolBaker\BakedToolRecord.cs" Link="Shared\BakedToolRecord.cs" />
-    <Compile Include="..\shared\ToolBaker\BakedToolRuntimeSource.cs" Link="Shared\BakedToolRuntimeSource.cs" />
-    <Compile Include="..\shared\Infrastructure\LegacyDataMigration.cs" Link="Shared\LegacyDataMigration.cs" />
-    <Compile Include="..\shared\Infrastructure\ToolReadPolicy.cs" Link="Shared\ToolReadPolicy.cs" />
-    <Compile Include="..\shared\Survey\SurveyContract.cs" Link="Shared\SurveyContract.cs" />
-    <Compile Include="..\shared\Survey\SurveySnapshotCache.cs" Link="Shared\SurveySnapshotCache.cs" />
-    <Compile Include="..\shared\Infrastructure\ResponseSizeGuard.cs" Link="Shared\ResponseSizeGuard.cs" />
-    <Compile Include="..\shared\Infrastructure\ResponseSizePolicyCatalog.cs" Link="Shared\ResponseSizePolicyCatalog.cs" />
-    <Compile Include="..\shared\Infrastructure\MutationResponseCompactor.cs" Link="Shared\MutationResponseCompactor.cs" />
-    <Compile Include="..\shared\Infrastructure\ResponseSpillWriter.cs" Link="Shared\ResponseSpillWriter.cs" />
-    <Compile Include="..\shared\Infrastructure\ResponseSpillPolicy.cs" Link="Shared\ResponseSpillPolicy.cs" />
-    <Compile Include="..\shared\Infrastructure\ResponseSpillProcessor.cs" Link="Shared\ResponseSpillProcessor.cs" />
-    <Compile Include="..\shared\Infrastructure\ResponseEnvelopeGuard.cs" Link="Shared\ResponseEnvelopeGuard.cs" />
-    <Compile Include="..\shared\Infrastructure\SafetyResponseMetadata.cs" Link="Shared\SafetyResponseMetadata.cs" />
-    <Compile Include="..\shared\Infrastructure\DocumentChangeAccumulator.cs" Link="Shared\DocumentChangeAccumulator.cs" />
-    <Compile Include="..\shared\Infrastructure\ChangeSummary.cs" Link="Shared\ChangeSummary.cs" />
-    <Compile Include="..\shared\Infrastructure\ChangeHistoryTransfer.cs" Link="Shared\ChangeHistoryTransfer.cs" />
-    <Compile Include="..\shared\Infrastructure\HistoryDiagnostics.cs" Link="Shared\HistoryDiagnostics.cs" />
-    <Compile Include="..\shared\Infrastructure\HistoryFileIdentity.cs" Link="Shared\HistoryFileIdentity.cs" />
-    <Compile Include="..\shared\Views\Toast\ToolActivityClassifier.cs" Link="Shared\ToolActivityClassifier.cs" />
-    <Compile Include="..\shared\Security\McpResponsePrivacy.cs" Link="Shared\McpResponsePrivacy.cs" />
-    <Compile Include="..\shared\Security\ErrorSanitizer.cs" Link="Shared\ErrorSanitizer.cs" />
-    <Compile Include="..\shared\ToolCatalog\ToolCatalogModels.cs" Link="Shared\ToolCatalogModels.cs" />
-    <Compile Include="..\shared\Update\UpdateCheck.cs" Link="Shared\UpdateCheck.cs" />
+    <Compile Include="..\shared\Config\RvtMcpConfig.cs" Link="Shared\Config\RvtMcpConfig.cs" />
+    <Compile Include="..\shared\Config\ToastPositionOptions.cs" Link="Shared\Config\ToastPositionOptions.cs" />
+    <Compile Include="..\shared\Logging\PersistSendCodeTtl.cs" Link="Shared\Logging\PersistSendCodeTtl.cs" />
+    <Compile Include="..\shared\Security\BakeRedactor.cs" Link="Shared\Security\BakeRedactor.cs" />
+    <Compile Include="..\shared\Security\SecretMasker.cs" Link="Shared\Security\SecretMasker.cs" />
+    <Compile Include="..\shared\ToolBaker\BakedToolRecord.cs" Link="Shared\ToolBaker\BakedToolRecord.cs" />
+    <Compile Include="..\shared\ToolBaker\BakedToolRuntimeSource.cs" Link="Shared\ToolBaker\BakedToolRuntimeSource.cs" />
+    <Compile Include="..\shared\Infrastructure\LegacyDataMigration.cs" Link="Shared\Infrastructure\LegacyDataMigration.cs" />
+    <Compile Include="..\shared\Infrastructure\ToolReadPolicy.cs" Link="Shared\Infrastructure\ToolReadPolicy.cs" />
+    <Compile Include="..\shared\Survey\SurveyContract.cs" Link="Shared\Survey\SurveyContract.cs" />
+    <Compile Include="..\shared\Survey\SurveySnapshotCache.cs" Link="Shared\Survey\SurveySnapshotCache.cs" />
+    <Compile Include="..\shared\Infrastructure\ResponseSizeGuard.cs" Link="Shared\Infrastructure\ResponseSizeGuard.cs" />
+    <Compile Include="..\shared\Infrastructure\ResponseSizePolicyCatalog.cs" Link="Shared\Infrastructure\ResponseSizePolicyCatalog.cs" />
+    <Compile Include="..\shared\Infrastructure\MutationResponseCompactor.cs" Link="Shared\Infrastructure\MutationResponseCompactor.cs" />
+    <Compile Include="..\shared\Infrastructure\ResponseSpillWriter.cs" Link="Shared\Infrastructure\ResponseSpillWriter.cs" />
+    <Compile Include="..\shared\Infrastructure\ResponseSpillPolicy.cs" Link="Shared\Infrastructure\ResponseSpillPolicy.cs" />
+    <Compile Include="..\shared\Infrastructure\ResponseSpillProcessor.cs" Link="Shared\Infrastructure\ResponseSpillProcessor.cs" />
+    <Compile Include="..\shared\Infrastructure\ResponseEnvelopeGuard.cs" Link="Shared\Infrastructure\ResponseEnvelopeGuard.cs" />
+    <Compile Include="..\shared\Infrastructure\SafetyResponseMetadata.cs" Link="Shared\Infrastructure\SafetyResponseMetadata.cs" />
+    <Compile Include="..\shared\Infrastructure\DocumentChangeAccumulator.cs" Link="Shared\Infrastructure\DocumentChangeAccumulator.cs" />
+    <Compile Include="..\shared\Infrastructure\ChangeSummary.cs" Link="Shared\Infrastructure\ChangeSummary.cs" />
+    <Compile Include="..\shared\Infrastructure\ChangeHistoryTransfer.cs" Link="Shared\Infrastructure\ChangeHistoryTransfer.cs" />
+    <Compile Include="..\shared\Infrastructure\HistoryDiagnostics.cs" Link="Shared\Infrastructure\HistoryDiagnostics.cs" />
+    <Compile Include="..\shared\Infrastructure\HistoryFileIdentity.cs" Link="Shared\Infrastructure\HistoryFileIdentity.cs" />
+    <Compile Include="..\shared\Views\Toast\ToolActivityClassifier.cs" Link="Shared\Views\Toast\ToolActivityClassifier.cs" />
+    <Compile Include="..\shared\Security\McpResponsePrivacy.cs" Link="Shared\Security\McpResponsePrivacy.cs" />
+    <Compile Include="..\shared\Security\ErrorSanitizer.cs" Link="Shared\Security\ErrorSanitizer.cs" />
+    <Compile Include="..\shared\ToolCatalog\ToolCatalogModels.cs" Link="Shared\ToolCatalog\ToolCatalogModels.cs" />
+    <Compile Include="..\shared\Update\UpdateCheck.cs" Link="Shared\Update\UpdateCheck.cs" />
   </ItemGroup>
 
   <!-- Prompt bodies (D1): embedded markdown, stable LogicalName like the localization catalogs -->
