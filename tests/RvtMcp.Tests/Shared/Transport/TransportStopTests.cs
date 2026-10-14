@@ -151,13 +151,9 @@ namespace RvtMcp.Tests
             var token = JObject.Parse(File.ReadAllText(DescriptorPath())).Value<string>("auth_token");
             writer.WriteLine(new JObject
             {
-                ["id"] = id,
-                ["token"] = token,
-                ["command"] = command,
-                ["params"] = new JObject(),
-                ["timeout_seconds"] = 60,
-                ["failure_protocol"] = 1,
-                ["operation_id"] = Guid.NewGuid().ToString("N")
+                ["id"] = id, ["token"] = token, ["command"] = command,
+                ["params"] = new JObject(), ["timeout_seconds"] = 60,
+                ["failure_protocol"] = 1, ["operation_id"] = Guid.NewGuid().ToString("N")
             }.ToString(Newtonsoft.Json.Formatting.None));
             return token;
         }

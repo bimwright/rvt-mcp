@@ -163,14 +163,8 @@ namespace RvtMcp.Tests
                                 req.Value<string>("expected_document_id"), TargetStamp.Value<string>("document_id"));
                             if (documentError != null)
                             {
-                                writer.WriteLine(new JObject
-                                {
-                                    ["id"] = id,
-                                    ["success"] = false,
-                                    ["error"] = documentError,
-                                    ["_target"] = TargetStamp.DeepClone(),
-                                    ["_operation"] = new JObject { ["execution"] = "completed", ["outcome"] = "not_started", ["complete"] = true, ["mutationApplied"] = false }
-                                }.ToString(Formatting.None));
+                                writer.WriteLine(new JObject { ["id"] = id, ["success"] = false, ["error"] = documentError,
+                                    ["_target"] = TargetStamp.DeepClone(), ["_operation"] = new JObject { ["execution"] = "completed", ["outcome"] = "not_started", ["complete"] = true, ["mutationApplied"] = false } }.ToString(Formatting.None));
                                 continue;
                             }
                             lock (Commands) Commands.Add(command);
@@ -956,8 +950,7 @@ namespace RvtMcp.Tests
             {
                 try { while (true) { var c = listener.AcceptTcpClient(); c.Close(); } }
                 catch { }
-            })
-            { IsBackground = true };
+            }) { IsBackground = true };
             closer.Start();
             try
             {

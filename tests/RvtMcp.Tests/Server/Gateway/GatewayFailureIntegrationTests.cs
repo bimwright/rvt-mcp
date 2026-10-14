@@ -137,9 +137,7 @@ namespace RvtMcp.Tests
             {
                 if (!(response["_target"] is JObject)) response["_target"] = new JObject
                 {
-                    ["target_id"] = "revit-2024-" + _identityPid,
-                    ["pid"] = _identityPid,
-                    ["host_year"] = 2024,
+                    ["target_id"] = "revit-2024-" + _identityPid, ["pid"] = _identityPid, ["host_year"] = 2024,
                     ["document_id"] = "doc-" + _identityPid
                 };
                 lock (_gate) _writer.WriteLine(response.ToString(Formatting.None));
@@ -152,16 +150,10 @@ namespace RvtMcp.Tests
         {
             var descriptor = new JObject
             {
-                ["schema_version"] = 3,
-                ["host_app"] = "revit",
-                ["host_year"] = 2024,
-                ["pid"] = pid,
-                ["process_start_utc"] = Start.ToString("o"),
-                ["target_id"] = "revit-2024-" + pid,
-                ["transport"] = pipe == null ? "tcp" : "pipe",
-                ["port"] = pipe == null ? (JToken)port : null,
-                ["pipe_name"] = pipe,
-                ["auth_token"] = token,
+                ["schema_version"] = 3, ["host_app"] = "revit", ["host_year"] = 2024,
+                ["pid"] = pid, ["process_start_utc"] = Start.ToString("o"), ["target_id"] = "revit-2024-" + pid,
+                ["transport"] = pipe == null ? "tcp" : "pipe", ["port"] = pipe == null ? (JToken)port : null,
+                ["pipe_name"] = pipe, ["auth_token"] = token,
                 ["capabilities"] = protocol ? new JArray("tool_catalog", "controlled_failures_v1", "document_target_v1") : new JArray("tool_catalog")
             };
             var path = Path.Combine(_root, "revit-2024-" + pid + ".json");
@@ -178,16 +170,11 @@ namespace RvtMcp.Tests
 
         private static JObject Final(JObject request) => new JObject
         {
-            ["id"] = request["id"],
-            ["success"] = true,
-            ["data"] = new JObject { ["viewName"] = "Test View" },
+            ["id"] = request["id"], ["success"] = true, ["data"] = new JObject { ["viewName"] = "Test View" },
             ["_operation"] = request["operation_id"] == null ? null : new JObject
             {
-                ["operationId"] = request["operation_id"],
-                ["execution"] = "completed",
-                ["outcome"] = "committed",
-                ["complete"] = true,
-                ["mutationApplied"] = true
+                ["operationId"] = request["operation_id"], ["execution"] = "completed", ["outcome"] = "committed",
+                ["complete"] = true, ["mutationApplied"] = true
             }
         };
 
@@ -352,18 +339,10 @@ namespace RvtMcp.Tests
                 first = request;
                 host.Send(new JObject
                 {
-                    ["id"] = request["id"],
-                    ["frame"] = "event",
-                    ["event"] = "dialog_wait",
-                    ["_operation"] = new JObject
-                    {
-                        ["operationId"] = request["operation_id"],
-                        ["execution"] = "waiting_for_user",
-                        ["outcome"] = "unknown",
-                        ["complete"] = false,
-                        ["mutationApplied"] = null,
-                        ["dialog"] = new JObject { ["code"] = "TaskDialog_Test_Sample", ["kind"] = "TaskDialog", ["text"] = "Sample text", ["inCatalog"] = false }
-                    }
+                    ["id"] = request["id"], ["frame"] = "event", ["event"] = "dialog_wait",
+                    ["_operation"] = new JObject { ["operationId"] = request["operation_id"], ["execution"] = "waiting_for_user", ["outcome"] = "unknown",
+                        ["complete"] = false, ["mutationApplied"] = null,
+                        ["dialog"] = new JObject { ["code"] = "TaskDialog_Test_Sample", ["kind"] = "TaskDialog", ["text"] = "Sample text", ["inCatalog"] = false } }
                 });
             };
             var receipt = await Send("open_model");
@@ -499,10 +478,8 @@ namespace RvtMcp.Tests
                     frame["error"] = kind == "busy" ? "REVIT_BUSY" : "Probe failed";
                     frame["_operation"] = kind == "error" ? null : new JObject
                     {
-                        ["operationId"] = request["operation_id"],
-                        ["execution"] = kind == "pending" ? "timed_out_running" : "completed",
-                        ["outcome"] = kind == "pending" ? "unknown" : "not_started",
-                        ["complete"] = kind != "pending"
+                        ["operationId"] = request["operation_id"], ["execution"] = kind == "pending" ? "timed_out_running" : "completed",
+                        ["outcome"] = kind == "pending" ? "unknown" : "not_started", ["complete"] = kind != "pending"
                     };
                     if (kind == "failure") frame["_failure"] = new JObject { ["operationId"] = request["operation_id"], ["gate"] = "blocked" };
                 }
@@ -544,10 +521,8 @@ namespace RvtMcp.Tests
                     frame["error"] = kind == "busy" ? "REVIT_BUSY" : "Probe failed";
                     frame["_operation"] = kind == "error" ? null : new JObject
                     {
-                        ["operationId"] = request["operation_id"],
-                        ["execution"] = kind == "pending" ? "timed_out_running" : "completed",
-                        ["outcome"] = kind == "pending" ? "unknown" : "not_started",
-                        ["complete"] = kind != "pending"
+                        ["operationId"] = request["operation_id"], ["execution"] = kind == "pending" ? "timed_out_running" : "completed",
+                        ["outcome"] = kind == "pending" ? "unknown" : "not_started", ["complete"] = kind != "pending"
                     };
                     if (kind == "failure") frame["_failure"] = new JObject { ["operationId"] = request["operation_id"], ["gate"] = "blocked" };
                 }
@@ -585,20 +560,9 @@ namespace RvtMcp.Tests
                 if (first != null) { host.Send(Final(request)); return; }
                 first = request;
                 // The add-in's own timeout receipt; reads have no ledger record.
-                host.Send(new JObject
-                {
-                    ["id"] = request["id"],
-                    ["success"] = false,
-                    ["error"] = "REVIT_OPERATION_TIMED_OUT",
-                    ["_operation"] = new JObject
-                    {
-                        ["operationId"] = request["operation_id"],
-                        ["execution"] = "timed_out_running",
-                        ["outcome"] = "unknown",
-                        ["complete"] = false,
-                        ["mutationApplied"] = null
-                    }
-                });
+                host.Send(new JObject { ["id"] = request["id"], ["success"] = false, ["error"] = "REVIT_OPERATION_TIMED_OUT",
+                    ["_operation"] = new JObject { ["operationId"] = request["operation_id"], ["execution"] = "timed_out_running",
+                        ["outcome"] = "unknown", ["complete"] = false, ["mutationApplied"] = null } });
             };
             var receipt = await Send("list_sheets");
             var operationId = receipt["_operation"].Value<string>("operationId");
@@ -641,37 +605,18 @@ namespace RvtMcp.Tests
             {
                 if (first != null) { host.Send(Final(request)); return; }
                 first = request;
-                host.Send(new JObject
-                {
-                    ["id"] = request["id"],
-                    ["frame"] = "event",
-                    ["event"] = "dialog_wait",
-                    ["_operation"] = new JObject
-                    {
-                        ["operationId"] = request["operation_id"],
-                        ["execution"] = "waiting_for_user",
-                        ["complete"] = false
-                    }
-                });
+                host.Send(new JObject { ["id"] = request["id"], ["frame"] = "event", ["event"] = "dialog_wait",
+                    ["_operation"] = new JObject { ["operationId"] = request["operation_id"],
+                        ["execution"] = "waiting_for_user", ["complete"] = false } });
             };
             var receipt = await Send("open_model");
             var operationId = receipt["_operation"].Value<string>("operationId");
             var pending = Pending[first.Value<string>("id")];
             var final = Final(first);
-            final["_userDialogs"] = new JObject
-            {
-                ["model"] = "Sample",
-                ["items"] = new JArray(
-                new JObject { ["code"] = "OutsideMcp", ["text"] = oversized ? new string('漢', 3000) : "Already closed." })
-            };
-            _ledger.SaveOperation(new FailureOperation
-            {
-                OperationId = operationId,
-                Execution = "completed",
-                Outcome = "committed",
-                MutationApplied = true,
-                FinalResult = final
-            });
+            final["_userDialogs"] = new JObject { ["model"] = "Sample", ["items"] = new JArray(
+                new JObject { ["code"] = "OutsideMcp", ["text"] = oversized ? new string('漢', 3000) : "Already closed." }) };
+            _ledger.SaveOperation(new FailureOperation { OperationId = operationId, Execution = "completed",
+                Outcome = "committed", MutationApplied = true, FinalResult = final });
             Assert.Null(_ledger.GetOperation(operationId).FinalResult["_userDialogs"]); // Ephemeral, never written to the ledger.
             wire.Send(final);
             await pending.Execution.Task.WaitAsync(TimeSpan.FromSeconds(3));
