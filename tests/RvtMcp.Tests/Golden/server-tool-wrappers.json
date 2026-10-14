@@ -1302,7 +1302,7 @@
       "calls": [
         {
           "command": "create_schedule",
-          "params": "{\"category\":\"probe\",\"name\":\"probe\",\"fields\":[\"Mark\"],\"filters\":null,\"sortGroup\":null,\"isItemized\":true}",
+          "params": "{\"category\":\"probe\",\"name\":\"probe\",\"fields\":[\"Mark\"],\"filters\":null,\"sortGroup\":null,\"isItemized\":true,\"phase\":\"\"}",
           "timeout": null
         }
       ],
@@ -1312,7 +1312,7 @@
       "calls": [
         {
           "command": "create_schedule",
-          "params": "{\"category\":\"probe\",\"name\":\"probe\",\"fields\":[\"Mark\"],\"filters\":null,\"sortGroup\":null,\"isItemized\":true}",
+          "params": "{\"category\":\"probe\",\"name\":\"probe\",\"fields\":[\"Mark\"],\"filters\":null,\"sortGroup\":null,\"isItemized\":true,\"phase\":\"\"}",
           "timeout": null
         }
       ],

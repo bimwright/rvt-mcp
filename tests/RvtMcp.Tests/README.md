@@ -4,8 +4,12 @@ xUnit test project. Covers unit-test scope + schema/tool-surface drift snapshot.
 
 ## Layout
 
-- `*Tests.cs` at the top level — xUnit fact/theory files.
-- `Helpers/` — test-only utilities (e.g. `SnapshotSerializer`).
+- `Server/` — tests grouped by Gateway, Targeting, Mcp, Tools, Prompts, Bake, Handlers and Memory.
+- `Shared/` — tests grouped by the corresponding `src/shared/` folders; linked production sources use the same folder layout.
+- `Plugin/` — App and ribbon wiring checks across the six Revit plugin shells.
+- `Helpers/` — test-only utilities, collection definitions and test infrastructure checks.
+- `fixtures/` — test input data, including usage streams.
+- `Catalog/` — the test-only localization catalog.
 - `Golden/` — committed snapshot files. See below. `response-size-scoped-commands.txt` is the 94-command baseline for recovery-hint coverage; it contains only wire command names, not research notes. Review changes alongside `ResponseSizePolicyCatalog.cs`.
 
 ## Running
