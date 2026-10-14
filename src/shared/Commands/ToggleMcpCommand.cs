@@ -20,6 +20,17 @@ namespace RvtMcp.Plugin.Commands
                 App.Instance.CreateAndStartTransport();
             }
 
+            var enabled = App.Instance.IsTransportRunning;
+            string saveError;
+            if (!RvtMcpConfig.TrySaveAutoStartTransport(enabled, out saveError))
+            {
+                App.DebugLog("MCP startup preference could not be saved: " + saveError);
+                message = Localization.L.T("toast.status.saveFailed");
+                return Result.Failed;
+            }
+            if (App.Instance.Config != null)
+                App.Instance.Config.AutoStartTransport = enabled;
+
             return Result.Succeeded;
         }
     }

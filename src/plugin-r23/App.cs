@@ -82,8 +82,15 @@ namespace RvtMcp.Plugin
             application.ControlledApplication.DocumentSavedAs += Survey.SurveyHistoryBridge.Invalidate;
             DebugLog("OnStartup: Dispatcher + EventHandler + ExternalEvent OK");
 
-            CreateAndStartTransport();
-            DebugLog("OnStartup: Transport OK");
+            if (Config.AutoStartTransportOrDefault)
+            {
+                CreateAndStartTransport();
+                DebugLog("OnStartup: Transport OK");
+            }
+            else
+            {
+                DebugLog("OnStartup: Transport stopped by startup preference");
+            }
 
             _ribbonApplication = application;
             var ribbonResult = RibbonSetup.Create(application, Config, BakedToolRuntimeCache);

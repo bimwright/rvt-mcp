@@ -28,6 +28,7 @@ namespace RvtMcp.Plugin
         public const string EnvEnableAdaptiveBake        = "BIMWRIGHT_ENABLE_ADAPTIVE_BAKE";
         public const string EnvCacheSendCodeBodies       = "BIMWRIGHT_CACHE_SEND_CODE_BODIES";
         public const string EnvEnableToast               = "BIMWRIGHT_ENABLE_TOAST";
+        public const string EnvAutoStartTransport        = "BIMWRIGHT_AUTO_START_TRANSPORT";
         public const string EnvPersistSendCodeBodies     = "BIMWRIGHT_PERSIST_SEND_CODE_BODIES";
         public const string EnvPersistSendCodeBodiesTtl  = "BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL";
         public const string EnvUiLanguage                = "BIMWRIGHT_UI_LANGUAGE";
@@ -47,6 +48,7 @@ namespace RvtMcp.Plugin
         public const bool DefaultEnableAdaptiveBake        = false;
         public const bool DefaultCacheSendCodeBodies       = false;
         public const bool DefaultEnableToast               = true;
+        public const bool DefaultAutoStartTransport        = true;
         public const bool DefaultShowBranding              = false;
         public const bool DefaultPersistSendCodeBodies     = false;
         public const int DefaultToastIdleSeconds           = 20;
@@ -108,6 +110,10 @@ namespace RvtMcp.Plugin
 
         [JsonProperty("enableToast")]
         public bool? EnableToast { get; set; }
+
+        /// <summary>Startup preference updated by the user's MCP ribbon toggle, not by shutdown.</summary>
+        [JsonProperty("autoStartTransport")]
+        public bool? AutoStartTransport { get; set; }
 
         /// <summary>Show the activity-card wordmark and product prefix. Saved across Revit sessions.</summary>
         [JsonProperty("showBranding")]
@@ -243,6 +249,7 @@ namespace RvtMcp.Plugin
         public bool EnableAdaptiveBakeOrDefault    => EnableAdaptiveBake ?? DefaultEnableAdaptiveBake;
         public bool CacheSendCodeBodiesOrDefault  => CacheSendCodeBodies ?? DefaultCacheSendCodeBodies;
         public bool EnableToastOrDefault          => EnableToast       ?? DefaultEnableToast;
+        public bool AutoStartTransportOrDefault   => AutoStartTransport ?? DefaultAutoStartTransport;
         public bool ShowBrandingOrDefault         => ShowBranding      ?? DefaultShowBranding;
         public ToastPositionOptions ToastPositionOrDefault => ReadToastPosition(
             ToastHorizontalAlign, ToastVerticalAlign, ToastDragEnabled, ToastDragOffset);
@@ -410,6 +417,9 @@ namespace RvtMcp.Plugin
 
             var enableToast = ParseBool(lookup(EnvEnableToast));
             if (enableToast.HasValue) config.EnableToast = enableToast;
+
+            var autoStartTransport = ParseBool(lookup(EnvAutoStartTransport));
+            if (autoStartTransport.HasValue) config.AutoStartTransport = autoStartTransport;
 
             // BIMWRIGHT_UI_LANGUAGE is a Revit.exe process env var (Windows user/machine);
             // the env block in MCP client configs reaches the server, not the plugin.
@@ -669,6 +679,12 @@ namespace RvtMcp.Plugin
         public static bool TrySaveEnableToast(bool enabled, out string error, string configFilePath = null)
         {
             return TryUpdateConfig(configFilePath, root => root["enableToast"] = enabled, out error);
+        }
+
+        /// <summary>Save the last successful user toggle while preserving every other setting.</summary>
+        public static bool TrySaveAutoStartTransport(bool enabled, out string error, string configFilePath = null)
+        {
+            return TryUpdateConfig(configFilePath, root => root["autoStartTransport"] = enabled, out error);
         }
 
         public static bool TrySaveShowBranding(bool show, out string error, string configFilePath = null)

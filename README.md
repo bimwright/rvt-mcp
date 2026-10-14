@@ -188,6 +188,7 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwr
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | Spill retention (default 36 h) | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
 | LAN bind (plugin) | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
+| Remember MCP On/Off at startup (plugin; default on) | ribbon **MCP: ON / OFF** | `BIMWRIGHT_AUTO_START_TRANSPORT=0/1` | `autoStartTransport` |
 | ToolBaker surface | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
 | Cache send_code bodies (bake clusters) | `--cache-send-code-bodies` / `--no-…` | `BIMWRIGHT_CACHE_SEND_CODE_BODIES=1` | `cacheSendCodeBodies` |
@@ -200,6 +201,8 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwr
 | UI language (add-in) | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
 
 After changing server flags, restart the MCP connection so the client picks up the new tool list.
+
+The MCP ribbon toggle saves its last successful On/Off state as `autoStartTransport` in the same config file. Revit uses that value on its next launch; closing Revit or stopping transport programmatically does not overwrite it. The file is shared by Revit versions and instances for the same Windows user, so the last saved toggle determines startup for future instances without changing instances already running. An unset value defaults to On. `BIMWRIGHT_AUTO_START_TRANSPORT`, when set in the **Revit process** environment, overrides the saved value at startup; the ribbon still saves the user's choice, but the environment override continues to win on later launches. A save failure is reported and the toggle applies only to the current session.
 
 ---
 
