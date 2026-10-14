@@ -60,6 +60,134 @@ namespace RvtMcp.Tests
             Assert.Equal("fresh", JObject.Parse(File.ReadAllText(Path.Combine(_dir, "revit-2027.json"))).Value<string>("auth_token"));
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Stop_keeps_new_legacy_owner_published_after_peer_snapshot(bool hasOlderPeer)
+        {
+            using var peer = new DiscoveryPublisher(_dir, "2027", 33, _start.AddSeconds(-5), (_, __) => true);
+            if (hasOlderPeer) peer.Publish("pipe", null, "peer", "peer-token");
+            using var newer = new DiscoveryPublisher(_dir, "2027", 22, _start.AddSeconds(5), (_, __) => true);
+            using var stopping = new DiscoveryPublisher(_dir, "2027", 11, _start, (_, __) => true,
+                enumerateFiles: pattern =>
+                {
+                    var snapshot = Directory.GetFiles(_dir, pattern);
+                    newer.Publish("pipe", null, "newer", "new-token");
+                    return snapshot;
+                });
+            stopping.Publish("pipe", null, "stopping", "old-token");
+
+            stopping.Dispose();
+
+            var legacy = JObject.Parse(File.ReadAllText(LegacyPath(_dir)));
+            Assert.Equal(22, legacy.Value<int>("pid"));
+            Assert.Equal("new-token", legacy.Value<string>("auth_token"));
+            Assert.True(File.Exists(Path.Combine(_dir, newer.FileName)));
+            Assert.False(File.Exists(Path.Combine(_dir, stopping.FileName)));
+        }
+
+        [Fact]
+        public void Publish_waits_longer_than_two_seconds_for_another_publisher()
+        {
+            using var entered = new ManualResetEventSlim();
+            using var release = new ManualResetEventSlim();
+            var blocked = false;
+            using var holding = new DiscoveryPublisher(_dir, "2027", 11, _start, (_, __) => true,
+                restrictAcl: _ =>
+                {
+                    if (blocked) return;
+                    blocked = true;
+                    entered.Set();
+                    release.Wait(3000);
+                });
+            using var newer = new DiscoveryPublisher(_dir, "2027", 22, _start, (_, __) => true);
+            var writer = new Thread(() => holding.Publish("pipe", null, "holding", "old-token")) { IsBackground = true };
+            writer.Start();
+            try
+            {
+                Assert.True(entered.Wait(10000));
+                newer.Publish("pipe", null, "newer", "new-token");
+
+                Assert.True(File.Exists(Path.Combine(_dir, newer.FileName)));
+                Assert.Equal("new-token", JObject.Parse(File.ReadAllText(LegacyPath(_dir))).Value<string>("auth_token"));
+            }
+            finally
+            {
+                release.Set();
+                Assert.True(writer.Join(10000));
+            }
+        }
+
+        [Fact]
+        public void Dispose_timeout_preserves_descriptors_and_stays_disposed()
+        {
+            var logs = new System.Collections.Generic.List<string>();
+            using var stopping = new DiscoveryPublisher(_dir, "2027", 11, _start, (_, __) => true, log: logs.Add);
+            stopping.Publish("pipe", null, "stopping", "old-token");
+            using var entered = new ManualResetEventSlim();
+            using var release = new ManualResetEventSlim();
+            var directory = Path.DirectorySeparatorChar == '\\' ? _dir.ToUpperInvariant() : _dir;
+            using var holding = new DiscoveryPublisher(directory + Path.DirectorySeparatorChar, "2027", 22, _start,
+                (_, __) => true, restrictAcl: _ =>
+                {
+                    entered.Set();
+                    if (!release.Wait(10000)) throw new TimeoutException("Publisher was not released.");
+                });
+            var writer = new Thread(() => holding.Publish("pipe", null, "holding", "new-token")) { IsBackground = true };
+            writer.Start();
+            try
+            {
+                Assert.True(entered.Wait(10000));
+                stopping.Dispose();
+
+                Assert.True(File.Exists(Path.Combine(_dir, stopping.FileName)));
+                Assert.Equal("old-token", JObject.Parse(File.ReadAllText(LegacyPath(_dir))).Value<string>("auth_token"));
+                Assert.Contains(logs, message => message.Contains("Discovery coordination timed out"));
+            }
+            finally
+            {
+                release.Set();
+                Assert.True(writer.Join(10000));
+            }
+
+            stopping.Publish("pipe", null, "late", "late-token");
+            Assert.Equal("old-token", JObject.Parse(File.ReadAllText(Path.Combine(_dir, stopping.FileName))).Value<string>("auth_token"));
+            Assert.Equal(22, JObject.Parse(File.ReadAllText(LegacyPath(_dir))).Value<int>("pid"));
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Coordination_does_not_block_another_directory_or_year(bool differentDirectory)
+        {
+            using var entered = new ManualResetEventSlim();
+            using var release = new ManualResetEventSlim();
+            using var holding = new DiscoveryPublisher(_dir, "2027", 11, _start, (_, __) => true,
+                restrictAcl: _ =>
+                {
+                    entered.Set();
+                    if (!release.Wait(10000)) throw new TimeoutException("Publisher was not released.");
+                });
+            var otherDirectory = differentDirectory ? Path.Combine(_dir, "other") : _dir;
+            var otherYear = differentDirectory ? "2027" : "2024";
+            using var other = new DiscoveryPublisher(otherDirectory, otherYear, 22, _start, (_, __) => true);
+            var writer = new Thread(() => holding.Publish("pipe", null, "holding", "old-token")) { IsBackground = true };
+            writer.Start();
+            try
+            {
+                Assert.True(entered.Wait(10000));
+                other.Publish("pipe", null, "other", "new-token");
+
+                var legacyPath = Path.Combine(otherDirectory, "revit-" + otherYear + ".json");
+                Assert.Equal(22, JObject.Parse(File.ReadAllText(legacyPath)).Value<int>("pid"));
+            }
+            finally
+            {
+                release.Set();
+                Assert.True(writer.Join(10000));
+            }
+        }
+
         [Fact]
         public void Locked_destination_retries_without_deleting_old_file_then_cleans_unique_temp()
         {

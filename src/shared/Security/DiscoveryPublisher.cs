@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Newtonsoft.Json;
@@ -21,6 +22,7 @@ namespace RvtMcp.Plugin
         private readonly Action<string> _restrictAcl;
         private readonly Action<string> _log;
         private readonly Func<string, string[]> _enumerateFiles;
+        private readonly string _mutexName;
         private bool _disposed;
         private string _token;
 
@@ -39,11 +41,17 @@ namespace RvtMcp.Plugin
             _restrictAcl = restrictAcl;
             _log = log;
             _enumerateFiles = enumerateFiles ?? (pattern => Directory.GetFiles(_directory, pattern));
+            var descriptorPath = Path.GetFullPath(Path.Combine(directory, "revit-" + year + ".json"));
+            var windows = Path.DirectorySeparatorChar == '\\';
+            if (windows) descriptorPath = descriptorPath.ToUpperInvariant();
+            using (var sha = SHA256.Create())
+                _mutexName = (windows ? @"Global\" : "") + "RvtMcp.Discovery." +
+                    BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(descriptorPath))).Replace("-", "");
         }
 
         public void Publish(string transport, int? port, string pipeName, string token)
         {
-            lock (_gate)
+            WithDiscoveryLock(() =>
             {
                 if (_disposed) return;
                 _token = token;
@@ -64,7 +72,7 @@ namespace RvtMcp.Plugin
                 }.ToString(Formatting.Indented);
                 Write(FileName, json);
                 Write("revit-" + _year + ".json", json);
-            }
+            }, 5000); // Allow both atomic-write retry windows before skipping publication.
         }
 
         private void Write(string name, string json) =>
@@ -76,6 +84,9 @@ namespace RvtMcp.Plugin
             {
                 if (_disposed) return;
                 _disposed = true;
+            }
+            WithDiscoveryLock(() =>
+            {
                 // A late Stop of an old listener must not delete a newer listener's token.
                 var ownPath = Path.Combine(_directory, FileName);
                 var own = TryRead(ownPath);
@@ -107,8 +118,36 @@ namespace RvtMcp.Plugin
                     }
                 }
                 catch (Exception ex) { Log("Legacy handover scan failed: " + ex.Message); return; }
+                // A synchronous callback can publish another owner while the mutex is re-entered.
+                legacy = TryRead(legacyPath);
+                if (legacy == null || legacy.Value<int?>("pid") != _pid || legacy.Value<string>("auth_token") != _token)
+                    return;
                 if (replacement == null) TryDelete(legacyPath);
                 else Write("revit-" + _year + ".json", replacement.ToString(Formatting.Indented));
+            });
+        }
+
+        private void WithDiscoveryLock(Action action, int timeoutMilliseconds = 2000)
+        {
+            Mutex mutex;
+            try { mutex = new Mutex(false, _mutexName); }
+            catch (Exception ex) { Log("Discovery coordination failed: " + ex.Message); return; }
+            using (mutex)
+            {
+                var acquired = false;
+                try
+                {
+                    try { acquired = mutex.WaitOne(timeoutMilliseconds); }
+                    catch (AbandonedMutexException) { acquired = true; }
+                    catch (Exception ex) { Log("Discovery coordination failed: " + ex.Message); return; }
+                    if (!acquired) { Log("Discovery coordination timed out; descriptors were left unchanged."); return; }
+                    // All publishers take the directory/year mutex before their own gate.
+                    lock (_gate) action();
+                }
+                finally
+                {
+                    if (acquired) mutex.ReleaseMutex();
+                }
             }
         }
 
