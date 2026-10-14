@@ -38,10 +38,10 @@
   <!-- Shared source compiled into this project -->
   <ItemGroup>
     <Compile Include="..\shared\**\*.cs" LinkBase="Shared" />
-    <EmbeddedResource Include="..\shared\Localization\Catalog\strings.*.json" WithCulture="false">
+    <EmbeddedResource Include="..\shared\Localization\Catalog\strings.*.json" WithCulture="false" Link="Shared\Localization\Catalog\%(Filename)%(Extension)">
       <LogicalName>RvtMcp.Localization.%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\shared\Localization\ToolSummaries\summary.*.json" WithCulture="false">
+    <EmbeddedResource Include="..\shared\Localization\ToolSummaries\summary.*.json" WithCulture="false" Link="Shared\Localization\ToolSummaries\%(Filename)%(Extension)">
       <LogicalName>RvtMcp.ToolSummaries.%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="..\..\LICENSE">
