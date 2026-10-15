@@ -229,8 +229,6 @@ namespace RvtMcp.Server
         {
             try
             {
-                var snapBefore = RevitTargetBinding.Snapshot();
-
                 // Parse the selector first — an invalid one changes nothing (§6.8).
                 if (!SelectorParser.TryParse(HostProduct.Revit, version, out var selector, out var selError, out var selMessage))
                 {
@@ -251,7 +249,7 @@ namespace RvtMcp.Server
                 }
 
                 var live = RevitTargetBinding.Scan().Live;
-                var result = ToolGateway.SwitchBinding(selector, live, rebind);
+                var result = ToolGateway.SwitchBinding(selector, live, out var snapBefore, rebind);
                 if (!result.Ok)
                 {
                     var failEnv = TargetEnvelope(result.Failure);

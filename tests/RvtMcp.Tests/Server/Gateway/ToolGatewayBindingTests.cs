@@ -71,10 +71,14 @@ namespace RvtMcp.Tests
         private sealed class FakeProbe : IProcessProbe
         {
             private readonly Dictionary<int, ProcessProbeResult> _byPid = new();
+            public Action BeforeProbe;
             public void Set(int pid, ProcessState state, DateTime? start = null, string title = null)
                 => _byPid[pid] = new ProcessProbeResult(state, start, title);
             public ProcessProbeResult Probe(int pid)
-                => _byPid.TryGetValue(pid, out var r) ? r : new ProcessProbeResult(ProcessState.NotFound, null, null);
+            {
+                BeforeProbe?.Invoke();
+                return _byPid.TryGetValue(pid, out var r) ? r : new ProcessProbeResult(ProcessState.NotFound, null, null);
+            }
         }
 
         /// <summary>In-process TCP listener speaking the NDJSON wire protocol.</summary>
@@ -344,6 +348,54 @@ namespace RvtMcp.Tests
                 Assert.False(response.Value<bool>("verified"));
                 Assert.Equal(before.Record.Pid, RevitTargetBinding.Snapshot().Record.Pid);
                 Assert.True(RevitTargetBinding.CaptureGeneration() > before.Generation);
+            }
+            finally { TargetCallContext.End(ctx); }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task Failed_verification_restores_the_binding_changed_during_scan(bool verifyThrows)
+        {
+            const int pidC = 444444;
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            _probe.Set(PidB, ProcessState.Running, StartB);
+            _probe.Set(pidC, ProcessState.Running, StartB.AddHours(1));
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", 49001, null, "tok-a");
+            WritePerInstanceDescriptor(PidB, 2024, StartB, "tcp", 49002, null, "tok-b");
+            WritePerInstanceDescriptor(pidC, 2024, StartB.AddHours(1), "tcp", 49003, null, "tok-c");
+            var live = RevitTargetBinding.Scan().Live;
+            ToolGateway.SwitchBinding(TargetSelector.ForPid(PidA), live, out _);
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-a");
+
+            // Interleave another caller's confirmed switch after this call starts scanning,
+            // but before it switches to C. Rollback must restore B, not the earlier A.
+            var switchedDuringScan = false;
+            _probe.BeforeProbe = () =>
+            {
+                _probe.BeforeProbe = null;
+                var switched = ToolGateway.SwitchBinding(TargetSelector.ForPid(PidB), live, out _, rebind: true);
+                Assert.True(switched.Ok);
+                Assert.True(RevitTargetBinding.Binding.ConfirmDocument(switched.Current.Generation, "doc-b"));
+                switchedDuringScan = true;
+            };
+            ToolGateway.SendOverride = (_, __, ___) => verifyThrows
+                ? Task.FromException<JObject>(new InvalidOperationException("Verification failed."))
+                : Task.FromResult(new JObject { ["success"] = false, ["error"] = "Verification failed." });
+            var ctx = BeginCall();
+            try
+            {
+                var response = JObject.Parse(await MetaTools.SwitchTarget("pid:" + pidC, rebind: true));
+
+                Assert.True(switchedDuringScan);
+                Assert.False(response.Value<bool>("verified"));
+                Assert.True(response.Value<bool>("restored_previous"));
+                Assert.Equal(PidB, response["previous"].Value<int>("pid"));
+                var restored = RevitTargetBinding.Snapshot();
+                Assert.Equal(PidB, restored.Record.Pid);
+                Assert.Equal("doc-b", restored.Record.DocumentId);
+                Assert.True(RevitTargetBinding.Binding.CanWrite(restored.Generation, true, out _));
+                Assert.Equal(restored.Generation, ctx.PinnedGeneration);
             }
             finally { TargetCallContext.End(ctx); }
         }
@@ -749,7 +801,7 @@ namespace RvtMcp.Tests
             var newHost = boundPid == PidA ? hostB : hostA;
 
             var live = RevitTargetBinding.Scan().Live;
-            var result = ToolGateway.SwitchBinding(TargetSelector.ForPid(otherPid), live, rebind: true);
+            var result = ToolGateway.SwitchBinding(TargetSelector.ForPid(otherPid), live, out _, rebind: true);
 
             Assert.True(result.Ok && result.InstanceChanged);
             Assert.Null(ToolGateway.ConnectedTargetId); // closed atomically with the switch
@@ -812,7 +864,7 @@ namespace RvtMcp.Tests
                 var boundPid = RevitTargetBinding.Snapshot().Record.Pid;
                 var otherPid = boundPid == PidA ? PidB : PidA;
                 var live = RevitTargetBinding.Scan().Live;
-                var switched = ToolGateway.SwitchBinding(TargetSelector.ForPid(otherPid), live, rebind: true); // generation 2
+                var switched = ToolGateway.SwitchBinding(TargetSelector.ForPid(otherPid), live, out _, rebind: true); // generation 2
                 Assert.True(switched.Ok && switched.InstanceChanged);
 
                 var ex = await Assert.ThrowsAsync<TargetException>(
@@ -923,7 +975,7 @@ namespace RvtMcp.Tests
 
             var sw = Stopwatch.StartNew();
             var live = RevitTargetBinding.Scan().Live;
-            var result = ToolGateway.SwitchBinding(TargetSelector.ForPid(PidB), live, rebind: true);
+            var result = ToolGateway.SwitchBinding(TargetSelector.ForPid(PidB), live, out _, rebind: true);
             sw.Stop();
 
             Assert.True(result.Ok && result.InstanceChanged);

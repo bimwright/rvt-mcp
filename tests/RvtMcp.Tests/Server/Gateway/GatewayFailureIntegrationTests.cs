@@ -239,7 +239,7 @@ namespace RvtMcp.Tests
                 else
                 {
                     Descriptor(replacement.Port, pid: Pid + 1);
-                    ToolGateway.SwitchBinding(TargetSelector.ForPid(Pid + 1), RevitTargetBinding.Scan().Live, rebind: true);
+                    ToolGateway.SwitchBinding(TargetSelector.ForPid(Pid + 1), RevitTargetBinding.Scan().Live, out var beforeSwitch, rebind: true);
                 }
             };
             await WithMcp(async (client, ct) =>
@@ -404,7 +404,7 @@ namespace RvtMcp.Tests
             {
                 using var replacement = new WireHost(Pid + 1);
                 Descriptor(replacement.Port, pid: Pid + 1);
-                Assert.True(ToolGateway.SwitchBinding(TargetSelector.ForPid(Pid + 1), RevitTargetBinding.Scan().Live, rebind: true).Ok);
+                Assert.True(ToolGateway.SwitchBinding(TargetSelector.ForPid(Pid + 1), RevitTargetBinding.Scan().Live, out _, rebind: true).Ok);
             }
             else wire.CloseClient();
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending.Execution.Task.WaitAsync(TimeSpan.FromSeconds(3)));

@@ -292,13 +292,15 @@ namespace RvtMcp.Server
         /// under one <c>_connectLock</c>, so no call captured under the new generation can reach
         /// the old instance's still-open connection (§6.6, §6.8).
         /// </summary>
-        internal static SwitchResult SwitchBinding(TargetSelector selector, IReadOnlyList<Bimwright.Targeting.TargetCandidate> live, bool rebind = false)
+        internal static SwitchResult SwitchBinding(TargetSelector selector, IReadOnlyList<Bimwright.Targeting.TargetCandidate> live,
+            out BindingSnapshot before, bool rebind = false)
         {
             lock (_connectLock)
             {
-                var before = RevitTargetBinding.CaptureGeneration();
+                // Verification rollback must use the binding immediately before this switch.
+                before = RevitTargetBinding.Snapshot();
                 var result = RevitTargetBinding.Switch(selector, live, rebind);
-                if (result.Ok && RevitTargetBinding.CaptureGeneration() != before)
+                if (result.Ok && RevitTargetBinding.CaptureGeneration() != before.Generation)
                 {
                     var conn = _conn;
                     _conn = null;
