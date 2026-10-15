@@ -113,9 +113,14 @@ namespace RvtMcp.Plugin
         public static bool RequiresDocumentConfirmation(string command) => !IsReadOnly(command)
             && !string.Equals(command, "open_model", StringComparison.OrdinalIgnoreCase);
 
-        public static string DocumentRejection(string command, string expectedDocumentId, string activeDocumentId)
+        public static string DocumentRejection(string command, string expectedDocumentId, string activeDocumentId,
+            bool gatewayConfirmsDocuments = true)
         {
             if (!RequiresDocumentConfirmation(command)) return null;
+            if (string.IsNullOrWhiteSpace(expectedDocumentId) && !gatewayConfirmsDocuments)
+                return "PAIRING_REQUIRED: the command was not started. This Revit add-in requires a gateway that confirms the target document, "
+                    + "and the connected rvt-mcp server predates that check, so revit_switch_target cannot confirm a document through it. "
+                    + "Update the rvt-mcp server to match the add-in.";
             if (string.IsNullOrWhiteSpace(expectedDocumentId))
                 return "DOCUMENT_UNCONFIRMED: the command was not started. Confirm the active document with revit_switch_target(verify=true) before writing.";
             if (!string.Equals(expectedDocumentId, activeDocumentId, StringComparison.Ordinal))

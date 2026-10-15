@@ -159,6 +159,7 @@ namespace RvtMcp.Plugin
                     History = request["history"]?.ToObject<ChangeHistoryRequest>(),
                     FromMcp = true,
                     ExpectedDocumentId = request.Value<string>("expected_document_id"),
+                    DocumentProtocol = request.Value<int?>("document_protocol") >= 1,
                     Tcs = tcs
                 };
 

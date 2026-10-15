@@ -379,7 +379,7 @@ Target error codes and how to react. Every code except `TARGET_INTERRUPTED` mean
 
 `revit_switch_target` is annotated non-read-only because it changes session routing, but it stays available under `--read-only` so the binding can always be recovered.
 
-`DOCUMENT_UNCONFIRMED` and `DOCUMENT_CHANGED` are add-in refusals: the request reached Revit but the model operation did not start. Check the reported `_target`, then confirm the intended document. Gateway and add-ins must both support `document_target_v1`; update them together.
+`DOCUMENT_UNCONFIRMED` and `DOCUMENT_CHANGED` are add-in refusals: the request reached Revit but the model operation did not start. Check the reported `_target`, then confirm the intended document. Gateway and add-ins must both support `document_target_v1`; update them together. An add-in connected to an older gateway returns `PAIRING_REQUIRED` instead: update the server, because that gateway cannot confirm a document.
 
 ---
 

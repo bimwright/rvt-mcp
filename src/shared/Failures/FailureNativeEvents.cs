@@ -207,10 +207,16 @@ namespace RvtMcp.Plugin.Failures
                 {
                     _lastOpened = null;
                     if (args.Operation == UndoOperation.TransactionCommitted || args.Operation == UndoOperation.TransactionRedone)
-                    { Active.AnyCommitted = true; Active.BatchRolledBack = false; }
+                    { Active.AnyCommitted = true; Active.BatchRolledBack = false; Active.CommittedLog.Committed(args.GetTransactionNames()); }
                     else if (args.Operation == UndoOperation.TransactionUndone
                         || (args.Operation == UndoOperation.TransactionGroupRolledBack && Active.GroupStates.Count == 0))
                     { Active.NativeOutcome = "unknown"; Active.Operation.Complete = false; }
+                }
+                // A rolled-back group outside a batch reports no element changes, only the names it reverted.
+                else if (Active.OpenPath == null && args.Operation == UndoOperation.TransactionGroupRolledBack && Active.GroupStates.Count == 0)
+                {
+                    if (Active.CommittedLog.TryRevert(args.GetTransactionNames())) Active.AnyCommitted = Active.CommittedLog.Count > 0;
+                    else { Active.NativeOutcome = "unknown"; Active.Operation.Complete = false; }
                 }
             }
             catch { if (Active != null) { Active.Operation.Complete = false; Active.NativeOutcome = "unknown"; } }

@@ -609,6 +609,8 @@ namespace RvtMcp.Server
                     history,
                     operation_id = operationId,
                     failure_protocol = 1,
+                    // Lets the add-in tell an unconfirmed document from a gateway that predates confirmation.
+                    document_protocol = 1,
                     expected_document_id = binding.Snapshot().Record?.DocumentId
                 }, RequestJsonSettings);
                 var current = false;

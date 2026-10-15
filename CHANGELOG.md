@@ -34,6 +34,8 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 - Room tags use the native room-tag API; unsuccessful tagging reports individual errors instead of an empty success. `tag_all_rooms` skips rooms already tagged in the current view. Room openings use the room's phase, and sheet schedule counts exclude title-block revision schedules.
 - Schedule Level/reference filters resolve names and element IDs. Sort directions accept `ascending`, `order` and `sortOrder` consistently and reject conflicts. Phase-aware schedule creation uses the active view phase or an explicit `phase`; see [schedule inputs](docs/schedules.md).
 - Schedule data returns rendered text with parallel `rowKinds` metadata for header, blank, text and data rows. `create_view` accepts the documented lowercase `floorplan` and `3d` values.
+- An add-in that requires document confirmation now answers a gateway that predates it with `PAIRING_REQUIRED` and asks for a server update, instead of `DOCUMENT_UNCONFIRMED`, which pointed to a `revit_switch_target` verification that gateway cannot complete. Gateways send `document_protocol` with each request.
+- `send_code` that rolls back its own `TransactionGroup` no longer reports `outcome: committed` and `mutationApplied: true`. Transactions reverted by the group are removed from the observed commits; when Revit names an assimilated inner group that cannot be matched, the outcome stays `unknown`.
 
 ### Changed
 

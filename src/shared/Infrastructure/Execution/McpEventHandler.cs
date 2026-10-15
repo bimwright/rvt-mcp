@@ -20,6 +20,7 @@ namespace RvtMcp.Plugin
         public ChangeHistoryRequest History { get; set; }
         public bool FromMcp { get; set; }
         public string ExpectedDocumentId { get; set; }
+        public bool DocumentProtocol { get; set; }
         public TaskCompletionSource<string> Tcs { get; set; }
     }
 
@@ -72,7 +73,7 @@ namespace RvtMcp.Plugin
                     if (request.FromMcp)
                     {
                         var documentRejection = ToolReadPolicy.DocumentRejection(request.CommandName,
-                            request.ExpectedDocumentId, actualTarget.Value<string>("document_id"));
+                            request.ExpectedDocumentId, actualTarget.Value<string>("document_id"), request.DocumentProtocol);
                         if (documentRejection != null) throw new InvalidOperationException(documentRejection);
                     }
                     runtimeConfig = RvtMcpConfig.LoadReadOnly().WithRuntimeOptions(request.RuntimeOptions);
