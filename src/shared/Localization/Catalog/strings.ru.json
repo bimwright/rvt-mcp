@@ -8,6 +8,8 @@
   "ribbon.toggle.tooltip": "Запуск/остановка MCP Server",
   "ribbon.toggle.tooltip.running": "MCP Server работает на {connectionInfo}\nКлиент: {client}\nПоследняя команда: {lastCmd}\nНажмите, чтобы остановить",
   "ribbon.toggle.tooltip.stopped": "MCP Server остановлен\nНажмите, чтобы запустить",
+  "mcp.coexistence.title": "Несколько надстроек MCP",
+  "mcp.coexistence.notice": "В Revit установлено {count:n} сторонних надстроек MCP. Попросите агента использовать правильное имя MCP, чтобы избежать ошибок.",
   "ribbon.toggle.client.connected": "Подключено",
   "ribbon.toggle.client.waiting": "Ожидание",
   "ribbon.toggle.lastCmd.none": "Нет",

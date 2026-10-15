@@ -8,6 +8,8 @@
   "ribbon.toggle.tooltip": "MCP 서버 시작/중지",
   "ribbon.toggle.tooltip.running": "MCP 서버가 {connectionInfo}에서 실행 중\n클라이언트: {client}\n마지막 명령: {lastCmd}\n클릭하여 중지",
   "ribbon.toggle.tooltip.stopped": "MCP 서버 중지됨\n클릭하여 시작",
+  "mcp.coexistence.title": "여러 MCP 추가 기능",
+  "mcp.coexistence.notice": "Revit에 타사 MCP 추가 기능이 {count:n}개 설치되어 있습니다. 오류를 방지하려면 에이전트에 올바른 MCP 이름을 사용하도록 요청하세요.",
   "ribbon.toggle.client.connected": "연결됨",
   "ribbon.toggle.client.waiting": "대기 중",
   "ribbon.toggle.lastCmd.none": "없음",

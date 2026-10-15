@@ -28,6 +28,7 @@
     <Compile Include="..\..\src\shared\Infrastructure\SendCodeSourceBuilder.cs" Link="Shared\Infrastructure\SendCodeSourceBuilder.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\NoDocumentGuidance.cs" Link="Shared\Infrastructure\NoDocumentGuidance.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\RecentFileList.cs" Link="Shared\Infrastructure\RecentFileList.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\McpAddinDiscovery.cs" Link="Shared\Infrastructure\McpAddinDiscovery.cs" />
     <Compile Include="..\..\src\shared\Handlers\Mep\MepMembershipPolicy.cs" Link="Shared\Handlers\Mep\MepMembershipPolicy.cs" />
     <Compile Include="..\..\src\shared\Handlers\Documents\OpenModelLocalPolicy.cs" Link="Shared\Handlers\Documents\OpenModelLocalPolicy.cs" />
     <Compile Include="..\..\src\shared\Failures\UserDialogBuffer.cs" Link="Shared\Failures\UserDialogBuffer.cs" />

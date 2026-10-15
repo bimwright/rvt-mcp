@@ -8,6 +8,8 @@
   "ribbon.toggle.tooltip": "Uruchom/Zatrzymaj MCP Server",
   "ribbon.toggle.tooltip.running": "MCP Server działa na {connectionInfo}\nKlient: {client}\nOstatnie polecenie: {lastCmd}\nKliknij, aby zatrzymać",
   "ribbon.toggle.tooltip.stopped": "MCP Server zatrzymany\nKliknij, aby uruchomić",
+  "mcp.coexistence.title": "Wiele dodatków MCP",
+  "mcp.coexistence.notice": "W programie Revit zainstalowano {count:n} dodatków MCP innych firm. Poproś agenta o używanie właściwej nazwy MCP, aby uniknąć błędów.",
   "ribbon.toggle.client.connected": "Połączono",
   "ribbon.toggle.client.waiting": "Oczekiwanie",
   "ribbon.toggle.lastCmd.none": "Brak",

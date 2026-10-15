@@ -9,6 +9,8 @@
   "ribbon.toggle.tooltip": "Start/Stop MCP Server",
   "ribbon.toggle.tooltip.running": "MCP Server running on {connectionInfo}\nClient: {client}\nLast command: {lastCmd}\nClick to stop",
   "ribbon.toggle.tooltip.stopped": "MCP Server stopped\nClick to start",
+  "mcp.coexistence.title": "Multiple MCP add-ins",
+  "mcp.coexistence.notice": "Revit has {count:n} third-party MCP add-ins installed. Ask your agent to use the correct MCP name to avoid errors.",
   "ribbon.toggle.client.connected": "Connected",
   "ribbon.toggle.client.waiting": "Waiting",
   "ribbon.toggle.lastCmd.none": "None",

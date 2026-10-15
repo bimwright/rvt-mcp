@@ -8,6 +8,8 @@
   "ribbon.toggle.tooltip": "MCP-server starten/stoppen",
   "ribbon.toggle.tooltip.running": "MCP-server actief op {connectionInfo}\nClient: {client}\nLaatste opdracht: {lastCmd}\nKlik om te stoppen",
   "ribbon.toggle.tooltip.stopped": "MCP-server gestopt\nKlik om te starten",
+  "mcp.coexistence.title": "Meerdere MCP-invoegtoepassingen",
+  "mcp.coexistence.notice": "Revit heeft {count:n} MCP-invoegtoepassingen van derden. Vraag uw agent de juiste MCP-naam te gebruiken om fouten te voorkomen.",
   "ribbon.toggle.client.connected": "Verbonden",
   "ribbon.toggle.client.waiting": "Wachten",
   "ribbon.toggle.lastCmd.none": "Geen",

@@ -204,6 +204,8 @@ After changing server flags, restart the MCP connection so the client picks up t
 
 The MCP ribbon toggle saves its last successful On/Off state as `autoStartTransport` in the same config file. Revit uses that value on its next launch; closing Revit or stopping transport programmatically does not overwrite it. The file is shared by Revit versions and instances for the same Windows user, so the last saved toggle determines startup for future instances without changing instances already running. An unset value defaults to On. `BIMWRIGHT_AUTO_START_TRANSPORT`, when set in the **Revit process** environment, overrides the saved value at startup; the ribbon still saves the user's choice, but the environment override continues to win on later launches. A save failure is reported and the toggle applies only to the current session.
 
+If another third-party MCP add-in is detected for that Revit version, rvt-mcp starts **Off**, even when the saved state or environment requests On. Autodesk's official Revit MCP is exempt. This startup override preserves the saved preference. Clicking the ribbon toggle to start manually shows a localized modal notice with the number of third-party MCP add-ins, including rvt-mcp; acknowledging it allows startup. Detection reads `.addin` manifests and compatible bundle registrations, recognizing MCP names/classes/assembly names and deduplicating registrations. MCP implementations hidden behind generic loader metadata may not be recognized.
+
 ---
 
 ## Permissions & auto mode

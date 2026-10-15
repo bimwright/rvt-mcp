@@ -8,6 +8,8 @@
   "ribbon.toggle.tooltip": "启动/停止 MCP 服务器",
   "ribbon.toggle.tooltip.running": "MCP 服务器正在 {connectionInfo} 上运行\n客户端：{client}\n最近命令：{lastCmd}\n点击停止",
   "ribbon.toggle.tooltip.stopped": "MCP 服务器已停止\n点击启动",
+  "mcp.coexistence.title": "多个 MCP 插件",
+  "mcp.coexistence.notice": "Revit 当前安装了 {count:n} 个第三方 MCP 插件。请要求 Agent 使用正确的 MCP 名称，以避免错误。",
   "ribbon.toggle.client.connected": "已连接",
   "ribbon.toggle.client.waiting": "等待中",
   "ribbon.toggle.lastCmd.none": "无",

@@ -8,6 +8,8 @@
   "ribbon.toggle.tooltip": "MCP Server indítása/leállítása",
   "ribbon.toggle.tooltip.running": "MCP Server fut: {connectionInfo}\nKliens: {client}\nUtolsó parancs: {lastCmd}\nKattintson a leállításhoz",
   "ribbon.toggle.tooltip.stopped": "MCP Server leállítva\nKattintson az indításhoz",
+  "mcp.coexistence.title": "Több MCP-bővítmény",
+  "mcp.coexistence.notice": "A Revitben {count:n} külső MCP-bővítmény van telepítve. A hibák elkerüléséhez kérje meg az ügynököt, hogy a megfelelő MCP-nevet használja.",
   "ribbon.toggle.client.connected": "Csatlakozva",
   "ribbon.toggle.client.waiting": "Várakozás",
   "ribbon.toggle.lastCmd.none": "Nincs",

@@ -8,6 +8,8 @@
   "ribbon.toggle.tooltip": "Spustit/Zastavit MCP Server",
   "ribbon.toggle.tooltip.running": "MCP Server běží na {connectionInfo}\nKlient: {client}\nPoslední příkaz: {lastCmd}\nKliknutím zastavíte",
   "ribbon.toggle.tooltip.stopped": "MCP Server zastaven\nKliknutím spustíte",
+  "mcp.coexistence.title": "Více doplňků MCP",
+  "mcp.coexistence.notice": "V Revitu je nainstalováno {count:n} doplňků MCP třetích stran. Požádejte agenta, aby používal správný název MCP a předešel tak chybám.",
   "ribbon.toggle.client.connected": "Připojeno",
   "ribbon.toggle.client.waiting": "Čekání",
   "ribbon.toggle.lastCmd.none": "Žádný",

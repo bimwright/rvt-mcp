@@ -83,14 +83,15 @@ namespace RvtMcp.Plugin
             application.ControlledApplication.DocumentSavedAs += Survey.SurveyHistoryBridge.Invalidate;
             DebugLog("OnStartup: Dispatcher + EventHandler + ExternalEvent OK");
 
-            if (Config.AutoStartTransportOrDefault)
+            var otherMcps = McpAddinDiscovery.FindOtherMcpAddins(AuthToken.RevitVersion, DebugLog);
+            if (Config.AutoStartTransportOrDefault && otherMcps.Count == 0)
             {
                 try { CreateAndStartTransport(); DebugLog("OnStartup: Transport OK"); }
                 catch (Exception ex) { DebugLog("OnStartup: MCP remains OFF: " + ex.Message); }
             }
             else
             {
-                DebugLog("OnStartup: Transport stopped by startup preference");
+                DebugLog(otherMcps.Count > 0 ? "OnStartup: MCP remains OFF because another third-party MCP add-in is installed" : "OnStartup: Transport stopped by startup preference");
             }
 
             _ribbonApplication = application;

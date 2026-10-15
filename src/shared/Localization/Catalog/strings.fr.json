@@ -8,6 +8,8 @@
   "ribbon.toggle.tooltip": "Démarrer/Arrêter le serveur MCP",
   "ribbon.toggle.tooltip.running": "Serveur MCP en cours d'exécution sur {connectionInfo}\nClient : {client}\nDernière commande : {lastCmd}\nCliquer pour arrêter",
   "ribbon.toggle.tooltip.stopped": "Serveur MCP arrêté\nCliquer pour démarrer",
+  "mcp.coexistence.title": "Plusieurs compléments MCP",
+  "mcp.coexistence.notice": "Revit possède {count:n} compléments MCP tiers. Demandez à votre agent d’utiliser le bon nom de MCP pour éviter les erreurs.",
   "ribbon.toggle.client.connected": "Connecté",
   "ribbon.toggle.client.waiting": "En attente",
   "ribbon.toggle.lastCmd.none": "Aucune",

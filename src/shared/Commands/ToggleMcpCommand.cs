@@ -17,6 +17,17 @@ namespace RvtMcp.Plugin.Commands
             }
             else
             {
+                var otherMcps = McpAddinDiscovery.FindOtherMcpAddins(AuthToken.RevitVersion, App.DebugLog);
+                if (otherMcps.Count > 0)
+                {
+                    var notice = new TaskDialog(Localization.L.T("mcp.coexistence.title"))
+                    {
+                        MainInstruction = Localization.L.T("mcp.coexistence.notice", ("count", otherMcps.Count + 1)),
+                        MainIcon = TaskDialogIcon.TaskDialogIconWarning,
+                        CommonButtons = TaskDialogCommonButtons.Ok
+                    };
+                    if (notice.Show() != TaskDialogResult.Ok) return Result.Cancelled;
+                }
                 App.Instance.CreateAndStartTransport();
             }
 

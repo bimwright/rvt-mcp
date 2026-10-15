@@ -8,6 +8,8 @@
   "ribbon.toggle.tooltip": "MCP サーバーを開始/停止",
   "ribbon.toggle.tooltip.running": "MCP サーバー稼働中: {connectionInfo}\nクライアント: {client}\n最後のコマンド: {lastCmd}\nクリックで停止",
   "ribbon.toggle.tooltip.stopped": "MCP サーバー停止中\nクリックで開始",
+  "mcp.coexistence.title": "複数の MCP アドイン",
+  "mcp.coexistence.notice": "Revit にはサードパーティ製 MCP アドインが {count:n} 個インストールされています。エラーを避けるため、正しい MCP 名を使うようエージェントに指示してください。",
   "ribbon.toggle.client.connected": "接続済み",
   "ribbon.toggle.client.waiting": "待機中",
   "ribbon.toggle.lastCmd.none": "なし",
