@@ -192,6 +192,8 @@ namespace RvtMcp.Failures
         public int Limit { get; set; } = 50;
         public string Cursor { get; set; }
         public bool IncludeDetails { get; set; }
+        /// <summary>Highest seq first, so a bounded read keeps the most recent incidents.</summary>
+        public bool NewestFirst { get; set; }
     }
     public sealed class FailureRecordPage
     {

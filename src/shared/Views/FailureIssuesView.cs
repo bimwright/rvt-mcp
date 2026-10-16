@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Media;
 using RvtMcp.Failures;
@@ -16,130 +17,193 @@ namespace RvtMcp.Plugin.Views
     /// <summary>Modeless local ledger review. All Revit facts are captured by FailureControl on its API thread.</summary>
     internal sealed class FailureIssuesView : UserControl
     {
-        private const int MessagePageSize = 50;
-        private readonly ComboBox _models = new ComboBox { MinWidth = 210, MaxWidth = 340, DisplayMemberPath = "Title" };
-        private readonly ComboBox _states = new ComboBox { MinWidth = 130 };
-        private readonly TextBlock _status = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4) };
-        private readonly TextBlock _pageLabel = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
-        private readonly TextBlock _messagePageLabel = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
+        // Bounded read on the Revit UI thread; the status line says when older issues are left out.
+        private const int MaxIssueRows = 500;
+        private readonly ComboBox _models = new ComboBox { Height = 28, MinWidth = 210, MaxWidth = 340, DisplayMemberPath = "Title", VerticalContentAlignment = VerticalAlignment.Center };
+        private readonly ComboBox _states = new ComboBox { Height = 28, MinWidth = 130, VerticalContentAlignment = VerticalAlignment.Center };
+        private readonly TextBlock _status = new TextBlock { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(4, 0, 4, 6) };
         private readonly DataGrid _grid;
-        private readonly TextBox _details = new TextBox {
-            IsReadOnly = true, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            Background = Brushes.White, BorderThickness = new Thickness(0), MinHeight = 100
-        };
-        private readonly TextBox _reason = new TextBox { MinHeight = 30, MaxLength = 2000, TextWrapping = TextWrapping.Wrap };
-        private readonly CheckBox _verified = new CheckBox { Margin = new Thickness(0, 5, 0, 5) };
-        private readonly CheckBox _dialogConsent = new CheckBox { Margin = new Thickness(0, 5, 0, 5), Visibility = Visibility.Collapsed };
-        private readonly ListBox _rules = new ListBox { MaxHeight = 140, DisplayMemberPath = "Label" };
+        private readonly TextBlock _issueHeadline = new TextBlock { FontWeight = FontWeights.Bold, FontSize = 14, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+        private readonly Grid _facts = new Grid { Margin = new Thickness(0, 4, 0, 0) };
+        private readonly StackPanel _warningCards = new StackPanel();
+        private readonly ScrollViewer _warningScroll;
+        private readonly Border _warningFadeTop;
+        private readonly Border _warningFadeBottom;
+        private readonly StackPanel _rulesPanel = new StackPanel { Margin = new Thickness(0, 6, 0, 0), Visibility = Visibility.Collapsed };
+        private readonly TextBlock _rulesEmpty = new TextBlock { Foreground = Brushes.Gray };
+        private readonly TextBlock _decisionHint = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), Foreground = DecisionHintBrush };
+        private readonly TextBox _reason = new TextBox { Height = 28, MaxLength = 2000, VerticalContentAlignment = VerticalAlignment.Center };
+        private readonly CheckBox _verified = new CheckBox();
+        private readonly CheckBox _dialogConsent = new CheckBox { Margin = new Thickness(0, 4, 0, 0), Visibility = Visibility.Collapsed };
+        private readonly ListBox _rules = new ListBox { MaxHeight = 72, DisplayMemberPath = "Label", Margin = new Thickness(0, 0, 0, 4) };
         private readonly List<Action> _localizers = new List<Action>();
         private readonly List<Button> _decisionButtons = new List<Button>();
-        private readonly Stack<string> _previousCursors = new Stack<string>();
-        private readonly Button _previous;
-        private readonly Button _next;
-        private readonly Button _messagePrevious;
-        private readonly Button _messageNext;
-        private readonly Button _accept;
-        private readonly Button _createRule;
-        private readonly Button _native;
+        private readonly GroupBox _issuesGroup;
+        private readonly GroupBox _detailGroup;
+        private readonly GroupBox _decisionGroup;
+        private readonly GroupBox _warningsGroup;
+        private readonly Button _copyDetails;
+        private Button _accept;
+        private Button _createRule;
+        private Button _native;
+        private Button _rework;
+        private Button _abandon;
         private readonly Button _revoke;
         private readonly EventHandler _languageChanged;
-        private string _cursor;
-        private string _nextCursor;
         private string _lastScope;
         private bool _loading;
-        private int _messagePage;
         private FailureIncident _incident;
         private FailureOperation _operation;
+        private static readonly SolidColorBrush DecisionHintBrush = Freeze(0x9A, 0x34, 0x12);
+        private static readonly SolidColorBrush MutedBrush = Freeze(0x64, 0x74, 0x8B);
+        private static readonly SolidColorBrush ErrorBrush = Freeze(0x99, 0x1B, 0x1B);
+        private static readonly SolidColorBrush ErrorBackground = Freeze(0xFE, 0xF2, 0xF2);
+        private static readonly SolidColorBrush ErrorBorder = Freeze(0xDC, 0x26, 0x26);
+        private static readonly SolidColorBrush WarningBrush = Freeze(0x92, 0x40, 0x0E);
+        private static readonly SolidColorBrush WarningBackground = Freeze(0xFF, 0xFB, 0xEB);
+        private static readonly SolidColorBrush WarningBorderBrush = Freeze(0xD9, 0x77, 0x06);
+        private static readonly SolidColorBrush DialogBrush = Freeze(0x1E, 0x40, 0xAF);
+        private static readonly SolidColorBrush DialogBackground = Freeze(0xEF, 0xF6, 0xFF);
+        private static readonly SolidColorBrush DialogBorder = Freeze(0x25, 0x63, 0xEB);
+        private static readonly SolidColorBrush NoticeBackground = Freeze(0xF8, 0xFA, 0xFC);
+        private static readonly SolidColorBrush NoticeBorder = Freeze(0x64, 0x74, 0x8B);
 
         internal FailureIssuesView()
         {
-            var root = new Grid { Margin = new Thickness(8) };
+            var root = new Grid { Margin = new Thickness(8, 6, 8, 8) };
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(0.7, GridUnitType.Star), MinHeight = 90, MaxHeight = 180 });
-            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 120 });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 240 });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            var toolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 4) };
-            toolbar.Children.Add(Label("failure.filter.model"));
-            toolbar.Children.Add(_models);
-            toolbar.Children.Add(Label("failure.filter.state"));
-            toolbar.Children.Add(_states);
+
+            var toolbar = new DockPanel { LastChildFill = false, Margin = new Thickness(0, 0, 0, 4) };
+            var filters = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            filters.Children.Add(Label("failure.filter.model"));
+            _models.Margin = new Thickness(0, 0, 8, 0);
+            filters.Children.Add(_models);
+            filters.Children.Add(Label("failure.filter.state"));
+            _states.Margin = new Thickness(0, 0, 8, 0);
             foreach (var state in new[] { "", "open", "observed", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule" })
                 _states.Items.Add(new ComboBoxItem { Tag = state, Content = state.Length == 0 ? L.T("failure.filter.all") : L.T("failure.state." + state) });
             _states.SelectedIndex = 1;
-            toolbar.Children.Add(Button("failure.refresh", (s, e) => Refresh()));
-            _previous = Button("failure.previous", (s, e) => {
-                if (_previousCursors.Count == 0) return;
-                _cursor = _previousCursors.Pop(); LoadPage();
-            });
-            _next = Button("failure.next", (s, e) => {
-                if (_nextCursor == null) return;
-                _previousCursors.Push(_cursor); _cursor = _nextCursor; LoadPage();
-            });
-            toolbar.Children.Add(_previous);
-            toolbar.Children.Add(_next);
-            toolbar.Children.Add(_pageLabel);
+            filters.Children.Add(_states);
+            filters.Children.Add(Button("failure.refresh", (s, e) => Refresh()));
+            DockPanel.SetDock(filters, Dock.Left);
+            toolbar.Children.Add(filters);
             Add(root, toolbar, 0);
             Add(root, _status, 1);
 
             _grid = new DataGrid {
                 IsReadOnly = true, AutoGenerateColumns = false, CanUserAddRows = false,
                 SelectionMode = DataGridSelectionMode.Single, HeadersVisibility = DataGridHeadersVisibility.Column,
-                GridLinesVisibility = DataGridGridLinesVisibility.Horizontal, Margin = new Thickness(0, 4, 0, 4)
+                GridLinesVisibility = DataGridGridLinesVisibility.Horizontal, Margin = new Thickness(0)
             };
-            Column("failure.col.time", "Time", 140);
-            Column("failure.col.tool", "Tool", 175);
-            Column("failure.col.severity", "Severity", 80);
-            Column("failure.col.count", "Count", 75);
-            Column("failure.col.outcome", "Outcome", 115);
-            Column("failure.col.state", "State", 140);
+            var header = new Style(typeof(DataGridColumnHeader));
+            header.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Bold));
+            header.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
+            _grid.ColumnHeaderStyle = header;
+            var center = new Style(typeof(TextBlock));
+            center.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
+            var trim = new Style(typeof(TextBlock));
+            trim.Setters.Add(new Setter(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis));
+            Column("failure.col.number", "Number", 0.4, 36, center);
+            Column("failure.col.tool", "Tool", 2.2, 100, trim);
+            Column("failure.col.date", "Date", 1.15, 88, center);
+            Column("failure.col.time", "Clock", 0.9, 72, center);
+            Column("failure.col.warnings", "Count", 0.7, 72, center);
             _grid.SelectionChanged += (s, e) => SelectIssue((_grid.SelectedItem as IssueRow)?.Incident);
-            Add(root, _grid, 2);
+            _issuesGroup = new GroupBox { Margin = new Thickness(0, 0, 4, 4), Padding = new Thickness(8), Content = _grid };
 
-            var detail = new Grid();
+            _facts.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            _facts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 48 });
+            _facts.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            _facts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 48 });
+            var recordHeader = new TextBlock { FontWeight = FontWeights.SemiBold };
+            var record = new Expander { Header = recordHeader, IsExpanded = false, Margin = new Thickness(0, 6, 0, 0), Content = _facts };
+            var titleRow = new DockPanel { LastChildFill = true };
+            _copyDetails = Button("failure.copy", (s, e) => CopyDetails());
+            _copyDetails.Margin = new Thickness(8, 0, 0, 0);
+            DockPanel.SetDock(_copyDetails, Dock.Right);
+            titleRow.Children.Add(_copyDetails);
+            titleRow.Children.Add(_issueHeadline);
+            var heading = new StackPanel { Margin = new Thickness(0, 0, 0, 4) };
+            heading.Children.Add(titleRow);
+            heading.Children.Add(record);
+
+            _warningScroll = new ScrollViewer {
+                Content = _warningCards, Background = Brushes.White, PanningMode = PanningMode.VerticalOnly,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+            };
+            _warningScroll.PreviewMouseWheel += (s, e) => HistoryChrome.Wheel(_warningScroll, e, 0.45);
+            _warningScroll.ScrollChanged += (s, e) => UpdateWarningFades();
+            _warningScroll.SizeChanged += (s, e) => UpdateWarningFades();
+            _warningFadeTop = HistoryChrome.FadeEdge(true);
+            _warningFadeBottom = HistoryChrome.FadeEdge(false);
+            var warningHost = new Grid { Background = Brushes.White };
+            warningHost.Children.Add(_warningScroll);
+            warningHost.Children.Add(_warningFadeTop);
+            warningHost.Children.Add(_warningFadeBottom);
+            _warningsGroup = new GroupBox { Margin = new Thickness(0, 8, 0, 0), Padding = new Thickness(8, 4, 8, 8), Background = Brushes.White, Content = warningHost };
+
+            var rulesTitle = new TextBlock { FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) };
+            _rulesPanel.Children.Add(rulesTitle);
+            _rulesPanel.Children.Add(_rulesEmpty);
+            _rulesPanel.Children.Add(_rules);
+            _revoke = Button("security.failure.revokeRule", (s, e) => RevokeRule());
+            _revoke.HorizontalAlignment = HorizontalAlignment.Left;
+            _rules.SelectionChanged += (s, e) => UpdateActions();
+            _rulesPanel.Children.Add(_revoke);
+
+            var detail = new Grid { VerticalAlignment = VerticalAlignment.Stretch };
             detail.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             detail.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            var messageToolbar = new WrapPanel();
-            messageToolbar.Children.Add(Button("failure.copy", (s, e) => CopyDetails()));
-            _messagePrevious = Button("failure.previous", (s, e) => { _messagePage--; RenderDetails(); });
-            _messageNext = Button("failure.next", (s, e) => { _messagePage++; RenderDetails(); });
-            messageToolbar.Children.Add(_messagePrevious);
-            messageToolbar.Children.Add(_messageNext);
-            messageToolbar.Children.Add(_messagePageLabel);
-            Add(detail, messageToolbar, 0);
-            Add(detail, _details, 1);
-            Add(root, detail, 3);
+            detail.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Add(detail, heading, 0);
+            Add(detail, _warningsGroup, 1);
+            Add(detail, _rulesPanel, 2);
+            _detailGroup = new GroupBox { Margin = new Thickness(4, 0, 0, 4), Padding = new Thickness(8), Content = detail };
+            _decisionGroup = new GroupBox { Margin = new Thickness(4, 4, 0, 4), Padding = new Thickness(8), Content = BuildDecision() };
+            var right = new Grid();
+            right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            right.Children.Add(_detailGroup);
+            Grid.SetRow(_decisionGroup, 1);
+            right.Children.Add(_decisionGroup);
 
-            var decisions = new StackPanel();
-            decisions.Children.Add(Label("security.failure.reason"));
-            decisions.Children.Add(_reason);
-            _localizers.Add(() => _verified.Content = L.T("security.failure.verified"));
-            decisions.Children.Add(_verified);
-            decisions.Children.Add(_dialogConsent);
-            var actions = new WrapPanel();
-            actions.Children.Add(DecisionButton("security.failure.rework", "rework"));
-            actions.Children.Add(DecisionButton("security.failure.abandon", "abandon"));
-            _accept = DecisionButton("security.failure.acceptOnce", "accept_once");
-            _createRule = DecisionButton("security.failure.createRule", "create_rule");
-            _native = DecisionButton("security.failure.nativeGrant", "native_grant");
-            actions.Children.Add(_accept);
-            actions.Children.Add(_createRule);
-            actions.Children.Add(_native);
-            decisions.Children.Add(actions);
-            var rulesPanel = new StackPanel();
-            rulesPanel.Children.Add(_rules);
-            _revoke = Button("security.failure.revokeRule", (s, e) => RevokeRule());
-            _rules.SelectionChanged += (s, e) => UpdateActions();
-            rulesPanel.Children.Add(_revoke);
-            var ruleExpander = new Expander { Content = rulesPanel, Margin = new Thickness(0, 6, 0, 0) };
-            _localizers.Add(() => ruleExpander.Header = L.T("failure.rules"));
-            decisions.Children.Add(ruleExpander);
-            Add(root, new ScrollViewer { Content = decisions, MaxHeight = 230,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }, 4);
+            var body = new Grid();
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star), MinWidth = 360 });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star), MinWidth = 420 });
+            Grid.SetColumn(_issuesGroup, 0);
+            body.Children.Add(_issuesGroup);
+            Grid.SetColumn(right, 1);
+            body.Children.Add(right);
+            Add(root, body, 2);
+
+            var closeBar = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 4, 0, 0) };
+            var close = Button("update.close", (s, e) => Window.GetWindow(this)?.Close());
+            closeBar.Children.Add(close);
+            Add(root, closeBar, 3);
             Content = root;
-            _models.SelectionChanged += (s, e) => { if (!_loading) { ResetPage(); LoadPage(); } };
-            _states.SelectionChanged += (s, e) => { if (!_loading) { ResetPage(); LoadPage(); } };
+
+            _localizers.Add(() => _issuesGroup.Header = L.T("failure.tab.issues"));
+            _localizers.Add(() => _detailGroup.Header = L.T("failure.group.detail"));
+            _localizers.Add(() => _decisionGroup.Header = L.T("failure.group.decision"));
+            _localizers.Add(() => _warningsGroup.Header = L.T("failure.group.warnings"));
+            _localizers.Add(() => rulesTitle.Text = L.T("failure.rules"));
+            _localizers.Add(() => _rulesEmpty.Text = L.T("failure.rules.empty"));
+            _localizers.Add(() => recordHeader.Text = L.T("failure.group.record"));
+            _localizers.Add(() => HistoryChrome.Guide(recordHeader, L.T("failure.record.tip")));
+            _localizers.Add(() => HistoryChrome.Guide(_models, L.T("failure.tip.model")));
+            _localizers.Add(() => HistoryChrome.Guide(_states, L.T("failure.tip.state")));
+            _localizers.Add(() => HistoryChrome.Guide(_grid, L.T("failure.detail.prompt")));
+            _localizers.Add(() => HistoryChrome.Guide(_copyDetails, L.T("failure.copy")));
+            _localizers.Add(() => _verified.Content = L.T("failure.review.short"));
+            _localizers.Add(() => HistoryChrome.Guide(_verified, L.T("security.failure.verified") + "\n" + L.T("security.failure.verificationRequired")));
+            _localizers.Add(() => HistoryChrome.Guide(_dialogConsent, L.T("security.failure.dialogChoiceRequired")));
+            _localizers.Add(() => HistoryChrome.Guide(_reason, L.T("security.failure.reasonRequired")));
+
+            _models.SelectionChanged += (s, e) => { if (!_loading) LoadPage(); };
+            _states.SelectionChanged += (s, e) => { if (!_loading) LoadPage(); };
             _languageChanged = (s, e) => {
                 if (Dispatcher.HasShutdownStarted) return;
                 if (Dispatcher.CheckAccess()) ApplyLocalization();
@@ -148,6 +212,37 @@ namespace RvtMcp.Plugin.Views
             Loaded += (s, e) => { L.Changed += _languageChanged; ApplyLocalization(); Refresh(); };
             Unloaded += (s, e) => L.Changed -= _languageChanged;
             ApplyLocalization();
+        }
+
+        private StackPanel BuildDecision()
+        {
+            var panel = new StackPanel();
+            panel.Children.Add(_verified);
+            panel.Children.Add(_dialogConsent);
+            var reasonRow = new Grid { Margin = new Thickness(0, 6, 0, 0) };
+            reasonRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            reasonRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var reasonLabel = Label("security.failure.reason");
+            reasonLabel.FontWeight = FontWeights.SemiBold;
+            reasonLabel.Margin = new Thickness(0, 0, 8, 0);
+            reasonRow.Children.Add(reasonLabel);
+            Grid.SetColumn(_reason, 1);
+            reasonRow.Children.Add(_reason);
+            panel.Children.Add(reasonRow);
+            panel.Children.Add(_decisionHint);
+            var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
+            _rework = DecisionButton("failure.action.rework", "rework");
+            _abandon = DecisionButton("failure.action.abandon", "abandon");
+            _accept = DecisionButton("failure.action.acceptOnce", "accept_once");
+            _createRule = DecisionButton("failure.action.addRule", "create_rule");
+            _native = DecisionButton("failure.action.allowNative", "native_grant");
+            actions.Children.Add(_rework);
+            actions.Children.Add(_abandon);
+            actions.Children.Add(_accept);
+            actions.Children.Add(_createRule);
+            actions.Children.Add(_native);
+            panel.Children.Add(actions);
+            return panel;
         }
 
         internal void Refresh()
@@ -163,7 +258,6 @@ namespace RvtMcp.Plugin.Views
                 _models.ItemsSource = models;
                 _models.SelectedItem = models.FirstOrDefault(m => m.ModelScopeKey == wanted)
                     ?? models.FirstOrDefault(m => m.ModelScopeKey == context?.ModelScopeKey) ?? models.FirstOrDefault();
-                ResetPage();
             }
             catch (Exception ex) { ShowFailure(ex.Message); }
             finally { _loading = false; }
@@ -171,11 +265,6 @@ namespace RvtMcp.Plugin.Views
         }
 
         private static FailureLedgerStore Reader() => new FailureLedgerStore(readOnly: true);
-
-        private void ResetPage()
-        {
-            _cursor = null; _nextCursor = null; _previousCursors.Clear();
-        }
 
         private void LoadPage()
         {
@@ -185,8 +274,9 @@ namespace RvtMcp.Plugin.Views
             {
                 _grid.ItemsSource = null;
                 _rules.ItemsSource = null;
-                _status.Text = L.T("failure.noModel");
-                SelectIssue(null); UpdatePaging(0); return;
+                ShowRules(false);
+                SetStatus(L.T("failure.noModel"), Brushes.DimGray);
+                SelectIssue(null); return;
             }
             if (_lastScope != model.ModelScopeKey)
             {
@@ -196,13 +286,28 @@ namespace RvtMcp.Plugin.Views
             {
                 var reader = Reader();
                 var state = (_states.SelectedItem as ComboBoxItem)?.Tag as string;
-                var page = reader.Query(new FailureRecordQuery {
-                    ModelScopeKey = model.ModelScopeKey, State = string.IsNullOrEmpty(state) ? null : state,
-                    Cursor = _cursor, Limit = 50, IncludeDetails = false
-                });
+                var incidents = new List<FailureIncident>();
+                string cursor = null;
+                var available = false;
+                var complete = true;
+                var more = false;
+                while (incidents.Count < MaxIssueRows)
+                {
+                    var page = reader.Query(new FailureRecordQuery {
+                        ModelScopeKey = model.ModelScopeKey, State = string.IsNullOrEmpty(state) ? null : state,
+                        Cursor = cursor, Limit = 100, IncludeDetails = false, NewestFirst = true
+                    });
+                    available = page.Available;
+                    if (!page.Available) break;
+                    complete &= page.Complete;
+                    incidents.AddRange(page.Records);
+                    cursor = page.NextCursor;
+                    more = cursor != null;
+                    if (!more) break;
+                }
                 var operations = new Dictionary<string, FailureOperation>();
                 var rows = new List<IssueRow>();
-                foreach (var incident in page.Records)
+                foreach (var incident in incidents)
                 {
                     FailureOperation operation = null;
                     if (incident.OperationId != null && !operations.TryGetValue(incident.OperationId, out operation))
@@ -210,40 +315,49 @@ namespace RvtMcp.Plugin.Views
                         operation = reader.GetOperation(incident.OperationId);
                         operations[incident.OperationId] = operation;
                     }
-                    rows.Add(new IssueRow(incident, operation));
+                    rows.Add(new IssueRow(incident, operation) { Number = rows.Count + 1 });
                 }
+                // Rules first: selecting a row renders the Record facts, which read the rule count.
+                var rules = reader.GetRules(model.ModelScopeKey).Select(rule => new RuleRow(rule)).ToList();
+                _rules.ItemsSource = rules;
+                ShowRules(rules.Count > 0);
                 var selectedId = _incident?.IncidentId;
                 _grid.ItemsSource = rows;
-                _nextCursor = page.NextCursor;
                 _grid.SelectedItem = rows.FirstOrDefault(r => r.Incident.IncidentId == selectedId) ?? rows.FirstOrDefault();
                 var gate = FailureControl.GetUiGate(model.ModelScopeKey);
-                _status.Text = page.Available
-                    ? L.T(gate.Blocked ? "failure.gate.blocked" : "failure.gate.clear")
-                    : L.T("failure.unavailable");
+                var parts = new List<string>();
                 var active = FailureControl.GetUiContext();
-                _status.Text = (active?.IsAvailable == true
-                    ? L.T("failure.activeModel", ("title", active.ModelTitle ?? Unknown())) : L.T("failure.noModel"))
-                    + "\n" + _status.Text;
-                if (!page.Complete) _status.Text += "\n" + L.T("failure.detail.incomplete");
-                if (rows.Count == 0 && page.Available) _status.Text += "\n" + L.T("failure.empty");
-                _status.Foreground = gate.Blocked || !page.Available ? Brushes.Firebrick : Brushes.DimGray;
-                _rules.ItemsSource = reader.GetRules(model.ModelScopeKey).Select(rule => new RuleRow(rule)).ToList();
-                _rules.ToolTip = L.T("failure.rules.none");
-                UpdatePaging(rows.Count); UpdateActions();
+                parts.Add(active?.IsAvailable == true
+                    ? L.T("failure.activeModel", ("title", active.ModelTitle ?? Unknown())) : L.T("failure.noModel"));
+                parts.Add(available ? L.T(gate.Blocked ? "failure.gate.blocked" : "failure.gate.clear") : L.T("failure.unavailable"));
+                if (!complete) parts.Add(L.T("failure.detail.incomplete"));
+                if (more) parts.Add(L.T("failure.list.newest", ("count", rows.Count)));
+                if (rows.Count == 0 && available) parts.Add(L.T("failure.empty"));
+                SetStatus(string.Join(" · ", parts), gate.Blocked || !available ? Brushes.Firebrick : Brushes.DimGray);
+                UpdateActions();
             }
             catch (Exception ex)
             {
                 // Staged reason is deliberately retained on IO/corruption failures.
                 _grid.ItemsSource = null; _rules.ItemsSource = null;
-                SelectIssue(null); _nextCursor = null; UpdatePaging(0); ShowFailure(ex.Message);
+                ShowRules(false);
+                SelectIssue(null); ShowFailure(ex.Message);
             }
+        }
+
+        private void ShowRules(bool any)
+        {
+            _rules.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
+            _rulesEmpty.Visibility = any ? Visibility.Collapsed : Visibility.Visible;
+            _revoke.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
+            _rulesPanel.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void SelectIssue(FailureIncident selected)
         {
             var same = selected != null && selected.IncidentId == _incident?.IncidentId;
             if (selected != null && _incident != null && !same) _reason.Clear();
-            _incident = null; _operation = null; _messagePage = 0;
+            _incident = null; _operation = null;
             if (!same) { _verified.IsChecked = false; _dialogConsent.IsChecked = false; }
             if (selected != null)
             {
@@ -263,24 +377,48 @@ namespace RvtMcp.Plugin.Views
 
         private void RenderDetails()
         {
+            _warningCards.Children.Clear();
+            _copyDetails.IsEnabled = _incident != null;
             if (_incident == null)
             {
-                _details.Text = L.T("failure.detail.prompt");
-                _messagePageLabel.Text = "";
-                _messagePrevious.IsEnabled = _messageNext.IsEnabled = false;
+                _issueHeadline.Text = "";
+                ShowFacts(L.T("failure.detail.prompt"));
+                _warningCards.Children.Add(Notice(L.T("failure.detail.prompt"), false));
+                UpdateWarningFades();
                 return;
             }
-            var total = _incident.Messages?.Count ?? 0;
-            _messagePage = Math.Max(0, Math.Min(_messagePage, Math.Max(0, (total - 1) / MessagePageSize)));
-            _details.Text = DetailsText(false);
-            _messagePageLabel.Text = L.T("failure.detail.messagePage",
-                ("first", total == 0 ? 0 : _messagePage * MessagePageSize + 1),
-                ("last", Math.Min(total, (_messagePage + 1) * MessagePageSize)), ("total", total));
-            _messagePrevious.IsEnabled = _messagePage > 0;
-            _messageNext.IsEnabled = (_messagePage + 1) * MessagePageSize < total;
+            var messages = _incident.Messages ?? new List<FailureMessage>();
+            var severity = string.IsNullOrWhiteSpace(_incident.Severity) && messages.Count > 0 ? messages[0].Severity : _incident.Severity;
+            var rules = _rules.ItemsSource as System.Collections.ICollection;
+            var ruleText = rules == null || rules.Count == 0 ? L.T("failure.rules.noneLine") : rules.Count.ToString("n0", CultureInfo.CurrentCulture);
+            _issueHeadline.Text = _operation?.Tool ?? Unknown();
+            ShowFacts(
+                L.T("failure.col.state"), L.T("failure.state." + _incident.State),
+                L.T("failure.col.outcome"), L.T("failure.outcome." + (_operation?.Outcome ?? "unknown")),
+                L.T("failure.col.severity"), severity,
+                L.T("failure.col.count"), (_incident.MessageCount > 0 ? _incident.MessageCount : messages.Count).ToString("n0", CultureInfo.CurrentCulture),
+                L.T("failure.fact.revit"), _incident.RevitYear > 0 ? _incident.RevitYear.ToString(CultureInfo.InvariantCulture) : "",
+                L.T("failure.fact.context"), _incident.OperationContext,
+                L.T("failure.fact.transaction"), _incident.TransactionName,
+                L.T("failure.fact.execution"), _operation?.Execution,
+                L.T("failure.fact.coverage"), _operation?.ObservationCoverage,
+                L.T("failure.fact.evidence"), L.T(_incident.Complete && _operation?.Complete == true ? "failure.evidence.complete" : "failure.evidence.incomplete"),
+                L.T("failure.fact.persistence"), _incident.Persistence,
+                L.T("failure.fact.rules"), ruleText);
+            if (FailureIssuesPresentation.NeedsModelVerification(_operation))
+                _warningCards.Children.Add(Notice(L.T("failure.detail.partial"), true));
+            if (!_incident.Complete || _operation?.Complete == false)
+                _warningCards.Children.Add(Notice(L.T("failure.detail.incomplete"), true));
+            if (!string.IsNullOrWhiteSpace(_incident.NativeAction))
+                _warningCards.Children.Add(Notice(_incident.NativeAction + " · " + _incident.NativeContextDescription, false));
+            if (messages.Count == 0)
+                _warningCards.Children.Add(Notice(L.T("failure.detail.noWarnings"), false));
+            for (var i = 0; i < messages.Count; i++)
+                _warningCards.Children.Add(WarningCard(messages[i], i + 1, messages.Count));
+            UpdateWarningFades();
         }
 
-        private string DetailsText(bool allMessages)
+        private string DetailsText()
         {
             if (_incident == null) return "";
             var text = new StringBuilder();
@@ -304,18 +442,15 @@ namespace RvtMcp.Plugin.Views
                 text.AppendLine("Context fingerprint: " + _incident.NativeContextHash);
             }
             var messages = _incident.Messages ?? new List<FailureMessage>();
-            IEnumerable<FailureMessage> shown = allMessages ? messages : messages.Skip(_messagePage * MessagePageSize).Take(MessagePageSize);
-            foreach (var message in shown)
+            foreach (var message in messages)
             {
                 text.AppendLine();
                 text.AppendLine(message.Severity + " · " + message.DefinitionId);
                 text.AppendLine(message.Description);
                 var ids = message.FailingElementIds.Concat(message.AdditionalElementIds).Distinct().ToList();
-                text.AppendLine(L.T("failure.detail.elements", ("ids", string.Join(", ", allMessages ? ids : ids.Take(200)))));
-                if (!allMessages && ids.Count > 200)
-                    text.AppendLine(L.T("failure.detail.moreIds", ("count", ids.Count - 200)));
+                text.AppendLine(L.T("failure.detail.elements", ("ids", string.Join(", ", ids))));
                 if (!message.Complete || message.TextTruncated) text.AppendLine(L.T("failure.detail.incomplete"));
-                foreach (var snapshot in message.Snapshots.Take(allMessages ? int.MaxValue : 20))
+                foreach (var snapshot in message.Snapshots ?? new List<FailureElementSnapshot>())
                     text.AppendLine(snapshot.ElementId + " · " + snapshot.Category + " · " + snapshot.Type
                         + " · " + snapshot.Level + " · existsAfterRollback=" + (snapshot.ExistsAfterRollback?.ToString() ?? Unknown()));
             }
@@ -350,7 +485,7 @@ namespace RvtMcp.Plugin.Views
                     : action == "native_grant" ? L.T("security.failure.nativeWarning") : "";
                 var label = dialog != null && action == "accept_once" ? L.T("security.failure.acceptDialogOnce") : ActionLabel(action);
                 if (!Confirm(label, warning + "\n\n" + ProtectedConstraints(decision, context)
-                    + "\n\n" + DetailsText(true), decision.Reason)) return;
+                    + "\n\n" + DetailsText(), decision.Reason)) return;
                 SaveDecision(decision, context);
             }
             catch (Exception ex) { ShowDecisionFailure(ex); }
@@ -411,7 +546,7 @@ namespace RvtMcp.Plugin.Views
             }
             _reason.Clear(); _verified.IsChecked = false; _dialogConsent.IsChecked = false;
             LoadPage();
-            _status.Text = L.T("failure.decision.saved") + "\n" + _status.Text;
+            SetStatus(L.T("failure.decision.saved") + " · " + _status.Text, _status.Foreground as Brush ?? Brushes.DimGray);
         }
 
         private string ProtectedConstraints(FailureDecision decision, FailureIssuesContext context)
@@ -480,9 +615,16 @@ namespace RvtMcp.Plugin.Views
             var dialog = FailureIssuesPresentation.DialogAdapter(_incident);
             _accept.IsEnabled = _createRule.IsEnabled = warning || (active && dialog != null);
             if (sameModel && settled && _incident?.State == "observed" && dialog != null) _createRule.IsEnabled = true;
-            _accept.Content = L.T(dialog == null ? "security.failure.acceptOnce" : "security.failure.acceptDialogOnce");
-            _accept.ToolTip = L.T(dialog != null ? "security.failure.dialogOnceWarning" : warning ? "security.failure.onceWarning" : "security.failure.warningOnly");
-            _createRule.ToolTip = L.T(dialog != null ? "security.failure.dialogRuleWarning" : warning ? "security.failure.ruleWarning" : "security.failure.warningOnly");
+            _accept.Content = L.T(dialog == null ? "failure.action.acceptOnce" : "failure.action.allowOnce");
+            HistoryChrome.Guide(_rework, L.T("failure.tip.rework"));
+            HistoryChrome.Guide(_abandon, L.T("failure.tip.abandon"));
+            HistoryChrome.Guide(_accept, L.T(dialog != null ? "security.failure.dialogOnceWarning" : warning ? "security.failure.onceWarning" : "security.failure.warningOnly"));
+            HistoryChrome.Guide(_createRule, L.T(dialog != null ? "security.failure.dialogRuleWarning" : warning ? "security.failure.ruleWarning" : "security.failure.warningOnly"));
+            HistoryChrome.Guide(_native, L.T("security.failure.nativeWarning"));
+            _decisionHint.Text = _incident == null
+                ? L.T("failure.detail.prompt")
+                : !sameModel ? L.T("security.failure.currentModelRequired") : "";
+            _decisionHint.Visibility = string.IsNullOrEmpty(_decisionHint.Text) ? Visibility.Collapsed : Visibility.Visible;
             _dialogConsent.Visibility = dialog == null ? Visibility.Collapsed : Visibility.Visible;
             _dialogConsent.Content = dialog == null ? "" : L.T("security.failure.dialogChoice", ("semantic", DialogSemantic(dialog)));
             _native.Visibility = string.IsNullOrWhiteSpace(_incident?.NativeAction) ? Visibility.Collapsed : Visibility.Visible;
@@ -494,21 +636,14 @@ namespace RvtMcp.Plugin.Views
             _revoke.IsEnabled = rule?.Enabled == true && context?.IsAvailable == true && context.ModelScopeKey == rule.ModelScopeKey;
         }
 
-        private void UpdatePaging(int count)
-        {
-            _previous.IsEnabled = _previousCursors.Count > 0;
-            _next.IsEnabled = _nextCursor != null;
-            _pageLabel.Text = L.T("failure.page", ("page", _previousCursors.Count + 1), ("count", count));
-        }
-
         private void ApplyLocalization()
         {
             foreach (var apply in _localizers) apply();
             foreach (ComboBoxItem item in _states.Items)
                 item.Content = (string)item.Tag == "" ? L.T("failure.filter.all") : L.T("failure.state." + item.Tag);
-            if (_grid != null) { _grid.Items.Refresh(); UpdatePaging(_grid.Items.Count); }
+            if (_grid != null) _grid.Items.Refresh();
             _rules.Items.Refresh();
-            if (_messagePrevious != null) RenderDetails();
+            if (_warningCards != null) RenderDetails();
             if (_accept != null) UpdateActions();
         }
 
@@ -517,23 +652,28 @@ namespace RvtMcp.Plugin.Views
             if (_incident == null) return;
             try
             {
-                Clipboard.SetText(DetailsText(true) + "\n\n" + FailureJson.Serialize(_incident));
-                _status.Text = L.T("failure.copied");
+                Clipboard.SetText(DetailsText() + "\n\n" + FailureJson.Serialize(_incident));
+                SetStatus(L.T("failure.copied"), Brushes.DimGray);
             }
             catch (Exception ex) { ShowFailure(ex.Message); }
         }
 
         private void ShowDecisionFailure(Exception error)
         {
-            _status.Text = error.Message.StartsWith("security.failure.", StringComparison.Ordinal)
-                ? L.T(error.Message) : L.T("security.failure.saveFailed", ("error", error.Message));
-            _status.Foreground = Brushes.Firebrick;
+            SetStatus(error.Message.StartsWith("security.failure.", StringComparison.Ordinal)
+                ? L.T(error.Message) : L.T("security.failure.saveFailed", ("error", error.Message)), Brushes.Firebrick);
         }
 
         private void ShowFailure(string error)
         {
-            _status.Text = L.T("security.failure.saveFailed", ("error", error));
-            _status.Foreground = Brushes.Firebrick;
+            SetStatus(L.T("security.failure.saveFailed", ("error", error)), Brushes.Firebrick);
+        }
+
+        private void SetStatus(string text, Brush foreground)
+        {
+            _status.Text = text ?? "";
+            _status.Foreground = foreground ?? Brushes.DimGray;
+            HistoryChrome.Guide(_status, _status.Text);
         }
 
         private Button DecisionButton(string key, string action)
@@ -555,10 +695,157 @@ namespace RvtMcp.Plugin.Views
             _localizers.Add(() => label.Text = L.T(key)); return label;
         }
 
-        private void Column(string key, string property, double width)
+        private void Column(string key, string property, double star, double min, Style style)
         {
-            var column = new DataGridTextColumn { Binding = new Binding(property), Width = width };
-            _localizers.Add(() => column.Header = L.T(key)); _grid.Columns.Add(column);
+            var column = new DataGridTextColumn
+            {
+                Binding = new Binding(property),
+                Width = new DataGridLength(star, DataGridLengthUnitType.Star),
+                MinWidth = min,
+                ElementStyle = style
+            };
+            _localizers.Add(() => column.Header = L.T(key));
+            _grid.Columns.Add(column);
+        }
+
+        private void ShowFacts(params string[] fields)
+        {
+            _facts.Children.Clear();
+            _facts.RowDefinitions.Clear();
+            if (fields.Length == 1)
+            {
+                _facts.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                var note = new TextBlock { Text = fields[0], TextWrapping = TextWrapping.Wrap, Foreground = MutedBrush };
+                Grid.SetColumnSpan(note, 4);
+                _facts.Children.Add(note);
+                return;
+            }
+            var row = 0;
+            for (var i = 0; i + 1 < fields.Length; i += 2)
+            {
+                var col = ((i / 2) % 2) * 2;
+                if (col == 0)
+                {
+                    _facts.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                    row = _facts.RowDefinitions.Count - 1;
+                }
+                var shown = string.IsNullOrWhiteSpace(fields[i + 1]) ? "—" : fields[i + 1];
+                var label = new TextBlock { Text = fields[i], Foreground = MutedBrush, Margin = new Thickness(col == 0 ? 0 : 16, 1, 6, 1) };
+                var value = new TextBlock { Text = shown, TextTrimming = TextTrimming.CharacterEllipsis };
+                if (shown != "—") HistoryChrome.Guide(value, shown);
+                Grid.SetRow(label, row); Grid.SetColumn(label, col);
+                Grid.SetRow(value, row); Grid.SetColumn(value, col + 1);
+                _facts.Children.Add(label); _facts.Children.Add(value);
+            }
+        }
+
+        private void UpdateWarningFades()
+        {
+            if (_warningScroll == null) return;
+            var canScroll = _warningScroll.ScrollableHeight > 1;
+            HistoryChrome.FadeTo(_warningFadeTop, canScroll && _warningScroll.VerticalOffset > 1);
+            HistoryChrome.FadeTo(_warningFadeBottom, canScroll && _warningScroll.VerticalOffset < _warningScroll.ScrollableHeight - 1);
+        }
+
+        private static Border Notice(string text, bool alert)
+        {
+            return new Border
+            {
+                Margin = new Thickness(0, 0, 0, 8),
+                Padding = new Thickness(10, 8, 10, 8),
+                Background = alert ? WarningBackground : NoticeBackground,
+                BorderBrush = alert ? WarningBorderBrush : NoticeBorder,
+                BorderThickness = new Thickness(3, 1, 1, 1),
+                CornerRadius = new CornerRadius(4),
+                Child = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap }
+            };
+        }
+
+        private Border WarningCard(FailureMessage message, int index, int total)
+        {
+            var severity = string.IsNullOrWhiteSpace(message.Severity) ? Unknown() : message.Severity;
+            Brush background = NoticeBackground, border = NoticeBorder, foreground = MutedBrush;
+            if (severity == "Error") { background = ErrorBackground; border = ErrorBorder; foreground = ErrorBrush; }
+            else if (severity == "Warning") { background = WarningBackground; border = WarningBorderBrush; foreground = WarningBrush; }
+            else if (severity == "TaskDialog") { background = DialogBackground; border = DialogBorder; foreground = DialogBrush; }
+            var ids = (message.FailingElementIds ?? new List<long>()).Concat(message.AdditionalElementIds ?? new List<long>()).Distinct().ToList();
+            var snapshots = message.Snapshots ?? new List<FailureElementSnapshot>();
+            var stack = new StackPanel();
+            var head = new DockPanel { LastChildFill = true };
+            var copy = new Button
+            {
+                Width = 22, Height = 22, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Content = new TextBlock { Text = "\uE8C8", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
+            };
+            HistoryChrome.Guide(copy, L.T("failure.copy.warning"));
+            copy.Click += (s, e) => CopyWarning(message, index, total);
+            DockPanel.SetDock(copy, Dock.Right);
+            head.Children.Add(copy);
+            var indexText = new TextBlock
+            {
+                Text = index.ToString("n0", CultureInfo.CurrentCulture) + " / " + total.ToString("n0", CultureInfo.CurrentCulture),
+                Foreground = MutedBrush, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center
+            };
+            DockPanel.SetDock(indexText, Dock.Right);
+            head.Children.Add(indexText);
+            var badge = new TextBlock { Text = severity, FontWeight = FontWeights.SemiBold, Foreground = foreground, Margin = new Thickness(0, 0, 8, 0) };
+            DockPanel.SetDock(badge, Dock.Left);
+            head.Children.Add(badge);
+            head.Children.Add(new TextBlock { Text = message.DefinitionId ?? "", Foreground = MutedBrush, TextTrimming = TextTrimming.CharacterEllipsis });
+            stack.Children.Add(head);
+            stack.Children.Add(new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(message.Description) ? Unknown() : message.Description,
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0)
+            });
+            stack.Children.Add(new TextBlock
+            {
+                Text = ids.Count == 0 ? L.T("failure.detail.noElements") : L.T("failure.detail.elements", ("ids", string.Join(", ", ids.Take(8)))),
+                TextWrapping = TextWrapping.Wrap, Foreground = MutedBrush, Margin = new Thickness(0, 6, 0, 0)
+            });
+            if (ids.Count > 8)
+                stack.Children.Add(new TextBlock { Text = L.T("failure.detail.moreIds", ("count", ids.Count - 8)), TextWrapping = TextWrapping.Wrap, Foreground = MutedBrush, Margin = new Thickness(0, 2, 0, 0) });
+            if (!message.Complete || message.TextTruncated)
+                stack.Children.Add(new TextBlock { Text = L.T("failure.detail.incomplete"), TextWrapping = TextWrapping.Wrap, Foreground = ErrorBrush, Margin = new Thickness(0, 6, 0, 0) });
+            foreach (var snapshot in snapshots.Take(3))
+                stack.Children.Add(new TextBlock
+                {
+                    Text = snapshot.ElementId + " · " + snapshot.Category + " · " + snapshot.Type + " · " + snapshot.Level,
+                    TextWrapping = TextWrapping.Wrap, Foreground = MutedBrush, Margin = new Thickness(0, 2, 0, 0)
+                });
+            if (snapshots.Count > 3)
+                stack.Children.Add(new TextBlock { Text = L.T("failure.detail.moreSnapshots", ("count", snapshots.Count - 3)), Foreground = MutedBrush, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
+            return new Border
+            {
+                Margin = new Thickness(0, 0, 0, 8), Padding = new Thickness(10, 8, 10, 8),
+                Background = background, BorderBrush = border, BorderThickness = new Thickness(3, 1, 1, 1),
+                CornerRadius = new CornerRadius(4), Child = stack
+            };
+        }
+
+        private void CopyWarning(FailureMessage message, int index, int total)
+        {
+            var ids = (message.FailingElementIds ?? new List<long>()).Concat(message.AdditionalElementIds ?? new List<long>()).Distinct().ToList();
+            var text = new StringBuilder();
+            text.AppendLine(index.ToString("n0", CultureInfo.CurrentCulture) + " / " + total.ToString("n0", CultureInfo.CurrentCulture));
+            text.AppendLine(string.IsNullOrWhiteSpace(message.Severity) ? Unknown() : message.Severity);
+            if (!string.IsNullOrWhiteSpace(message.DefinitionId)) text.AppendLine(message.DefinitionId);
+            text.AppendLine(string.IsNullOrWhiteSpace(message.Description) ? Unknown() : message.Description);
+            text.AppendLine(ids.Count == 0 ? L.T("failure.detail.noElements") : L.T("failure.detail.elements", ("ids", string.Join(", ", ids))));
+            if (!message.Complete || message.TextTruncated) text.AppendLine(L.T("failure.detail.incomplete"));
+            foreach (var snapshot in message.Snapshots ?? new List<FailureElementSnapshot>())
+                text.AppendLine(snapshot.ElementId + " · " + snapshot.Category + " · " + snapshot.Type + " · " + snapshot.Level
+                    + " · existsAfterRollback=" + (snapshot.ExistsAfterRollback?.ToString() ?? Unknown()));
+            try { Clipboard.SetText(text.ToString().TrimEnd()); SetStatus(L.T("failure.copied"), Brushes.DimGray); }
+            catch (Exception ex) { ShowFailure(ex.Message); }
+        }
+
+        private static SolidColorBrush Freeze(byte r, byte g, byte b)
+        {
+            var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+            brush.Freeze();
+            return brush;
         }
 
         private static void Add(Grid grid, UIElement child, int row) { Grid.SetRow(child, row); grid.Children.Add(child); }
@@ -570,15 +857,13 @@ namespace RvtMcp.Plugin.Views
         private sealed class IssueRow
         {
             internal FailureIncident Incident { get; }
-            public string Time => Incident.CreatedUtc.LocalDateTime.ToString("g", CultureInfo.CurrentCulture);
+            public int Number { get; set; }
+            public string Date => Incident.CreatedUtc.LocalDateTime.ToString("d", CultureInfo.CurrentCulture);
+            public string Clock => Incident.CreatedUtc.LocalDateTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
             public string Tool { get; }
-            public string Severity => Incident.Severity;
             public int Count => Incident.MessageCount;
-            private readonly string _outcome;
-            public string Outcome => L.T("failure.outcome." + _outcome);
-            public string State => L.T("failure.state." + Incident.State);
             internal IssueRow(FailureIncident incident, FailureOperation operation)
-            { Incident = incident; Tool = operation?.Tool ?? Unknown(); _outcome = operation?.Outcome ?? "unknown"; }
+            { Incident = incident; Tool = operation?.Tool ?? Unknown(); }
         }
 
         private sealed class RuleRow

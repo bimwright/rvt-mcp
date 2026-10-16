@@ -403,7 +403,7 @@ AND NOT ((o.execution='completed' OR o.execution='interrupted_unknown') AND EXIS
             if (query.State != null && !new[] { "observed", "open", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule" }.Contains(query.State))
                 throw new ArgumentException("Invalid incident state.");
             long after = 0, ceiling = long.MaxValue;
-            var filter = FailureCapture.Fingerprint(FailureJson.Serialize(new { query.ModelScopeKey, query.IncidentId, query.OperationId, query.State, query.ElementId, query.From, query.Until }));
+            var filter = FailureCapture.Fingerprint(FailureJson.Serialize(new { query.ModelScopeKey, query.IncidentId, query.OperationId, query.State, query.ElementId, query.From, query.Until, query.NewestFirst }));
             if (query.Cursor != null)
             {
                 var parts = query.Cursor.Split('.');
@@ -419,13 +419,14 @@ AND NOT ((o.execution='completed' OR o.execution='interrupted_unknown') AND EXIS
                 using (var cmd = Command(c, tx, @"SELECT seq,payload FROM incidents i WHERE seq>$a AND seq<=$z
 AND ($s IS NULL OR scope=$s) AND ($i IS NULL OR id=$i) AND ($o IS NULL OR operation_id=$o)
 AND ($st IS NULL OR state=$st) AND ($f IS NULL OR created >= $f) AND ($u IS NULL OR created <= $u)
-AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i.id AND f.element_id=$e)) ORDER BY seq LIMIT $n;",
+AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i.id AND f.element_id=$e)) ORDER BY seq" + (query.NewestFirst ? " DESC" : "") + " LIMIT $n;",
                     "$a", after, "$z", ceiling, "$s", query.ModelScopeKey, "$i", query.IncidentId, "$o", query.OperationId,
                     "$st", query.State, "$f", query.From.HasValue ? Stamp(query.From.Value) : null,
                     "$u", query.Until.HasValue ? Stamp(query.Until.Value) : null, "$e", query.ElementId, "$n", query.Limit + 1))
                 using (var r = cmd.ExecuteReader()) while (r.Read())
                 {
-                    if (page.Records.Count == query.Limit) { page.NextCursor = after + "." + ceiling + "." + filter; break; }
+                    // Newest-first pages keep the lower bound and lower the ceiling below the last seq read.
+                    if (page.Records.Count == query.Limit) { page.NextCursor = (query.NewestFirst ? "0." + (after - 1) : after + "." + ceiling) + "." + filter; break; }
                     after = r.GetInt64(0); var record = FailureJson.Deserialize<FailureIncident>(r.GetString(1));
                     page.Complete &= record.Complete;
                     if (!query.IncludeDetails) record.Messages.Clear();

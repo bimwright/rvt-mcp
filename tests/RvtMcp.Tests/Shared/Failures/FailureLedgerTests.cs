@@ -135,6 +135,18 @@ namespace RvtMcp.Tests
             Assert.Empty(first.Records.Select(r => r.IncidentId).Intersect(second.Records.Select(r => r.IncidentId)));
             query.State = "open"; Assert.Throws<ArgumentException>(() => store.Query(query));
         }
+        [Fact] public void NewestFirstPagesFromLatestKeepsHighWatermarkAndRejectsDirectionChange()
+        {
+            var store = Store(); var m = Model(store); var op = Operation(store, m.ModelScopeKey);
+            var made = Enumerable.Range(0, 5).Select(_ => Incident(store, m.ModelScopeKey, op).IncidentId).ToList();
+            var query = new FailureRecordQuery { ModelScopeKey = m.ModelScopeKey, Limit = 2, NewestFirst = true };
+            var first = store.Query(query); Assert.Equal(new[] { made[4], made[3] }, first.Records.Select(r => r.IncidentId));
+            Incident(store, m.ModelScopeKey, op); query.Cursor = first.NextCursor;
+            var second = store.Query(query); Assert.Equal(new[] { made[2], made[1] }, second.Records.Select(r => r.IncidentId));
+            query.Cursor = second.NextCursor;
+            var third = store.Query(query); Assert.Equal(new[] { made[0] }, third.Records.Select(r => r.IncidentId)); Assert.Null(third.NextCursor);
+            query.Cursor = first.NextCursor; query.NewestFirst = false; Assert.Throws<ArgumentException>(() => store.Query(query));
+        }
         [Fact] public void SqliteLockProducesDurableFallbackAndRecoveryNeverReplaysOrAccepts()
         {
             var store = Store(); var m = Model(store); var op = Operation(store, m.ModelScopeKey);

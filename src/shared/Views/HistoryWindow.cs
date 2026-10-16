@@ -33,10 +33,6 @@ namespace RvtMcp.Plugin.Views
         private readonly ContentControl _inputContent;
         private readonly StackPanel _outputContainer;
         private readonly TextBlock _footerText;
-        private readonly RowDefinition _detailRow;
-        private readonly Border _detailBorder;
-        private readonly GridSplitter _detailSplitter;
-        private GridLength _lastDetailHeight = new GridLength(240);
         private readonly CommandDispatcher _dispatcher;
         private readonly McpEventHandler _eventHandler;
         private readonly Autodesk.Revit.UI.ExternalEvent _externalEvent;
@@ -49,16 +45,18 @@ namespace RvtMcp.Plugin.Views
         // Relocalizable chrome (ApplyLocalization rewrites these on L.Changed)
         private readonly DataGridColumn _colTime;
         private readonly DataGridColumn _colTool;
-        private readonly DataGridColumn _colSummary;
+        private readonly DataGridColumn _colKind;
+        private readonly DataGridColumn _colSeconds;
         private readonly DataGridColumn _colStatus;
-        private TextBlock _searchLabel;
-        private TextBlock _filterLabel;
-        private TextBlock _kindLabel;
+        private TextBlock _searchPrompt;
+        private GroupBox _activityGroup;
+        private GroupBox _detailGroup;
         private TextBlock _whatSection;
         private TextBlock _inputSection;
         private TextBlock _outputSection;
         private Button _logsButton;
         private Button _newSessionButton;
+        private Button _closeButton;
         private int? _pastLoaded;
         private bool _rerunInProgress;
         private bool _detailShowsRerun;
@@ -107,24 +105,24 @@ namespace RvtMcp.Plugin.Views
                 ApplyLocalization();   // catch up on swaps that happened while hidden
             };
             Unloaded += (s, e) => L.Changed -= _lChangedHandler;
-            Width = 900;
-            Height = 700;
-            MinWidth = 720;
-            MinHeight = Math.Min(600, SystemParameters.WorkArea.Height);
-            MaxWidth = SystemParameters.WorkArea.Width;
-            MaxHeight = SystemParameters.WorkArea.Height;
+            var area = SystemParameters.WorkArea;
+            MinWidth = Math.Min(960, area.Width);
+            MinHeight = Math.Min(640, area.Height);
+            MaxWidth = Math.Max(MinWidth, Math.Min(1400, area.Width));
+            MaxHeight = Math.Max(MinHeight, Math.Min(900, area.Height));
+            Width = Math.Min(Math.Max(1100, MinWidth), MaxWidth);
+            Height = Math.Min(Math.Max(720, MinHeight), MaxHeight);
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             FontFamily = new FontFamily("Segoe UI");
             Resources.MergedDictionaries.Add(BimwrightStyles.Dictionary);
+            Resources.MergedDictionaries.Add(HistoryChrome.TabDictionary());
             ScrollBarFadeBehavior.SetIsEnabled(this, true);
 
             var mainGrid = new Grid();
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            _detailRow = new RowDefinition { Height = new GridLength(0) };
-            mainGrid.RowDefinitions.Add(_detailRow);
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            // Row 0: Toolbar
             var toolbar = CreateToolbar();
             Grid.SetRow(toolbar, 0);
             mainGrid.Children.Add(toolbar);
@@ -132,6 +130,8 @@ namespace RvtMcp.Plugin.Views
             // Row 1: DataGrid
             _viewSource = new CollectionViewSource { Source = _sessionLog.Entries };
             _viewSource.Filter += OnFilter;
+            _viewSource.SortDescriptions.Add(new SortDescription(nameof(McpCallEntry.Timestamp), ListSortDirection.Descending));
+            _viewSource.SortDescriptions.Add(new SortDescription(nameof(McpCallEntry.Index), ListSortDirection.Descending));
 
             _grid = new DataGrid
             {
@@ -141,7 +141,14 @@ namespace RvtMcp.Plugin.Views
                 HeadersVisibility = DataGridHeadersVisibility.Column,
                 GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
                 ItemsSource = _viewSource.View,
-                Margin = new Thickness(4)
+                Margin = new Thickness(0)
+            };
+            // Pixel units: HistoryChrome.Wheel steps in pixels; the DataGrid default (Item) would turn one notch into ~31 rows.
+            VirtualizingPanel.SetScrollUnit(_grid, ScrollUnit.Pixel);
+            _grid.PreviewMouseWheel += (s, e) =>
+            {
+                var viewer = HistoryChrome.FindScrollViewer(_grid);
+                if (viewer != null) HistoryChrome.Wheel(viewer, e, 0.5);
             };
             var headerStyle = new Style(typeof(DataGridColumnHeader));
             headerStyle.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Bold));
@@ -151,19 +158,46 @@ namespace RvtMcp.Plugin.Views
             var centerCell = new Style(typeof(TextBlock));
             centerCell.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
 
-            _grid.Columns.Add(new DataGridTextColumn { Header = "#", Binding = new Binding("Index"), Width = 40, ElementStyle = centerCell });
-            _colTime = new DataGridTextColumn { Binding = new Binding("TimeLabel"), Width = 92, ElementStyle = centerCell };
-            _grid.Columns.Add(_colTime);
-            _colTool = new DataGridTextColumn { Binding = new Binding("ToolName"), Width = 160 };
-            _grid.Columns.Add(_colTool);
-            _colSummary = new DataGridTextColumn
+            _grid.Columns.Add(new DataGridTextColumn
             {
-                Binding = new Binding("Summary"),
-                Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+                Header = "#",
+                Binding = new Binding("Index"),
+                Width = new DataGridLength(0.5, DataGridLengthUnitType.Star),
+                MinWidth = 40,
+                ElementStyle = centerCell
+            });
+            _colTime = new DataGridTextColumn
+            {
+                Binding = new Binding("TimeLabel"),
+                Width = new DataGridLength(1.3, DataGridLengthUnitType.Star),
+                MinWidth = 96,
+                ElementStyle = centerCell
+            };
+            _grid.Columns.Add(_colTime);
+            _colTool = new DataGridTextColumn
+            {
+                Binding = new Binding("ToolName"),
+                Width = new DataGridLength(2.4, DataGridLengthUnitType.Star),
+                MinWidth = 120,
                 ElementStyle = CreateTrimStyle()
             };
-            _grid.Columns.Add(_colSummary);
-            _grid.Columns.Add(new DataGridTextColumn { Header = "ms", Binding = new Binding("DurationMs"), Width = 55, ElementStyle = centerCell });
+            _grid.Columns.Add(_colTool);
+            _colKind = new DataGridTextColumn
+            {
+                Binding = new Binding("ToolName") { Converter = new ActivityKindConverter() },
+                Width = new DataGridLength(0.8, DataGridLengthUnitType.Star),
+                MinWidth = 64,
+                ElementStyle = centerCell
+            };
+            _grid.Columns.Add(_colKind);
+            _colSeconds = new DataGridTextColumn
+            {
+                Binding = new Binding("DurationMs") { Converter = new DurationSecondsConverter() },
+                Width = new DataGridLength(0.7, DataGridLengthUnitType.Star),
+                MinWidth = 48,
+                ElementStyle = centerCell
+            };
+            _grid.Columns.Add(_colSeconds);
             // Status: ✓ green / ✗ red — glyph + colour, readable at a glance.
             var statusCell = new Style(typeof(TextBlock));
             statusCell.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
@@ -176,24 +210,21 @@ namespace RvtMcp.Plugin.Views
             _colStatus = new DataGridTextColumn
             {
                 Binding = new Binding("Success") { Converter = new BoolToStatusConverter() },
-                Width = 50,
+                Width = new DataGridLength(0.7, DataGridLengthUnitType.Star),
+                MinWidth = 56,
                 ElementStyle = statusCell
             };
             _grid.Columns.Add(_colStatus);
             _grid.SelectionChanged += OnSelectionChanged;
 
-            Grid.SetRow(_grid, 1);
-            mainGrid.Children.Add(_grid);
-
-            // Row 2: Detail panel — collapsed until a row is selected
-            _detailBorder = new Border
-            {
-                BorderThickness = new Thickness(0, 1, 0, 0),
-                BorderBrush = Brushes.LightGray,
-                Margin = new Thickness(4),
-                Visibility = Visibility.Collapsed
-            };
+            var body = new Grid();
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star), MinWidth = 400 });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 200 });
+            _activityGroup = new GroupBox { Margin = new Thickness(8, 0, 4, 4), Padding = new Thickness(8), Content = _grid };
+            Grid.SetColumn(_activityGroup, 0);
+            body.Children.Add(_activityGroup);
             var detailScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+            detailScroll.PreviewMouseWheel += (s, e) => HistoryChrome.Wheel(detailScroll, e, 0.26);
             _detailPanel = new Grid { Margin = new Thickness(4) };
             _detailPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             _detailPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -215,24 +246,12 @@ namespace RvtMcp.Plugin.Views
                 Margin = new Thickness(0, 2, 10, 0)
             };
 
-            // WHAT section
-            var whatHeader = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
-            _whatName = new TextBlock { FontWeight = FontWeights.Bold, FontSize = 14 };
-            _rerunButton = new Button
-            {
-                Style = (Style)FindResource(BimwrightStyles.PrimaryButtonKey),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                IsEnabled = false
-            };
-            _rerunButton.Click += OnRerunClick;
-            DockPanel.SetDock(_rerunButton, Dock.Right);
-            whatHeader.Children.Add(_rerunButton);
-            whatHeader.Children.Add(_whatName);
+            _whatName = new TextBlock { FontWeight = FontWeights.Bold, FontSize = 14, TextWrapping = TextWrapping.Wrap };
             _whatDesc = new TextBlock { FontStyle = FontStyles.Italic, Foreground = Brushes.Gray, FontSize = 11, Margin = new Thickness(0, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
             _warningLabel = new TextBlock { Foreground = Brushes.OrangeRed, FontSize = 11, Margin = new Thickness(0, 0, 0, 8), Visibility = Visibility.Collapsed };
             _whatSection = SectionLabel();
             Add(_whatSection, 0, 0);
-            Add(whatHeader, 0, 1);
+            Add(_whatName, 0, 1);
             Add(_whatDesc, 1, 1);
             Add(_warningLabel, 2, 1);
 
@@ -253,21 +272,36 @@ namespace RvtMcp.Plugin.Views
             Add(_footerText, 5, 1);
 
             detailScroll.Content = _detailPanel;
-            _detailBorder.Child = detailScroll;
-            Grid.SetRow(_detailBorder, 2);
-            mainGrid.Children.Add(_detailBorder);
-
-            // Splitter between grid and detail
-            _detailSplitter = new GridSplitter
+            _detailGroup = new GroupBox
             {
-                Height = 4,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Background = Brushes.Transparent,
-                Visibility = Visibility.Collapsed
+                Margin = new Thickness(4, 0, 8, 4),
+                Padding = new Thickness(8),
+                Content = detailScroll
             };
-            Grid.SetRow(_detailSplitter, 1);
-            mainGrid.Children.Add(_detailSplitter);
+            Grid.SetColumn(_detailGroup, 1);
+            body.Children.Add(_detailGroup);
+            Grid.SetRow(body, 1);
+            mainGrid.Children.Add(body);
+
+            var actions = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(8, 4, 8, 8)
+            };
+            _rerunButton = new Button
+            {
+                Style = (Style)FindResource(BimwrightStyles.PrimaryButtonKey),
+                Margin = new Thickness(0, 0, 8, 0),
+                IsEnabled = false
+            };
+            _rerunButton.Click += OnRerunClick;
+            _closeButton = new Button();
+            _closeButton.Click += (s, e) => Close();
+            actions.Children.Add(_rerunButton);
+            actions.Children.Add(_closeButton);
+            Grid.SetRow(actions, 2);
+            mainGrid.Children.Add(actions);
 
             _issuesView = new FailureIssuesView();
             _activityTab = new TabItem { Content = mainGrid };
@@ -278,6 +312,8 @@ namespace RvtMcp.Plugin.Views
             Content = _tabs;
             _lastSeenL10nVersion = L.Version;
             ApplyLocalization();
+            if (_grid.SelectedItem == null)
+                _grid.SelectedItem = _viewSource.View.Cast<object>().FirstOrDefault();
         }
 
         /// <summary>
@@ -293,14 +329,16 @@ namespace RvtMcp.Plugin.Views
             Title = L.T("history.window.title", ("brand", BrandAssets.Wordmark));
             _activityTab.Header = L.T("failure.tab.history");
             _issuesTab.Header = L.T("failure.tab.issues");
+            _activityGroup.Header = L.T("failure.tab.history");
+            _detailGroup.Header = L.T("history.group.detail");
             _colTime.Header = L.T("history.col.time");
             _colTool.Header = L.T("history.col.tool");
-            _colSummary.Header = L.T("history.col.summary");
+            _colKind.Header = L.T("history.col.kind");
+            _colSeconds.Header = L.T("history.col.seconds");
             _colStatus.Header = L.T("history.col.status");
-            _searchLabel.Text = L.T("history.toolbar.search");
-            _filterLabel.Text = L.T("history.toolbar.filter");
-            _kindLabel.Text = L.T("history.toolbar.kind");
+            _searchPrompt.Text = L.T("history.search.placeholder");
             _logsButton.Content = L.T("history.toolbar.openLogs");
+            _closeButton.Content = L.T("update.close");
             _newSessionButton.Content = L.T("history.toolbar.newSession");
             _loadHistoryButton.Content = _pastLoaded == null
                 ? L.T("history.toolbar.loadPast")
@@ -335,70 +373,19 @@ namespace RvtMcp.Plugin.Views
             if (_issuesView.IsLoaded) _issuesView.Refresh();
         }
 
-        private StackPanel CreateToolbar()
+        private DockPanel CreateToolbar()
         {
-            var panel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Margin = new Thickness(4)
-            };
-
-            _searchLabel = new TextBlock
-            {
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(4, 0, 4, 0)
-            };
-            panel.Children.Add(_searchLabel);
-
-            _searchBox = new TextBox
-            {
-                Width = 150,
-                Height = 24,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 8, 0)
-            };
-            _searchBox.TextChanged += (s, e) => _viewSource.View.Refresh();
-            panel.Children.Add(_searchBox);
-
-            _filterLabel = new TextBlock
-            {
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(4, 0, 4, 0)
-            };
-            panel.Children.Add(_filterLabel);
-
-            // Items carry a stable Tag — display text is localized, filter
-            // logic compares the tag, never the translated string.
-            _filterCombo = new ComboBox { MinWidth = 120, Height = 24, Margin = new Thickness(0, 0, 8, 0) };
-            foreach (var tag in new[] { "all", "success", "failed" })
-                _filterCombo.Items.Add(new ComboBoxItem { Tag = tag });
-            _filterCombo.SelectedIndex = 0;
-            _filterCombo.SelectionChanged += (s, e) => _viewSource.View.Refresh();
-            panel.Children.Add(_filterCombo);
-
-            _kindLabel = new TextBlock
-            {
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(4, 0, 4, 0)
-            };
-            panel.Children.Add(_kindLabel);
-
-            _kindCombo = new ComboBox { MinWidth = 90, Height = 24, Margin = new Thickness(0, 0, 8, 0) };
-            foreach (var tag in new[] { "all", "read", "write" })
-                _kindCombo.Items.Add(new ComboBoxItem { Tag = tag });
-            _kindCombo.SelectedIndex = 0;
-            _kindCombo.SelectionChanged += (s, e) => _viewSource.View.Refresh();
-            panel.Children.Add(_kindCombo);
-
+            var panel = new DockPanel { LastChildFill = false, Margin = new Thickness(8, 6, 8, 6) };
             var toolbarStyle = (Style)FindResource(BimwrightStyles.ToolbarButtonKey);
+            var sessionActions = new StackPanel { Orientation = Orientation.Horizontal };
 
             _logsButton = new Button { Style = toolbarStyle };
             _logsButton.Click += (s, e) => OpenLogFolder();
-            panel.Children.Add(_logsButton);
+            sessionActions.Children.Add(_logsButton);
 
             _loadHistoryButton = new Button { Style = toolbarStyle };
             _loadHistoryButton.Click += (s, e) => LoadPastSessions();
-            panel.Children.Add(_loadHistoryButton);
+            sessionActions.Children.Add(_loadHistoryButton);
 
             _newSessionButton = new Button { Style = toolbarStyle };
             _newSessionButton.Click += (s, e) =>
@@ -414,8 +401,53 @@ namespace RvtMcp.Plugin.Views
                 _sessionLog.Clear();
                 ShowEntry(null);
             };
-            panel.Children.Add(_newSessionButton);
+            sessionActions.Children.Add(_newSessionButton);
+            DockPanel.SetDock(sessionActions, Dock.Right);
+            panel.Children.Add(sessionActions);
 
+            var filters = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            var searchHost = new Grid { Width = 220, Margin = new Thickness(0, 0, 8, 0) };
+            _searchBox = new TextBox
+            {
+                Height = 28,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Padding = new Thickness(6, 0, 6, 0)
+            };
+            _searchPrompt = new TextBlock
+            {
+                FontStyle = FontStyles.Italic,
+                Foreground = Brushes.Gray,
+                Margin = new Thickness(8, 0, 4, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                IsHitTestVisible = false
+            };
+            _searchBox.TextChanged += (s, e) =>
+            {
+                _searchPrompt.Visibility = string.IsNullOrEmpty(_searchBox.Text) ? Visibility.Visible : Visibility.Collapsed;
+                _viewSource?.View.Refresh();
+            };
+            searchHost.Children.Add(_searchBox);
+            searchHost.Children.Add(_searchPrompt);
+            filters.Children.Add(searchHost);
+
+            // Items carry a stable Tag — display text is localized, filter
+            // logic compares the tag, never the translated string.
+            _kindCombo = new ComboBox { MinWidth = 110, Height = 28, Margin = new Thickness(0, 0, 8, 0) };
+            foreach (var tag in new[] { "all", "read", "write" })
+                _kindCombo.Items.Add(new ComboBoxItem { Tag = tag });
+            _kindCombo.SelectedIndex = 0;
+            _kindCombo.SelectionChanged += (s, e) => _viewSource?.View.Refresh();
+            filters.Children.Add(_kindCombo);
+
+            _filterCombo = new ComboBox { MinWidth = 120, Height = 28, Margin = new Thickness(0, 0, 8, 0) };
+            foreach (var tag in new[] { "all", "success", "failed" })
+                _filterCombo.Items.Add(new ComboBoxItem { Tag = tag });
+            _filterCombo.SelectedIndex = 0;
+            _filterCombo.SelectionChanged += (s, e) => _viewSource?.View.Refresh();
+            filters.Children.Add(_filterCombo);
+            DockPanel.SetDock(filters, Dock.Left);
+            panel.Children.Add(filters);
             return panel;
         }
 
@@ -492,16 +524,6 @@ namespace RvtMcp.Plugin.Views
             catch { }
         }
 
-        private void SetDetailVisible(bool visible)
-        {
-            if (!visible && _detailRow.Height.Value > 0)
-                _lastDetailHeight = _detailRow.Height; // keep user-resized height
-            _detailRow.MinHeight = visible ? 120 : 0; // detail is secondary — grid gets priority
-            _detailRow.Height = visible ? _lastDetailHeight : new GridLength(0);
-            _detailBorder.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-            _detailSplitter.Visibility = _detailBorder.Visibility;
-        }
-
         private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             // Guard: event fires during construction before detail panel fields exist
@@ -517,7 +539,6 @@ namespace RvtMcp.Plugin.Views
             _detailShowsRerun = false;
             if (entry == null)
             {
-                SetDetailVisible(false);
                 _whatName.Text = "";
                 _whatDesc.Text = L.T("history.detail.selectPrompt");
                 _warningLabel.Visibility = Visibility.Collapsed;
@@ -526,8 +547,6 @@ namespace RvtMcp.Plugin.Views
                 _footerText.Text = "";
                 return;
             }
-
-            SetDetailVisible(true);
 
             // WHAT
             _whatName.Text = entry.ToolName;
@@ -1007,6 +1026,30 @@ namespace RvtMcp.Plugin.Views
     {
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
             => value is bool b && b ? "✓" : "✗";
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+            => throw new NotImplementedException();
+    }
+
+    internal class ActivityKindConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            var kind = ToolActivityClassifier.Classify(value as string);
+            return L.T(kind == ToolActivityKind.Write ? "history.kind.write" : "history.kind.read");
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+            => throw new NotImplementedException();
+    }
+
+    internal class DurationSecondsConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            var ms = value is long l ? l : 0L;
+            return (ms / 1000d).ToString("0.0", culture ?? System.Globalization.CultureInfo.CurrentCulture);
+        }
 
         public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
             => throw new NotImplementedException();
