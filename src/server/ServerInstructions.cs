@@ -11,8 +11,6 @@ namespace RvtMcp.Server
 
 Session start or connection check: list targets, pin with revit_switch_target(""pid:<n>""), then revit_health(). check_updates=true checks releases; unknown is not current. Follow update_guidance; never auto-install or downgrade. Defaults: query,create,view,meta; --toolsets all for export/clash. Do not retry after timeout.
 
-Before model changes, use the revit_change prompt: survey, agree scope, record why.
-
 Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - query: get_current_view_info, ai_element_filter
 - create: create_grid, create_room
