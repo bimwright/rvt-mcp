@@ -52,7 +52,17 @@ namespace RvtMcp.Server
         internal static IMcpServerBuilder RegisterToolsets(IMcpServerBuilder mcp, HashSet<string> enabled, RvtMcpConfig config)
         {
             return mcp.WithTools(ResolveRegisteredToolMethods(enabled, config)
-                .Select(method => McpServerTool.Create(method, (object)null)));
+                .Select(method =>
+                {
+                    var tool = McpServerTool.Create(method, (object)null);
+                    if (tool.ProtocolTool.Name == "revit_health")
+                        tool.ProtocolTool.Meta = new System.Text.Json.Nodes.JsonObject
+                        {
+                            [HealthRuntimeInfo.ClientRuntimeMetadataKey] = System.Text.Json.Nodes.JsonNode.Parse(
+                                HealthRuntimeInfo.ClientRuntime(GatewayRuntime.Identity).ToString())
+                        };
+                    return tool;
+                }));
         }
 
         internal static Type[] ResolveRegisteredToolTypes(HashSet<string> enabled, RvtMcpConfig config)
@@ -82,6 +92,7 @@ namespace RvtMcp.Server
                 types.Add(typeof(AdaptiveBakeTools));
             if (IncludeSendCode(enabled, config)) types.Add(typeof(SendCodeTools));
             if (enabled.Contains("meta"))       types.Add(typeof(MetaTools));
+            if (enabled.Contains("meta"))       types.Add(typeof(HealthTools));
             if (enabled.Contains("meta"))       types.Add(typeof(ChangeHistoryTools));
             if (enabled.Contains("meta"))       types.Add(typeof(FailureTools));
             if (enabled.Contains("lint"))       types.Add(typeof(LintTools));

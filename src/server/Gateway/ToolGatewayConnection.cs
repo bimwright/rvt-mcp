@@ -632,7 +632,8 @@ namespace RvtMcp.Server
                             GatewayPendingRequest blocking = null;
                             if (!ToolReadPolicy.IsReadOnly(command) && (!conn.FailureProtocol || !conn.DocumentGuard))
                                 rejection = "PAIRING_REQUIRED: update the gateway and Revit add-in together before model mutations.";
-                            else if ((blocking = _pending.Values.FirstOrDefault(value => value.ConnectionId == conn.Epoch && value.WaitingForUser)) != null)
+                            else if (command != "health"
+                                && (blocking = _pending.Values.FirstOrDefault(value => value.ConnectionId == conn.Epoch && value.WaitingForUser)) != null)
                                 rejection = "REVIT_BUSY: Revit is waiting for native user input. _operation.blockedBy names the waiting operation and its dialog. Use the local failure or operation queries.";
                             if (rejection != null)
                             {

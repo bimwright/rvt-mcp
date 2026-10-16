@@ -12,6 +12,7 @@ namespace RvtMcp.Server
     {
         private static void InitializeRuntime(RvtMcpConfig config)
         {
+            _ = GatewayRuntime.Identity;
             // Warm up the target-binding code paths on a background thread so the
             // first tool call's connect+handshake isn't penalized by one-time JIT.
             // The scan may delete proven-dead descriptor files (same as a list call)

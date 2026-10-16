@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-236%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-237%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -91,12 +91,12 @@ Counts below describe the **unreleased development source**; published releases 
 
 | モード | Tools | 注記 |
 |--------|------:|------|
-| 新規インストール | **236** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
-| 素の `rvt-mcp.exe` | **49** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **236** | フルカタログ |
-| `all` + adaptive bake | **239** | 提案ライフサイクル 3 ツールを追加 |
+| 新規インストール | **237** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
+| 素の `rvt-mcp.exe` | **50** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **237** | フルカタログ |
+| `all` + adaptive bake | **240** | 提案ライフサイクル 3 ツールを追加 |
 
-件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 49 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。
+件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 50 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。
 
 | Toolset | 範囲 |
 |---------|------|
@@ -123,6 +123,10 @@ Counts below describe the **unreleased development source**; published releases 
 | `organization` | 保存選択、ビューテンプレート |
 | `workflows` | 干渉/監査/シート/拾い系の複合 |
 | `structural` | 柱梁基礎、鉄筋、荷重… |
+
+### セッション開始時の health
+
+必要に応じて対象の Revit を選択し、`revit_health()` を呼び出します。既定はオフラインで、`--read-only` やモデル未開放時にも使用できます。`revit_health(check_updates=true)` を明示した場合のみ、実行中の gateway とアドインを同じ公式 stable release と比較します。証拠が不足する場合は `unknown` のままです。更新提案は `update_guidance.mode=prepare_update` かつ `bundle_update_proposal_allowed=true` の場合に限ります。Health はインストール、モデルの終了、プロセスの再起動を行いません。Revit がダイアログ待機中でも応答します。document 情報は `document_observed_utc` 時点の UI 観測であり、現在の document や書き込み可能状態の確認ではありません。再接続後、同じ接続の新しい `initialize.serverInfo` と `tools/list` の health runtime metadata/schema/annotations を `client_verification` と照合してください。サーバーはクライアントのキャッシュ更新を確認できません。
 
 ### send_code、ToolBaker、リボン、表示言語
 
@@ -276,6 +280,7 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
       "mcp__rvt-mcp__revit_get_type_parameters",
       "mcp__rvt-mcp__revit_get_view_visibility",
       "mcp__rvt-mcp__revit_get_viewport_geometry",
+      "mcp__rvt-mcp__revit_health",
       "mcp__rvt-mcp__revit_list_areas",
       "mcp__rvt-mcp__revit_list_assemblies",
       "mcp__rvt-mcp__revit_list_available_targets",

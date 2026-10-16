@@ -103,6 +103,16 @@ namespace RvtMcp.Plugin
             }
             var id = request.Value<string>("id");
             var command = request.Value<string>("command");
+            // Already authenticated by the transport. Health never enters the Revit UI queue.
+            if (string.Equals(command, "health", StringComparison.Ordinal))
+            {
+                WriteLine(new JObject
+                {
+                    ["id"] = id, ["success"] = true,
+                    ["data"] = HostHealthSnapshot.Capture(InFlight, PendingRequestLifecycle.IsHostWaitingForUser)
+                }.ToString(Formatting.None));
+                return;
+            }
             if (!ToolReadPolicy.IsReadOnly(command) && request.Value<int?>("failure_protocol") != 1)
             {
                 WriteLine(new JObject { ["id"] = id, ["success"] = false, ["error"] = "PAIRING_REQUIRED: update the gateway and Revit add-in together before model mutations." }.ToString(Formatting.None));

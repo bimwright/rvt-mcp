@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-236%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-237%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -90,12 +90,12 @@ Counts below describe the **unreleased development source**; published releases 
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
-| 全新安装 | **236** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
-| 裸 `rvt-mcp.exe` | **49** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **236** | 完整目录 |
-| `all` + adaptive bake | **239** | 再加 3 个 suggestion 生命周期工具 |
+| 全新安装 | **237** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
+| 裸 `rvt-mcp.exe` | **50** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **237** | 完整目录 |
+| `all` + adaptive bake | **240** | 再加 3 个 suggestion 生命周期工具 |
 
-数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 49 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除。
+数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 50 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除。
 
 | Toolset | 覆盖 |
 |---------|------|
@@ -122,6 +122,10 @@ Counts below describe the **unreleased development source**; published releases 
 | `organization` | 保存选择、视图样板 |
 | `workflows` | 碰撞/审计/图纸/提量类组合流 |
 | `structural` | 柱梁基础、钢筋、荷载… |
+
+### 会话开始时的 health
+
+需要时先选择目标 Revit 实例，再调用 `revit_health()`。默认离线，在 `--read-only` 或未打开模型时也可使用。只有显式调用 `revit_health(check_updates=true)` 才会将运行中的 gateway 和插件与同一个官方 stable release 比较；证据不足时保持 `unknown`。仅当 `update_guidance.mode=prepare_update` 且 `bundle_update_proposal_allowed=true` 时才可提出更新建议。Health 不会安装、关闭模型或重启进程。Revit 等待对话框时仍可返回响应。document 字段来自最近一次 UI 观察，并带有 `document_observed_utc`，不能确认当前 document 或是否可写。重新连接后，在同一连接上将新的 `initialize.serverInfo` 及 `tools/list` 中 health 的 runtime metadata/schema/annotations 与 `client_verification` 对照；服务器无法自行确认客户端缓存已刷新。
 
 ### send_code、ToolBaker、ribbon 与界面语言
 
@@ -275,6 +279,7 @@ Annotations 描述每个工具对文档和文件的影响。临时 selection、a
       "mcp__rvt-mcp__revit_get_type_parameters",
       "mcp__rvt-mcp__revit_get_view_visibility",
       "mcp__rvt-mcp__revit_get_viewport_geometry",
+      "mcp__rvt-mcp__revit_health",
       "mcp__rvt-mcp__revit_list_areas",
       "mcp__rvt-mcp__revit_list_assemblies",
       "mcp__rvt-mcp__revit_list_available_targets",

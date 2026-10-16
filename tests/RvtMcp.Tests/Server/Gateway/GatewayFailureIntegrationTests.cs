@@ -79,6 +79,43 @@ namespace RvtMcp.Tests
                 : new ProcessProbeResult(ProcessState.NotFound, null, null);
         }
 
+        [Fact]
+        public async Task Health_can_pass_a_waiting_operation_without_unblocking_model_writes()
+        {
+            using var wire = new WireHost();
+            JObject waiting = null;
+            wire.OnCommand = (request, host) =>
+            {
+                if (request.Value<string>("command") == "open_model")
+                {
+                    waiting = request;
+                    host.Send(new JObject
+                    {
+                        ["id"] = request["id"], ["success"] = false,
+                        ["_operation"] = new JObject
+                        {
+                            ["operationId"] = request["operation_id"], ["execution"] = "waiting_for_user",
+                            ["outcome"] = "unknown", ["complete"] = false
+                        }
+                    });
+                }
+                else host.Send(new JObject
+                {
+                    ["id"] = request["id"], ["success"] = true,
+                    ["data"] = new JObject { ["ok"] = true, ["waiting_for_user"] = true }
+                });
+            };
+            Descriptor(wire.Port);
+            await Send("open_model");
+            var health = await Send("health");
+            Assert.True(health.Value<bool>("ok"));
+            Assert.True(health.Value<bool>("waiting_for_user"));
+            var blocked = await Send("create_level");
+            Assert.StartsWith("REVIT_BUSY:", blocked.Value<string>("error"));
+            Assert.Equal(new[] { "open_model", "health" }, wire.Requests.Select(r => r.Value<string>("command")));
+            wire.Send(Final(waiting));
+        }
+
         private sealed class WireHost : IDisposable
         {
             private readonly TcpListener _listener = new TcpListener(IPAddress.Loopback, 0);

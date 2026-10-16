@@ -9,24 +9,24 @@ namespace RvtMcp.Server
         private const string ServerInstructionsText =
 @"rvt-mcp — MCP gateway for Autodesk Revit 2022-2027. Use whenever user works with .rvt, Revit, BIM, walls, doors, windows, floors, ceilings, roofs, levels, grids, rooms, sheets, schedules, families, views, view templates, view filters, MEP (ducts, pipes, trays, conduits, HVAC, lighting, plumbing), structural (columns, beams, foundations, rebar), dimensions, tags, annotations, keynotes, worksets, phases, links, parameters, materials, IFC, DWG, NWC, PDF.
 
-Multi-Revit: list via revit_list_available_targets (a year can repeat); pin with revit_switch_target(""pid:<n>""); never guess. Defaults: query,create,view,meta. --toolsets all for export/clash. Do not retry clash/export after 60s timeout.
+Session start: list targets if needed, select with revit_switch_target(""pid:<n>""), then revit_health(). check_updates=true explicitly checks releases; unknown is not current. Follow update_guidance; never auto-install or downgrade. Defaults: query,create,view,meta; --toolsets all for export/clash. Do not retry after timeout.
 
 Before model changes, use the revit_change prompt: survey, agree scope, record why.
 
 Tools (prefix revit_<verb>_<noun>, lengths in mm):
-- query: get_current_view_info, ai_element_filter, get_element_details
+- query: get_current_view_info, ai_element_filter
 - create: create_grid, create_room
 - modify: operate_element, set_element_parameter_values
 - delete: delete_element
 - view: create_view, capture_view_image
-- sheets: create_sheet, renumber_sheets, align_viewports, viewport_geometry
+- sheets: create_sheet, viewport_geometry
 - schedule: create_schedule, list_schedules
 - families: list_loaded_families, load_family_from_path
 - mep: create_duct, analyze_mep_network
 - annotation: tag_elements, create_dimensions
 - graphics: create_view_filter, override_element_graphics
 - export: export_pdf, export_dwg, export_ifc, export_nwc
-- materials: list_materials, assign_material_to_element
+- materials: list_materials
 - geometry: clash_detection, measure_distance_between_elements
 - rooms: list_rooms, compute_room_finishes
 - links: project coordinates, link/acquire/publish

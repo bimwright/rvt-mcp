@@ -52,6 +52,7 @@ namespace RvtMcp.Plugin
             Instance = this;
 
             DebugLog("OnStartup: BEGIN");
+            HostHealthSnapshot.Initialize(typeof(App).Assembly, 2025);
 
             McpLogger.Initialize();
             if (!LegacyDataMigration.TryMigrateOnce(DebugLog)) return Result.Failed;
@@ -272,6 +273,7 @@ namespace RvtMcp.Plugin
         private void OnIdling(object sender, IdlingEventArgs e)
         {
             Failures.FailureControl.OnIdling(sender as UIApplication);
+            HostHealthObserver.Observe(sender as UIApplication);
             // Capture the owner early so pre-command toasts (e.g. agent
             // connected) anchor to the Revit window instead of the screen.
             if (!_mainWindowCaptured)

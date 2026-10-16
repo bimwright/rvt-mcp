@@ -51,6 +51,7 @@
     <Compile Include="..\shared\ToolBaker\BakedToolRuntimeSource.cs" Link="Shared\ToolBaker\BakedToolRuntimeSource.cs" />
     <Compile Include="..\shared\Infrastructure\LegacyDataMigration.cs" Link="Shared\Infrastructure\LegacyDataMigration.cs" />
     <Compile Include="..\shared\Infrastructure\ToolReadPolicy.cs" Link="Shared\Infrastructure\ToolReadPolicy.cs" />
+    <Compile Include="..\shared\Infrastructure\RuntimeIdentity.cs" Link="Shared\Infrastructure\RuntimeIdentity.cs" />
     <Compile Include="..\shared\Survey\SurveyContract.cs" Link="Shared\Survey\SurveyContract.cs" />
     <Compile Include="..\shared\Survey\SurveySnapshotCache.cs" Link="Shared\Survey\SurveySnapshotCache.cs" />
     <Compile Include="..\shared\Infrastructure\Responses\ResponseSizeGuard.cs" Link="Shared\Infrastructure\Responses\ResponseSizeGuard.cs" />

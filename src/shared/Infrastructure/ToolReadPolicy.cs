@@ -32,6 +32,7 @@ namespace RvtMcp.Plugin
             "get_assembly_members",
             "get_available_family_types",
             "get_current_target",
+            "health",
             "get_current_view_info",
             "get_change_records",
             "get_failure_records",

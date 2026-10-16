@@ -112,7 +112,7 @@ namespace RvtMcp.Tests
         {
             var full = new RvtMcpConfig { Toolsets = new List<string> { "all" }, EnableAdaptiveBake = true };
             var methods = Program.ResolveRegisteredToolMethods(ToolsetFilter.Resolve(full), full).ToArray();
-            Assert.Equal(239, methods.Length);
+            Assert.Equal(240, methods.Length);
             foreach (var method in methods)
             {
                 var attr = method.GetCustomAttribute<McpServerToolAttribute>();
@@ -133,7 +133,7 @@ namespace RvtMcp.Tests
                         Assert.NotNull(protocol["annotations"]?[hint]);
                     Assert.Equal(attr.ReadOnly ? ToolActivityKind.Read : ToolActivityKind.Write,
                         ToolActivityClassifier.Classify(attr.Name.Substring(6)));
-                    Assert.False(attr.OpenWorld);
+                    Assert.Equal(attr.Name == "revit_health", attr.OpenWorld);
                 }
             }
             // revit_switch_target is ReadOnly=false but stays registered under --read-only

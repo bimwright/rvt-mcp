@@ -20,7 +20,7 @@ namespace RvtMcp.Tests
     [Collection("ServerStateConfig")]
     public sealed class EveryToolContractTests
     {
-        // Server-only tools: they answer from local state, so they are exercised by their own tests.
+        // Server-local/control-plane tools have dedicated contracts, including runtime health enrichment.
         internal static readonly Dictionary<string, string> ServerOnly = new Dictionary<string, string>
         {
             ["revit_record_change"] = "ChangeHistoryRuntimeTests",
@@ -34,6 +34,7 @@ namespace RvtMcp.Tests
             ["revit_dismiss_bake_suggestion"] = "ToolBakerHandlersTests",
             ["revit_list_available_targets"] = "MetaToolShellTests",
             ["revit_get_current_target"] = "MetaToolShellTests",
+            ["revit_health"] = "HealthToolsTests",
             ["revit_switch_target"] = "MetaToolShellTests",
             ["revit_analyze_usage_patterns"] = "MetaToolShellTests",
         };
