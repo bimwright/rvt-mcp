@@ -9,7 +9,7 @@ namespace RvtMcp.Server
         private const string ServerInstructionsText =
 @"rvt-mcp — MCP gateway for Autodesk Revit 2022-2027. Use whenever user works with .rvt, Revit, BIM, walls, doors, windows, floors, ceilings, roofs, levels, grids, rooms, sheets, schedules, families, views, view templates, view filters, MEP (ducts, pipes, trays, conduits, HVAC, lighting, plumbing), structural (columns, beams, foundations, rebar), dimensions, tags, annotations, keynotes, worksets, phases, links, parameters, materials, IFC, DWG, NWC, PDF.
 
-Session start: list targets if needed, select with revit_switch_target(""pid:<n>""), then revit_health(). check_updates=true explicitly checks releases; unknown is not current. Follow update_guidance; never auto-install or downgrade. Defaults: query,create,view,meta; --toolsets all for export/clash. Do not retry after timeout.
+Session start or connection check: list targets, pin with revit_switch_target(""pid:<n>""), then revit_health(). check_updates=true checks releases; unknown is not current. Follow update_guidance; never auto-install or downgrade. Defaults: query,create,view,meta; --toolsets all for export/clash. Do not retry after timeout.
 
 Before model changes, use the revit_change prompt: survey, agree scope, record why.
 
