@@ -23,6 +23,7 @@ namespace RvtMcp.Server
             IMcpServerBuilder mcp, HashSet<string> enabled, RvtMcpConfig config)
         {
             mcp = RuntimeToolFilter.Register(mcp, config, ToolGateway.Session);
+            mcp = PromptRequestLogging.Register(mcp);
             mcp = RegisterToolsets(mcp, enabled, config);
             mcp.WithResources<RevitResources>();
             mcp.WithPrompts<RevitPrompts>();
@@ -50,8 +51,11 @@ namespace RvtMcp.Server
         }
 
         internal static IMcpServerBuilder RegisterToolsets(IMcpServerBuilder mcp, HashSet<string> enabled, RvtMcpConfig config)
+            => mcp.WithTools(CreateRegisteredTools(enabled, config));
+
+        internal static McpServerTool[] CreateRegisteredTools(HashSet<string> enabled, RvtMcpConfig config)
         {
-            return mcp.WithTools(ResolveRegisteredToolMethods(enabled, config)
+            return ResolveRegisteredToolMethods(enabled, config)
                 .Select(method =>
                 {
                     var tool = McpServerTool.Create(method, (object)null);
@@ -62,7 +66,7 @@ namespace RvtMcp.Server
                                 HealthRuntimeInfo.ClientRuntime(GatewayRuntime.Identity).ToString())
                         };
                     return tool;
-                }));
+                }).ToArray();
         }
 
         internal static Type[] ResolveRegisteredToolTypes(HashSet<string> enabled, RvtMcpConfig config)
