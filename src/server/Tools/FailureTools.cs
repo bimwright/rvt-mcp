@@ -44,10 +44,8 @@ namespace RvtMcp.Server
         internal static TimeSpan WaitPollInterval = TimeSpan.FromMilliseconds(500);
 
         [McpServerTool(Name = "revit_get_operation_status", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), Description(
-            "Read the plugin-owned local status of an issued operationId, including execution, final outcome, incident IDs and bounded receipts; finalResult.data has the command result while this session still holds it. " +
-            "Works while Revit is modal; never dispatches, retries or changes Revit. Missing records are unavailable, not proof of failure or permission to retry. " +
-            "waitSeconds (0-90, default 0) waits here, without holding Revit, while the operation is unfinished (waiting_for_user, timed_out_running, running, queued); " +
-            "it returns as soon as the operation finishes, otherwise with stillWaiting=true. " +
+            "Read an issued operationId's local execution/outcome receipts while Revit is modal; finalResult.data is available while retained, and waitSeconds (0-90, default 0) waits without holding Revit. " +
+            "Never dispatches or retries; missing records do not prove failure or authorize retry, and unfinished waits return stillWaiting=true. " +
             "Example: {operationId: \"<issued-id>\", waitSeconds: 60}.")]
         public static async Task<string> GetOperationStatus(string operationId, int waitSeconds = 0)
         {

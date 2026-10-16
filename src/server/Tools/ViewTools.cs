@@ -20,8 +20,9 @@ namespace RvtMcp.Server
         public static async Task<string> AnalyzeSheetLayout(string sheetNumber = "", long? sheetId = null, int startViewport = 0, int maxViewports = 100)
             => await ToolGateway.CallAsync("analyze_sheet_layout", new { sheetNumber, sheetId, start_viewport = startViewport, max_viewports = maxViewports });
 
-        [McpServerTool(Name = "revit_capture_view_image", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Export a view to a raster image. output_path is optional; if provided it must be absolute and inside %TEMP% or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\. Params: view_id (optional, default active), output_path (optional, defaults under captures), pixel_size (default 1600), image_format ('png'|'jpeg', default 'png')." +
-            " May overwrite existing output files. Revit Undo cannot restore them; back up the destination first.")]
+        [McpServerTool(Name = "revit_capture_view_image", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
+            "Export the active or specified view as png/jpeg (default 1600 pixels), optionally to an absolute output_path inside %TEMP% or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\. " +
+            "May overwrite files that Revit Undo cannot restore; back up the destination first.")]
         public static async Task<string> CaptureViewImage(
             string output_path = null,
             long? view_id = null, int pixel_size = 1600, string image_format = "png")

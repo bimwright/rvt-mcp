@@ -45,5 +45,18 @@ namespace RvtMcp.Tests
                 BindingFlags.NonPublic | BindingFlags.Static).GetRawConstantValue();
             Assert.True(Encoding.UTF8.GetByteCount(text) < 2048);
         }
+
+        [Fact]
+        public void Core_descriptions_fit_per_tool_budget()
+        {
+            var core = new[] { "revit_health", "revit_list_available_targets", "revit_switch_target",
+                "revit_get_current_target", "revit_get_current_view_info", "revit_get_selected_elements",
+                "revit_capture_view_image", "revit_list_recent_models", "revit_open_model",
+                "revit_get_operation_status", "revit_send_code_to_revit" };
+            var config = new RvtMcpConfig { Toolsets = new List<string> { "all" } };
+            foreach (var tool in Program.CreateRegisteredTools(ToolsetFilter.Resolve(config), config)
+                .Where(tool => core.Contains(tool.ProtocolTool.Name)))
+                Assert.True(tool.ProtocolTool.Description.Length <= 600, tool.ProtocolTool.Name);
+        }
     }
 }

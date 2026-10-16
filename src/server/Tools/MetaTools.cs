@@ -15,32 +15,14 @@ namespace RvtMcp.Server
     public class MetaTools
     {
         [McpServerTool(Name = "revit_list_recent_models", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
-            "List this Revit's recent models from its Revit.ini Recent File List. Works when no document is open. " +
-            "Does not open a file. Ask the user which path to open, then call revit_open_model with that absolute path. " +
-            "Returns up to 50 entries, most recent first, each with index, path, file name, and whether the file still exists.")]
+            "List up to 50 recent model paths from this Revit's Revit.ini, most recent first, even without an open document. " +
+            "Confirm the intended absolute path before calling revit_open_model.")]
         public static async Task<string> ListRecentModels()
             => await ToolGateway.CallAsync("list_recent_models");
 
         [McpServerTool(Name = "revit_open_model", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
-            "Open a Revit model, template or family from disk and make it the active document. " +
-            "THIS IS THE TOOL TO CALL WHEN NO DOCUMENT IS OPEN. Other tools then report that Revit is running with no document and name revit_list_recent_models. Ask the user which recent file to open before calling this. " +
-            "path: an absolute path on the machine Revit runs on, NOT on the MCP client's machine. " +
-            "A workshared .rvt is never opened directly: a new local copy is always created from its central model " +
-            "(same as Revit's Open > 'Create New Local') under the Revit.ini ProjectPath folder as <central>_<username>.rvt - " +
-            "no ProjectPath means the call stops and reports it. " +
-            "A file whose header cannot be read is never opened because its worksharing state is unknown. " +
-            "If a local with that name already exists it is renamed with a timestamp - never deleted or overwritten - " +
-            "unless it is open in the session, has changes not yet saved to central, or its header cannot be read, " +
-            "in which case the call stops and asks the user. " +
-            "There is no detach option - detaching from central or opening a central directly must go through revit_send_code_to_revit. " +
-            "activate=true (default) opens it in the UI and makes it active; false opens it in the background with no view, where tools reading the active document will not see it. " +
-            "worksets (all|none|lastViewed) applies to workshared models only. audit=true is slow - use it on a suspect file. " +
-            "A model Revit already has open is reported back (and activated when activate=true) rather than reopened. " +
-            "Two known refusals: a file already loaded as a link in an open document cannot be opened standalone (close the host document or unload the link first), " +
-            "and a central saved in an older Revit version cannot create a local - if that fails after an existing local was renamed aside, the error names the timestamped path it was kept as; nothing is lost. " +
-            "timeout_seconds: 1-900, default 600 - opening a model that pulls in many links commonly exceeds 60s (measured: a 20 MB model with 5 links took 64s). " +
-            "Returns: {opened, was_already_open, title, path, saved_in_version, upgraded_from (the older year Revit upgraded the model from, else null), is_workshared, is_family, header_worksharing, central_path, local_path, local_file_created, renamed_existing_local, activated, active_view}. " +
-            "NOTE: opening a model saved in an older Revit upgrades it in memory - that only reaches disk if something saves it.")]
+            "Open a confirmed absolute path on the Revit machine, including when no document is open; older files may upgrade in memory, reaching disk only if saved. " +
+            "Workshared models create a new local from central under Revit.ini ProjectPath, may rename an existing safe local aside, and refuse unknown/unsafe headers; activate=false opens in background, timeout_seconds is 1-900 (default 600), and a timeout must not be retried blindly.")]
         public static async Task<string> OpenModel(string path, bool activate = true, bool audit = false, string worksets = null, int timeout_seconds = 600)
         {
             var blocked = ServerState.BlockIfReadOnly("open_model");
@@ -140,12 +122,8 @@ namespace RvtMcp.Server
         }
 
         [McpServerTool(Name = "revit_list_available_targets", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
-            "List every Revit instance currently running with the rvt-mcp plugin loaded. " +
-            "Reads the discovery directory %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\ — both per-instance revit-<year>-<pid>.json and legacy revit-<year>.json files. " +
-            "Multiple instances may share a year — identify the one you want by pid and window_title, then pin it with revit_switch_target(\"pid:<n>\"). Never guess. " +
-            "Use this BEFORE revit_switch_target. " +
-            "Returns: {discovery_dir, count, targets: [{year, transport, port, pipe_name, pid, discovery_file, is_currently_connected, target_id, host_year, process_start_utc, identity_verified, source, is_current, window_title}]}. " +
-            "If count == 0, no Revit is running or no plugin is loaded — instruct the user to start Revit and enable the rvt-mcp plugin.")]
+            "List discovered live Revit instances with pid, window_title, target identity and connection state. " +
+            "Identify the intended instance before revit_switch_target; multiple instances may share a year, so never guess a target. Example: revit_switch_target(\"pid:<listed-pid>\").")]
         public static string ListAvailableTargets()
         {
             try
@@ -186,10 +164,8 @@ namespace RvtMcp.Server
         }
 
         [McpServerTool(Name = "revit_get_current_target", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
-            "Report which Revit instance this MCP server will route the NEXT command to. " +
-            "Returns: {pinned_target, currently_connected_year (or null), currently_connected_pid (or null), discovery_dir, selector, binding, binding_state, generation, bound_target_id, bound_pid, bound_host_year, identity_verified, window_title, next_target_id, confirmation_required, last_switch}. " +
-            "selection_confirmed and confirmed_document_id describe write authorization. When confirmation_required is true, select/verify the intended instance and document with revit_switch_target before writing. " +
-            "Use to verify routing before sending Revit-modifying commands when multiple Revits are open.")]
+            "Read the next command's Revit binding, connected pid, generation and confirmation state. " +
+            "When confirmation_required is true, select and verify the intended instance/document with revit_switch_target before writing.")]
         public static string GetCurrentTarget()
         {
             try
@@ -212,19 +188,8 @@ namespace RvtMcp.Server
         }
 
         [McpServerTool(Name = "revit_switch_target", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
-            "Switch the active Revit binding to a specific instance when multiple Revits are running — including several instances of the same year. " +
-            "version: a selector — 'auto', a 4-digit calendar year, 'pid:<n>', or 'id:revit-<year>-<pid>'. " +
-            "When several instances share a year, ALWAYS pin with pid:<n> after listing. " +
-            "DO NOT pass R-codes like 'R22' or 'R24' — they are rejected with an educational error. " +
-            "DO NOT guess. ALWAYS call revit_list_available_targets first to see which instances are actually running (pid, window_title). " +
-            "A valid switch after TARGET_CHANGED confirms the proposed replacement — calls keep failing until you confirm. " +
-            "Every accepted switch, including same-PID confirmation, advances the generation and closes the previous connection; commands already in flight may end as TARGET_INTERRUPTED. " +
-            "Returns: {ok, previous: {target_id, pid}|null, binding: {…}, verified, activeView} plus legacy previousTarget/newTarget strings. " +
-            "verify=true (default): immediately attempts get_current_view_info against the new target to confirm connectivity; " +
-            "writes require the verified document. Queries may still use a single automatic target. " +
-            "rebind=true is required to leave a live confirmed target. expectedDocumentId optionally checks the document_id from a previous _target stamp. " +
-            "A failed verify restores the previous live binding if it has not changed concurrently. " +
-            "verify=false selects only the process so open_model can establish a document; verify again before model writes.")]
+            "Pin an instance listed by revit_list_available_targets using pid:<n>, id:revit-<year>-<pid>, auto or a calendar year (never R-codes); verify=true confirms the document for writes. " +
+            "Switching closes the old connection and may interrupt in-flight calls; rebind=true leaves a live confirmed target, expectedDocumentId checks identity, and verify=false permits open_model but requires re-verification before model writes. Example: {version: \"pid:1234\"}.")]
         public static async Task<string> SwitchTarget(string version, bool verify = true, bool rebind = false, string expectedDocumentId = null)
         {
             try

@@ -13,21 +13,8 @@ namespace RvtMcp.Server
     public static class HealthTools
     {
         [McpServerTool(Name = "revit_health", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = true), Description(
-            "At session start select the intended Revit target, then call revit_health. The default stays offline; " +
-            "check_updates=true explicitly checks the official stable release with a bounded deadline. " +
-            "Reports loaded gateway/plugin versions, build ids, alignment and host state without requiring a model. " +
-            "The listener can reply while Revit is modal. Document fields are the last UI observation, with " +
-            "document_observed_utc and state_probe; they do not confirm the current document or readiness for writes. " +
-            "Use revit_switch_target verification before model changes. No target retains gateway identity with " +
-            "ok:false and host_connected:false. Missing runtime/release evidence stays unknown, never up to date. " +
-            "Inspect update.components, notification.message, lookup_reason, protected_component_reasons and " +
-            "unobserved_components. Follow update_guidance: only prepare_update with " +
-            "bundle_update_proposal_allowed=true permits an update proposal; reuse existing installation permission. " +
-            "Never downgrade or automatically replace a development build. Matching revisions do not verify artifact " +
-            "bytes, compatibility or publisher trust. After reconnect compare fresh initialize serverInfo and " +
-            "tools/list runtime metadata, schema and annotations with client_verification; the server cannot prove " +
-            "client cache refresh. Read-only; never downloads packages, installs, saves/closes models, changes " +
-            "client configuration or restarts processes.")]
+            "Read gateway/plugin identity and last observed host state after selecting a target; defaults offline, with check_updates=true opting into a release lookup. " +
+            "Observations do not authorize writes: verify with revit_switch_target, follow update_guidance and client_verification, treat missing evidence as unknown, and never auto-install or downgrade.")]
         public static Task<CallToolResult> Health(bool check_updates = false, CancellationToken cancellationToken = default)
             => Probe(check_updates, cancellationToken, new ReleaseUpdateCheck(), GatewayRuntime.Identity);
 

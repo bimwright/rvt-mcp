@@ -10,7 +10,7 @@ namespace RvtMcp.Server
     [McpServerToolType, Toolset("query")]
     public class QueryTools
     {
-        [McpServerTool(Name = "revit_get_current_view_info", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Get active view info. Returns viewName, viewType (FloorPlan/Section/3D/Sheet), level, scale, detailLevel, displayStyle. Call before creating elements to know active level.")]
+        [McpServerTool(Name = "revit_get_current_view_info", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Read the active view's viewName, viewType (FloorPlan/Section/3D/Sheet), level, scale, detailLevel and displayStyle. Call before creating elements to know the active level.")]
         public static async Task<string> GetCurrentViewInfo()
             => await ToolGateway.CallAsync("get_current_view_info");
 
