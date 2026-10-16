@@ -24,6 +24,14 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
+## Release asset maintenance — 2026-10-16
+
+The [existing GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.1.0) now has six uploaded assets: Setup ZIP, Claude Desktop MCPB and server-only NuGet package, each with its own `.sha256` file. GitHub also displays its two source archives. The package bytes, hashes, versions and download URLs are unchanged; this maintenance did not publish a new product build.
+
+- Move verification evidence, the original release manifest and MCP Registry metadata into collapsible sections of the release description. The manifest retains its original packaging checkpoint and file inventory.
+- Remove the duplicate release-notes attachment, standalone metadata/evidence attachments, their checksum sidecars and redundant `SHA256SUMS.txt`. Keep the three package checksum sidecars used by installation guidance.
+- Remove the standalone doctor download after retaining a verified maintainer backup. The existing v1.1.0 Setup does not contain that script; bundling diagnostics into Setup remains a separate packaging change for a later release.
+
 ## Unreleased
 
 ### Fixed
@@ -35,10 +43,14 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 - Schedule Level/reference filters resolve names and element IDs. Sort directions accept `ascending`, `order` and `sortOrder` consistently and reject conflicts. Phase-aware schedule creation uses the active view phase or an explicit `phase`; see [schedule inputs](docs/schedules.md).
 - Schedule data returns rendered text with parallel `rowKinds` metadata for header, blank, text and data rows. `create_view` accepts the documented lowercase `floorplan` and `3d` values.
 - An add-in that requires document confirmation now answers a gateway that predates it with `PAIRING_REQUIRED` and asks for a server update, instead of `DOCUMENT_UNCONFIRMED`, which pointed to a `revit_switch_target` verification that gateway cannot complete. Gateways send `document_protocol` with each request.
-- `send_code` that rolls back its own `TransactionGroup` no longer reports `outcome: committed` and `mutationApplied: true`. Transactions reverted by the group are removed from the observed commits; when Revit names an assimilated inner group that cannot be matched, the outcome stays `unknown`.
+- `send_code` group rollback removes reverted transactions from the observed commits when Revit's transaction names can be matched, avoiding a false `committed` result for that case. An assimilated inner group whose names cannot be matched remains a limitation: the final receipt can still report `partial`, `mutationApplied: true` and incomplete observation, blocking further writes even when the model is unchanged.
+- A failed target switch restores the binding captured under the connection lock, preserving a concurrent successful switch instead of rolling back to an earlier snapshot.
 
 ### Changed
 
+- **Verified write targets and documents.** Model writes require an explicitly selected target and confirmed active document. `revit_switch_target(verify=true)` confirms the document; a changed document requires verification again.
+- **Bounded diagnostics and transport lifecycle.** Diagnostic logs use bounded background writes, rotation and repeat summaries; legacy logs are compacted. TCP/named-pipe Stop/Start, authentication, pending responses and idle connection cleanup no longer leave the previous listener or connection active.
+- **MCP startup preference and coexistence.** Manual On/Off persists across Revit sessions. Detection of another third-party MCP add-in suppresses automatic startup, and manual enable shows a localized warning. The recognized Autodesk MCP registration is exempt from that detection.
 - **Warnings during MCP edits now default to rollback.** The shared helper and native failure event capture the reason before changing failure state. A matching decision or model-specific rule saved in Revit's Issues UI is required to accept supported warnings; Error, Corruption and incomplete capture are not accepted by warning rules. Batch policy stops override `continueOnError=true`. Calls with earlier committed transactions can report partial or unknown outcomes instead of promising whole-call rollback.
 - **Unresolved model issues block further MCP writes.** Local failure records and model gates are independent of call logs and change-history recording, and saved-model state is retained across reconnects/restarts. Rules start empty and are not automatically inherited by copied/Save As models. Storage failures retain uncertainty and do not claim a durable record when none could be written.
 - **Pending execution is separate from caller timeout.** Matching gateway/add-in capability negotiation is required before non-read dispatch. Native dialogs remain with the user unless an exact supported dialog rule applies; busy-host responses direct the agent to local queries. Do not retry unchanged after timeout, pending, interrupted or unknown outcomes. Dirty-document close remains manual when the native event cannot distinguish saving from discarding.
@@ -56,7 +68,9 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ### Validation status
 
-This is development source, not a published release or completed native acceptance. Candidate live checks on Revit 2022, 2024 and 2027 are pending; Revit 2025/.NET 8 live acceptance has not run. Six SDK builds do not establish native behavior on every year. Native Save As/Closing, delayed reminders, provider/storage fault recovery and the remaining acceptance clauses must be evaluated separately. No package or publication claim is made here.
+This is unreleased development source; the v1.1.0 asset cleanup above did not ship these changes. Full native acceptance of the next release candidate remains incomplete, including Revit 2025/.NET 8. Six SDK builds do not establish native behavior on every year. Native Save As/Closing, delayed reminders, provider/storage fault recovery and the remaining acceptance clauses must be evaluated separately. No new development package or publication claim is made here.
+
+The 2026-10-16 health follow-up retained offline/protocol coverage and passed targeted Revit 2027 Home/no-document and open-model/basic-health checks on binaries built before the health commit. Revit 2022/2024 were build-only for that follow-up. Native health during modal dialogs, legacy/mismatched pairing, update guidance and actual-client reconnect/cache verification remain pending; the raw MCP handshake/catalog checks do not close those client gaps. Earlier passing native evidence remains scoped to its recorded build and is not rerun merely for release preparation.
 
 ## v1.1.0 - Per-instance Revit target binding
 
