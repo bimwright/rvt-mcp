@@ -27,6 +27,11 @@ def verify_checksum_sidecar(package, actual_sha256):
     assert parts[0].upper() == actual_sha256, 'Setup ZIP checksum mismatch'
 
 
+def verify_server_build(server_info, manifest):
+    expected = f"{manifest['version']}+{manifest['commit']}"
+    assert server_info["version"] == expected, (server_info, expected)
+
+
 def safe_path(name):
     path = PurePosixPath(name.replace("\\", "/"))
     assert not path.is_absolute() and ".." not in path.parts and not PureWindowsPath(name).drive, name
@@ -141,13 +146,13 @@ def main():
         env = None
     report["profileMode"] = "real-profile-live-opt-in" if args.live_2027 else "disposable-package-only"
     all_count = repo_json("tests/RvtMcp.Tests/Golden/tools-list.json")["tool_count"]
-    for mode, flags, expected in (("default", ["--toolsets", "query,create,view,meta"], 48),
+    for mode, flags, expected in (("default", ["--toolsets", "query,create,view,meta"], 50),
                                   ("all", ["--toolsets", "all"], all_count)):
         client = Client(exe, package.parent / f"smoke-{mode}-stderr.log", flags + ["--target", "2027"], env)
         try:
             init = client.request("initialize", {"protocolVersion": "2025-03-26", "capabilities": {},
                 "clientInfo": {"name": "setup-package-verification", "version": "1"}})
-            assert init["serverInfo"]["version"] == args.version, init["serverInfo"]
+            verify_server_build(init["serverInfo"], manifest)
             client.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
             catalog = client.request("tools/list", {})["tools"]
             assert len(catalog) == expected, (mode, len(catalog))

@@ -12,6 +12,26 @@ safe_path = verifier.safe_path
 verify_checksum_sidecar = verifier.verify_checksum_sidecar
 
 
+class ServerBuildIdentityTests(unittest.TestCase):
+    def setUp(self):
+        self.manifest = {'version': '1.2.0', 'commit': 'a' * 40}
+
+    def test_matching_product_version_and_revision_accepts(self):
+        verifier.verify_server_build({'version': '1.2.0+' + 'a' * 40}, self.manifest)
+
+    def test_another_product_version_rejects(self):
+        with self.assertRaises(AssertionError):
+            verifier.verify_server_build({'version': '1.1.0+' + 'a' * 40}, self.manifest)
+
+    def test_another_revision_rejects(self):
+        with self.assertRaises(AssertionError):
+            verifier.verify_server_build({'version': '1.2.0+' + 'b' * 40}, self.manifest)
+
+    def test_missing_revision_rejects(self):
+        with self.assertRaises(AssertionError):
+            verifier.verify_server_build({'version': '1.2.0'}, self.manifest)
+
+
 class ChecksumSidecarTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='rvt-zip-verifier-')
