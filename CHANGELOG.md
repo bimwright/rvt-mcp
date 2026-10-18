@@ -48,6 +48,7 @@ The [existing GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/
 
 ### Changed
 
+- **Tool descriptions and instructions.** Core tool descriptions are shorter while retaining pre-call safety guidance. The send-code description includes both supported C# entry forms, available imports and operation-status guidance. Full-mode instructions no longer require loading the change prompt before every model change; the prompt remains available.
 - **Tool arguments are checked before a tool runs.** A call missing a required parameter now returns `INVALID_ARGUMENT` instead of the SDK's generic `An error occurred invoking '<tool>'.`, and the tool does not run. The error names the missing parameters, the keys received and the expected parameters, with `did_you_mean` for near-misses such as `Elevation` or `element_id`. Keys that are not parameters of the tool are no longer dropped silently: the call still runs, and the result lists them under the new `_ignored_arguments` field. A rejected call is journaled with key names only, never values. A value that cannot be converted (for example `"elevation": "abc"`) still returns the generic SDK error, with the cause in the server's stderr.
 - **Verified write targets and documents.** Model writes require an explicitly selected target and confirmed active document. `revit_switch_target(verify=true)` confirms the document; a changed document requires verification again.
 - **Bounded diagnostics and transport lifecycle.** Diagnostic logs use bounded background writes, rotation and repeat summaries; legacy logs are compacted. TCP/named-pipe Stop/Start, authentication, pending responses and idle connection cleanup no longer leave the previous listener or connection active.
@@ -60,6 +61,7 @@ The [existing GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/
 
 ### Added
 
+- **Prompt request diagnostics.** Bounded diagnostics record each `prompts/get` request's prompt name, UTC time and session, including failed lookups, without recording prompt argument text.
 - `revit_health` provides offline-by-default startup diagnostics with loaded gateway/add-in identities, semantic-version and revision alignment, optional bounded stable-release checks, and state-gated update guidance. It replies from the authenticated listener while Revit is modal; document fields are explicitly dated UI snapshots. The MCP handshake retains the build revision and the health catalog entry carries runtime metadata for client-side reconnect verification.
 
 - **History → Issues** for reviewing local incidents, Rework, Abandon, constrained Accept once, model rules/revocation and supported one-use native-operation grants. Decisions require a reason in Revit; no MCP approval or rule-mutation tool is exposed. Closing an issue never automatically retries, saves, discards or undoes earlier commits.
