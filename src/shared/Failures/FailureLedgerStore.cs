@@ -525,10 +525,10 @@ AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i
             if (d == null) throw new ArgumentNullException(nameof(d));
             FailureCapture.RequireKey(d.DecisionId, "decision ID"); FailureCapture.RequireKey(d.ModelScopeKey, "model scope key");
             if (d.Action != "revoke_rule") FailureCapture.RequireKey(d.IncidentId, "incident ID");
-            if (d.Channel != "revit_ui" || string.IsNullOrWhiteSpace(d.WindowsUser) || string.IsNullOrWhiteSpace(d.Reason)
+            if (d.Channel != "revit_ui" || string.IsNullOrWhiteSpace(d.WindowsUser)
                 || !new[] { "rework", "abandon", "accept_once", "create_rule", "revoke_rule", "native_grant" }.Contains(d.Action))
-                throw new ArgumentException("A reason and Revit UI actor are required.");
-            d.Reason = FailureCapture.SafeText(d.Reason); d.WindowsUser = FailureCapture.SafeText(d.WindowsUser, 256); d.RevitUser = FailureCapture.SafeText(d.RevitUser, 256);
+                throw new ArgumentException("A valid action and Revit UI actor are required.");
+            d.Reason = FailureCapture.SafeText(FailureDecision.NormalizeReason(d.Reason)); d.WindowsUser = FailureCapture.SafeText(d.WindowsUser, 256); d.RevitUser = FailureCapture.SafeText(d.RevitUser, 256);
             if ((d.Action == "rework" || d.Action == "abandon") && (d.Rule != null || d.Grant != null || d.Rules.Count != 0 || d.Grants.Count != 0))
                 throw new ArgumentException("Resolution cannot also create a rule or grant.");
         }

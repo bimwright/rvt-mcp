@@ -12,6 +12,19 @@ namespace RvtMcp.Plugin.Views
     /// <summary>Shared History window chrome: flat tabs, wrapped tips, and eased scrolling.</summary>
     internal static class HistoryChrome
     {
+        internal static Grid WithWatermark(TextBox input, TextBlock watermark)
+        {
+            watermark.IsHitTestVisible = false;
+            void Refresh() => watermark.Visibility = string.IsNullOrEmpty(input.Text)
+                ? Visibility.Visible : Visibility.Collapsed;
+            input.TextChanged += (s, e) => Refresh();
+            Refresh();
+            var host = new Grid();
+            host.Children.Add(input);
+            host.Children.Add(watermark);
+            return host;
+        }
+
         private static readonly DependencyProperty SmoothOffsetProperty = DependencyProperty.RegisterAttached(
             "SmoothOffset", typeof(double), typeof(HistoryChrome),
             new PropertyMetadata(0d, (d, e) => (d as ScrollViewer)?.ScrollToVerticalOffset((double)e.NewValue)));

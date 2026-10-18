@@ -102,11 +102,9 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void Decisions_require_reason_same_active_model_and_open_incident()
+        public void Decisions_require_same_active_model_and_open_incident()
         {
             var incident = Incident(); var context = Context();
-            Assert.Throws<InvalidOperationException>(() => FailureIssuesPresentation.CreateDecision(
-                "rework", incident, RolledBack(), context, " ", false));
             context.ModelScopeKey = "different-model";
             Assert.Throws<InvalidOperationException>(() => FailureIssuesPresentation.CreateDecision(
                 "rework", incident, RolledBack(), context, "Reviewed", false));
@@ -114,6 +112,40 @@ namespace RvtMcp.Tests
             incident.State = "accepted_once";
             Assert.Throws<InvalidOperationException>(() => FailureIssuesPresentation.CreateDecision(
                 "rework", incident, RolledBack(), context, "Reviewed", false));
+        }
+
+        [Theory]
+        [InlineData("rework")]
+        [InlineData("abandon")]
+        [InlineData("accept_once")]
+        [InlineData("create_rule")]
+        public void Blank_reason_records_unspecified_without_claiming_model_verification(string action)
+        {
+            foreach (var reason in new[] { null, "", " \t\r\n" })
+            {
+                var decision = FailureIssuesPresentation.CreateDecision(
+                    action, Incident(), RolledBack(), Context(), reason, false);
+                Assert.Equal("No reason provided", decision.Reason);
+                Assert.Equal(action, decision.Action);
+                Assert.False(decision.VerifiedModel);
+                Assert.Null(decision.Verification);
+            }
+        }
+
+        [Fact]
+        public void Blank_reason_does_not_bypass_model_review_or_acceptance_constraints()
+        {
+            Assert.Throws<InvalidOperationException>(() => FailureIssuesPresentation.CreateDecision(
+                "abandon", Incident(), new FailureOperation { Execution = "completed", Outcome = "partial" },
+                Context(), null, false));
+            var incomplete = Incident();
+            incomplete.Complete = false;
+            Assert.Throws<InvalidOperationException>(() => FailureIssuesPresentation.CreateDecision(
+                "accept_once", incomplete, RolledBack(), Context(), "", true));
+            var context = Context();
+            context.ModelScopeKey = "different-model";
+            Assert.Throws<InvalidOperationException>(() => FailureIssuesPresentation.CreateDecision(
+                "rework", Incident(), RolledBack(), context, " ", true));
         }
 
         [Fact]

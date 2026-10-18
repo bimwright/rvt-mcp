@@ -33,6 +33,10 @@ namespace RvtMcp.Plugin.Views
         private readonly TextBlock _rulesEmpty = new TextBlock { Foreground = Brushes.Gray };
         private readonly TextBlock _decisionHint = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), Foreground = DecisionHintBrush };
         private readonly TextBox _reason = new TextBox { Height = 28, MaxLength = 2000, VerticalContentAlignment = VerticalAlignment.Center };
+        private readonly TextBlock _reasonWatermark = new TextBlock {
+            Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center,
+            Foreground = MutedBrush, TextTrimming = TextTrimming.CharacterEllipsis
+        };
         private readonly CheckBox _verified = new CheckBox();
         private readonly CheckBox _dialogConsent = new CheckBox { Margin = new Thickness(0, 4, 0, 0), Visibility = Visibility.Collapsed };
         private readonly ListBox _rules = new ListBox { MaxHeight = 72, DisplayMemberPath = "Label", Margin = new Thickness(0, 0, 0, 4) };
@@ -200,7 +204,12 @@ namespace RvtMcp.Plugin.Views
             _localizers.Add(() => _verified.Content = L.T("failure.review.short"));
             _localizers.Add(() => HistoryChrome.Guide(_verified, L.T("security.failure.verified") + "\n" + L.T("security.failure.verificationRequired")));
             _localizers.Add(() => HistoryChrome.Guide(_dialogConsent, L.T("security.failure.dialogChoiceRequired")));
-            _localizers.Add(() => HistoryChrome.Guide(_reason, L.T("security.failure.reasonRequired")));
+            _localizers.Add(() => {
+                var hint = L.T("security.failure.reasonPlaceholder");
+                _reasonWatermark.Text = hint;
+                HistoryChrome.Guide(_reason, hint);
+                System.Windows.Automation.AutomationProperties.SetName(_reason, L.T("security.failure.reason"));
+            });
 
             _models.SelectionChanged += (s, e) => { if (!_loading) LoadPage(); };
             _states.SelectionChanged += (s, e) => { if (!_loading) LoadPage(); };
@@ -226,8 +235,9 @@ namespace RvtMcp.Plugin.Views
             reasonLabel.FontWeight = FontWeights.SemiBold;
             reasonLabel.Margin = new Thickness(0, 0, 8, 0);
             reasonRow.Children.Add(reasonLabel);
-            Grid.SetColumn(_reason, 1);
-            reasonRow.Children.Add(_reason);
+            var reasonInput = HistoryChrome.WithWatermark(_reason, _reasonWatermark);
+            Grid.SetColumn(reasonInput, 1);
+            reasonRow.Children.Add(reasonInput);
             panel.Children.Add(reasonRow);
             panel.Children.Add(_decisionHint);
             var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
@@ -520,10 +530,10 @@ namespace RvtMcp.Plugin.Views
                 var context = FailureControl.GetUiContext();
                 if (context?.IsAvailable != true || context.ModelScopeKey != rule.ModelScopeKey)
                     throw new InvalidOperationException("security.failure.currentModelRequired");
-                if (string.IsNullOrWhiteSpace(_reason.Text)) throw new InvalidOperationException("security.failure.reasonRequired");
-                if (!Confirm(L.T("security.failure.revokeRule"), ProtectedRuleText(rule, null, context.DocumentRevision), _reason.Text)) return;
+                var reason = FailureDecision.NormalizeReason(_reason.Text);
+                if (!Confirm(L.T("security.failure.revokeRule"), ProtectedRuleText(rule, null, context.DocumentRevision), reason)) return;
                 SaveDecision(new FailureDecision {
-                    ModelScopeKey = rule.ModelScopeKey, Action = "revoke_rule", Rule = rule, Reason = _reason.Text.Trim(),
+                    ModelScopeKey = rule.ModelScopeKey, Action = "revoke_rule", Rule = rule, Reason = reason,
                     WindowsUser = Environment.UserName, RevitUser = context.RevitUser, HostInstanceId = context.HostInstanceId,
                     Channel = "revit_ui", DocumentRevision = context.DocumentRevision
                 }, context);

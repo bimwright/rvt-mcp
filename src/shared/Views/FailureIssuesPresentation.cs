@@ -68,7 +68,6 @@ namespace RvtMcp.Plugin.Views
         internal static FailureDecision CreateDecision(string action, FailureIncident incident,
             FailureOperation operation, FailureIssuesContext context, string reason, bool verifiedModel)
         {
-            if (string.IsNullOrWhiteSpace(reason)) throw new InvalidOperationException("security.failure.reasonRequired");
             if (context == null || !context.IsAvailable || incident == null
                 || context.ModelScopeKey != incident.ModelScopeKey)
                 throw new InvalidOperationException("security.failure.currentModelRequired");
@@ -81,7 +80,7 @@ namespace RvtMcp.Plugin.Views
 
             var decision = new FailureDecision {
                 IncidentId = incident.IncidentId, ModelScopeKey = incident.ModelScopeKey,
-                Action = action, Reason = reason.Trim(), WindowsUser = Environment.UserName,
+                Action = action, Reason = FailureDecision.NormalizeReason(reason), WindowsUser = Environment.UserName,
                 RevitUser = context.RevitUser, HostInstanceId = context.HostInstanceId,
                 DocumentRevision = context.DocumentRevision,
                 Channel = "revit_ui", VerifiedModel = verifiedModel,

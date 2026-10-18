@@ -26,7 +26,7 @@ Captured context is bounded. Raw code, credentials and full argument bodies are 
 
 ## Handle an issue in Revit
 
-Open **History → Issues** from the Revit ribbon or History window. Select the correct model and incident, inspect the outcome, captured elements and any incomplete evidence, and enter a reason before choosing an action.
+Open **History → Issues** from the Revit ribbon or History window. Select the correct model and incident, inspect the outcome, captured elements and any incomplete evidence, then choose an action. The reason is optional: the input shows a hint while empty, and a blank or whitespace-only reason is recorded as `No reason provided`. Model-review confirmations and acceptance constraints still apply.
 
 | Action | Effect |
 | --- | --- |

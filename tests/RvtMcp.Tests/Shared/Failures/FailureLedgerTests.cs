@@ -36,6 +36,43 @@ namespace RvtMcp.Tests
         private FailureRule Rule(FailureIncident i)
         { return new FailureRule { ModelScopeKey = i.ModelScopeKey, DefinitionId = i.Messages[0].DefinitionId, RevitYear = i.RevitYear, OperationContext = i.OperationContext, MaxCount = 1, ExistingElementIds = new List<long> { 10 } }; }
 
+        [Theory]
+        [InlineData(null, "No reason provided")]
+        [InlineData("", "No reason provided")]
+        [InlineData(" \t\r\n", "No reason provided")]
+        [InlineData("  Reviewed in Revit  ", "Reviewed in Revit")]
+        public void Optional_reason_is_persisted_without_rewriting_operation_outcome(string reason, string expected)
+        {
+            var store = Store(); var model = Model(store); var operation = Operation(store, model.ModelScopeKey);
+            var incident = Incident(store, model.ModelScopeKey, operation);
+            var decision = Decision(incident, "abandon"); decision.Reason = reason;
+            Assert.True(store.GetGate(model.ModelScopeKey).Blocked);
+            Assert.True(store.ApplyDecision(decision).Recorded);
+            Assert.False(store.GetGate(model.ModelScopeKey).Blocked);
+            Assert.Equal("rolled_back", store.GetOperation(operation.OperationId).Outcome);
+            Assert.Equal("resolved_abandoned", store.Query(new FailureRecordQuery { ModelScopeKey = model.ModelScopeKey }).Records.Single().State);
+            using (var connection = new SqliteConnection("Data Source=" + Db + ";Mode=ReadOnly;Pooling=False"))
+            {
+                connection.Open();
+                using var query = connection.CreateCommand();
+                query.CommandText = "SELECT payload FROM decisions WHERE id=$id";
+                query.Parameters.AddWithValue("$id", decision.DecisionId);
+                Assert.Equal(expected, JObject.Parse((string)query.ExecuteScalar()).Value<string>("reason"));
+            }
+        }
+
+        [Fact]
+        public void Blank_reason_still_requires_a_Revit_UI_actor()
+        {
+            var store = Store(); var model = Model(store); var operation = Operation(store, model.ModelScopeKey);
+            var incident = Incident(store, model.ModelScopeKey, operation);
+            var decision = Decision(incident); decision.Reason = null; decision.Channel = "mcp";
+            Assert.Throws<ArgumentException>(() => store.ApplyDecision(decision));
+            decision.Channel = "revit_ui"; decision.WindowsUser = " ";
+            Assert.Throws<ArgumentException>(() => store.ApplyDecision(decision));
+            Assert.True(store.GetGate(model.ModelScopeKey).Blocked);
+        }
+
         [Fact] public void OrdinaryQueriesDoNotCreateDatabaseOrDirectories()
         {
             var store = new FailureLedgerStore(Db, readOnly: true);

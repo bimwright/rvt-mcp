@@ -150,6 +150,10 @@ namespace RvtMcp.Failures
     }
     public sealed class FailureDecision
     {
+        internal const string UnspecifiedReason = "No reason provided";
+        internal static string NormalizeReason(string reason) =>
+            string.IsNullOrWhiteSpace(reason) ? UnspecifiedReason : reason.Trim();
+
         public string DecisionId { get; set; } = Guid.NewGuid().ToString("N");
         public string IncidentId { get; set; }
         public string ModelScopeKey { get; set; }
