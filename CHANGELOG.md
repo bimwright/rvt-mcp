@@ -4,6 +4,7 @@
 
 | Version | Date | Available as |
 |---|---|---|
+| v1.2.0 | 2026-10-19 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.0) |
 | v1.1.0 | 2026-10-07 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.1.0) |
 | v1.0.1 | 2026-10-04 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.0.1) |
 | v1.0.0 | 2026-10-03 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.0.0); NuGet `RvtMcp.Server` 1.0.0 |
@@ -32,7 +33,7 @@ The [existing GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/
 - Remove the duplicate release-notes attachment, standalone metadata/evidence attachments, their checksum sidecars and redundant `SHA256SUMS.txt`. Keep the three package checksum sidecars used by installation guidance.
 - Remove the standalone doctor download after retaining a verified maintainer backup. The existing v1.1.0 Setup does not contain that script; bundling diagnostics into Setup remains a separate packaging change for a later release.
 
-## v1.2.0 — 2026-10-18
+## v1.2.0 — 2026-10-19
 
 ### Fixed
 
@@ -88,7 +89,7 @@ The [existing GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/
 
 ### Validation status
 
-The v1.2.0 changelog is finalized for local release preparation; the v1.1.0 asset cleanup above did not ship these changes. The [candidate validation record](docs/testing/2026-10-18-v1.2.0-validation.md) identifies tested sources, affected regressions and retained native evidence. Final-candidate native/client acceptance and publication remain pending, including Revit 2023/2025/2026. Six SDK builds do not establish native behavior on every year. Native Save As/Closing, delayed reminders, provider/storage fault recovery and the remaining acceptance clauses must be evaluated separately. Issue #21 awaits reporter feedback and is not claimed fixed.
+The [validation record](docs/testing/2026-10-18-v1.2.0-validation.md) identifies tested sources, affected regressions and retained native evidence. The [v1.2.0 release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.0) records the final source, CI run and package checksums. Final-candidate native/client acceptance remains pending, including Revit 2023/2025/2026. Six SDK builds do not establish native behavior on every year. Native Save As/Closing, delayed reminders, provider/storage fault recovery and the remaining acceptance clauses must be evaluated separately. Issue #21 awaits reporter feedback and is not claimed fixed.
 
 The 2026-10-16 health follow-up retained offline/protocol coverage and passed targeted Revit 2027 Home/no-document and open-model/basic-health checks on binaries built before the health commit. Revit 2022/2024 were build-only for that follow-up. Native health during modal dialogs, legacy/mismatched pairing, update guidance and actual-client reconnect/cache verification remain pending; the raw MCP handshake/catalog checks do not close those client gaps. Earlier passing native evidence remains scoped to its recorded build and is not rerun merely for release preparation.
 
