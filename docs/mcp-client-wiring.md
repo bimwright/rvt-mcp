@@ -24,7 +24,10 @@ choosing one route. See [Desktop routes](install.md#claude-desktop-choose-one-re
 | Command | `%LOCALAPPDATA%\Bimwright\rvt-mcp\server\current\rvt-mcp.exe` (absolute) |
 | Args | none required (`--toolsets all`, `--read-only` optional) |
 
-The `current` path never changes across upgrades — wire once, upgrade freely.
+The `current` path stays the same across upgrades. Restart/reconnect the client
+after replacing the gateway; an existing connection may retain the previous
+process, instructions and catalog. MCPB also needs the extension from the same
+release because its launcher checks the executable hash.
 
 ## Universal procedure
 
@@ -46,6 +49,14 @@ The `current` path never changes across upgrades — wire once, upgrade freely.
 10. **Verify the Revit handshake**: open a model in Revit, start MCP from
     **Add-Ins → RvtMcp**, then call `revit_get_current_view_info` in the target.
 
+After upgrading from v1.0.x/v1.1.0, inspect a fresh `initialize` serverInfo and
+`tools/list` on the new connection. Development builds after v1.1.0 expose
+`revit_health`: compare its gateway/add-in identities and `client_verification`
+with that connection's handshake/catalog. A file installed at `current` does
+not prove the client restarted or that Revit loaded the new add-in. Keep client
+connection and native handshake pending when that evidence is unavailable.
+See [upgrade verification](install.md#verify-an-upgrade-from-v10x-or-v110).
+
 Edge-case rules, all clients:
 
 - `rvt-mcp` pointing at `...\server\<version>\rvt-mcp.exe` (pre-0.6.3 layout)
@@ -54,6 +65,10 @@ Edge-case rules, all clients:
 - Custom launcher/wrapper command → report; never silently replace.
 - Never delete unrelated entries. Re-running this procedure must not
   duplicate the entry.
+- Target selection uses `revit_switch_target` with a listed `pid:<n>` when
+  needed; it does not add a required PID argument to every existing tool.
+  Protocol-pairing errors require matching gateway/add-ins and a restart,
+  followed by document verification. They are distinct from choosing a target.
 
 ## If you are the agent running inside the client being wired
 
@@ -107,6 +122,11 @@ MCPB uses Setup with `-Client none` and requires consent to remove/disable a man
 entry before enabling the extension. `-Client none` alone does not remove that entry.
 See [MCPB steps](install.md#claude-desktop-mcpb). Do not modify private extension
 storage to automate the UI.
+
+`-Client none` does not upgrade an installed extension. An old MCPB can expose
+`rvt_mcp_setup_status` against a newer Setup and mention its own old expected
+version. Install the extension from the selected newer release; do not treat
+that old message as a reason to downgrade a verified newer gateway.
 
 - MSIX (Store/MSIX install): `%LOCALAPPDATA%\Packages\<package-family>\LocalCache\Roaming\Claude\claude_desktop_config.json` — **check this first**. The family name is not always `Claude_*` (enterprise repackaging, channel variants) — probe `Packages\*\LocalCache\Roaming\Claude\` for any package that contains the `Claude` cache dir.
 - Classic/native installer (incl. the `AnthropicClaude` installer — app under `%LOCALAPPDATA%\AnthropicClaude`): `%APPDATA%\Claude\claude_desktop_config.json`.
@@ -255,6 +275,8 @@ pending. A missing restart/model is not grounds for a full uninstall.
 | Symptom | Cause | Fix |
 |---|---|---|
 | Entry exists but tools missing | Client not restarted, or a scope shadow (local/project entry wins) | Restart client; check the other scope (`claude mcp list`, `grok mcp list`, repo `.mcp.json`) |
+| Old tools/instructions remain after a successful package upgrade | Previous gateway connection, custom launcher or mismatched MCPB | Reconnect and inspect fresh serverInfo/tools/list; compare `revit_health` where available. Check the active command and update Setup/MCPB from one release. |
+| `PAIRING_REQUIRED` in a development build, or unsupported verified-target protocol | Loaded add-in and gateway cannot perform verified writes together | Update gateway/add-ins from one release, restart Revit and the requested client, then select and verify the intended document. |
 | Config parse error after edit | Whole-file rewrite lost JSONC comments or left a dangling comma | Restore `.bak`; re-apply as minimal text edit |
 | `invalid transport` (Codex) | Orphan `[mcp_servers.<name>.env]` table | Remove the orphan table |
 | Client can't spawn server | Command path wrong or exe missing | Re-check the `current` path; run `rvt-mcp.exe --help` |

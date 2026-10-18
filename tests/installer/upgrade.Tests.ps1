@@ -828,6 +828,75 @@ try {
             Clear-ProductRoots
         }
     }
+    Test 'Current-profile upgrades from v1.0.x and v1.1.0 preserve personal data and client args/env' {
+        foreach ($version in '1.0.1', '1.1.0') {
+            Clear-ProductRoots
+            $fixture = New-SetupFixture
+            $current = Join-Path $sandboxLocalAppData 'Bimwright\rvt-mcp'
+            New-Item -ItemType Directory -Path "$current/server/current", "$current/baked/personal", "$sandboxUserProfile/.cursor" -Force | Out-Null
+            Set-Content -LiteralPath "$current/server/current/rvt-mcp.exe" "old-server-$version"
+            Set-Content -LiteralPath "$current/rvtmcp.config.json" '{"toolsets":["query"],"readOnly":true,"custom":"keep"}'
+            Set-Content -LiteralPath "$current/baked/personal/code.cs" 'return "personal tool";'
+            Set-Content -LiteralPath "$current/baked/registry.json" '{"personal":{"source":"personal/code.cs"}}'
+            foreach ($name in 'bake.db', 'bake.db-wal', 'bake.db-shm') {
+                [IO.File]::WriteAllBytes((Join-Path $current $name), [byte[]](0, 1, 128, 255))
+            }
+            $dataHashes = @(Get-ChildItem -LiteralPath $current -File -Recurse | Where-Object { $_.FullName -notlike '*\server\*' } | ForEach-Object {
+                [pscustomobject]@{Path=$_.FullName;Hash=(Get-FileHash -LiteralPath $_.FullName).Hash}
+            })
+            $cursor = Join-Path $sandboxUserProfile '.cursor\mcp.json'
+            @{mcpServers=@{'rvt-mcp'=@{command="$current\server\$version\rvt-mcp.exe";args=@('--read-only','--toolsets','query');env=@{BIMWRIGHT_TARGET='2024'}};other=@{command='other.exe'}}} |
+                ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $cursor
+            $clientHash = (Get-FileHash -LiteralPath $cursor).Hash
+            try {
+                $output = Invoke-FixtureSetup $fixture -ServerInstallRoot "$current/server/current" -Client 'cursor' 3>&1 6>&1 | Out-String -Width 4096
+                foreach ($file in $dataHashes) {
+                    Assert ((Get-FileHash -LiteralPath $file.Path).Hash -eq $file.Hash) "$version upgrade changed personal data: $($file.Path)"
+                }
+                Assert ((Get-Content -LiteralPath "$current/server/current/rvt-mcp.exe" -Raw).Trim() -eq 'new-server') "$version server not replaced"
+                $entry = (Get-Content -LiteralPath $cursor -Raw | ConvertFrom-Json).mcpServers
+                Assert ([IO.Path]::GetFullPath($entry.'rvt-mcp'.command) -eq [IO.Path]::GetFullPath("$current/server/current/rvt-mcp.exe")) "$version client not repointed to current"
+                Assert (($entry.'rvt-mcp'.args -join ',') -eq '--read-only,--toolsets,query') "$version client args changed"
+                Assert ($entry.'rvt-mcp'.env.BIMWRIGHT_TARGET -eq '2024') "$version client env changed"
+                Assert ($entry.other.command -eq 'other.exe') "$version unrelated client entry changed"
+                Assert ((Get-FileHash -LiteralPath "$cursor.bak").Hash -eq $clientHash) "$version client backup differs"
+                Assert ($output -match 'Next\s*:.*restart') "$version restart guidance missing"
+            } finally {
+                Remove-Item -LiteralPath $cursor, "$cursor.bak" -Force -ErrorAction SilentlyContinue
+                Clear-ProductRoots
+            }
+        }
+    }
+    Test 'Current-profile verification failure preserves personal data and client launch settings' {
+        Clear-ProductRoots
+        $fixture = New-SetupFixture
+        $fixture | Add-Member -NotePropertyName VerificationFails -NotePropertyValue $true
+        $current = Join-Path $sandboxLocalAppData 'Bimwright\rvt-mcp'
+        New-Item -ItemType Directory -Path "$current/server/current", "$current/baked/personal", "$sandboxUserProfile/.cursor" -Force | Out-Null
+        Set-Content -LiteralPath "$current/server/current/rvt-mcp.exe" 'old-current-server'
+        Set-Content -LiteralPath "$current/rvtmcp.config.json" '{"toolsets":["query"],"custom":true}'
+        Set-Content -LiteralPath "$current/baked/personal/code.cs" 'return "keep";'
+        [IO.File]::WriteAllBytes((Join-Path $current 'bake.db-wal'), [byte[]](255, 128, 1, 0))
+        $cursor = Join-Path $sandboxUserProfile '.cursor\mcp.json'
+        @{mcpServers=@{'rvt-mcp'=@{command="$current\server\1.1.0\rvt-mcp.exe";args=@('--read-only');env=@{BIMWRIGHT_TARGET='2024'}}}} |
+            ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $cursor
+        $hashes = @(Get-ChildItem -LiteralPath $current -File -Recurse | ForEach-Object {
+            [pscustomobject]@{Path=$_.FullName;Hash=(Get-FileHash -LiteralPath $_.FullName).Hash}
+        })
+        $clientHash = (Get-FileHash -LiteralPath $cursor).Hash
+        try {
+            Assert-Throws { Invoke-FixtureSetup $fixture -ServerInstallRoot "$current/server/current" -Client 'cursor' } 'verification failed'
+            foreach ($file in $hashes) {
+                Assert ((Get-FileHash -LiteralPath $file.Path).Hash -eq $file.Hash) "failed current-profile upgrade changed $($file.Path)"
+            }
+            Assert ((Get-FileHash -LiteralPath $cursor).Hash -eq $clientHash) 'failed upgrade repointed the client'
+            Assert (-not (Test-Path -LiteralPath "$cursor.bak")) 'failed upgrade reached client wiring'
+            Assert-OldInstall $fixture
+        } finally {
+            Remove-Item -LiteralPath $cursor, "$cursor.bak" -Force -ErrorAction SilentlyContinue
+            Clear-ProductRoots
+        }
+    }
     Test 'WhatIf previews relocation without touching the filesystem' {
         Clear-ProductRoots
         $fixture = New-SetupFixture
