@@ -127,6 +127,10 @@ Counts exclude your personal baked tools. The installer writes the seeded defaul
 
 At session start, select the intended Revit instance if needed, then call `revit_health()`. It stays offline by default and works with `--read-only` and no open model. `revit_health(check_updates=true)` explicitly compares the loaded gateway and add-in against one official stable release; missing evidence remains `unknown`. Follow `update_guidance`; only `prepare_update` with `bundle_update_proposal_allowed=true` permits an update proposal. Health never installs, closes models or restarts processes. It can reply while Revit is modal. Document fields are the last UI observation, dated by `document_observed_utc`, and do not confirm the current document or readiness for writes. After reconnect, compare fresh `initialize.serverInfo` and the health tool runtime metadata/schema/annotations in `tools/list` with `client_verification`; the server cannot observe client cache refresh.
 
+### Argument errors
+
+A call missing a required parameter does not run. It returns `INVALID_ARGUMENT` with `invalid_arguments` (`missing`, `unknown` with `did_you_mean`, `received`, `expected`). Parameter names are case-sensitive, and some tools use snake_case while others use camelCase: follow `did_you_mean`. A key that is not a parameter does not stop the call. It is ignored, and the result lists it under `_ignored_arguments`. A value that cannot be converted still returns `An error occurred invoking '<tool>'.`, with the exact cause in the server's stderr.
+
 ### send_code, ToolBaker, ribbon and languages
 
 - **`revit_send_code_to_revit`** (on by default) compiles and runs a C# body inside Revit when no typed tool fits; `--read-only` or `--disable-send-code` removes it. See [docs/send-code.md](docs/send-code.md), and [docs/stairs-workflow.md](docs/stairs-workflow.md) for stairs.

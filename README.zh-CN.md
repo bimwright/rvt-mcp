@@ -127,6 +127,10 @@ Counts below describe the **unreleased development source**; published releases 
 
 需要时先选择目标 Revit 实例，再调用 `revit_health()`。默认离线，在 `--read-only` 或未打开模型时也可使用。只有显式调用 `revit_health(check_updates=true)` 才会将运行中的 gateway 和插件与同一个官方 stable release 比较；证据不足时保持 `unknown`。仅当 `update_guidance.mode=prepare_update` 且 `bundle_update_proposal_allowed=true` 时才可提出更新建议。Health 不会安装、关闭模型或重启进程。Revit 等待对话框时仍可返回响应。document 字段来自最近一次 UI 观察，并带有 `document_observed_utc`，不能确认当前 document 或是否可写。重新连接后，在同一连接上将新的 `initialize.serverInfo` 及 `tools/list` 中 health 的 runtime metadata/schema/annotations 与 `client_verification` 对照；服务器无法自行确认客户端缓存已刷新。
 
+### 参数错误
+
+缺少必填参数的调用不会执行，而是返回 `INVALID_ARGUMENT` 及 `invalid_arguments`（`missing`、带 `did_you_mean` 的 `unknown`、`received`、`expected`）。参数名区分大小写，且不同工具分别使用 snake_case 和 camelCase：请按 `did_you_mean` 修正。不属于参数的键不会阻止调用：该键会被忽略，并列在结果的 `_ignored_arguments` 中。无法转换的值仍返回 `An error occurred invoking '<tool>'.`，具体原因见服务器的 stderr。
+
 ### send_code、ToolBaker、ribbon 与界面语言
 
 - **`revit_send_code_to_revit`**（默认开启）在没有合适 typed 工具时，于 Revit 内编译并运行 C# 正文；`--read-only` 或 `--disable-send-code` 会移除它。见 [docs/send-code.md](docs/send-code.md)；楼梯见 [docs/stairs-workflow.md](docs/stairs-workflow.md)。

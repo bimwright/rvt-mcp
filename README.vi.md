@@ -128,6 +128,10 @@ Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp
 
 Đầu session, chọn đúng phiên Revit khi cần rồi gọi `revit_health()`. Mặc định offline, dùng được dưới `--read-only` và khi chưa mở model. `revit_health(check_updates=true)` mới kiểm gateway và add-in đã nạp với cùng một bản stable chính thức; thiếu bằng chứng giữ `unknown`. Làm theo `update_guidance`: chỉ `prepare_update` kèm `bundle_update_proposal_allowed=true` mới cho phép đề xuất cập nhật. Health không cài đặt, đóng model hay khởi động lại process. Listener vẫn trả lời khi Revit chờ dialog. Dữ liệu document là lần quan sát UI gần nhất, có `document_observed_utc`; không xác nhận document hiện tại hoặc khả năng ghi. Sau reconnect, đối chiếu `initialize.serverInfo` và runtime metadata/schema/annotation của health trong `tools/list` mới với `client_verification`; server không tự xác minh cache phía client.
 
+### Lỗi tham số
+
+Lời gọi thiếu tham số bắt buộc sẽ không chạy. Nó trả `INVALID_ARGUMENT` kèm `invalid_arguments` (`missing`, `unknown` có `did_you_mean`, `received`, `expected`). Tên tham số phân biệt hoa thường, và có tool dùng snake_case, có tool dùng camelCase: hãy làm theo `did_you_mean`. Key không phải tham số thì không chặn lời gọi. Key đó bị bỏ qua và được liệt kê trong `_ignored_arguments` của kết quả. Giá trị không chuyển kiểu được vẫn trả `An error occurred invoking '<tool>'.`, nguyên nhân cụ thể nằm trong stderr của server.
+
 ### send_code, ToolBaker, ribbon và ngôn ngữ
 
 - **`revit_send_code_to_revit`** (bật mặc định) compile và chạy body C# trong Revit khi không có typed tool phù hợp; `--read-only` hoặc `--disable-send-code` sẽ gỡ nó. Xem [docs/send-code.md](docs/send-code.md), và [docs/stairs-workflow.md](docs/stairs-workflow.md) cho cầu thang.

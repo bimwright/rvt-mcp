@@ -128,6 +128,10 @@ Counts below describe the **unreleased development source**; published releases 
 
 必要に応じて対象の Revit を選択し、`revit_health()` を呼び出します。既定はオフラインで、`--read-only` やモデル未開放時にも使用できます。`revit_health(check_updates=true)` を明示した場合のみ、実行中の gateway とアドインを同じ公式 stable release と比較します。証拠が不足する場合は `unknown` のままです。更新提案は `update_guidance.mode=prepare_update` かつ `bundle_update_proposal_allowed=true` の場合に限ります。Health はインストール、モデルの終了、プロセスの再起動を行いません。Revit がダイアログ待機中でも応答します。document 情報は `document_observed_utc` 時点の UI 観測であり、現在の document や書き込み可能状態の確認ではありません。再接続後、同じ接続の新しい `initialize.serverInfo` と `tools/list` の health runtime metadata/schema/annotations を `client_verification` と照合してください。サーバーはクライアントのキャッシュ更新を確認できません。
 
+### 引数エラー
+
+必須パラメーターが欠けた呼び出しは実行されず、`INVALID_ARGUMENT` と `invalid_arguments`（`missing`、`did_you_mean` 付きの `unknown`、`received`、`expected`）を返します。パラメーター名は大文字と小文字を区別し、ツールによって snake_case と camelCase が混在するため、`did_you_mean` に従ってください。パラメーターでないキーがあっても呼び出しは止まりません。そのキーは無視され、結果の `_ignored_arguments` に一覧されます。変換できない値は従来どおり `An error occurred invoking '<tool>'.` を返し、正確な原因はサーバーの stderr に出力されます。
+
 ### send_code、ToolBaker、リボン、表示言語
 
 - **`revit_send_code_to_revit`**（既定オン）は、合う typed ツールがないときに C# 本体を Revit 内でコンパイルして実行します。`--read-only` または `--disable-send-code` で外れます。[docs/send-code.md](docs/send-code.md) を参照。階段は [docs/stairs-workflow.md](docs/stairs-workflow.md)。

@@ -26,9 +26,11 @@ namespace RvtMcp.Server
                     using (var capture = new ChangeCaptureContext())
                     {
                         CallToolResult result;
+                        string rejectedArguments = null;
                         try
                         {
-                            result = await next(request, ct);
+                            // BW-ARGS-001: innermost step, so a rejection takes the same result path as any tool error.
+                            (result, rejectedArguments) = await ToolArgumentGuard.InvokeAsync(request, next, ct);
                         }
                         catch when (targetCtx.Payload != null)
                         {
@@ -39,7 +41,8 @@ namespace RvtMcp.Server
                         if (targetCtx.Payload != null)
                             result = TextResult(MetaTools.TargetEnvelope(targetCtx.Payload, targetCtx.Operation), failed: true);
                         return Apply(request.Params, result, config, session, durationMs: clock.ElapsedMilliseconds,
-                            changes: capture.Changes, history: capture.History, previousOperations: ToolGateway.PreviousOperations);
+                            changes: capture.Changes, history: capture.History, previousOperations: ToolGateway.PreviousOperations,
+                            loggedArguments: rejectedArguments);
                     }
                 }
                 finally
@@ -50,11 +53,13 @@ namespace RvtMcp.Server
 
         internal static CallToolResult Apply(CallToolRequestParams request, CallToolResult result,
             RvtMcpConfig config, SessionContext session = null, ResponseSpillWriter writer = null, long durationMs = 0,
-            JObject changes = null, JObject history = null, PreviousOperationTracker previousOperations = null)
+            JObject changes = null, JObject history = null, PreviousOperationTracker previousOperations = null,
+            string loggedArguments = null)
         {
             var name = request?.Name ?? "";
             var command = name.StartsWith("revit_", StringComparison.Ordinal) ? name.Substring(6) : name;
-            var arguments = System.Text.Json.JsonSerializer.Serialize(request?.Arguments);
+            // A rejected call logs its key-only payload instead of the raw arguments (BW-ARGS-001 A9).
+            var arguments = loggedArguments ?? System.Text.Json.JsonSerializer.Serialize(request?.Arguments);
             var text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
             if (TargetCallContext.Current?.ActualTarget is JObject actualTarget)
             {
