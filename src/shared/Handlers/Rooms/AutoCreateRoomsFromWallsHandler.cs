@@ -108,87 +108,87 @@ namespace RvtMcp.Plugin.Handlers
             if (phase == null)
                 return CommandResult.Fail("A valid Phase could not be determined.");
 
-            // Resolve Plan Topology
-            PlanTopology planTopology = null;
-            try
+            // Plan topology may update Revit's cached topology. Keep it and room
+            // placement in one transaction; dry-run rolls the calculation back.
+            using (var tx = new Transaction(doc, "RvtMcp: Auto Create Rooms From Walls"))
             {
-                planTopology = doc.get_PlanTopology(level, phase);
-            }
-            catch (Exception ex)
-            {
-                return CommandResult.Fail($"Failed to get plan topology for level '{level.Name}': {ex.Message}");
-            }
-
-            if (planTopology == null)
-                return CommandResult.Fail($"Plan topology could not be resolved for level '{level.Name}' and phase '{phase.Name}'.");
-
-            // Temporary collection of circuits
-            var circuits = new List<PlanCircuit>();
-            foreach (PlanCircuit circuit in planTopology.Circuits)
-            {
-                if (circuit != null && !circuit.IsRoomLocated)
-                {
-                    circuits.Add(circuit);
-                }
-            }
-
-            if (circuits.Count > limit)
-                return CommandResult.Fail($"Enclosed plan circuit count ({circuits.Count}) exceeds the specified limit ({limit}). Raise the limit parameter to proceed.");
-
-            var candidatesList = new List<CandidateInfo>();
-            int candidateIndex = 0;
-            foreach (var circuit in circuits)
-            {
-                candidatesList.Add(new CandidateInfo
-                {
-                    Circuit = circuit,
-                    Index = candidateIndex++
-                });
-            }
-
-            var candidatesDto = new List<object>();
-            var createdRoomIds = new List<long>();
-            var warnings = new List<string>();
-
-            if (dryRun)
-            {
-                int index = 0;
-                foreach (var cand in candidatesList)
-                {
-                    candidatesDto.Add(new
-                    {
-                        index = index++,
-                        area_m2 = (double?)null,
-                        centroid = (object)null,
-                        would_create = true,
-                        room_id = (long?)null,
-                        warnings = new[] { "Dry-run does not create temporary rooms; area and centroid are unavailable until execution." }
-                    });
-                }
-                warnings.Add("Dry-run is read-only; candidate order follows Revit plan topology enumeration.");
-
-                return CommandResult.Ok(new
-                {
-                    dry_run = true,
-                    level = new { element_id = RevitCompat.GetId(level.Id), name = level.Name },
-                    phase = new { element_id = RevitCompat.GetId(phase.Id), name = phase.Name },
-                    candidate_count = candidatesList.Count,
-                    created_count = 0,
-                    candidates = candidatesDto,
-                    created_room_ids = createdRoomIds,
-                    warnings = warnings
-                });
-            }
-
-            // Execute placement
-            var tg = new TransactionGroup(doc, "RvtMcp: Auto Create Rooms From Walls");
-            tg.Start();
-
-            try
-            {
-                using (var tx = new Transaction(doc, "RvtMcp: Create Rooms"))
+                try
                 {
                     tx.Start();
+
+                    // Resolve Plan Topology
+                    PlanTopology planTopology = null;
+                    try
+                    {
+                        planTopology = doc.get_PlanTopology(level, phase);
+                    }
+                    catch (Exception ex)
+                    {
+                        return CommandResult.Fail($"Failed to get plan topology for level '{level.Name}': {ex.Message}");
+                    }
+
+                    if (planTopology == null)
+                        return CommandResult.Fail($"Plan topology could not be resolved for level '{level.Name}' and phase '{phase.Name}'.");
+
+                    // Temporary collection of circuits
+                    var circuits = new List<PlanCircuit>();
+                    foreach (PlanCircuit circuit in planTopology.Circuits)
+                    {
+                        if (circuit != null && !circuit.IsRoomLocated)
+                        {
+                            circuits.Add(circuit);
+                        }
+                    }
+
+                    if (circuits.Count > limit)
+                        return CommandResult.Fail($"Enclosed plan circuit count ({circuits.Count}) exceeds the specified limit ({limit}). Raise the limit parameter to proceed.");
+
+                    var candidatesList = new List<CandidateInfo>();
+                    int candidateIndex = 0;
+                    foreach (var circuit in circuits)
+                    {
+                        candidatesList.Add(new CandidateInfo
+                        {
+                            Circuit = circuit,
+                            Index = candidateIndex++
+                        });
+                    }
+
+                    var candidatesDto = new List<object>();
+                    var createdRoomIds = new List<long>();
+                    var warnings = new List<string>();
+
+                    if (dryRun)
+                    {
+                        int dryRunIndex = 0;
+                        foreach (var cand in candidatesList)
+                        {
+                            candidatesDto.Add(new
+                            {
+                                index = dryRunIndex++,
+                                area_m2 = (double?)null,
+                                centroid = (object)null,
+                                would_create = true,
+                                room_id = (long?)null,
+                                warnings = new[] { "Dry-run does not create temporary rooms; area and centroid are unavailable until execution." }
+                            });
+                        }
+                        warnings.Add("Dry-run rolls back topology calculation; candidate order follows Revit plan topology enumeration.");
+
+                        tx.RollBack();
+
+                        return CommandResult.Ok(new
+                        {
+                            dry_run = true,
+                            level = new { element_id = RevitCompat.GetId(level.Id), name = level.Name },
+                            phase = new { element_id = RevitCompat.GetId(phase.Id), name = phase.Name },
+                            candidate_count = candidatesList.Count,
+                            created_count = 0,
+                            candidates = candidatesDto,
+                            created_room_ids = createdRoomIds,
+                            warnings = warnings
+                        });
+                    }
 
                     int index = 0;
                     foreach (var cand in candidatesList)
@@ -247,36 +247,26 @@ namespace RvtMcp.Plugin.Handlers
 
                     var status = tx.Commit();
                     if (status != TransactionStatus.Committed)
-                    {
-                        if (tg.HasStarted())
-                            tg.RollBack();
                         return CommandResult.Fail("Create rooms transaction did not commit. Status: " + status);
-                    }
-                }
 
-                var groupStatus = tg.Assimilate();
-                if (groupStatus != TransactionStatus.Committed)
-                    return CommandResult.Fail("Auto-create rooms transaction group did not commit. Status: " + groupStatus);
-
-                return CommandResult.Ok(new
-                {
-                    dry_run = false,
-                    level = new { element_id = RevitCompat.GetId(level.Id), name = level.Name },
-                    phase = new { element_id = RevitCompat.GetId(phase.Id), name = phase.Name },
-                    candidate_count = candidatesList.Count,
-                    created_count = createdRoomIds.Count,
-                    candidates = candidatesDto,
-                    created_room_ids = createdRoomIds,
-                    warnings = warnings
-                });
-            }
-            catch (Exception ex)
-            {
-                if (tg.HasStarted())
-                {
-                    tg.RollBack();
+                    return CommandResult.Ok(new
+                    {
+                        dry_run = false,
+                        level = new { element_id = RevitCompat.GetId(level.Id), name = level.Name },
+                        phase = new { element_id = RevitCompat.GetId(phase.Id), name = phase.Name },
+                        candidate_count = candidatesList.Count,
+                        created_count = createdRoomIds.Count,
+                        candidates = candidatesDto,
+                        created_room_ids = createdRoomIds,
+                        warnings = warnings
+                    });
                 }
-                return CommandResult.Fail($"Failed to auto-create rooms: {ex.Message}");
+                catch (Exception ex)
+                {
+                    if (tx.HasStarted())
+                        tx.RollBack();
+                    return CommandResult.Fail($"Failed to auto-create rooms: {ex.Message}");
+                }
             }
         }
 
