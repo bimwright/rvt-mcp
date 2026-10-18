@@ -360,7 +360,7 @@ Full Revit desktop only; Revit Viewer is not a supported target. CI builds all s
 
 The server binds to exactly one Revit instance — including when several instances of the same year run at once. A query can bind automatically only when exactly one instance matches. Multiple matches return `AMBIGUOUS_TARGET`; model/file writes require a selected target and model writes also require a verified document. Selectors: `auto`, a 4-digit year (`2024`), `pid:<n>` or `id:revit-<year>-<pid>`; legacy R-codes like `R24` are rejected.
 
-When more than one instance runs — especially several of the same year — do not guess the target:
+When more than one instance runs — especially several of the same year — do not guess the target. In writable sessions:
 
 1. Call `revit_list_available_targets`: every live instance is listed with `target_id`, `pid`, `host_year`, `window_title` and `source`.
 2. Pick the instance by `pid` and/or `window_title`.
@@ -384,7 +384,9 @@ Target error codes and how to react. Every code except `TARGET_INTERRUPTED` mean
 | `TARGET_INTERRUPTED` | The command was sent but the connection closed before a response (`sent:true`, `outcome:unknown`) | Inspect the model state before repeating any write |
 | `INVALID_TARGET_SELECTOR` | Malformed selector or R-code | Use `auto`, a year, `pid:<n>` or `id:<target_id>` |
 
-**After a Revit restart — even with a single Revit open** — the next call returns `TARGET_CHANGED` and the server waits for one `revit_switch_target` call before it sends anything. This is deliberate: the restarted Revit can have a different model open, so the server never rebinds to it silently. The payload names the proposed instance; confirm it and repeat the call.
+**After a Revit restart — even with a single Revit open** — a writable session returns `TARGET_CHANGED` and waits for one `revit_switch_target` call before sending anything. The restarted Revit can have a different model open; review the proposed instance, confirm it and repeat the call.
+
+**Read-only sessions:** call `revit_list_available_targets`, choose `--target pid:<n>` at gateway startup and restart the gateway whenever the target changes. `revit_switch_target` is unavailable; the target errors above provide startup/restart guidance instead of recommending that tool.
 
 `revit_switch_target` changes session routing and is excluded from `--read-only`, matching its non-read-only annotation. Read-only mode exposes 98 tools with all toolsets. Select the intended process using `--read-only --target pid:<n>` at gateway startup; to change it, restart the gateway with the new selector. `revit_list_available_targets` and `revit_get_current_target` remain available for inspection.
 

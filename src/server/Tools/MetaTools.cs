@@ -98,7 +98,8 @@ namespace RvtMcp.Server
             {
                 json["recommended_next_tool"] = "revit_list_available_targets";
                 json["next_step"] = ServerState.ReadOnlyTargetGuidance;
-                if (message.Contains("revit_switch_target")) message = ServerState.ReadOnlyTargetGuidance;
+                if (message.Contains("revit_switch_target"))
+                    message = TargetPayload.CodeName(payload.Code) + ": " + ServerState.ReadOnlyTargetGuidance;
             }
             FillWindowTitles(json);
             var envelope = new JObject

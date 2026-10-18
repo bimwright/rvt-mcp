@@ -49,9 +49,12 @@ namespace RvtMcp.Tests
                 var result = MetaTools.TargetEnvelope(new TargetPayload
                 {
                     Code = TargetCode.AmbiguousTarget,
-                    Message = "Choose a process with revit_switch_target.",
+                    Message = "AMBIGUOUS_TARGET: Choose a process with revit_switch_target.",
+                    RecommendedNextTool = "revit_switch_target",
                     NextStep = "Call revit_switch_target after listing candidates."
                 });
+                Assert.StartsWith("AMBIGUOUS_TARGET: ", result.Value<string>("error"));
+                Assert.Equal("AMBIGUOUS_TARGET", result["target"]?.Value<string>("code"));
                 Assert.Contains("--target", result.ToString());
                 Assert.DoesNotContain("revit_switch_target", result.ToString());
             }
