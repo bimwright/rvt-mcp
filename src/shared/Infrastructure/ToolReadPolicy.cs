@@ -6,6 +6,11 @@ namespace RvtMcp.Plugin
     /// <summary>File/document read policy shared with the plugin. Kept equal to MCP annotations by tests.</summary>
     public static class ToolReadPolicy
     {
+        public const string AddinPairingRequired = "PAIRING_REQUIRED: the selected Revit add-in does not support the gateway's required safety protocols. "
+            + "Update the gateway and Revit add-in together from the same rvt-mcp Setup release, restart Revit, and reconnect/restart the MCP client. No model mutation was started.";
+        public const string GatewayPairingRequired = "PAIRING_REQUIRED: the command was not started. The connected rvt-mcp gateway does not support the safety protocols required by this Revit add-in. "
+            + "Update the gateway and Revit add-in together from the same rvt-mcp Setup release, restart Revit, and reconnect/restart the MCP client.";
+
         public static readonly ISet<string> ReadOnlyCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "analyze_usage_patterns",
@@ -119,9 +124,7 @@ namespace RvtMcp.Plugin
         {
             if (!RequiresDocumentConfirmation(command)) return null;
             if (string.IsNullOrWhiteSpace(expectedDocumentId) && !gatewayConfirmsDocuments)
-                return "PAIRING_REQUIRED: the command was not started. This Revit add-in requires a gateway that confirms the target document, "
-                    + "and the connected rvt-mcp server predates that check, so revit_switch_target cannot confirm a document through it. "
-                    + "Update the rvt-mcp server to match the add-in.";
+                return GatewayPairingRequired;
             // An explicitly selected Home process has no document to confirm. A queued
             // script must still be rejected if a document opens before it executes.
             if (string.IsNullOrWhiteSpace(expectedDocumentId) && string.IsNullOrEmpty(activeDocumentId)

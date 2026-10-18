@@ -157,6 +157,9 @@ namespace RvtMcp.Tests
             var deadline = DateTime.UtcNow.AddSeconds(2);
             while (stream.Length == 0 && DateTime.UtcNow < deadline) await Task.Delay(5);
             Assert.Contains("PAIRING_REQUIRED", Encoding.UTF8.GetString(stream.ToArray()));
+            Assert.Contains("connected rvt-mcp gateway", Encoding.UTF8.GetString(stream.ToArray()));
+            Assert.Contains("restart Revit", Encoding.UTF8.GetString(stream.ToArray()));
+            Assert.Contains("MCP client", Encoding.UTF8.GetString(stream.ToArray()));
         }
 
         [Fact]

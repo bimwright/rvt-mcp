@@ -593,7 +593,7 @@ namespace RvtMcp.Server
         private static async Task<(Conn Conn, long EffectiveGeneration, GatewayPendingRequest Pending)> WriteRequest(
             Conn conn, long effectiveGeneration, string id, string operationId, string command, object parameters,
             int? timeoutSeconds, RvtMcpConfig config, ChangeHistoryRequest history,
-            TargetCallContext callCtx)
+            TargetCallContext callCtx, bool requireWriteCapabilities)
         {
             var binding = RevitTargetBinding.Binding;
             for (var attempt = 0; ; attempt++)
@@ -623,16 +623,16 @@ namespace RvtMcp.Server
                     {
                         if (!binding.CanSend(effectiveGeneration, Array.Empty<Bimwright.Targeting.TargetCandidate>(), out var sendFailure))
                             throw new TargetException(sendFailure);
-                        if (!ToolReadPolicy.IsReadOnly(command)
-                            // Send-code also supports Home; the add-in checks the actual document at execution.
-                            && !binding.CanWrite(effectiveGeneration, command != "open_model" && command != "send_code_to_revit", out var writeFailure))
-                            throw new TargetException(writeFailure);
                         if (_conn == conn && conn.Generation == effectiveGeneration && conn.Closed == 0)
                         {
                             string rejection = null;
                             GatewayPendingRequest blocking = null;
-                            if (!ToolReadPolicy.IsReadOnly(command) && (!conn.FailureProtocol || !conn.DocumentGuard))
-                                rejection = "PAIRING_REQUIRED: update the gateway and Revit add-in together before model mutations.";
+                            if ((!ToolReadPolicy.IsReadOnly(command) || requireWriteCapabilities) && (!conn.FailureProtocol || !conn.DocumentGuard))
+                                rejection = ToolReadPolicy.AddinPairingRequired;
+                            else if (!ToolReadPolicy.IsReadOnly(command)
+                                // Send-code also supports Home; the add-in checks the actual document at execution.
+                                && !binding.CanWrite(effectiveGeneration, command != "open_model" && command != "send_code_to_revit", out var writeFailure))
+                                throw new TargetException(writeFailure);
                             else if (command != "health"
                                 && (blocking = _pending.Values.FirstOrDefault(value => value.ConnectionId == conn.Epoch && value.WaitingForUser)) != null)
                                 rejection = "REVIT_BUSY: Revit is waiting for native user input. _operation.blockedBy names the waiting operation and its dialog. Use the local failure or operation queries.";

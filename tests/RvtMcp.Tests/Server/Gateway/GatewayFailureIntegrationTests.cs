@@ -116,6 +116,73 @@ namespace RvtMcp.Tests
             wire.Send(Final(waiting));
         }
 
+        [Theory]
+        [InlineData(null)]
+        [InlineData("controlled_failures_v1")]
+        [InlineData("document_target_v1")]
+        public async Task Unconfirmed_first_write_to_legacy_addin_explains_pairing_before_document_verification(string missingCapability)
+        {
+            using var wire = new WireHost();
+            Descriptor(wire.Port, protocol: missingCapability != null, prepareBinding: false, missingCapability: missingCapability);
+
+            var result = await Send("create_wall");
+
+            Assert.StartsWith("PAIRING_REQUIRED:", result.Value<string>("error"));
+            Assert.Contains("Revit add-in", result.Value<string>("error"));
+            Assert.Contains("restart Revit", result.Value<string>("error"));
+            Assert.Contains("MCP client", result.Value<string>("error"));
+            Assert.Equal("not_started", result["_operation"].Value<string>("outcome"));
+            Assert.False(result["_operation"].Value<bool>("mutationApplied"));
+            Assert.Empty(wire.Requests);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("controlled_failures_v1")]
+        [InlineData("document_target_v1")]
+        public async Task Legacy_switch_verification_explains_update_and_restores_confirmed_binding(string missingCapability)
+        {
+            using var previous = new WireHost();
+            Descriptor(previous.Port);
+            using var legacy = new WireHost(Pid + 1);
+            Descriptor(legacy.Port, protocol: missingCapability != null, pid: Pid + 1, prepareBinding: false, missingCapability: missingCapability);
+
+            var result = JObject.Parse(await MetaTools.SwitchTarget("pid:" + (Pid + 1), rebind: true));
+
+            Assert.False(result.Value<bool>("verified"));
+            Assert.StartsWith("PAIRING_REQUIRED:", result.Value<string>("verifyError"));
+            Assert.Contains("restart Revit", result.Value<string>("verifyError"));
+            Assert.True(result.Value<bool>("restored_previous"));
+            Assert.Equal(Pid, result["binding"].Value<int>("bound_pid"));
+            Assert.Equal("doc-" + Pid, result["binding"].Value<string>("confirmed_document_id"));
+            Assert.Empty(legacy.Requests);
+        }
+
+        [Fact]
+        public async Task Current_addin_without_a_document_requests_a_model_instead_of_an_update()
+        {
+            using var wire = new WireHost();
+            wire.OnCommand = (request, host) =>
+            {
+                var response = Final(request);
+                response["_target"] = new JObject
+                {
+                    ["target_id"] = "revit-2024-" + Pid, ["pid"] = Pid, ["host_year"] = 2024,
+                    ["document_id"] = JValue.CreateNull()
+                };
+                host.Send(response);
+            };
+            Descriptor(wire.Port, prepareBinding: false);
+
+            var result = JObject.Parse(await MetaTools.SwitchTarget("pid:" + Pid));
+
+            Assert.False(result.Value<bool>("verified"));
+            Assert.StartsWith("DOCUMENT_UNCONFIRMED:", result.Value<string>("verifyError"));
+            Assert.DoesNotContain("PAIRING_REQUIRED", result.Value<string>("verifyError"));
+            Assert.Contains("Open the intended model", result.Value<string>("verifyError"));
+            Assert.Equal(new[] { "get_current_view_info" }, wire.Requests.Select(r => r.Value<string>("command")));
+        }
+
         private sealed class WireHost : IDisposable
         {
             private readonly TcpListener _listener = new TcpListener(IPAddress.Loopback, 0);
@@ -183,7 +250,7 @@ namespace RvtMcp.Tests
             public void Dispose() { _listener.Stop(); CloseClient(); }
         }
 
-        private void Descriptor(int port, bool protocol = true, int pid = Pid, string token = "test-token", string pipe = null, bool prepareBinding = true)
+        private void Descriptor(int port, bool protocol = true, int pid = Pid, string token = "test-token", string pipe = null, bool prepareBinding = true, string missingCapability = null)
         {
             var descriptor = new JObject
             {
@@ -191,7 +258,9 @@ namespace RvtMcp.Tests
                 ["pid"] = pid, ["process_start_utc"] = Start.ToString("o"), ["target_id"] = "revit-2024-" + pid,
                 ["transport"] = pipe == null ? "tcp" : "pipe", ["port"] = pipe == null ? (JToken)port : null,
                 ["pipe_name"] = pipe, ["auth_token"] = token,
-                ["capabilities"] = protocol ? new JArray("tool_catalog", "controlled_failures_v1", "document_target_v1") : new JArray("tool_catalog")
+                ["capabilities"] = protocol
+                    ? new JArray(new[] { "tool_catalog", "controlled_failures_v1", "document_target_v1" }.Where(value => value != missingCapability))
+                    : new JArray("tool_catalog")
             };
             var path = Path.Combine(_root, "revit-2024-" + pid + ".json");
             File.WriteAllText(path + ".tmp", descriptor.ToString(Formatting.None));

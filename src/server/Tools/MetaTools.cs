@@ -251,7 +251,7 @@ namespace RvtMcp.Server
 
                 try
                 {
-                    var probe = await ToolGateway.SendToRevit("get_current_view_info");
+                    var probe = await ToolGateway.SendToRevit("get_current_view_info", requireWriteCapabilities: true);
                     var stamp = probe["_target"] as JObject;
                     var verified = !ToolGateway.IsFailureOrPending(probe)
                         && (expectedDocumentId == null || stamp?.Value<string>("document_id") == expectedDocumentId)
@@ -271,9 +271,9 @@ namespace RvtMcp.Server
                     });
                     if (!verified)
                     {
-                        verification["verifyError"] = probe["error"] ?? (expectedDocumentId != null && stamp?.Value<string>("document_id") != expectedDocumentId
+                        verification["verifyError"] = probe["error"] ?? (expectedDocumentId != null && !string.IsNullOrEmpty(stamp?.Value<string>("document_id")) && stamp.Value<string>("document_id") != expectedDocumentId
                             ? "DOCUMENT_CHANGED: the active document does not match expectedDocumentId. No model write was sent."
-                            : "DOCUMENT_UNCONFIRMED: verification requires a matching gateway/add-in with document_target_v1 and an open document.");
+                            : "DOCUMENT_UNCONFIRMED: the selected instance's active document could not be verified. Open the intended model and call revit_switch_target(verify=true) again.");
                         SafetyResponseMetadata.Attach(verification, probe);
                     }
                     // The probe is a real Revit call: what it reports once (dialogs the user handled,

@@ -35,7 +35,7 @@ namespace RvtMcp.Server
         // Tests assign this to record the wire call without opening a socket.
         internal static Func<string, object, int?, Task<JObject>> SendOverride;
 
-        public static async Task<JObject> SendToRevit(string command, object parameters = null, int? timeoutSeconds = null)
+        public static async Task<JObject> SendToRevit(string command, object parameters = null, int? timeoutSeconds = null, bool requireWriteCapabilities = false)
         {
             var config = ServerState.Config ?? new RvtMcpConfig();
             var rejection = ToolReadPolicy.Rejection(command, config.ReadOnlyOrDefault, config.EnableSendCodeOrDefault);
@@ -75,7 +75,7 @@ namespace RvtMcp.Server
             {
                 (conn, effectiveGeneration) = await Task.Run(() => EnsureConnectedFor(pinned, callCtx));
                 (conn, effectiveGeneration, pending) = await WriteRequest(
-                    conn, effectiveGeneration, id, operationId, command, parameters, timeoutSeconds, config, history, callCtx);
+                    conn, effectiveGeneration, id, operationId, command, parameters, timeoutSeconds, config, history, callCtx, requireWriteCapabilities);
             }
             catch (TargetException ex) when (!ex.Payload.Sent && ex.Operation == null)
             {

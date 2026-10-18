@@ -115,7 +115,7 @@ namespace RvtMcp.Plugin
             }
             if (!ToolReadPolicy.IsReadOnly(command) && request.Value<int?>("failure_protocol") != 1)
             {
-                WriteLine(new JObject { ["id"] = id, ["success"] = false, ["error"] = "PAIRING_REQUIRED: update the gateway and Revit add-in together before model mutations." }.ToString(Formatting.None));
+                WriteLine(new JObject { ["id"] = id, ["success"] = false, ["error"] = ToolReadPolicy.GatewayPairingRequired }.ToString(Formatting.None));
                 return;
             }
             if (PendingRequestLifecycle.IsHostWaitingForUser)

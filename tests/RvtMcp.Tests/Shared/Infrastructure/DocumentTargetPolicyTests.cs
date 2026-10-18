@@ -39,7 +39,14 @@ namespace RvtMcp.Tests
             var rejection = ToolReadPolicy.DocumentRejection(command, expected, actual, gatewayConfirmsDocuments);
             if (error == null) Assert.Null(rejection);
             else Assert.StartsWith(error + ":", rejection);
-            if (error == "PAIRING_REQUIRED") Assert.DoesNotContain("revit_switch_target(verify=true) before", rejection);
+            if (error == "PAIRING_REQUIRED")
+            {
+                Assert.DoesNotContain("revit_switch_target(verify=true) before", rejection);
+                Assert.Contains("connected rvt-mcp gateway", rejection);
+                Assert.Contains("same rvt-mcp Setup release", rejection);
+                Assert.Contains("restart Revit", rejection);
+                Assert.Contains("MCP client", rejection);
+            }
         }
     }
 }
