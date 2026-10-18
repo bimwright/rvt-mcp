@@ -26,9 +26,10 @@ namespace RvtMcp.Server.Memory
         }
 
         public void RecordCall(string tool, string paramsJson, bool success,
-            long durationMs, string error = null, string resultJson = null, Newtonsoft.Json.Linq.JObject changes = null)
+            long durationMs, string error = null, string resultJson = null, Newtonsoft.Json.Linq.JObject changes = null,
+            string rejectedArguments = null)
         {
-            var entry = JournalEntry.Create(tool, paramsJson, success, durationMs, error, resultJson, changes);
+            var entry = JournalEntry.Create(tool, paramsJson, success, durationMs, error, resultJson, changes, rejectedArguments);
             lock (_lock) { _entries.Add(entry); }
             _patterns.Record(tool, success);
             _journal.Log(entry);

@@ -195,6 +195,68 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public async Task V15_rejected_send_code_keeps_the_key_only_journal_payload()
+        {
+            await using var h = await Harness.StartAsync();
+            var result = await h.CallAsync("revit_send_code_to_revit", "{\"Code\":\"" + Marker + "\"}");
+            Assert.True(result.IsError);
+            Assert.Empty(h.Dispatched);
+            var line = JObject.Parse(Assert.Single(h.JournalLines()));
+            Assert.False(line.Value<bool>("Success"));
+            Assert.Equal("send_code_to_revit", line.Value<string>("Tool"));
+            var logged = JObject.Parse(line.Value<string>("Params"));
+            Assert.True(logged.Value<bool>("rejected"));
+            Assert.Equal("missing_required", logged.Value<string>("reason"));
+            Assert.Equal(new[] { "code" }, logged["missing"].Values<string>());
+            Assert.Equal(new[] { "Code" }, logged["unknown"].Values<string>());
+            Assert.Equal(new[] { "Code" }, logged["received_keys"].Values<string>());
+            Assert.Null(logged["code_hash"]);
+            Assert.DoesNotContain(Marker, h.JournalText());
+        }
+
+        [Fact]
+        public async Task V15_long_rejection_summary_stays_complete_valid_json()
+        {
+            await using var h = await Harness.StartAsync();
+            var keys = Enumerable.Range(0, 40).Select(i => $"extra_{i:D2}_" + new string('k', 80)).ToArray();
+            var arguments = new JObject(keys.Select(key => new JProperty(key, Marker)));
+            var result = await h.CallAsync("revit_create_level", arguments.ToString(Newtonsoft.Json.Formatting.None));
+            Assert.True(result.IsError);
+            Assert.Empty(h.Dispatched);
+            var line = JObject.Parse(Assert.Single(h.JournalLines()));
+            var text = line.Value<string>("Params");
+            Assert.True(text.Length > 1024);
+            var logged = JObject.Parse(text);
+            Assert.True(logged.Value<bool>("rejected"));
+            Assert.Equal(new[] { "elevation" }, logged["missing"].Values<string>());
+            var expected = keys.Take(ToolArgumentGuard.MaxKeys).Select(key => key.Substring(0, ToolArgumentGuard.MaxNameLength));
+            Assert.Equal(expected, logged["received_keys"].Values<string>());
+            Assert.Equal(expected, logged["unknown"].Values<string>());
+            Assert.DoesNotContain(Marker, h.JournalText());
+        }
+
+        [Fact]
+        public async Task Rejection_like_keys_on_valid_send_code_do_not_bypass_code_hashing()
+        {
+            await using var h = await Harness.StartAsync();
+            var code = "return \"" + Marker + "\";";
+            var arguments = new JObject
+            {
+                ["code"] = code, ["rejected"] = true, ["reason"] = "missing_required", ["received_keys"] = new JArray("Code")
+            };
+            var result = await h.CallAsync("revit_send_code_to_revit", arguments.ToString(Newtonsoft.Json.Formatting.None));
+            Assert.False(result.IsError);
+            Assert.Single(h.Dispatched);
+            Assert.NotNull(result.Data["_ignored_arguments"]);
+            var line = JObject.Parse(Assert.Single(h.JournalLines()));
+            var logged = JObject.Parse(line.Value<string>("Params"));
+            Assert.Equal(BakeRedactor.HashBody(code), logged.Value<string>("code_hash"));
+            Assert.Equal(code.Length, logged.Value<int>("code_length"));
+            Assert.Null(logged["rejected"]);
+            Assert.DoesNotContain(Marker, h.JournalText());
+        }
+
+        [Fact]
         public async Task A8_reported_key_names_are_capped_in_count_and_length()
         {
             await using var h = await Harness.StartAsync();

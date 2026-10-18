@@ -186,7 +186,8 @@ namespace RvtMcp.Server
             text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
             if (IsFailure(text, command)) result.IsError = true;
             session?.RecordCall(command, arguments, result.IsError != true, durationMs,
-                error: result.IsError == true ? text : null, resultJson: text, changes: changes);
+                error: result.IsError == true ? text : null, resultJson: text, changes: changes,
+                rejectedArguments: loggedArguments);
             return result;
         }
 

@@ -36,6 +36,7 @@ The [existing GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/
 
 ### Fixed
 
+- Rejected tool calls retain complete, bounded key-only argument diagnostics in the journal, including send-code rejections and long key lists. Valid send-code calls continue to store only the code hash and length.
 - Category tagging uses the native room-tag API for Rooms and skips existing room tags. A fully failed tagging call reports failure; dry runs report zero created tags and a separate proposed count. Schedule-field update inputs include JSON examples.
 - Operation status retains bounded user-handled dialog reports from the sending gateway session even when the operation also has a durable ledger record.
 - Failure receipts identify the model of captured incidents and the target of `open_model` instead of the previously active model, including a native pre-open guard refusal before the target document exists. Manual warnings aggregate by definition code, retain warnings after duplicate runs, and report bounded scan/omission details with accurate occurrence counts.

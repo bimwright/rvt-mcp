@@ -18,7 +18,8 @@ namespace RvtMcp.Server.Memory
         public JObject Changes { get; set; }
 
         public static JournalEntry Create(string tool, string paramsJson, bool success,
-            long durationMs, string error = null, string resultJson = null, JObject changes = null)
+            long durationMs, string error = null, string resultJson = null, JObject changes = null,
+            string rejectedArguments = null)
         {
             return new JournalEntry
             {
@@ -27,7 +28,9 @@ namespace RvtMcp.Server.Memory
                 Success = success,
                 DurationMs = durationMs,
                 Error = RedactAndTruncate(error, 2048),
-                Params = RedactParams(tool, paramsJson),
+                // Only the guard supplies this already bounded key-only summary; keep its JSON intact.
+                Params = rejectedArguments == null ? RedactParams(tool, paramsJson)
+                    : BakeRedactor.RedactForBake(rejectedArguments),
                 Result = RedactResult(tool, resultJson),
                 Changes = changes == null ? null : JObject.Parse(BakeRedactor.RedactForBake(
                     ChangeSummary.ForAgent(changes).ToString(Formatting.None)))
