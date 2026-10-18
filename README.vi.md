@@ -1,5 +1,7 @@
 <!-- mcp-name: io.github.bimwright/rvt-mcp -->
 
+[Benchmark kích thước descriptor](docs/benchmarks/2026-10-18-tool-descriptors.md) · [Kết quả kiểm thử v1.2.0 và các mục pending](docs/testing/2026-10-18-v1.2.0-validation.md) (tiếng Anh; không phải benchmark hiệu năng native).
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/bimwright/.github/master/assets/logos/rvt-mcp.png" alt="rvt-mcp" width="180" />
 </p>
@@ -352,14 +354,14 @@ Chỉ Revit desktop đầy đủ; Revit Viewer không được hỗ trợ. CI bu
 
 Server chỉ bind vào đúng một phiên bản Revit — kể cả khi có nhiều phiên bản cùng năm chạy song song. Nó bind ngầm ở lệnh gọi đầu tiên hoặc tường minh qua `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target`. Selector: `auto`, năm 4 chữ số (`2024`), `pid:<n>` hoặc `id:revit-<year>-<pid>`; các mã R cũ như `R24` bị từ chối.
 
-Khi có nhiều phiên bản chạy — nhất là nhiều phiên bản cùng năm — đừng đoán target:
+Khi có nhiều phiên bản chạy — nhất là nhiều phiên bản cùng năm — đừng đoán target. Trong session cho phép ghi:
 
 1. Gọi `revit_list_available_targets`: mọi phiên bản đang sống được liệt kê kèm `target_id`, `pid`, `host_year`, `window_title` và `source`.
 2. Chọn phiên bản theo `pid` và/hoặc `window_title`.
 3. Ghim bằng `revit_switch_target("pid:<n>")` — mọi dạng selector đều dùng được, `pid:` là rõ ràng nhất.
 4. `revit_get_current_target` hiển thị binding hiện tại, generation và `next_target_id` được đề xuất.
 
-Mã lỗi target và cách xử lý. Mọi mã trừ `TARGET_INTERRUPTED` nghĩa là lệnh **chưa** được gửi:
+Mã lỗi target và cách xử lý trong session cho phép ghi. Với `--read-only`, hãy dùng lựa chọn lúc khởi động và restart gateway như bên dưới. Mọi mã trừ `TARGET_INTERRUPTED` nghĩa là lệnh **chưa** được gửi:
 
 | Mã | Ý nghĩa | Hành động của agent |
 |---|---|---|
@@ -372,7 +374,7 @@ Mã lỗi target và cách xử lý. Mọi mã trừ `TARGET_INTERRUPTED` nghĩa
 | `TARGET_INTERRUPTED` | Lệnh đã được gửi nhưng kết nối đóng trước khi có phản hồi (`sent:true`, `outcome:unknown`) | Kiểm tra trạng thái model trước khi lặp lại bất kỳ thao tác ghi nào |
 | `INVALID_TARGET_SELECTOR` | Selector sai định dạng hoặc mã R | Dùng `auto`, năm, `pid:<n>` hoặc `id:<target_id>` |
 
-**Sau khi khởi động lại Revit — kể cả khi chỉ mở một Revit** — lời gọi tiếp theo trả về `TARGET_CHANGED` và server chờ một lần gọi `revit_switch_target` rồi mới gửi lệnh. Đây là chủ đích: Revit vừa khởi động lại có thể đang mở một model khác, nên server không bao giờ tự bind lại một cách âm thầm. Payload có ghi instance được đề xuất; hãy xác nhận rồi gọi lại lệnh.
+**Sau khi khởi động lại Revit — kể cả khi chỉ mở một Revit** — session cho phép ghi trả về `TARGET_CHANGED` và chờ một lần gọi `revit_switch_target` rồi mới gửi lệnh. Revit vừa khởi động lại có thể đang mở model khác; hãy kiểm tra instance được đề xuất, xác nhận rồi gọi lại lệnh.
 
 `revit_switch_target` thay đổi định tuyến phiên nên bị loại khỏi `--read-only`, đúng với annotation non-read-only. Chế độ read-only với all toolsets có 98 tool. Chọn `--read-only --target pid:<n>` khi khởi động gateway và khởi động lại gateway để đổi target; các tool liệt kê và đọc target vẫn dùng được.
 

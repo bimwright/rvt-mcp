@@ -1,5 +1,7 @@
 <!-- mcp-name: io.github.bimwright/rvt-mcp -->
 
+[ツール記述サイズのベンチマーク](docs/benchmarks/2026-10-18-tool-descriptors.md) · [v1.2.0 検証結果と未検証項目](docs/testing/2026-10-18-v1.2.0-validation.md)（英語。ネイティブ実行性能の測定ではありません）。
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/bimwright/.github/master/assets/logos/rvt-mcp.png" alt="rvt-mcp" width="180" />
 </p>
@@ -352,14 +354,14 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 
 サーバーは常に正確に 1 つの Revit インスタンスにバインドします — 同年の複数インスタンスが同時に動いていても同じです。初回呼び出しで暗黙に、または `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target` で明示的にバインドします。セレクター: `auto`、4 桁の年（`2024`）、`pid:<n>`、`id:revit-<year>-<pid>`。`R24` などの旧 R コードは拒否されます。
 
-複数インスタンスが動いているとき — 特に同年が複数あるとき — ターゲットを推測しないでください:
+複数インスタンスが動いているとき — 特に同年が複数あるとき — ターゲットを推測しないでください。書き込み可能なセッションでは:
 
 1. `revit_list_available_targets` を呼ぶ: 稼働中の全インスタンスが `target_id`, `pid`, `host_year`, `window_title`, `source` 付きで列挙されます。
 2. `pid` や `window_title` でインスタンスを選ぶ。
 3. `revit_switch_target("pid:<n>")` でピン留め — どのセレクター形式でも可、`pid:` が最も明確です。
 4. `revit_get_current_target` が現在のバインド、generation、提案された `next_target_id` を表示します。
 
-ターゲットエラーコードと対処。`TARGET_INTERRUPTED` 以外のすべてのコードは、コマンドが**未送信**であることを意味します:
+書き込み可能なセッションのターゲットエラーコードと対処。`--read-only` では下記の起動時選択と再起動を使います。`TARGET_INTERRUPTED` 以外のすべてのコードは、コマンドが**未送信**であることを意味します:
 
 | コード | 意味 | エージェントの対処 |
 |---|---|---|
@@ -372,7 +374,7 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 | `TARGET_INTERRUPTED` | コマンドは送信されたが応答前に接続が切断（`sent:true`、`outcome:unknown`） | 書き込みを繰り返す前にモデル状態を確認 |
 | `INVALID_TARGET_SELECTOR` | セレクター形式エラーまたは R コード | `auto`、年、`pid:<n>`、`id:<target_id>` を使用 |
 
-**Revit を再起動した後は（Revit を 1 つしか開いていない場合でも）**、次の呼び出しは `TARGET_CHANGED` を返し、サーバーは `revit_switch_target` が 1 回呼ばれるまでコマンドを送信しません。これは意図的な動作です。再起動した Revit では別のモデルが開いている可能性があるため、サーバーが黙って再バインドすることはありません。ペイロードに提案先のインスタンスが示されるので、確認してから呼び出しを繰り返してください。
+**Revit を再起動した後は（Revit を 1 つしか開いていない場合でも）**、書き込み可能なセッションは `TARGET_CHANGED` を返し、`revit_switch_target` が 1 回呼ばれるまで待ちます。別のモデルが開いている可能性があるため、提案されたインスタンスを確認してから呼び出しを繰り返してください。
 
 `revit_switch_target` はセッションのルーティングを変えるため、非 read-only の注釈に従い `--read-only` では公開されません。全 toolset の read-only は98ツールです。起動時に `--read-only --target pid:<n>` を指定し、対象を変更するときはゲートウェイを再起動してください。一覧と現在の対象の参照は引き続き利用できます。
 

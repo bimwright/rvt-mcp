@@ -61,7 +61,8 @@ docs/research-archive/
 # Public user/contributor guides and docs/roadmap.md remain tracked.
 docs/analysis/
 docs/design/
-docs/testing/
+docs/testing/*
+!docs/testing/2026-10-18-v1.2.0-validation.md
 docs/*-roadmap.md
 docs/superpowers/
 docs/reviews/

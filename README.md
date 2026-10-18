@@ -173,7 +173,7 @@ If a prompt's toolsets aren't enabled, it answers with the exact `--toolsets` li
 
 ## Configuration
 
-**Unreleased development:** MCP warnings now default to rollback; unresolved issues block writes for that model. Review decisions in **History → Issues**. The new `revit_get_failure_records` and `revit_get_operation_status` tools read local state even while Revit is modal. Do not retry a pending or unknown operation. See [controlled failures and acceptance limits](docs/controlled-failures.md).
+**v1.2.0 candidate:** MCP warnings now default to rollback; unresolved issues block writes for that model. Review decisions in **History → Issues**. The new `revit_get_failure_records` and `revit_get_operation_status` tools read local state even while Revit is modal. Do not retry a pending or unknown operation. See [controlled failures and acceptance limits](docs/controlled-failures.md).
 
 Since v1.0.0 the server reports `_changes` and local per-model `_history`. History defaults on independently of call logs; use `--disable-change-history` to disable recording. The `meta` tools `revit_record_change`, `revit_get_change_records` and `revit_resolve_history_identity` attach reasons to explicit call IDs, query stored changes and record the owner's history choice after a copy or Save As. See [change tracking](docs/change-tracking.md) for privacy, limits and recovery.
 
@@ -369,7 +369,7 @@ When more than one instance runs — especially several of the same year — do 
 
 Leaving a live selected instance requires `rebind=true`. Every accepted switch advances the generation so earlier calls cannot adopt a later confirmation. Failed verification restores the previous live binding if no newer switch intervened. A closed/reopened document, another project or Edit Family has a different document identity; the add-in checks the expected identity on the Revit UI thread before executing each write. Reading a different document never changes the write pin. Review and confirm that document before writing. `open_model` establishes a document: select the process with `verify=false`, open the model, then verify it. It cannot run inside `batch_execute`.
 
-Target error codes and how to react. Every code except `TARGET_INTERRUPTED` means the command was **not** sent:
+Target error codes and recovery in writable sessions. Read-only sessions use the startup/restart route below. Every code except `TARGET_INTERRUPTED` means the command was **not** sent:
 
 | Code | Meaning | Agent action |
 |---|---|---|
@@ -450,6 +450,10 @@ See [how the gateway names are chosen](https://github.com/bimwright/.github/blob
 - [**bim-wiki**](https://github.com/bimwright/bim-wiki) — Vietnamese-first BIM knowledge base
 
 ---
+
+## Validation
+
+See the [tool descriptor benchmark](docs/benchmarks/2026-10-18-tool-descriptors.md) and [v1.2.0 validation record](docs/testing/2026-10-18-v1.2.0-validation.md). They distinguish affected regression results, earlier native evidence and pending release coverage; descriptor bytes do not measure model tokens or native performance.
 
 ## License
 

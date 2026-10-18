@@ -1,5 +1,7 @@
 <!-- mcp-name: io.github.bimwright/rvt-mcp -->
 
+[工具描述大小基准](docs/benchmarks/2026-10-18-tool-descriptors.md) · [v1.2.0 验证结果与待验证项目](docs/testing/2026-10-18-v1.2.0-validation.md)（英文；不代表原生执行性能）。
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/bimwright/.github/master/assets/logos/rvt-mcp.png" alt="rvt-mcp" width="180" />
 </p>
@@ -351,14 +353,14 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 
 服务器始终只绑定一个 Revit 实例 —— 即使同一年份有多个实例同时运行。首次调用时隐式绑定，或通过 `--target` / `BIMWRIGHT_TARGET` / `revit_switch_target` 显式绑定。选择器：`auto`、4 位年份（`2024`）、`pid:<n>` 或 `id:revit-<year>-<pid>`；旧的 R 代码如 `R24` 会被拒绝。
 
-当运行多个实例时 —— 尤其是同一年份的多个实例 —— 不要猜测目标：
+当运行多个实例时 —— 尤其是同一年份的多个实例 —— 不要猜测目标。在允许写入的会话中：
 
 1. 调用 `revit_list_available_targets`：列出所有存活实例及其 `target_id`、`pid`、`host_year`、`window_title` 和 `source`。
 2. 按 `pid` 和/或 `window_title` 选择实例。
 3. 用 `revit_switch_target("pid:<n>")` 固定 —— 任何选择器形式都可以，`pid:` 最明确。
 4. `revit_get_current_target` 显示当前绑定、generation 和建议的 `next_target_id`。
 
-目标错误代码及处理方式。除 `TARGET_INTERRUPTED` 外的所有代码都表示命令**未**发送：
+允许写入会话的目标错误代码及处理方式。`--read-only` 请使用下文的启动选择与重启方式。除 `TARGET_INTERRUPTED` 外的所有代码都表示命令**未**发送：
 
 | 代码 | 含义 | 代理应执行的操作 |
 |---|---|---|
@@ -371,7 +373,7 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 | `TARGET_INTERRUPTED` | 命令已发送但在收到响应前连接关闭（`sent:true`，`outcome:unknown`） | 重复任何写操作之前先检查模型状态 |
 | `INVALID_TARGET_SELECTOR` | 选择器格式错误或 R 代码 | 使用 `auto`、年份、`pid:<n>` 或 `id:<target_id>` |
 
-**Revit 重启后（即使只打开了一个 Revit）**，下一次调用会返回 `TARGET_CHANGED`，服务器会等待一次 `revit_switch_target` 调用后才发送命令。这是有意为之：重启后的 Revit 可能打开了另一个模型，因此服务器绝不会静默地重新绑定。返回内容中会给出建议的实例；确认后再重复调用即可。
+**Revit 重启后（即使只打开了一个 Revit）**，允许写入的会话会返回 `TARGET_CHANGED`，并等待一次 `revit_switch_target` 调用。重启后的 Revit 可能打开了另一个模型；请检查建议的实例，确认后再重复调用。
 
 `revit_switch_target` 会修改会话路由，因此按非只读注解从 `--read-only` 中移除。启用全部 toolsets 时只读模式提供98个工具。启动网关时使用 `--read-only --target pid:<n>` 选择目标，修改目标时重启网关；目标列表与当前目标查询仍可使用。
 
