@@ -400,18 +400,65 @@ namespace RvtMcp.Tests
             finally { TargetCallContext.End(ctx); }
         }
 
-        [Fact]
-        public async Task First_write_on_implicit_binding_is_not_sent()
+        [Theory]
+        [InlineData("create_level")]
+        [InlineData("send_code_to_revit")]
+        public async Task First_write_on_implicit_binding_is_not_sent(string command)
         {
             using var host = new FakeTcpHost();
             _probe.Set(PidA, ProcessState.Running, StartA);
             WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok");
 
-            var failure = await SendExpectingFailure("create_level");
+            var failure = await SendExpectingFailure(command);
 
             Assert.Equal("TARGET_UNCONFIRMED", TargetPayload.CodeName(failure.Payload.Code));
             Assert.False(failure.Payload.Sent);
             Assert.Empty(host.Commands);
+        }
+
+        [Theory]
+        [InlineData(null, true)]
+        [InlineData("doc-opened-before-dispatch", false)]
+        public async Task Explicit_process_selection_allows_send_code_only_when_no_document_is_active(
+            string activeDocument, bool executes)
+        {
+            using var host = new FakeTcpHost
+            {
+                TargetStamp = new JObject
+                {
+                    ["target_id"] = "revit-2024-" + PidA,
+                    ["pid"] = PidA,
+                    ["host_year"] = 2024,
+                    ["document_id"] = activeDocument
+                }
+            };
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok");
+            var ctx = BeginCall();
+            try
+            {
+                var switched = JObject.Parse(await MetaTools.SwitchTarget("pid:" + PidA, verify: false));
+                Assert.True(switched.Value<bool>("ok"));
+                Assert.False(switched.Value<bool>("verified"));
+            }
+            finally { TargetCallContext.End(ctx); }
+
+            var result = await Send("send_code_to_revit");
+
+            Assert.Single(host.Requests);
+            Assert.Null(host.Requests[0].Value<string>("expected_document_id"));
+            Assert.Equal(1, host.Requests[0].Value<int>("document_protocol"));
+            if (executes)
+            {
+                Assert.True(result.Value<bool>("ok"));
+                Assert.Equal(new[] { "send_code_to_revit" }, host.Commands);
+            }
+            else
+            {
+                Assert.StartsWith("DOCUMENT_UNCONFIRMED:", result.Value<string>("error"));
+                Assert.Equal("not_started", result["_operation"].Value<string>("outcome"));
+                Assert.Empty(host.Commands);
+            }
         }
 
         [Fact]

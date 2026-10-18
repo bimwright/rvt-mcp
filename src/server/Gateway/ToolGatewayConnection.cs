@@ -624,7 +624,8 @@ namespace RvtMcp.Server
                         if (!binding.CanSend(effectiveGeneration, Array.Empty<Bimwright.Targeting.TargetCandidate>(), out var sendFailure))
                             throw new TargetException(sendFailure);
                         if (!ToolReadPolicy.IsReadOnly(command)
-                            && !binding.CanWrite(effectiveGeneration, command != "open_model", out var writeFailure))
+                            // Send-code also supports Home; the add-in checks the actual document at execution.
+                            && !binding.CanWrite(effectiveGeneration, command != "open_model" && command != "send_code_to_revit", out var writeFailure))
                             throw new TargetException(writeFailure);
                         if (_conn == conn && conn.Generation == effectiveGeneration && conn.Closed == 0)
                         {

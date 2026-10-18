@@ -122,6 +122,11 @@ namespace RvtMcp.Plugin
                 return "PAIRING_REQUIRED: the command was not started. This Revit add-in requires a gateway that confirms the target document, "
                     + "and the connected rvt-mcp server predates that check, so revit_switch_target cannot confirm a document through it. "
                     + "Update the rvt-mcp server to match the add-in.";
+            // An explicitly selected Home process has no document to confirm. A queued
+            // script must still be rejected if a document opens before it executes.
+            if (string.IsNullOrWhiteSpace(expectedDocumentId) && string.IsNullOrEmpty(activeDocumentId)
+                && string.Equals(command, "send_code_to_revit", StringComparison.OrdinalIgnoreCase))
+                return null;
             if (string.IsNullOrWhiteSpace(expectedDocumentId))
                 return "DOCUMENT_UNCONFIRMED: the command was not started. Confirm the active document with revit_switch_target(verify=true) before writing.";
             if (!string.Equals(expectedDocumentId, activeDocumentId, StringComparison.Ordinal))
