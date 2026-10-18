@@ -215,17 +215,6 @@ namespace RvtMcp.Plugin.Handlers
                                 if (numParam != null && !numParam.IsReadOnly) numParam.Set(number);
                                 else room.Number = number;
 
-                                areaM2 = Math.Round(room.Area * 0.09290304, 4);
-                                if (room.Location is LocationPoint lp)
-                                {
-                                    centroid = new
-                                    {
-                                        x_mm = Math.Round(lp.Point.X * 304.8, 2),
-                                        y_mm = Math.Round(lp.Point.Y * 304.8, 2),
-                                        z_mm = Math.Round(lp.Point.Z * 304.8, 2)
-                                    };
-                                }
-
                                 createdRoomIds.Add(RevitCompat.GetId(room.Id));
                             }
                         }
@@ -249,6 +238,29 @@ namespace RvtMcp.Plugin.Handlers
                     if (status != TransactionStatus.Committed)
                         return CommandResult.Fail("Create rooms transaction did not commit. Status: " + status);
 
+                    // Commit regenerates room boundaries. Read the committed geometry,
+                    // rather than reporting an unevaluated precommit area of zero.
+                    var committedCandidates = candidatesDto.Select(JObject.FromObject).ToList();
+                    foreach (var candidate in committedCandidates)
+                    {
+                        var roomId = candidate.Value<long?>("room_id");
+                        if (!roomId.HasValue) continue;
+                        var room = doc.GetElement(RevitCompat.ToElementId(roomId.Value)) as Room;
+                        if (room == null)
+                        {
+                            ((JArray)candidate["warnings"]).Add("Room could not be read after commit; area and centroid are unavailable.");
+                            continue;
+                        }
+                        candidate["area_m2"] = Math.Round(room.Area * 0.09290304, 4);
+                        if (room.Location is LocationPoint lp)
+                            candidate["centroid"] = JObject.FromObject(new
+                            {
+                                x_mm = Math.Round(lp.Point.X * 304.8, 2),
+                                y_mm = Math.Round(lp.Point.Y * 304.8, 2),
+                                z_mm = Math.Round(lp.Point.Z * 304.8, 2)
+                            });
+                    }
+
                     return CommandResult.Ok(new
                     {
                         dry_run = false,
@@ -256,7 +268,7 @@ namespace RvtMcp.Plugin.Handlers
                         phase = new { element_id = RevitCompat.GetId(phase.Id), name = phase.Name },
                         candidate_count = candidatesList.Count,
                         created_count = createdRoomIds.Count,
-                        candidates = candidatesDto,
+                        candidates = committedCandidates,
                         created_room_ids = createdRoomIds,
                         warnings = warnings
                     });
