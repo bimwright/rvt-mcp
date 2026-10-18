@@ -202,10 +202,13 @@ namespace RvtMcp.Plugin.Handlers
             if (!allApplied)
                 warnings.Add("Revit did not apply every requested coordinate. Inspect the actual after values and native dialog choices; do not retry unchanged.");
 
-            return CommandResult.Ok(new
+            return new CommandResult
             {
+                Success = allApplied,
+                Error = allApplied ? null : "Requested base point coordinates were not fully applied. Inspect the returned actual coordinates before another operation.",
+                Data = new
+                {
                     success = allApplied,
-                    error = allApplied ? null : "Requested base point coordinates were not fully applied. Inspect the returned actual coordinates before another operation.",
                     dry_run = false,
                     updated = allApplied,
                     partially_updated = !allApplied && anyChanged,
@@ -222,7 +225,8 @@ namespace RvtMcp.Plugin.Handlers
                     },
                     applied_fields = new { east_west = ewApplied, north_south = nsApplied, elevation = elevApplied, angle_to_true_north = angleApplied },
                     warnings
-            });
+                }
+            };
         }
     }
 }

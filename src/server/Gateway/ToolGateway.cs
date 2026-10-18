@@ -214,7 +214,11 @@ namespace RvtMcp.Server
                 var error = response.Value<string>("error") ?? "Unknown error from Revit";
                 if (response["_failure"] != null || response["_operation"] != null || response["_target"] != null)
                 {
-                    var data = new JObject { ["success"] = false, ["error"] = error };
+                    // A failed request can still have committed partial effects.
+                    // Retain its structured readback instead of discarding it.
+                    var data = response["data"] is JObject details ? (JObject)details.DeepClone() : new JObject();
+                    data["success"] = false;
+                    data["error"] = error;
                     if (changes != null) data["_changes"] = changes;
                     SafetyResponseMetadata.Attach(data, response);
                     return data;
