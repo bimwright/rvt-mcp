@@ -67,12 +67,14 @@ namespace RvtMcp.Plugin.Handlers
             if (!EnsureViewCanHostAnnotation(view, out var viewError))
                 return CommandResult.Fail(viewError);
 
-            // Collect IndependentTags in the view
+            // Ownership includes hidden/cropped tags; a visibility collector can
+            // miss a tag that still belongs to this view.
             var scannedTags = new List<IndependentTag>();
             try
             {
-                scannedTags = new FilteredElementCollector(doc, view.Id)
+                scannedTags = new FilteredElementCollector(doc)
                     .OfClass(typeof(IndependentTag))
+                    .OwnedByView(view.Id)
                     .Cast<IndependentTag>()
                     .ToList();
             }
@@ -139,17 +141,19 @@ namespace RvtMcp.Plugin.Handlers
                     {
                         foreach (var tag in emptyTags)
                         {
+                            var tagId = tag.Id;
+                            var tagIdValue = RevitCompat.GetId(tagId);
                             try
                             {
-                                doc.Delete(tag.Id);
+                                doc.Delete(tagId);
                                 deletedCount++;
-                                deletedIds.Add(RevitCompat.GetId(tag.Id));
+                                deletedIds.Add(tagIdValue);
                             }
                             catch (Exception ex)
                             {
                                 failed.Add(new JObject
                                 {
-                                    ["tag_id"] = RevitCompat.GetId(tag.Id),
+                                    ["tag_id"] = tagIdValue,
                                     ["error"] = ex.Message
                                 });
                             }
