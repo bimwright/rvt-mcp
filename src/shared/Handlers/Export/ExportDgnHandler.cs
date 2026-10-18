@@ -129,16 +129,18 @@ namespace RvtMcp.Plugin.Handlers
                 foreach (var f in Directory.GetFiles(outputFolder, "*.dgn", SearchOption.TopDirectoryOnly))
                     beforeStamps[f] = File.GetLastWriteTimeUtc(f);
             }
-            catch { }
-
-            var exportStartUtc = DateTime.UtcNow;
+            catch (Exception ex)
+            {
+                return BuildErrorDto(outputFolder, "Cannot inventory existing DGN files before export: " + ex.Message);
+            }
 
             // DGN export. The default DGNExportOptions + doc.Export works for basic export;
             // some configurations require a seed file / DGN export settings.
             try
             {
                 var opts = new DGNExportOptions();
-                doc.Export(outputFolder, fileNamePrefix ?? string.Empty, viewIds, opts);
+                if (!doc.Export(outputFolder, fileNamePrefix ?? string.Empty, viewIds, opts))
+                    return BuildErrorDto(outputFolder, "Revit reported that DGN export did not succeed.");
             }
             catch (Autodesk.Revit.Exceptions.ApplicationException revitEx)
             {
@@ -160,7 +162,7 @@ namespace RvtMcp.Plugin.Handlers
                 {
                     DateTime before;
                     var isNew = !beforeStamps.TryGetValue(f, out before);
-                    if (isNew || File.GetLastWriteTimeUtc(f) >= exportStartUtc.AddSeconds(-1))
+                    if (isNew || File.GetLastWriteTimeUtc(f) != before)
                         files.Add(f);
                 }
 
@@ -173,13 +175,16 @@ namespace RvtMcp.Plugin.Handlers
                 return BuildErrorDto(outputFolder, "Export ran but produced files could not be enumerated: " + ex.Message);
             }
 
+            if (files.Count == 0)
+                return BuildErrorDto(outputFolder, "DGN export produced no new or updated DGN files.");
+
             return CommandResult.Ok(new
             {
                 exported = true,
                 output_folder = outputFolder,
                 file_count = files.Count,
                 files,
-                note = files.Count == 0 ? "export completed but no output file was detected" : null,
+                note = (string)null,
                 error = (string)null
             });
         }
