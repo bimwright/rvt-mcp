@@ -32,10 +32,12 @@ The [existing GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/
 - Remove the duplicate release-notes attachment, standalone metadata/evidence attachments, their checksum sidecars and redundant `SHA256SUMS.txt`. Keep the three package checksum sidecars used by installation guidance.
 - Remove the standalone doctor download after retaining a verified maintainer backup. The existing v1.1.0 Setup does not contain that script; bundling diagnostics into Setup remains a separate packaging change for a later release.
 
-## Unreleased
+## v1.2.0 — Unreleased
 
 ### Fixed
 
+- First writes and target verification against an older add-in report `PAIRING_REQUIRED` before asking for document confirmation. Both pairing directions explain matching Setup versions and the required Revit/client restart; no mutation is sent. An open-model verification problem remains separate from a version mismatch.
+- Legacy diagnostic cleanup retries transient lock/I/O failures up to three times in the background, without repeating completed items. Bounded summaries report pending, skipped or exhausted work; oversized legacy logs retain a 64 KiB tail.
 - Rejected tool calls retain complete, bounded key-only argument diagnostics in the journal, including send-code rejections and long key lists. Valid send-code calls continue to store only the code hash and length.
 - Category tagging uses the native room-tag API for Rooms and skips existing room tags. A fully failed tagging call reports failure; dry runs report zero created tags and a separate proposed count. Schedule-field update inputs include JSON examples.
 - Operation status retains bounded user-handled dialog reports from the sending gateway session even when the operation also has a durable ledger record.
