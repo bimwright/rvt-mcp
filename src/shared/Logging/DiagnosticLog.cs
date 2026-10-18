@@ -14,11 +14,22 @@ namespace RvtMcp.Plugin
     {
         private sealed class Entry { public string Component, Message, Year, Root; public TaskCompletionSource<bool> Flush; public bool Cleanup; }
         private sealed class Repeat { public Entry Entry; public int Count; public long Started; }
+        private sealed class CleanupItem { public string Path, Name, Group; }
+        private sealed class CleanupState
+        {
+            public string Root;
+            public List<CleanupItem> Items;
+            public int Attempt, Completed, Skipped, Exhausted;
+            public long RetryAfter;
+        }
         private static readonly BlockingCollection<Entry> Queue = new BlockingCollection<Entry>(256);
+        private static readonly ConcurrentDictionary<string, byte> CleanupRoots = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
         private static readonly Thread Worker;
         private static readonly int Pid = Process.GetCurrentProcess().Id;
         private static long _dropped;
         internal static string LocalAppDataOverride { get; set; }
+        internal static Func<long> LegacyCleanupTimestamp { get; set; } = Stopwatch.GetTimestamp;
+        private const int CleanupAttempts = 3;
         public static long Dropped => Interlocked.Read(ref _dropped);
         public const long FileBytes = 10L * 1024 * 1024;
         private static readonly Encoding Utf8 = new UTF8Encoding(false);
@@ -47,17 +58,33 @@ namespace RvtMcp.Plugin
         public static void MaintainLegacyLogs()
         {
             var root = Path.Combine(LocalAppDataOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bimwright", "rvt-mcp");
-            if (!Queue.TryAdd(new Entry { Cleanup = true, Root = root })) Interlocked.Increment(ref _dropped);
+            // One bounded campaign per profile/process, including after retries are exhausted.
+            if (!CleanupRoots.TryAdd(root, 0)) return;
+            if (!Queue.TryAdd(new Entry { Cleanup = true, Root = root }))
+            {
+                byte ignored;
+                CleanupRoots.TryRemove(root, out ignored);
+                Interlocked.Increment(ref _dropped);
+            }
         }
 
         private static void Run()
         {
             var repeats = new Dictionary<string, Repeat>();
+            var cleanups = new List<CleanupState>();
             while (true)
             {
                 Entry entry;
                 Queue.TryTake(out entry, 1000);
-                if (entry?.Cleanup == true) { Cleanup(entry.Root); continue; }
+                // Retry on this worker rather than queuing timers that can multiply or be dropped.
+                foreach (var cleanup in new List<CleanupState>(cleanups))
+                    if (LegacyCleanupTimestamp() >= cleanup.RetryAfter && !Cleanup(cleanup)) cleanups.Remove(cleanup);
+                if (entry?.Cleanup == true)
+                {
+                    var cleanup = CreateCleanup(entry.Root);
+                    if (Cleanup(cleanup)) cleanups.Add(cleanup);
+                    continue;
+                }
                 if (entry?.Flush != null)
                 {
                     foreach (var repeat in repeats.Values) Summary(repeat);
@@ -115,31 +142,69 @@ namespace RvtMcp.Plugin
             catch { Interlocked.Increment(ref _dropped); } // No recursive log/fallback file.
         }
 
-        private static void Cleanup(string current)
+        private static CleanupState CreateCleanup(string current)
         {
+            var state = new CleanupState { Root = current, Items = new List<CleanupItem>() };
             var local = Path.GetDirectoryName(Path.GetDirectoryName(current));
             foreach (var root in new[] { current, Path.Combine(local, "RvtMcp"), Path.Combine(local, "Bimwright") })
                 foreach (var name in new[] { "revit-mcp.log", "debug.log", Path.Combine("baked", "compile-refs.log") })
-                {
-                    var old = Path.Combine(root, name);
-                    try
-                    {
-                        if (!File.Exists(old)) continue;
-                        BoundedLogFile.WithLock(old, () =>
-                        {
-                            BoundedLogFile.CompactDiagnostics(old, 64 * 1024);
-                            var tail = string.Join(" | ", BoundedLogFile.ReadTail(old, 8));
-                            var entry = new Entry { Component = "LegacyDiagnostics", Year = "unknown", Root = current };
-                            Append(entry, "Retained tail from " + Path.GetFileName(old) + ": " + SecretMasker.Mask(tail));
-                            // Preserve the bounded original tail as recovery data; do not delete an active legacy writer's file.
-                            return true;
-                        }, 250);
-                    }
-                    catch { Interlocked.Increment(ref _dropped); }
-                }
+                    state.Items.Add(new CleanupItem { Path = Path.Combine(root, name), Name = (root == current ? "current" : Path.GetFileName(root)) + "/" + name.Replace('\\', '/') });
             foreach (var group in new[] { "mcp-calls", "send-code-journal", "usage", "bake-audit", "journal" })
-                try { BoundedLogFile.MaintainGroup(group == "journal" ? Path.Combine(current, "journal") : current, group); }
-                catch { Interlocked.Increment(ref _dropped); }
+                state.Items.Add(new CleanupItem { Path = group == "journal" ? Path.Combine(current, "journal") : current, Name = "current/" + group, Group = group });
+            return state;
+        }
+
+        private static bool Cleanup(CleanupState state)
+        {
+            state.Attempt++;
+            var pending = new List<CleanupItem>();
+            foreach (var item in state.Items)
+            {
+                try
+                {
+                    if (item.Group != null) BoundedLogFile.MaintainGroup(item.Path, item.Group);
+                    else
+                    {
+                        BoundedLogFile.RefuseLink(item.Path);
+                        if (File.Exists(item.Path))
+                            BoundedLogFile.WithLock(item.Path, () =>
+                            {
+                                BoundedLogFile.CompactDiagnostics(item.Path, 64 * 1024);
+                                var tail = string.Join(" | ", BoundedLogFile.ReadTail(item.Path, 8));
+                                Append(CleanupEntry(state.Root), "Retained tail from " + item.Name + ": " + SecretMasker.Mask(tail));
+                                // Preserve the bounded original tail; an old process may still own the file.
+                                return true;
+                            }, 250);
+                    }
+                    state.Completed++;
+                }
+                catch (BoundedLogFile.UnsafeLogPathException) { CleanupFailure(state, item, "unsafe_link", false, pending); }
+                catch (UnauthorizedAccessException) { CleanupFailure(state, item, "access_denied", false, pending); }
+                catch (System.Security.SecurityException) { CleanupFailure(state, item, "access_denied", false, pending); }
+                catch (TimeoutException) { CleanupFailure(state, item, "lock_timeout", true, pending); }
+                catch (IOException) { CleanupFailure(state, item, "io_busy_or_unavailable", true, pending); }
+                catch { CleanupFailure(state, item, "maintenance_failed", false, pending); }
+            }
+            state.Items = pending;
+            var status = pending.Count > 0 ? "pending" : state.Exhausted > 0 ? "exhausted" : state.Skipped > 0 ? "completed_with_skips" : "complete";
+            Append(CleanupEntry(state.Root), "Legacy cleanup status=" + status + " attempt=" + state.Attempt + "/" + CleanupAttempts +
+                " completed=" + state.Completed + " pending=" + pending.Count + " skipped=" + state.Skipped + " exhausted=" + state.Exhausted);
+            if (pending.Count == 0) return false;
+            state.RetryAfter = LegacyCleanupTimestamp() + (state.Attempt == 1 ? 5L : 30L) * Stopwatch.Frequency;
+            return true;
+        }
+
+        private static Entry CleanupEntry(string root) => new Entry { Component = "LegacyDiagnostics", Year = "unknown", Root = root };
+
+        private static void CleanupFailure(CleanupState state, CleanupItem item, string reason, bool retry, List<CleanupItem> pending)
+        {
+            Interlocked.Increment(ref _dropped);
+            string status;
+            if (retry && state.Attempt < CleanupAttempts) { pending.Add(item); status = "pending"; }
+            else if (retry) { state.Exhausted++; status = "exhausted"; }
+            else { state.Skipped++; status = "skipped"; }
+            Append(CleanupEntry(state.Root), "Legacy cleanup item=" + item.Name + " status=" + status + " attempt=" + state.Attempt + "/" + CleanupAttempts + " reason=" + reason +
+                (status == "pending" ? " retry_in_seconds=" + (state.Attempt == 1 ? 5 : 30) : ""));
         }
     }
 }

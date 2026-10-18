@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using RvtMcp.Plugin;
 using RvtMcp.Server.Memory;
 using Xunit;
@@ -122,6 +123,111 @@ public sealed class BoundedLogTests : IDisposable
     }
 
     [Fact]
+    public void Legacy_cleanup_retries_a_locked_file_after_release_and_reports_completion()
+    {
+        using var clock = new CleanupClock(_root);
+        var legacy = Path.Combine(_root, "RvtMcp");
+        Directory.CreateDirectory(legacy);
+        var path = Path.Combine(legacy, "revit-mcp.log");
+        File.WriteAllText(path, string.Concat(Enumerable.Repeat("old noise\n", 20000)) + "last useful message sk-private-test-token-123456789\n");
+        using (var held = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var timer = Stopwatch.StartNew();
+            DiagnosticLog.MaintainLegacyLogs();
+            Assert.True(timer.ElapsedMilliseconds < 100);
+            Assert.True(DiagnosticLog.Flush(5000));
+            Assert.Contains("item=RvtMcp/revit-mcp.log status=pending attempt=1/3 reason=io_busy_or_unavailable", File.ReadAllText(clock.LogPath));
+        }
+        clock.Advance(5);
+        Assert.InRange(new FileInfo(path).Length, 1, 64 * 1024);
+        Assert.Contains("last useful message", File.ReadAllText(path));
+        var diagnostics = File.ReadAllText(clock.LogPath);
+        Assert.Contains("Legacy cleanup status=complete attempt=2/3", diagnostics);
+        Assert.Contains("[REDACTED]", diagnostics);
+        Assert.DoesNotContain("sk-private-test-token-123456789", diagnostics);
+        Assert.Equal(2, File.ReadAllLines(clock.LogPath).Count(line => line.Contains("Legacy cleanup status=")));
+    }
+
+    [Fact]
+    public void Legacy_cleanup_exhausts_three_attempts_and_deduplicates_repeated_startup_calls()
+    {
+        using var clock = new CleanupClock(_root);
+        var legacy = Path.Combine(_root, "RvtMcp");
+        Directory.CreateDirectory(legacy);
+        var path = Path.Combine(legacy, "debug.log");
+        var contents = string.Concat(Enumerable.Repeat("locked legacy noise\n", 10000));
+        File.WriteAllText(path, contents);
+        using (var held = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            for (var i = 0; i < 100; i++) DiagnosticLog.MaintainLegacyLogs();
+            Assert.True(DiagnosticLog.Flush(5000));
+            clock.Advance(4);
+            Assert.Single(File.ReadAllLines(clock.LogPath).Where(line => line.Contains("Legacy cleanup status=")));
+            clock.Advance(1);
+            clock.Advance(29);
+            Assert.Equal(2, File.ReadAllLines(clock.LogPath).Count(line => line.Contains("Legacy cleanup status=")));
+            clock.Advance(1);
+            for (var i = 0; i < 100; i++) DiagnosticLog.MaintainLegacyLogs();
+            clock.Advance(3600);
+        }
+        var diagnostics = File.ReadAllText(clock.LogPath);
+        Assert.Contains("item=RvtMcp/debug.log status=exhausted attempt=3/3 reason=io_busy_or_unavailable", diagnostics);
+        Assert.Contains("Legacy cleanup status=exhausted attempt=3/3", diagnostics);
+        Assert.Equal(3, File.ReadAllLines(clock.LogPath).Count(line => line.Contains("Legacy cleanup status=")));
+        Assert.Equal(contents, File.ReadAllText(path));
+        Assert.Empty(Directory.GetFiles(legacy, "*.compact-*"));
+    }
+
+    [Fact]
+    public void Legacy_cleanup_refuses_linked_paths_without_retrying_or_touching_the_target()
+    {
+        using var clock = new CleanupClock(_root);
+        var owner = Path.Combine(_root, "owner");
+        Directory.CreateDirectory(owner);
+        var path = Path.Combine(owner, "revit-mcp.log");
+        var contents = string.Concat(Enumerable.Repeat("owner data\n", 10000));
+        File.WriteAllText(path, contents);
+        var link = Path.Combine(_root, "RvtMcp");
+        Directory.CreateSymbolicLink(link, owner);
+        try
+        {
+            DiagnosticLog.MaintainLegacyLogs();
+            Assert.True(DiagnosticLog.Flush(5000));
+            clock.Advance(3600);
+            Assert.Equal(contents, File.ReadAllText(path));
+            var diagnostics = File.ReadAllText(clock.LogPath);
+            Assert.Contains("item=RvtMcp/revit-mcp.log status=skipped attempt=1/3 reason=unsafe_link", diagnostics);
+            Assert.Contains("Legacy cleanup status=completed_with_skips attempt=1/3", diagnostics);
+            Assert.DoesNotContain("status=pending", diagnostics);
+            Assert.Single(File.ReadAllLines(clock.LogPath).Where(line => line.Contains("Legacy cleanup status=")));
+        }
+        finally { Directory.Delete(link); }
+    }
+
+    [Fact]
+    public void Startup_retention_retries_a_locked_archive_and_preserves_unknown_files()
+    {
+        using var clock = new CleanupClock(_root);
+        var current = Path.GetDirectoryName(clock.LogPath)!;
+        Directory.CreateDirectory(current);
+        var old = Path.Combine(current, "usage-20200101-000000.jsonl");
+        File.WriteAllText(old, "old generated record\n");
+        File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddDays(-31));
+        var owner = Path.Combine(current, "usage-owner-notes.jsonl");
+        File.WriteAllText(owner, "owner data");
+        using (var held = new FileStream(old, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            DiagnosticLog.MaintainLegacyLogs();
+            Assert.True(DiagnosticLog.Flush(5000));
+            Assert.Contains("item=current/usage status=pending attempt=1/3", File.ReadAllText(clock.LogPath));
+        }
+        clock.Advance(5);
+        Assert.False(File.Exists(old));
+        Assert.Equal("owner data", File.ReadAllText(owner));
+        Assert.Contains("Legacy cleanup status=complete attempt=2/3", File.ReadAllText(clock.LogPath));
+    }
+
+    [Fact]
     public void A_daily_journal_reader_includes_rotated_segments_without_allocating_all_lines()
     {
         Directory.CreateDirectory(_root);
@@ -157,8 +263,8 @@ public sealed class BoundedLogTests : IDisposable
         Directory.CreateSymbolicLink(link, target);
         try
         {
-            Assert.Throws<IOException>(() => BoundedLogFile.MaintainGroup(link, "usage"));
-            Assert.Throws<IOException>(() => BoundedLogFile.Append(Path.Combine(link, "usage.jsonl"), "new"));
+            Assert.ThrowsAny<IOException>(() => BoundedLogFile.MaintainGroup(link, "usage"));
+            Assert.ThrowsAny<IOException>(() => BoundedLogFile.Append(Path.Combine(link, "usage.jsonl"), "new"));
             Assert.Equal("owner data", File.ReadAllText(path));
         }
         finally { Directory.Delete(link); }
@@ -184,6 +290,38 @@ public sealed class BoundedLogTests : IDisposable
             Assert.Contains("rotation check", File.ReadAllText(path));
         }
         finally { DiagnosticLog.LocalAppDataOverride = previous; }
+    }
+
+    private sealed class CleanupClock : IDisposable
+    {
+        private readonly string _previousRoot = DiagnosticLog.LocalAppDataOverride;
+        private readonly Func<long> _previousTimestamp = DiagnosticLog.LegacyCleanupTimestamp;
+        private long _timestamp;
+        public string LogPath { get; }
+
+        public CleanupClock(string root)
+        {
+            Assert.True(DiagnosticLog.Flush(5000));
+            LogPath = Path.Combine(root, "Bimwright", "rvt-mcp", "rvt-mcp.log");
+            DiagnosticLog.LocalAppDataOverride = root;
+            DiagnosticLog.LegacyCleanupTimestamp = () => Interlocked.Read(ref _timestamp);
+        }
+
+        public void Advance(int seconds)
+        {
+            Interlocked.Add(ref _timestamp, seconds * Stopwatch.Frequency);
+            Assert.True(DiagnosticLog.Flush(5000));
+        }
+
+        public void Dispose()
+        {
+            try { Advance(60); Advance(60); }
+            finally
+            {
+                DiagnosticLog.LegacyCleanupTimestamp = _previousTimestamp;
+                DiagnosticLog.LocalAppDataOverride = _previousRoot;
+            }
+        }
     }
 
     public void Dispose() { if (Directory.Exists(_root)) Directory.Delete(_root, true); }

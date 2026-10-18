@@ -15,6 +15,10 @@ namespace RvtMcp.Plugin
         public const long RecordGroupBytes = 100L * 1024 * 1024;
         public const int RecordRetentionDays = 30;
         private static readonly Encoding Utf8 = new UTF8Encoding(false);
+        internal sealed class UnsafeLogPathException : IOException
+        {
+            public UnsafeLogPathException(string message) : base(message) { }
+        }
 
         public static T WithLock<T>(string path, Func<T> action, int timeoutMilliseconds = 2000)
         {
@@ -118,10 +122,10 @@ namespace RvtMcp.Plugin
         public static void RefuseLink(string path)
         {
             if (File.Exists(path) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
-                throw new IOException("Log maintenance refuses linked files.");
+                throw new UnsafeLogPathException("Log maintenance refuses linked files.");
             for (var dir = Path.GetDirectoryName(Path.GetFullPath(path)); !string.IsNullOrEmpty(dir); dir = Path.GetDirectoryName(dir))
                 if (Directory.Exists(dir) && (File.GetAttributes(dir) & FileAttributes.ReparsePoint) != 0)
-                    throw new IOException("Log maintenance refuses linked directories.");
+                    throw new UnsafeLogPathException("Log maintenance refuses linked directories.");
         }
 
         /// <summary>Bound allocation even for a malformed huge line; readers permit append/rotation.</summary>
