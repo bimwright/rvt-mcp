@@ -50,6 +50,8 @@ namespace RvtMcp.Plugin.Handlers
             if (template == null || !template.IsTemplate)
                 return CommandResult.Fail($"View template with ID {templateIdVal} not found or is not a template view.");
 
+            var templateName = template.Name;
+
             // Find all views currently using this template
             var dependentViews = new FilteredElementCollector(doc)
                 .OfClass(typeof(View))
@@ -76,7 +78,7 @@ namespace RvtMcp.Plugin.Handlers
                 }
                 else
                 {
-                    return CommandResult.Fail($"Cannot delete template '{template.Name}' because it is in use by {dependentViews.Count} views. Set clearFromViews to true to detach it from them first.");
+                    return CommandResult.Fail($"Cannot delete template '{templateName}' because it is in use by {dependentViews.Count} views. Set clearFromViews to true to detach it from them first.");
                 }
             }
 
@@ -126,7 +128,7 @@ namespace RvtMcp.Plugin.Handlers
                 wouldDelete,
                 deleted,
                 templateId = templateIdVal,
-                templateName = template.Name,
+                templateName,
                 success = true,
                 usedByViewCount = usedByViewsDto.Length,
                 usedByViews = usedByViewsDto.Take(maxUsedByViews).ToArray(),
