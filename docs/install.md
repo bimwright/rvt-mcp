@@ -139,6 +139,8 @@ Development builds after v1.1.0 provide `revit_health` and clearer protocol-pair
 
 If the tools still show an old surface, check the client's active config, project/user scope, custom launcher and MCPB release before reconnecting again. Keep existing args/env, including read-only and toolset choices. No general MCP client upgrade is required merely to select a PID; a stale process or cached schema must be reloaded.
 
+In `--read-only`, `revit_switch_target` is excluded. Select the intended process with `--read-only --target pid:<n>` when starting the gateway; restart that gateway connection with a new selector to change the binding. The target-list/current-target tools remain available, and document verification for writes is unnecessary because model writes are disabled.
+
 <a id="upgrade-troubleshooting"></a>
 
 ### Troubleshooting upgrades

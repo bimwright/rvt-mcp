@@ -86,8 +86,10 @@ namespace RvtMcp.Server
             }
         }
 
-        private static void RegisterHistoryRecovery(IServiceCollection services, RvtMcpConfig config)
+        internal static void RegisterRuntimeMaintenance(IServiceCollection services, RvtMcpConfig config)
         {
+            var spill = ResponseSpillWriter.ForConfig(config);
+            services.AddHostedService(_ => new SpillCleanupService(() => spill.Cleanup(DateTime.UtcNow)));
             if (config.EnableChangeHistoryOrDefault && !config.ReadOnlyOrDefault)
                 services.AddHostedService(_ => new Memory.HistoryRecoveryService(ToolGateway.History));
         }

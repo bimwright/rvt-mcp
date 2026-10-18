@@ -12,6 +12,9 @@ namespace RvtMcp.Server
 
         public static bool IsReadOnly => Config?.ReadOnlyOrDefault ?? false;
 
+        internal const string ReadOnlyTargetGuidance =
+            "List candidates with revit_list_available_targets, then restart the gateway with --read-only --target pid:<n> for the intended process. Read-only sessions cannot change the target binding through a tool.";
+
         public static string BlockIfReadOnly(string toolName)
         {
             if (!IsReadOnly || ToolReadPolicy.IsReadOnly(toolName)) return null;

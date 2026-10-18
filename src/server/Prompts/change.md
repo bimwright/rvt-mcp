@@ -5,6 +5,7 @@ Requested change: {change}
 Session: {mode}
 
 Before you start
+- In --read-only, target changes use --target pid:<n> at gateway startup and a gateway restart; revit_switch_target is unavailable. Keep this mode for survey/proposal only.
 - Call revit_get_current_target. If no target is pinned or the target is ambiguous, call revit_list_available_targets, ask me which instance, then pin it with revit_switch_target. Call revit_get_current_view_info to confirm the active document. If no document is open, stop and ask; do not open one implicitly.
 - Resolve ambiguous or missing targets with me; never interpret an empty request as the whole model. Use explicit element IDs and distinguish instance edits, assigning a different type to instances, and editing a type definition (which affects all its instances).
 - Use my stated reason. If I have not provided one, ask; if I do not know, record "unknown". Do not invent a reason or a design requirement.

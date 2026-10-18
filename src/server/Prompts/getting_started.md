@@ -4,6 +4,7 @@ Goal: orient yourself in the model open in Revit. Read-only: this prompt changes
 
 Before you start
 - Call revit_get_current_target. If no Revit is pinned or more than one is open, call revit_list_available_targets and ask me which instance to use; pin it with revit_switch_target.
+- In --read-only, switch_target is unavailable: choose --target pid:<n> at gateway startup and restart the gateway to change the binding. Do not enable writes to recover a read-only connection.
 
 Steps
 1. revit_get_current_view_info → active view name, view type, level, scale.

@@ -3965,7 +3965,7 @@
     },
     {
       "name": "revit_get_current_target",
-      "description_hash": "sha256:c17ffbaadead5d53a948679ee6bc0c935f2efb8c2ecc1b1a1374db7e1c3d59e6",
+      "description_hash": "sha256:480820b624c70ed5eb99fcb5f6fd57c53aeeef1b2ceb4569e204e7e9d4b8002e",
       "inputSchema": {
         "properties": {},
         "required": [],
@@ -4962,7 +4962,7 @@
     },
     {
       "name": "revit_health",
-      "description_hash": "sha256:4b979c833573bc59b892670e9e074d54dcebb9b97d584dee9dc96cb398c8bc39",
+      "description_hash": "sha256:28dde0e2b2b52c5efaa42d65db50d5152a7a2ddacbf416ebec21e43fe8d44a72",
       "inputSchema": {
         "properties": {
           "cancellationToken": {
@@ -5134,7 +5134,7 @@
     },
     {
       "name": "revit_list_available_targets",
-      "description_hash": "sha256:31a1864d0422161ae3b5a66ae57814ec46b176556597619f05cfed0bd12d5f6e",
+      "description_hash": "sha256:63ff9c0778da28c286a34179745d7447b3105525f255f680447f4469bd27c31f",
       "inputSchema": {
         "properties": {},
         "required": [],

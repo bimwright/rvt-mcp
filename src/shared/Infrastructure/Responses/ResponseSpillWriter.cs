@@ -613,31 +613,58 @@ namespace RvtMcp.Plugin
         private SpillCleanupResult Cleanup(DateTime utcNow, string? protectedPath)
         {
             var result = new SpillCleanupResult();
-            if (!Directory.Exists(_directory))
-                return result;
-
             // Age is the only reason to delete: no count or size cap may remove a file that is still
             // inside the retention time, because the agent holds only a preview and this path.
             var cutoff = utcNow.ToUniversalTime().Subtract(Retention);
             var kept = 0;
-            foreach (var path in Directory.GetFiles(_directory))
+            try
             {
-                var file = new FileInfo(path);
-                var isProtected = protectedPath != null
-                    && string.Equals(file.FullName, protectedPath, StringComparison.OrdinalIgnoreCase);
-                if (!isProtected && file.LastWriteTimeUtc < cutoff)
+                if (!Directory.Exists(_directory)) return result;
+                if (HasLinkedPath(_directory))
                 {
-                    if (TryDelete(file.FullName)) result.DeletedCount++;
-                    else { result.FailedCount++; kept++; }
+                    result.FailedCount++;
+                    return result;
                 }
-                else
+                foreach (var path in Directory.GetFiles(_directory))
                 {
-                    kept++;
+                    try
+                    {
+                        var file = new FileInfo(path);
+                        var isProtected = protectedPath != null
+                            && string.Equals(file.FullName, protectedPath, StringComparison.OrdinalIgnoreCase);
+                        if (isProtected) { kept++; continue; }
+                        if (HasLinkedPath(file.FullName)) { result.FailedCount++; kept++; continue; }
+                        if (file.LastWriteTimeUtc < cutoff)
+                        {
+                            if (TryDelete(file.FullName)) result.DeletedCount++;
+                            else { result.FailedCount++; kept++; }
+                        }
+                        else kept++;
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException
+                        || ex is System.Security.SecurityException)
+                    {
+                        result.FailedCount++;
+                        kept++;
+                    }
                 }
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException
+                || ex is System.Security.SecurityException)
+            {
+                // Cleanup also follows successful writes: maintenance failure must not fail that response.
+                result.FailedCount++;
             }
 
             result.RemainingCount = kept;
             return result;
+        }
+
+        private static bool HasLinkedPath(string path)
+        {
+            for (string? current = path; current != null && current.Length != 0; current = System.IO.Path.GetDirectoryName(current))
+                if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0) return true;
+            return false;
         }
 
         private static bool TryDelete(string path)

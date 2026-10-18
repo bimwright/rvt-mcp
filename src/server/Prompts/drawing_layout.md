@@ -5,6 +5,7 @@ Requested layout: {request}
 Session: {mode}
 
 Before you start
+- In --read-only, target changes use --target pid:<n> at gateway startup and a gateway restart; revit_switch_target is unavailable. Keep this mode for inspection/proposal only.
 - Call revit_get_current_target. If no target is pinned or more than one Revit is open, call revit_list_available_targets, ask me which instance, then pin it with revit_switch_target. Call revit_get_current_view_info to confirm the active document and whether the active view is the sheet I mean. If no document is open, stop and ask; do not open one.
 - Resolve the sheet (number or ID) and the viewports in scope with me. Never treat an empty request as every sheet or every viewport.
 - Keep the two coordinate systems apart. A view's crop is a camera frame placed in the project, so its own coordinates are project coordinates. A viewport sits on the sheet in paper millimetres from the sheet origin, and its visible crop rectangle is the crop divided by the view scale, anchored by the viewport. revit_get_viewport_geometry and revit_align_viewports already do this conversion and report sheet millimetres only; never mix project coordinates or feet with sheet values.

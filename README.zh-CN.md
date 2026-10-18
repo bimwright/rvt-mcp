@@ -373,7 +373,7 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 
 **Revit 重启后（即使只打开了一个 Revit）**，下一次调用会返回 `TARGET_CHANGED`，服务器会等待一次 `revit_switch_target` 调用后才发送命令。这是有意为之：重启后的 Revit 可能打开了另一个模型，因此服务器绝不会静默地重新绑定。返回内容中会给出建议的实例；确认后再重复调用即可。
 
-`revit_switch_target` 因改变会话路由而被标注为非只读，但在 `--read-only` 下仍然可用，以便随时恢复绑定。
+`revit_switch_target` 会修改会话路由，因此按非只读注解从 `--read-only` 中移除。启用全部 toolsets 时只读模式提供98个工具。启动网关时使用 `--read-only --target pid:<n>` 选择目标，修改目标时重启网关；目标列表与当前目标查询仍可使用。
 
 ---
 

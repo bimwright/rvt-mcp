@@ -90,11 +90,21 @@ namespace RvtMcp.Server
         internal static JObject TargetEnvelope(TargetPayload payload, JObject operation = null)
         {
             var json = payload.ToJson();
+            var message = payload.Message;
+            if (ServerState.IsReadOnly &&
+                (payload.RecommendedNextTool == "revit_switch_target"
+                 || payload.NextStep.Contains("revit_switch_target")
+                 || message.Contains("revit_switch_target")))
+            {
+                json["recommended_next_tool"] = "revit_list_available_targets";
+                json["next_step"] = ServerState.ReadOnlyTargetGuidance;
+                if (message.Contains("revit_switch_target")) message = ServerState.ReadOnlyTargetGuidance;
+            }
             FillWindowTitles(json);
             var envelope = new JObject
             {
                 ["success"] = false,
-                ["error"] = payload.Message,
+                ["error"] = message,
                 ["target"] = json
             };
             if (operation != null) envelope["_operation"] = operation.DeepClone();
@@ -123,7 +133,7 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_list_available_targets", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
             "List discovered live Revit instances with pid, window_title, target identity and connection state. " +
-            "Identify the intended instance before revit_switch_target; multiple instances may share a year, so never guess a target. Example: revit_switch_target(\"pid:<listed-pid>\").")]
+            "Identify the intended PID; multiple instances may share a year. Use revit_switch_target in writable sessions; in --read-only, set --target pid:<n> at gateway startup and restart it to change the target.")]
         public static string ListAvailableTargets()
         {
             try
@@ -156,6 +166,7 @@ namespace RvtMcp.Server
                     targets,
                     note = targets.Length == 0
                         ? "No revit-*.json descriptors found. Start Revit and ensure the rvt-mcp plugin is loaded (Add-Ins ribbon)."
+                        : ServerState.IsReadOnly ? ServerState.ReadOnlyTargetGuidance
                         : "Pin an instance with revit_switch_target — 'version' accepts a 4-digit year, 'pid:<n>' or 'id:<target_id>'. When several instances share a year, always pin with pid:<n>.",
                     update_available = UpdateStatus.ForStatusResult()
                 }, Formatting.Indented);
@@ -165,7 +176,7 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_get_current_target", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
             "Read the next command's Revit binding, connected pid, generation and confirmation state. " +
-            "When confirmation_required is true, select and verify the intended instance/document with revit_switch_target before writing.")]
+            "Before writes, select and verify the intended instance/document with revit_switch_target. In --read-only, choose --target pid:<n> at gateway startup; restart it to change the binding.")]
         public static string GetCurrentTarget()
         {
             try
@@ -192,6 +203,8 @@ namespace RvtMcp.Server
             "Switching closes the old connection and may interrupt in-flight calls; rebind=true leaves a live confirmed target, expectedDocumentId checks identity, and verify=false permits open_model but requires re-verification before model writes. Example: {version: \"pid:1234\"}.")]
         public static async Task<string> SwitchTarget(string version, bool verify = true, bool rebind = false, string expectedDocumentId = null)
         {
+            var blocked = ServerState.BlockIfReadOnly("switch_target");
+            if (blocked != null) return blocked;
             try
             {
                 // Parse the selector first — an invalid one changes nothing (§6.8).

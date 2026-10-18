@@ -27,6 +27,7 @@ namespace RvtMcp.Server
                 "                          Known toolsets: " + string.Join(", ", ToolsetFilter.KnownToolsets),
                 "                          Use 'all' to expose every toolset.",
                 "  --read-only             Expose only tools annotated ReadOnly=true (no document/file writes).",
+                "                          Select --target at startup; restart to change it (no switch_target tool).",
                 "  --enable-send-code      Expose arbitrary C# execution (default ON, independent of ToolBaker).",
                 "  --disable-send-code     Hide send_code_to_revit. --read-only also hides it.",
                 "  --enable-call-log       Persist tool-call params/results in server and plugin logs (default OFF).",

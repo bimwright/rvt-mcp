@@ -374,7 +374,7 @@ Mã lỗi target và cách xử lý. Mọi mã trừ `TARGET_INTERRUPTED` nghĩa
 
 **Sau khi khởi động lại Revit — kể cả khi chỉ mở một Revit** — lời gọi tiếp theo trả về `TARGET_CHANGED` và server chờ một lần gọi `revit_switch_target` rồi mới gửi lệnh. Đây là chủ đích: Revit vừa khởi động lại có thể đang mở một model khác, nên server không bao giờ tự bind lại một cách âm thầm. Payload có ghi instance được đề xuất; hãy xác nhận rồi gọi lại lệnh.
 
-`revit_switch_target` được chú thích non-read-only vì nó đổi định tuyến của phiên, nhưng vẫn khả dụng dưới `--read-only` để luôn khôi phục được binding.
+`revit_switch_target` thay đổi định tuyến phiên nên bị loại khỏi `--read-only`, đúng với annotation non-read-only. Chế độ read-only với all toolsets có 98 tool. Chọn `--read-only --target pid:<n>` khi khởi động gateway và khởi động lại gateway để đổi target; các tool liệt kê và đọc target vẫn dùng được.
 
 ---
 

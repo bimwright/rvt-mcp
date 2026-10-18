@@ -259,7 +259,8 @@ namespace RvtMcp.Server
             return $"The add-in loaded in {year} does not know the command '{command}'. It is most likely an older build than this server. "
                  + "Install the add-in from the same release as the server for that Revit year and restart Revit. "
                  + "If another Revit instance already has the newer add-in, call revit_list_available_targets to see its pid, "
-                 + "then pin it with revit_switch_target(\"pid:<n>\") — never guess.";
+                 + (ServerState.IsReadOnly ? ServerState.ReadOnlyTargetGuidance
+                    : "then pin it with revit_switch_target(\"pid:<n>\") — never guess.");
         }
 
         /// <summary>

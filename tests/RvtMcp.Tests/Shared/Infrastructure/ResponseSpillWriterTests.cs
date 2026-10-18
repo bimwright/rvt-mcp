@@ -265,6 +265,53 @@ namespace RvtMcp.Tests
             Assert.True(Encoding.UTF8.GetByteCount(spill.Envelope.ToString(Newtonsoft.Json.Formatting.None)) < ResponseSizeGuard.EnforcementBudgetBytes);
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Cleanup_refuses_linked_directory_or_ancestor(bool ancestor)
+        {
+            Directory.CreateDirectory(_directory);
+            var owner = Path.Combine(_directory, "owner");
+            var target = ancestor ? Path.Combine(owner, "spill") : owner;
+            Directory.CreateDirectory(target);
+            var expired = Path.Combine(target, "expired.txt");
+            File.WriteAllText(expired, "synthetic owner output");
+            File.SetLastWriteTimeUtc(expired, DateTime.UtcNow.AddDays(-3));
+            var link = Path.Combine(_directory, "linked");
+            Directory.CreateSymbolicLink(link, owner);
+            try
+            {
+                var result = new ResponseSpillWriter(ancestor ? Path.Combine(link, "spill") : link).Cleanup(DateTime.UtcNow);
+                Assert.Equal(1, result.FailedCount);
+                Assert.Equal(0, result.DeletedCount);
+                Assert.True(File.Exists(expired));
+            }
+            finally { Directory.Delete(link); }
+        }
+
+        [Fact]
+        public void Cleanup_preserves_linked_file_and_successful_write_response()
+        {
+            Directory.CreateDirectory(_directory);
+            var target = Path.Combine(_directory, "owner.txt");
+            File.WriteAllText(target, "synthetic owner output");
+            File.SetLastWriteTimeUtc(target, DateTime.UtcNow.AddDays(-3));
+            var spill = Path.Combine(_directory, "spill");
+            Directory.CreateDirectory(spill);
+            var link = Path.Combine(spill, "linked.txt");
+            File.CreateSymbolicLink(link, target);
+            try
+            {
+                var writer = new ResponseSpillWriter(spill);
+                var result = writer.Write("synthetic", "new output", ResponseSpillFormat.Text);
+                Assert.True(File.Exists(result.Path));
+                Assert.True(File.Exists(target));
+                Assert.True(File.Exists(link));
+                Assert.Equal(1, writer.Cleanup(DateTime.UtcNow).FailedCount);
+            }
+            finally { File.Delete(link); }
+        }
+
         public void Dispose()
         {
             try

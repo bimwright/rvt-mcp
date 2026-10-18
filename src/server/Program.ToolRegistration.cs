@@ -43,11 +43,7 @@ namespace RvtMcp.Server
                 .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly))
                 .Where(method => method.GetCustomAttribute<McpServerToolAttribute>() != null)
                 .Where(method => config?.ReadOnlyOrDefault != true
-                    || method.GetCustomAttribute<McpServerToolAttribute>().ReadOnly
-                    // revit_switch_target is annotated ReadOnly=false (it mutates session
-                    // routing) but must stay exposed in read-only sessions so the agent
-                    // can always recover the target binding (spec §6.8/§6.11).
-                    || method.GetCustomAttribute<McpServerToolAttribute>().Name == "revit_switch_target");
+                    || method.GetCustomAttribute<McpServerToolAttribute>().ReadOnly);
         }
 
         internal static IMcpServerBuilder RegisterToolsets(IMcpServerBuilder mcp, HashSet<string> enabled, RvtMcpConfig config)

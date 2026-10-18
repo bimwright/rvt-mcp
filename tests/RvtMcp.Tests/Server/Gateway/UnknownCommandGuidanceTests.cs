@@ -1,5 +1,6 @@
 using System;
 using Newtonsoft.Json.Linq;
+using RvtMcp.Plugin;
 using RvtMcp.Server;
 using Xunit;
 
@@ -9,6 +10,7 @@ namespace RvtMcp.Tests
     /// An add-in that predates a tool answers "Unknown command: name". The server turns that into guidance
     /// that names the Revit year and the next step.
     /// </summary>
+    [Collection("ServerStateConfig")]
     public class UnknownCommandGuidanceTests
     {
         [Fact]
@@ -52,6 +54,20 @@ namespace RvtMcp.Tests
             var ex = Assert.Throws<InvalidOperationException>(() => ToolGateway.InterpretResponse(response));
 
             Assert.Contains("does not know the command 'get_viewport_geometry'", ex.Message);
+        }
+
+        [Fact]
+        public void Read_only_unknown_command_guidance_uses_startup_target_selection()
+        {
+            var previous = ServerState.Config;
+            try
+            {
+                ServerState.Config = new RvtMcpConfig { ReadOnly = true };
+                var text = ToolGateway.UnknownCommandGuidance("Unknown command: get_viewport_geometry", "2027");
+                Assert.Contains("--target", text);
+                Assert.DoesNotContain("revit_switch_target", text);
+            }
+            finally { ServerState.Config = previous; }
         }
 
         [Fact]

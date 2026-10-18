@@ -386,7 +386,7 @@ Target error codes and how to react. Every code except `TARGET_INTERRUPTED` mean
 
 **After a Revit restart — even with a single Revit open** — the next call returns `TARGET_CHANGED` and the server waits for one `revit_switch_target` call before it sends anything. This is deliberate: the restarted Revit can have a different model open, so the server never rebinds to it silently. The payload names the proposed instance; confirm it and repeat the call.
 
-`revit_switch_target` is annotated non-read-only because it changes session routing, but it stays available under `--read-only` so the binding can always be recovered.
+`revit_switch_target` changes session routing and is excluded from `--read-only`, matching its non-read-only annotation. Read-only mode exposes 98 tools with all toolsets. Select the intended process using `--read-only --target pid:<n>` at gateway startup; to change it, restart the gateway with the new selector. `revit_list_available_targets` and `revit_get_current_target` remain available for inspection.
 
 `DOCUMENT_UNCONFIRMED` and `DOCUMENT_CHANGED` are add-in refusals: the request reached Revit but the model operation did not start. Check the reported `_target`, then confirm the intended document. Gateway and add-ins must both support `document_target_v1`; update them together. An add-in connected to an older gateway returns `PAIRING_REQUIRED` instead: update the server, because that gateway cannot confirm a document.
 

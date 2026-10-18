@@ -32,10 +32,19 @@ The [existing GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/
 - Remove the duplicate release-notes attachment, standalone metadata/evidence attachments, their checksum sidecars and redundant `SHA256SUMS.txt`. Keep the three package checksum sidecars used by installation guidance.
 - Remove the standalone doctor download after retaining a verified maintainer backup. The existing v1.1.0 Setup does not contain that script; bundling diagnostics into Setup remains a separate packaging change for a later release.
 
-## v1.2.0 — Unreleased
+## v1.2.0 — 2026-10-18
 
 ### Fixed
 
+- gbXML export on Revit 2026/2027 uses the required transaction and rolls it back after export, preserving the model; Revit-reported export failure is returned explicitly.
+- DGN export accepts an optional absolute `seedFile` path and reports failure when Revit rejects export or no new/updated DGN files are detected.
+- View-template deletion retains the template name before deletion, avoiding an error while building the successful deletion response.
+- Empty-tag cleanup finds tags owned by the requested view, including hidden/cropped tags, and retains their IDs safely in deletion results.
+- Base-point updates report actual coordinates and per-field application results. Partially applied requests return failure while preserving committed effects and readback in operation status.
+- Automatic room creation calculates topology inside a transaction, rolls back previews, and reads reported area/location after commit.
+- Send-code on Revit Home works after explicit process selection when no document is active; execution-time checks still reject an unconfirmed or changed document.
+- Operation receipts remain incomplete while execution is unfinished and report active-document changes separately from model mutations, including status and delayed summaries.
+- Shared-parameter `string`/`text` definitions use Revit's native Text spec; binding listings resolve shared GUIDs and parameter-element identities correctly. Tagging returns the final tag-head position after applying the requested tag type.
 - First writes and target verification against an older add-in report `PAIRING_REQUIRED` before asking for document confirmation. Both pairing directions explain matching Setup versions and the required Revit/client restart; no mutation is sent. An open-model verification problem remains separate from a version mismatch.
 - Legacy diagnostic cleanup retries transient lock/I/O failures up to three times in the background, without repeating completed items. Bounded summaries report pending, skipped or exhausted work; oversized legacy logs retain a 64 KiB tail.
 - Rejected tool calls retain complete, bounded key-only argument diagnostics in the journal, including send-code rejections and long key lists. Valid send-code calls continue to store only the code hash and length.
@@ -51,6 +60,8 @@ The [existing GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/
 
 ### Changed
 
+- Spill retention runs on gateway startup in the background and every five minutes while the gateway is running, even when no new spill is produced. Cleanup keeps the configured age limit, refuses linked paths, and retries later after transient maintenance failures.
+- Read-only registration follows tool annotations without session-navigation exceptions: `revit_switch_target` remains non-read-only and is omitted/blocked under `--read-only`. Select `--target pid:<n>` at startup and restart the gateway to change the read-only binding.
 - **Tool descriptions and instructions.** Core tool descriptions are shorter while retaining pre-call safety guidance. The send-code description includes both supported C# entry forms, available imports and operation-status guidance. Full-mode instructions no longer require loading the change prompt before every model change; the prompt remains available.
 - **Tool arguments are checked before a tool runs.** A call missing a required parameter now returns `INVALID_ARGUMENT` instead of the SDK's generic `An error occurred invoking '<tool>'.`, and the tool does not run. The error names the missing parameters, the keys received and the expected parameters, with `did_you_mean` for near-misses such as `Elevation` or `element_id`. Keys that are not parameters of the tool are no longer dropped silently: the call still runs, and the result lists them under the new `_ignored_arguments` field. A rejected call is journaled with key names only, never values. A value that cannot be converted (for example `"elevation": "abc"`) still returns the generic SDK error, with the cause in the server's stderr.
 - **Verified write targets and documents.** Model writes require an explicitly selected target and confirmed active document. `revit_switch_target(verify=true)` confirms the document; a changed document requires verification again.

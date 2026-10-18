@@ -17,13 +17,18 @@ namespace RvtMcp.Tests
         private readonly ITestOutputHelper _output;
         public ToolSurfaceBudgetTests(ITestOutputHelper output) => _output = output;
 
-        // Measure protocol tools, including descriptions and SDK-generated schemas, not golden hashes.
+        // Canonical descriptor benchmark: omit volatile health runtime identity, sort names,
+        // retain descriptions, annotations and SDK-generated schemas. Bytes are not model tokens.
         internal static string SerializeSurface(RvtMcpConfig config)
-            => JsonSerializer.Serialize(new ListToolsResult
+        {
+            var tools = Program.CreateRegisteredTools(ToolsetFilter.Resolve(config), config)
+                .Select(tool => tool.ProtocolTool).OrderBy(tool => tool.Name, System.StringComparer.Ordinal).ToArray();
+            foreach (var tool in tools) tool.Meta = null;
+            return JsonSerializer.Serialize(new ListToolsResult
             {
-                Tools = Program.CreateRegisteredTools(ToolsetFilter.Resolve(config), config)
-                    .Select(tool => tool.ProtocolTool).ToArray()
+                Tools = tools
             }, McpJsonUtilities.DefaultOptions);
+        }
 
         [Theory]
         [InlineData(false, false)]
@@ -33,8 +38,11 @@ namespace RvtMcp.Tests
         {
             var config = new RvtMcpConfig { ReadOnly = readOnly,
                 Toolsets = all ? new List<string> { "all" } : null };
-            var bytes = Encoding.UTF8.GetByteCount(SerializeSurface(config));
-            _output.WriteLine($"full all={all} readOnly={readOnly}: {bytes} bytes; ~{bytes / 4} tokens (estimate)");
+            var surface = SerializeSurface(config);
+            var bytes = Encoding.UTF8.GetByteCount(surface);
+            using var document = JsonDocument.Parse(surface);
+            var count = document.RootElement.GetProperty("tools").GetArrayLength();
+            _output.WriteLine($"descriptor all={all} readOnly={readOnly}: tools={count}; bytes={bytes}; runtime metadata excluded");
             Assert.True(bytes > 0);
         }
 

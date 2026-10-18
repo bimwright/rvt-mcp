@@ -14,7 +14,7 @@ namespace RvtMcp.Server
     {
         [McpServerTool(Name = "revit_health", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = true), Description(
             "Read gateway/plugin identity and last observed host state after selecting a target; defaults offline, with check_updates=true opting into a release lookup. " +
-            "Observations do not authorize writes: verify with revit_switch_target, follow update_guidance and client_verification, treat missing evidence as unknown, and never auto-install or downgrade.")]
+            "Observations do not authorize writes: verify writable sessions with revit_switch_target; in --read-only select --target at startup. Follow update_guidance/client_verification, treat missing evidence as unknown, and never auto-install or downgrade.")]
         public static Task<CallToolResult> Health(bool check_updates = false, CancellationToken cancellationToken = default)
             => Probe(check_updates, cancellationToken, new ReleaseUpdateCheck(), GatewayRuntime.Identity);
 

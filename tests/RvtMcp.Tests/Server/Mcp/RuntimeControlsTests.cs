@@ -136,16 +136,13 @@ namespace RvtMcp.Tests
                     Assert.Equal(attr.Name == "revit_health", attr.OpenWorld);
                 }
             }
-            // revit_switch_target is ReadOnly=false but stays registered under --read-only
-            // so the agent can always recover the target binding (spec §6.8/§6.11).
-            var expected = methods.Where(m => m.GetCustomAttribute<McpServerToolAttribute>().ReadOnly
-                    || m.GetCustomAttribute<McpServerToolAttribute>().Name == "revit_switch_target")
+            var expected = methods.Where(m => m.GetCustomAttribute<McpServerToolAttribute>().ReadOnly)
                 .Select(m => m.GetCustomAttribute<McpServerToolAttribute>().Name).OrderBy(n => n).ToArray();
             full.ReadOnly = true;
             var actual = Program.ResolveRegisteredToolMethods(ToolsetFilter.Resolve(full), full)
                 .Select(m => m.GetCustomAttribute<McpServerToolAttribute>().Name).OrderBy(n => n).ToArray();
             Assert.Equal(expected, actual);
-            Assert.Equal(expected.Where(n => n != "revit_switch_target").Select(n => n.Substring(6)).OrderBy(n => n),
+            Assert.Equal(expected.Select(n => n.Substring(6)).OrderBy(n => n),
                 ToolReadPolicy.ReadOnlyCommands.OrderBy(n => n));
             Assert.Contains("revit_list_schedules", actual);
             Assert.DoesNotContain("revit_capture_view_image", actual);

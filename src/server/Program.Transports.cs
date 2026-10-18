@@ -17,7 +17,7 @@ namespace RvtMcp.Server
         {
             var enabled = ToolsetFilter.Resolve(config);
             var builder = Host.CreateApplicationBuilder();
-            RegisterHistoryRecovery(builder.Services, config);
+            RegisterRuntimeMaintenance(builder.Services, config);
             // stdio MCP stdout must contain JSON-RPC only. ClearProviders() removes default
             // host logging, but the MCP SDK (and any transitive package) may re-add a Console
             // provider that writes to stdout. AddConsole with LogToStandardErrorThreshold=Trace
@@ -36,7 +36,7 @@ namespace RvtMcp.Server
         {
             var enabled = ToolsetFilter.Resolve(config);
             var builder = WebApplication.CreateBuilder();
-            RegisterHistoryRecovery(builder.Services, config);
+            RegisterRuntimeMaintenance(builder.Services, config);
             var mcp = builder.Services
                 .AddMcpServer(ConfigureMcpServerOptions)
                 .WithHttpTransport();
