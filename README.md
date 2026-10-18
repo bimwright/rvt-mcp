@@ -37,6 +37,8 @@ Agents get a **typed tool surface** for common Revit work, a C# escape hatch for
 
 ## Install
 
+**v1.2.0:** [Setup and Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.0) · [NuGet (server only)](https://www.nuget.org/packages/RvtMcp.Server/1.2.0) · [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.bimwright%2Frvt-mcp/versions/1.2.0). See the [validation record and remaining coverage](docs/testing/2026-10-18-v1.2.0-validation.md).
+
 **Let an AI agent install it for your target client.** Use an agent that can run PowerShell and edit local files on this Windows machine (Claude Code, Codex, Cursor, …), not a chat session without local tools. The agent installing it can be different from the client where you will use Revit tools. It follows [AGENTS.md](AGENTS.md), previews changes and asks before applying them; you may still need to approve a UI step or restart an app.
 
 For **Claude Desktop**, paste:
@@ -86,7 +88,7 @@ Community videos of rvt-mcp at work. Install steps shown in a video can be older
 
 ## Tools
 
-Counts below describe the **unreleased development source**; published releases can expose an older catalog.
+Counts below match the **v1.2.0 release**; later development builds can expose a different catalog.
 
 | Mode | Tools | Notes |
 |------|------:|-------|
@@ -173,7 +175,7 @@ If a prompt's toolsets aren't enabled, it answers with the exact `--toolsets` li
 
 ## Configuration
 
-**v1.2.0 candidate:** MCP warnings now default to rollback; unresolved issues block writes for that model. Review decisions in **History → Issues**. The new `revit_get_failure_records` and `revit_get_operation_status` tools read local state even while Revit is modal. Do not retry a pending or unknown operation. See [controlled failures and acceptance limits](docs/controlled-failures.md).
+**v1.2.0:** MCP warnings now default to rollback; unresolved issues block writes for that model. Review decisions in **History → Issues**. The new `revit_get_failure_records` and `revit_get_operation_status` tools read local state even while Revit is modal. Do not retry a pending or unknown operation. See [controlled failures and acceptance limits](docs/controlled-failures.md).
 
 Since v1.0.0 the server reports `_changes` and local per-model `_history`. History defaults on independently of call logs; use `--disable-change-history` to disable recording. The `meta` tools `revit_record_change`, `revit_get_change_records` and `revit_resolve_history_identity` attach reasons to explicit call IDs, query stored changes and record the owner's history choice after a copy or Save As. See [change tracking](docs/change-tracking.md) for privacy, limits and recovery.
 

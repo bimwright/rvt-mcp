@@ -130,7 +130,7 @@ Upgrading from v0.6.2 or earlier: those installers put the server in a versioned
 
 ### Verify an upgrade from v1.0.x or v1.1.0
 
-Development builds after v1.1.0 provide `revit_health` and clearer protocol-pairing refusals. Reinstalling the published v1.1.0 package does not add those changes; use the instructions and assets for the release being installed.
+v1.2.0 provides `revit_health` and clearer protocol-pairing refusals. Reinstalling the published v1.1.0 package does not add those changes; use the instructions and assets for the release being installed.
 
 1. Fully restart Revit and reconnect/restart the requested MCP client. Check its fresh `initialize` serverInfo and `tools/list`, rather than an earlier conversation's cached tool list.
 2. Call `revit_list_available_targets` and choose the intended instance. If several Revit windows share a year, use the listed `pid:<n>` selector in `revit_switch_target`; PID is not a new required argument on every tool.
@@ -187,6 +187,8 @@ dotnet build src/RvtMcp.sln -c Debug
 Close every Revit first — the build deploys plugin DLLs into `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\`. Point your MCP client at `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`. To exercise the real installer, build a throwaway setup package with `pwsh scripts/package-client-setup.ps1 -AllowDirty` and run `build/client-setup/stage/install.ps1` (`-Years 2024` for one year). Tests, packaging and conventions: [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## NuGet: server only
+
+[RvtMcp.Server 1.2.0](https://www.nuget.org/packages/RvtMcp.Server/1.2.0) is published on NuGet.org and listed in the [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.bimwright%2Frvt-mcp/versions/1.2.0).
 
 This does **not** install Revit plugins. Use it if the add-in is already on the machine (ZIP or a local build) and you want the MCP server on PATH:
 

@@ -2,6 +2,8 @@
 
 [工具描述大小基准](docs/benchmarks/2026-10-18-tool-descriptors.md) · [v1.2.0 验证结果与待验证项目](docs/testing/2026-10-18-v1.2.0-validation.md)（英文；不代表原生执行性能）。
 
+**v1.2.0 已发布：** [Setup 和 Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.0) · [NuGet（仅服务器）](https://www.nuget.org/packages/RvtMcp.Server/1.2.0) · [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.bimwright%2Frvt-mcp/versions/1.2.0)。
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/bimwright/.github/master/assets/logos/rvt-mcp.png" alt="rvt-mcp" width="180" />
 </p>
@@ -88,7 +90,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 ## Tools
 
-Counts below describe the **unreleased development source**; published releases can expose an older catalog.
+下表数量与 **v1.2.0 发布版**一致；后续开发版本的工具目录可能不同。
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
@@ -175,7 +177,7 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 
 ## 配置
 
-**Unreleased development:** Controlled failures, model gates and **History → Issues** decisions are described in the [English guide](docs/controlled-failures.md). `revit_get_failure_records` and `revit_get_operation_status` read local state while Revit is modal. Native acceptance remains pending; do not retry pending or unknown operations.
+**v1.2.0:** Controlled failures, model gates and **History → Issues** decisions are described in the [English guide](docs/controlled-failures.md). `revit_get_failure_records` and `revit_get_operation_status` read local state while Revit is modal. Native acceptance remains pending; do not retry pending or unknown operations.
 
 自 v1.0.0 起，服务器返回 `_changes` 和按模型保存的本地历史 `_history`。历史默认开启，与 call log 独立；使用 `--disable-change-history` 停止记录。`meta` 中的 `revit_record_change` 将原因关联到明确的 call ID，`revit_get_change_records` 用于查询历史。隐私、限制与恢复方式见[变更记录](docs/change-tracking.md)。
 

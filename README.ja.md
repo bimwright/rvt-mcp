@@ -2,6 +2,8 @@
 
 [ツール記述サイズのベンチマーク](docs/benchmarks/2026-10-18-tool-descriptors.md) · [v1.2.0 検証結果と未検証項目](docs/testing/2026-10-18-v1.2.0-validation.md)（英語。ネイティブ実行性能の測定ではありません）。
 
+**v1.2.0 公開済み：** [Setup と Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.0) · [NuGet（サーバーのみ）](https://www.nuget.org/packages/RvtMcp.Server/1.2.0) · [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.bimwright%2Frvt-mcp/versions/1.2.0)。
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/bimwright/.github/master/assets/logos/rvt-mcp.png" alt="rvt-mcp" width="180" />
 </p>
@@ -89,7 +91,7 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 ## Tools
 
-Counts below describe the **unreleased development source**; published releases can expose an older catalog.
+以下のツール数は **v1.2.0 リリース**に対応しています。以降の開発ビルドでは異なる場合があります。
 
 | モード | Tools | 注記 |
 |--------|------:|------|
@@ -176,7 +178,7 @@ v1.0.0 には 6 つの MCP プロンプトがあります。クライアント�
 
 ## 設定
 
-**Unreleased development:** Controlled failures, model gates and **History → Issues** decisions are described in the [English guide](docs/controlled-failures.md). `revit_get_failure_records` and `revit_get_operation_status` read local state while Revit is modal. Native acceptance remains pending; do not retry pending or unknown operations.
+**v1.2.0:** Controlled failures, model gates and **History → Issues** decisions are described in the [English guide](docs/controlled-failures.md). `revit_get_failure_records` and `revit_get_operation_status` read local state while Revit is modal. Native acceptance remains pending; do not retry pending or unknown operations.
 
 v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 `_history` を返します。履歴は call log と独立して既定で有効です。記録を止めるには `--disable-change-history` を指定します。`meta` の `revit_record_change` は明示した call ID に理由を関連付け、`revit_get_change_records` は履歴を検索します。プライバシー、制限、復旧は [変更の記録](docs/change-tracking.md) を参照してください。
 
