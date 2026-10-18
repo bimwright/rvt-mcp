@@ -3228,7 +3228,7 @@
     },
     {
       "name": "revit_export_dgn",
-      "description_hash": "sha256:c0d1800d83b0f7cac10733f75b9dd82f5d4707717bab271a970819edd9f01294",
+      "description_hash": "sha256:db3d3acded95e3daecde446ffbb281a3d626f60e4e72ee7ce49be20eb74a327e",
       "inputSchema": {
         "properties": {
           "fileNamePrefix": {
@@ -3236,6 +3236,10 @@
             "type": "String"
           },
           "outputFolder": {
+            "description": "",
+            "type": "String"
+          },
+          "seedFile": {
             "description": "",
             "type": "String"
           },

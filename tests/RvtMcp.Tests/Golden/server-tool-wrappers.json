@@ -1786,7 +1786,7 @@
       "calls": [
         {
           "command": "export_dgn",
-          "params": "{\"output_folder\":\"probe\",\"view_ids\":null,\"file_name_prefix\":\"\"}",
+          "params": "{\"output_folder\":\"probe\",\"view_ids\":null,\"file_name_prefix\":\"\",\"seed_file\":\"\"}",
           "timeout": null
         }
       ],
@@ -1796,7 +1796,7 @@
       "calls": [
         {
           "command": "export_dgn",
-          "params": "{\"output_folder\":\"probe\",\"view_ids\":null,\"file_name_prefix\":\"\"}",
+          "params": "{\"output_folder\":\"probe\",\"view_ids\":null,\"file_name_prefix\":\"\",\"seed_file\":\"\"}",
           "timeout": null
         }
       ],

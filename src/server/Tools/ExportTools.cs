@@ -21,10 +21,10 @@ namespace RvtMcp.Server
         public static async Task<string> ExportDwg(string outputFolder, long[] viewIds = null, string settingsName = "", string fileNamePrefix = "")
             => await ToolGateway.CallAsync("export_dwg", new { output_folder = outputFolder, view_ids = viewIds, settings_name = settingsName, file_name_prefix = fileNamePrefix });
 
-        [McpServerTool(Name = "revit_export_dgn", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Export sheets or views to MicroStation DGN. outputFolder must be an existing absolute path. viewIds defaults to the active view. Do not retry on 60s timeout; Revit may still be running the command." +
+        [McpServerTool(Name = "revit_export_dgn", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Export sheets or views to MicroStation DGN. outputFolder must be an existing absolute path. viewIds defaults to the active view. seedFile optionally supplies an existing absolute .dgn seed path; omitted uses Revit defaults, which may require a configured seed. Do not retry on 60s timeout; Revit may still be running the command." +
             " May overwrite existing output files. Revit Undo cannot restore them; back up the destination first.")]
-        public static async Task<string> ExportDgn(string outputFolder, long[] viewIds = null, string fileNamePrefix = "")
-            => await ToolGateway.CallAsync("export_dgn", new { output_folder = outputFolder, view_ids = viewIds, file_name_prefix = fileNamePrefix });
+        public static async Task<string> ExportDgn(string outputFolder, long[] viewIds = null, string fileNamePrefix = "", string seedFile = "")
+            => await ToolGateway.CallAsync("export_dgn", new { output_folder = outputFolder, view_ids = viewIds, file_name_prefix = fileNamePrefix, seed_file = seedFile });
 
         [McpServerTool(Name = "revit_export_dwf", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Export sheets or views to Autodesk DWF/DWFx. outputFolder must be an existing absolute path. viewIds defaults to the active view. useDwfx=true exports DWFx. Do not retry on 60s timeout; Revit may still be running the command." +
             " May overwrite existing output files. Revit Undo cannot restore them; back up the destination first.")]

@@ -89,6 +89,16 @@ namespace RvtMcp.Tests
             Assert.Equal(@"C:\out", json.Value<string>("output_folder"));
             Assert.Null(json["view_ids"]);
             Assert.Equal("", json.Value<string>("file_name_prefix"));
+            Assert.Equal("", json.Value<string>("seed_file"));
+        }
+
+        [Fact]
+        public async Task Export_dgn_forwards_the_explicit_seed_without_changing_it()
+        {
+            var sent = await Capture.Send(() => ExportTools.ExportDgn(@"D:\out", new long[] { 7 }, "plan", @"D:\seeds\V8-Metric-Seed3D.dgn"));
+            Assert.Equal("export_dgn", sent.Command);
+            Assert.Equal(@"D:\seeds\V8-Metric-Seed3D.dgn", sent.Json().Value<string>("seed_file"));
+            Assert.Equal(new long[] { 7 }, sent.Json()["view_ids"].ToObject<long[]>());
         }
 
         [Fact]
