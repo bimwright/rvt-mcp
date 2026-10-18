@@ -83,7 +83,7 @@ namespace RvtMcp.Server
             try { final = JObject.Parse(execution.Result); } catch { final = new JObject(); }
             status["execution"] = "completed";
             if (final["_operation"] is JObject operation)
-                foreach (var key in new[] { "outcome", "mutationApplied", "complete" })
+                foreach (var key in new[] { "outcome", "mutationApplied", "activeDocumentChanged", "activeModelBefore", "activeModelAfter", "complete" })
                     if (operation[key] != null) status[key] = operation[key].DeepClone();
             if (status["complete"] == null) status["complete"] = true;
             var bounded = new JObject { ["success"] = final["success"]?.DeepClone(), ["error"] = final["error"]?.DeepClone() };
@@ -134,6 +134,8 @@ namespace RvtMcp.Server
             {
                 summary["outcome"] = operation["outcome"]?.DeepClone();
                 summary["mutationApplied"] = operation["mutationApplied"]?.DeepClone();
+                foreach (var key in new[] { "activeDocumentChanged", "activeModelBefore", "activeModelAfter" })
+                    if (operation[key] != null) summary[key] = operation[key].DeepClone();
             }
             var data = BoundedData(final["data"], entry.IsRead);
             if (data != null) summary["data"] = data;

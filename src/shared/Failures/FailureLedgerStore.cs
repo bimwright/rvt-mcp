@@ -263,7 +263,7 @@ AND NOT ((o.execution='completed' OR o.execution='interrupted_unknown') AND EXIS
             {
                 if (!(result[receiptName] is JObject receipt)) continue;
                 var retained = new JObject();
-                foreach (var field in new[] { "schemaVersion", "operationId", "incidentIds", "modelScopeKey", "action", "outcome", "execution", "gate", "persistence", "complete", "mutationApplied", "messageCount", "countKind", "id", "callId", "recorded", "modelKey" })
+                foreach (var field in new[] { "schemaVersion", "operationId", "incidentIds", "modelScopeKey", "action", "outcome", "execution", "gate", "persistence", "complete", "mutationApplied", "activeDocumentChanged", "activeModelBefore", "activeModelAfter", "messageCount", "countKind", "id", "callId", "recorded", "modelKey" })
                 {
                     if (receipt[field] is JArray ids) retained[field] = new JArray(ids.Take(20));
                     else if (receipt[field] is JValue value) retained[field] = value.Type == JTokenType.String ? (JToken)FailureCapture.SafeText(value.Value<string>(), 64) : value.DeepClone();

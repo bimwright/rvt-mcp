@@ -16,6 +16,7 @@ namespace RvtMcp.Failures
         public bool NativeCommitted { get; set; }
         public bool StorageFailed { get; set; }
         public bool NativeOutcomeUnknown { get; set; }
+        public bool ActiveDocumentObserved { get; set; }
     }
 
     // Execution completion is judged from native facts, never from a caller timeout.
@@ -25,6 +26,10 @@ namespace RvtMcp.Failures
         {
             if (operation == null) throw new ArgumentNullException(nameof(operation));
             if (facts == null) throw new ArgumentNullException(nameof(facts));
+
+            operation.ActiveDocumentChanged = facts.ActiveDocumentObserved
+                ? (bool?)!string.Equals(operation.ActiveModelBefore, operation.ActiveModelAfter, StringComparison.Ordinal)
+                : null;
 
             bool applied = facts.AnyCommittedChanges || facts.NativeCommitted;
             operation.Outcome = !facts.ExecutionStarted ? "not_started"

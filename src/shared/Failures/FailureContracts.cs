@@ -61,6 +61,7 @@ namespace RvtMcp.Failures
         public bool RequiresReview { get; set; }
         public string ActiveModelBefore { get; set; }
         public string ActiveModelAfter { get; set; }
+        public bool? ActiveDocumentChanged { get; set; }
         public List<string> IncidentIds { get; set; } = new List<string>();
         public JObject FinalResult { get; set; }
         public DateTimeOffset StartedUtc { get; set; } = DateTimeOffset.UtcNow;

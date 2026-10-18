@@ -229,6 +229,7 @@ namespace RvtMcp.Plugin.Failures
             private int _capturedMessages, _capturedReferences, _capturedBytes;
             private readonly HashSet<string> _snapshotKeys = new HashSet<string>();
             private bool _finished;
+            private bool _activeDocumentBeforeObserved;
             private int _cycle;
 
             internal Scope(UIApplication app, PendingRequest request)
@@ -272,6 +273,7 @@ namespace RvtMcp.Plugin.Failures
                     var activeDocument = Application.ActiveUIDocument?.Document;
                     if (IsRead) { if (activeDocument != null) Documents.TryGetValue(activeDocument, out state); }
                     else state = State(activeDocument, refresh: true);
+                    _activeDocumentBeforeObserved = activeDocument == null || state != null;
                     if (state != null)
                     {
                         Operation.ActiveModelBefore = state.Model.ModelScopeKey;
@@ -518,6 +520,7 @@ namespace RvtMcp.Plugin.Failures
                 if (_finished) return;
                 _finished = true;
                 Operation.Execution = "completed";
+                bool activeDocumentAfterObserved = false;
                 try
                 {
                     var doc = Application.ActiveUIDocument?.Document;
@@ -525,6 +528,7 @@ namespace RvtMcp.Plugin.Failures
                     if (IsRead) { if (doc != null) Documents.TryGetValue(doc, out state); }
                     else state = State(doc);
                     Operation.ActiveModelAfter = state?.Model.ModelScopeKey;
+                    activeDocumentAfterObserved = doc == null || state != null;
                 }
                 catch { Operation.Complete = false; }
                 FailureCompletion.Apply(Operation, new FailureCompletionFacts
@@ -533,7 +537,8 @@ namespace RvtMcp.Plugin.Failures
                     IsReadOnly = IsRead, HasPersistedRecord = Persisted, HasIncidents = Incidents.Count > 0,
                     PolicyStopped = Stopped, NativeCancelled = Cancelled, GroupRolledBack = BatchRolledBack,
                     AnyCommittedChanges = AnyCommitted, NativeCommitted = NativeCommitted,
-                    StorageFailed = StorageFailed, NativeOutcomeUnknown = NativeOutcome == "unknown"
+                    StorageFailed = StorageFailed, NativeOutcomeUnknown = NativeOutcome == "unknown",
+                    ActiveDocumentObserved = _activeDocumentBeforeObserved && activeDocumentAfterObserved
                 });
                 if (Operation.RequiresReview)
                 {
@@ -587,6 +592,7 @@ namespace RvtMcp.Plugin.Failures
                         ["hostInstanceId"] = HostInstanceId,
                         ["execution"] = Operation.Execution, ["outcome"] = Operation.Outcome, ["mutationApplied"] = Operation.MutationApplied,
                         ["activeModelBefore"] = Operation.ActiveModelBefore, ["activeModelAfter"] = Operation.ActiveModelAfter,
+                        ["activeDocumentChanged"] = Operation.ActiveDocumentChanged.HasValue ? new JValue(Operation.ActiveDocumentChanged.Value) : JValue.CreateNull(),
                         ["complete"] = Operation.Complete, ["requiresReview"] = Operation.RequiresReview,
                         ["observationCoverage"] = Operation.ObservationCoverage };
                 if (baselineIds.Count > 0 && envelope["_operation"] is JObject operation)

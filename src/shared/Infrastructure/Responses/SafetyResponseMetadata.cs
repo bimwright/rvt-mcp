@@ -51,7 +51,7 @@ namespace RvtMcp.Plugin
             if (!compact && Bytes(result) <= budget) return result;
             if (!compact && ShrinkDialogs(result) && Bytes(result) <= budget) return result;
             var minimal = new JObject();
-            foreach (var key in new[] { "schemaVersion", "operationId", "hostInstanceId", "incidentIds", "modelScopeKey", "action", "execution", "outcome", "mutationApplied", "gate", "persistence", "complete", "requiresReview", "messageCount", "observationCoverage" })
+            foreach (var key in new[] { "schemaVersion", "operationId", "hostInstanceId", "incidentIds", "modelScopeKey", "action", "execution", "outcome", "mutationApplied", "activeDocumentChanged", "gate", "persistence", "complete", "requiresReview", "messageCount", "observationCoverage" })
                 if (result[key] != null) minimal[key] = result[key].DeepClone();
             minimal["summaryTruncated"] = true;
             // Identifiers are bounded by the producer; still defend against malformed older plugins.
