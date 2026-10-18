@@ -48,7 +48,16 @@ namespace RvtMcp.Failures
         public string Outcome { get; set; } = "unknown";
         public bool? MutationApplied { get; set; }
         public string ObservationCoverage { get; set; } = "supported_handlers_only";
+        // Capture completeness is retained while the UI is waiting. Wire completion
+        // additionally requires execution to have finished.
+        [JsonIgnore]
         public bool Complete { get; set; } = true;
+        [JsonProperty("complete")]
+        private bool ReceiptComplete
+        {
+            get => Execution == "completed" && Complete;
+            set => Complete = value;
+        }
         public bool RequiresReview { get; set; }
         public string ActiveModelBefore { get; set; }
         public string ActiveModelAfter { get; set; }
