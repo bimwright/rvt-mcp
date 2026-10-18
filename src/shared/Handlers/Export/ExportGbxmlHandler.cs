@@ -10,7 +10,7 @@ namespace RvtMcp.Plugin.Handlers
     /// <summary>
     /// Exports the active document's energy analytical data to a gbXML
     /// (Green Building XML) file using GBXMLExportOptions.
-    /// No Transaction is used (export is a read-only document operation).
+    /// Revit 2026+ requires a transaction; roll it back after writing the file.
     /// gbXML export requires the model to carry energy analytical data — rooms
     /// or spaces with bounding geometry plus energy/analysis settings. When the
     /// model has no analytical data the Revit export throws; that case is caught
@@ -94,8 +94,22 @@ namespace RvtMcp.Plugin.Handlers
             // export; the model must hold energy analytical data for it to succeed.
             try
             {
-                var opts = new GBXMLExportOptions();
-                doc.Export(outputFolder, bareName, opts);
+                bool exported;
+                using (var opts = new GBXMLExportOptions())
+                {
+#if REVIT2026 || REVIT2027_OR_GREATER
+                    using (var tx = new Transaction(doc, "RvtMcp: Export gbXML"))
+                    {
+                        tx.Start();
+                        exported = doc.Export(outputFolder, bareName, opts);
+                        tx.RollBack();
+                    }
+#else
+                    exported = doc.Export(outputFolder, bareName, opts);
+#endif
+                }
+                if (!exported)
+                    return BuildErrorDto(outputFolder, "Revit reported that gbXML export did not succeed.");
             }
             catch (Autodesk.Revit.Exceptions.ApplicationException revitEx)
             {
