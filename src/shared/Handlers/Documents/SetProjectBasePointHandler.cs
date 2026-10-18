@@ -188,15 +188,40 @@ namespace RvtMcp.Plugin.Handlers
                 }
             }
 
+            var actualEw = ewParam.AsDouble();
+            var actualNs = nsParam.AsDouble();
+            var actualElev = elevParam.AsDouble();
+            var actualAngle = angleParam?.AsDouble() ?? 0.0;
+            var ewApplied = Math.Abs(actualEw - proposedEw) <= 1e-6;
+            var nsApplied = Math.Abs(actualNs - proposedNs) <= 1e-6;
+            var elevApplied = Math.Abs(actualElev - proposedElev) <= 1e-6;
+            var angleApplied = isSurvey || Math.Abs(actualAngle - proposedAngle) <= 1e-8;
+            var allApplied = ewApplied && nsApplied && elevApplied && angleApplied;
+            var anyChanged = Math.Abs(actualEw - beforeEw) > 1e-6 || Math.Abs(actualNs - beforeNs) > 1e-6
+                || Math.Abs(actualElev - beforeElev) > 1e-6 || Math.Abs(actualAngle - beforeAngle) > 1e-8;
+            if (!allApplied)
+                warnings.Add("Revit did not apply every requested coordinate. Inspect the actual after values and native dialog choices; do not retry unchanged.");
+
             return CommandResult.Ok(new
             {
-                dry_run = false,
-                updated = true,
-                point_kind = pointKind,
-                element_id = RevitCompat.GetId(point.Id),
-                before = beforeDto,
-                after = afterDto,
-                warnings = warnings
+                    success = allApplied,
+                    error = allApplied ? null : "Requested base point coordinates were not fully applied. Inspect the returned actual coordinates before another operation.",
+                    dry_run = false,
+                    updated = allApplied,
+                    partially_updated = !allApplied && anyChanged,
+                    point_kind = pointKind,
+                    element_id = RevitCompat.GetId(point.Id),
+                    before = beforeDto,
+                    requested = afterDto,
+                    after = new
+                    {
+                        east_west_mm = Math.Round(actualEw * FeetToMm, 3),
+                        north_south_mm = Math.Round(actualNs * FeetToMm, 3),
+                        elevation_mm = Math.Round(actualElev * FeetToMm, 3),
+                        angle_to_true_north_deg = Math.Round(actualAngle * (180.0 / Math.PI), 4)
+                    },
+                    applied_fields = new { east_west = ewApplied, north_south = nsApplied, elevation = elevApplied, angle_to_true_north = angleApplied },
+                    warnings
             });
         }
     }
