@@ -73,12 +73,17 @@ namespace RvtMcp.Tests
             Assert.True(store.GetGate(model.ModelScopeKey).Blocked);
         }
 
-        [Fact] public void OrdinaryQueriesDoNotCreateDatabaseOrDirectories()
+        [Fact] public void MissingLedgerBecomesAnEmptyDatabaseAndDoesNotBlock()
         {
             var store = new FailureLedgerStore(Db, readOnly: true);
-            Assert.False(store.Query(new FailureRecordQuery()).Available); Assert.Null(store.GetOperation("missing"));
-            Assert.Empty(store.GetModels()); Assert.Empty(store.GetRules("model")); Assert.False(store.GetGate("model").Blocked);
-            Assert.False(Directory.Exists(_root)); Assert.Throws<InvalidOperationException>(() => store.Initialize());
+            var page = store.Query(new FailureRecordQuery());
+            Assert.True(page.Available); Assert.Empty(page.Records); Assert.Null(store.GetOperation("missing"));
+            Assert.Empty(store.GetModels()); Assert.Empty(store.GetIssueModels()); Assert.Empty(store.GetRules("model"));
+            Assert.False(store.GetGate("model").Blocked);
+            Assert.True(File.Exists(Db)); Assert.Throws<InvalidOperationException>(() => store.Initialize());
+            File.WriteAllText(Db, "corrupt database");
+            Assert.Throws<SqliteException>(() => store.GetGate("model"));
+            Assert.Equal("corrupt database", File.ReadAllText(Db));
         }
         [Fact] public void SamePhysicalFileAliasRetainsGateWhileCopyGetsSeparateScope()
         {

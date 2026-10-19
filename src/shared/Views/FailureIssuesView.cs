@@ -19,7 +19,7 @@ namespace RvtMcp.Plugin.Views
     {
         // Bounded read on the Revit UI thread; the status line says when older issues are left out.
         private const int MaxIssueRows = 500;
-        private readonly ComboBox _models = new ComboBox { Height = 28, MinWidth = 210, MaxWidth = 340, DisplayMemberPath = "Title", VerticalContentAlignment = VerticalAlignment.Center };
+        private readonly ComboBox _models = new ComboBox { Height = 28, MinWidth = 360, MaxWidth = 650, HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Center };
         private readonly ComboBox _states = new ComboBox { Height = 28, MinWidth = 130, VerticalContentAlignment = VerticalAlignment.Center };
         private readonly TextBlock _status = new TextBlock { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(4, 0, 4, 6) };
         private readonly DataGrid _grid;
@@ -74,6 +74,8 @@ namespace RvtMcp.Plugin.Views
 
         internal FailureIssuesView()
         {
+            _models.ItemTemplate = ModelTemplate();
+            TextSearch.SetTextPath(_models, "Title");
             var root = new Grid { Margin = new Thickness(8, 6, 8, 8) };
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -212,7 +214,7 @@ namespace RvtMcp.Plugin.Views
             });
 
             _models.SelectionChanged += (s, e) => { if (!_loading) LoadPage(); };
-            _states.SelectionChanged += (s, e) => { if (!_loading) LoadPage(); };
+            _states.SelectionChanged += (s, e) => { if (!_loading) Refresh(); };
             _languageChanged = (s, e) => {
                 if (Dispatcher.HasShutdownStarted) return;
                 if (Dispatcher.CheckAccess()) ApplyLocalization();
@@ -258,18 +260,19 @@ namespace RvtMcp.Plugin.Views
         internal void Refresh()
         {
             _loading = true;
-            var wanted = (_models.SelectedItem as FailureModel)?.ModelScopeKey;
             try
             {
                 var context = FailureControl.GetUiContext();
-                var models = Reader().GetModels();
-                if (context?.IsAvailable == true && models.All(m => m.ModelScopeKey != context.ModelScopeKey))
-                    models.Insert(0, new FailureModel { ModelScopeKey = context.ModelScopeKey, Title = context.ModelTitle });
+                var state = (_states.SelectedItem as ComboBoxItem)?.Tag as string;
+                var models = Reader().GetIssueModels(string.IsNullOrEmpty(state) ? null : state).Select(m => new ModelRow(m, context)).ToList();
                 _models.ItemsSource = models;
-                _models.SelectedItem = models.FirstOrDefault(m => m.ModelScopeKey == wanted)
-                    ?? models.FirstOrDefault(m => m.ModelScopeKey == context?.ModelScopeKey) ?? models.FirstOrDefault();
+                _models.SelectedItem = models.FirstOrDefault(m => m.IsCurrent) ?? models.FirstOrDefault();
             }
-            catch (Exception ex) { ShowFailure(ex.Message); }
+            catch (Exception ex)
+            {
+                _models.ItemsSource = null; _grid.ItemsSource = null; _rules.ItemsSource = null;
+                ShowRules(false); SelectIssue(null); ShowFailure(ex.Message); return;
+            }
             finally { _loading = false; }
             LoadPage();
         }
@@ -279,18 +282,19 @@ namespace RvtMcp.Plugin.Views
         private void LoadPage()
         {
             if (_loading) return;
-            var model = _models.SelectedItem as FailureModel;
+            var model = _models.SelectedItem as ModelRow;
             if (model == null)
             {
                 _grid.ItemsSource = null;
                 _rules.ItemsSource = null;
                 ShowRules(false);
-                SetStatus(L.T("failure.noModel"), Brushes.DimGray);
+                SetStatus(L.T("failure.empty"), Brushes.DimGray);
                 SelectIssue(null); return;
             }
-            if (_lastScope != model.ModelScopeKey)
+            var selectionKey = model.ModelScopeKey + ":" + model.RevitYear;
+            if (_lastScope != selectionKey)
             {
-                _reason.Clear(); _verified.IsChecked = false; _lastScope = model.ModelScopeKey;
+                _reason.Clear(); _verified.IsChecked = false; _lastScope = selectionKey;
             }
             try
             {
@@ -304,7 +308,7 @@ namespace RvtMcp.Plugin.Views
                 while (incidents.Count < MaxIssueRows)
                 {
                     var page = reader.Query(new FailureRecordQuery {
-                        ModelScopeKey = model.ModelScopeKey, State = string.IsNullOrEmpty(state) ? null : state,
+                        ModelScopeKey = model.ModelScopeKey, RevitYear = model.RevitYear, State = string.IsNullOrEmpty(state) ? null : state,
                         Cursor = cursor, Limit = 100, IncludeDetails = false, NewestFirst = true
                     });
                     available = page.Available;
@@ -336,9 +340,7 @@ namespace RvtMcp.Plugin.Views
                 _grid.SelectedItem = rows.FirstOrDefault(r => r.Incident.IncidentId == selectedId) ?? rows.FirstOrDefault();
                 var gate = FailureControl.GetUiGate(model.ModelScopeKey);
                 var parts = new List<string>();
-                var active = FailureControl.GetUiContext();
-                parts.Add(active?.IsAvailable == true
-                    ? L.T("failure.activeModel", ("title", active.ModelTitle ?? Unknown())) : L.T("failure.noModel"));
+                parts.Add(L.T("failure.filter.model") + ": " + model.Label);
                 parts.Add(available ? L.T(gate.Blocked ? "failure.gate.blocked" : "failure.gate.clear") : L.T("failure.unavailable"));
                 if (!complete) parts.Add(L.T("failure.detail.incomplete"));
                 if (more) parts.Add(L.T("failure.list.newest", ("count", rows.Count)));
@@ -432,7 +434,7 @@ namespace RvtMcp.Plugin.Views
         {
             if (_incident == null) return "";
             var text = new StringBuilder();
-            text.AppendLine(_incident.ModelTitle ?? (_models.SelectedItem as FailureModel)?.Title);
+            text.AppendLine(_incident.ModelTitle ?? (_models.SelectedItem as ModelRow)?.Title);
             text.AppendLine(L.T("failure.detail.identity", ("incident", _incident.IncidentId),
                 ("operation", _incident.OperationId), ("scope", _incident.ModelScopeKey)));
             text.AppendLine((_operation?.Tool ?? Unknown()) + " · " + (_operation?.Execution ?? Unknown())
@@ -555,7 +557,7 @@ namespace RvtMcp.Plugin.Views
                 return;
             }
             _reason.Clear(); _verified.IsChecked = false; _dialogConsent.IsChecked = false;
-            LoadPage();
+            Refresh();
             SetStatus(L.T("failure.decision.saved") + " · " + _status.Text, _status.Foreground as Brush ?? Brushes.DimGray);
         }
 
@@ -652,6 +654,7 @@ namespace RvtMcp.Plugin.Views
             foreach (ComboBoxItem item in _states.Items)
                 item.Content = (string)item.Tag == "" ? L.T("failure.filter.all") : L.T("failure.state." + item.Tag);
             if (_grid != null) _grid.Items.Refresh();
+            _models.Items.Refresh();
             _rules.Items.Refresh();
             if (_warningCards != null) RenderDetails();
             if (_accept != null) UpdateActions();
@@ -863,6 +866,44 @@ namespace RvtMcp.Plugin.Views
         private static string ActionLabel(string action) => L.T("security.failure." +
             (action == "accept_once" ? "acceptOnce" : action == "create_rule" ? "createRule"
                 : action == "native_grant" ? "nativeGrant" : action));
+
+        private static DataTemplate ModelTemplate()
+        {
+            var row = new FrameworkElementFactory(typeof(DockPanel));
+            row.SetBinding(FrameworkElement.ToolTipProperty, new Binding("Description"));
+            var count = new FrameworkElementFactory(typeof(TextBlock));
+            count.SetValue(DockPanel.DockProperty, Dock.Right);
+            count.SetValue(TextBlock.ForegroundProperty, Brushes.Firebrick);
+            count.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
+            count.SetBinding(TextBlock.TextProperty, new Binding("Count"));
+            row.AppendChild(count);
+            var label = new FrameworkElementFactory(typeof(TextBlock));
+            label.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
+            label.SetBinding(TextBlock.TextProperty, new Binding("Prefix"));
+            label.SetBinding(TextBlock.FontWeightProperty, new Binding("LabelWeight"));
+            row.AppendChild(label);
+            return new DataTemplate(typeof(ModelRow)) { VisualTree = row };
+        }
+
+        private sealed class ModelRow
+        {
+            private readonly FailureIssueModel _model;
+            public string ModelScopeKey => _model.ModelScopeKey;
+            public int RevitYear => _model.RevitYear;
+            public bool IsCurrent { get; }
+            public FontWeight LabelWeight => IsCurrent ? FontWeights.Bold : FontWeights.Normal;
+            public string Title => string.IsNullOrWhiteSpace(_model.Title) ? Unknown() + " (" + ModelScopeKey.Substring(0, Math.Min(8, ModelScopeKey.Length)) + ")" : _model.Title;
+            public string Label => (RevitYear == 0 ? "R?" : "R" + (RevitYear % 100).ToString("D2", CultureInfo.InvariantCulture))
+                + " - " + (_model.IsFamilyDocument.HasValue ? _model.IsFamilyDocument.Value ? "Family" : "Project" : Unknown()) + " - " + Title;
+            public string Prefix => (IsCurrent ? "● " : "") + Label + " - ";
+            public string Count => _model.IssueCount.ToString("n0", CultureInfo.CurrentCulture);
+            public string Description => (IsCurrent ? L.T("failure.activeModel", ("title", Title)) + "\n" : "") + Prefix + Count + "\n" + ModelScopeKey;
+            internal ModelRow(FailureIssueModel model, FailureIssuesContext context)
+            {
+                _model = model;
+                IsCurrent = context?.IsAvailable == true && model.ModelScopeKey == context.ModelScopeKey && model.RevitYear == context.RevitYear;
+            }
+        }
 
         private sealed class IssueRow
         {

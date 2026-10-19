@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using Microsoft.Data.Sqlite;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -131,7 +132,7 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public async Task Missing_ledger_queries_create_no_files_and_never_send_to_Revit()
+        public async Task Missing_ledger_queries_create_an_empty_database_and_never_send_to_Revit()
         {
             var root = Path.Combine(Path.GetTempPath(), "rvt-failure-query-" + Guid.NewGuid().ToString("N"));
             var factory = FailureTools.StoreFactory;
@@ -140,11 +141,18 @@ namespace RvtMcp.Tests
             {
                 FailureTools.StoreFactory = () => new FailureLedgerStore(Path.Combine(root, "ledger.db"), readOnly: true);
                 ToolGateway.SendOverride = (_, __, ___) => throw new Exception("Local queries must not dispatch Revit.");
-                Assert.False(JObject.Parse(FailureTools.GetFailureRecords(modelScopeKey: "model1")).Value<bool>("available"));
+                var records = JObject.Parse(FailureTools.GetFailureRecords(modelScopeKey: "model1"));
+                Assert.True(records.Value<bool>("available"));
+                Assert.Empty(records["records"]);
                 Assert.False(JObject.Parse(await FailureTools.GetOperationStatus("operation1")).Value<bool>("available"));
-                Assert.False(Directory.Exists(root));
+                Assert.True(File.Exists(Path.Combine(root, "ledger.db")));
             }
-            finally { FailureTools.StoreFactory = factory; ToolGateway.SendOverride = send; }
+            finally
+            {
+                FailureTools.StoreFactory = factory; ToolGateway.SendOverride = send;
+                SqliteConnection.ClearAllPools();
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
         }
 
         [Fact]

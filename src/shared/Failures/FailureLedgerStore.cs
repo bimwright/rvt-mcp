@@ -9,7 +9,8 @@ using Newtonsoft.Json.Linq;
 
 namespace RvtMcp.Failures
 {
-    // The plugin is the only writer. Constructing/querying this store never initializes it.
+    // The plugin writes incidents and decisions. A missing ledger file is created empty
+    // so a reader is not treated as a storage lock. An existing file is never replaced.
     public sealed class FailureLedgerStore
     {
         private readonly bool _readOnly;
@@ -36,7 +37,21 @@ namespace RvtMcp.Failures
         }
         public void Initialize()
         {
-            Writer(); Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath));
+            Writer(); CreateOrMigrate();
+        }
+        // Readers may create the file when it is absent. They still cannot migrate or replace one that exists.
+        private void EnsureDatabaseFile()
+        {
+            if (File.Exists(DatabasePath)) return;
+            lock (_sync)
+            {
+                if (File.Exists(DatabasePath)) return;
+                CreateOrMigrate();
+            }
+        }
+        private void CreateOrMigrate()
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath));
             using (var c = Open(true))
             {
                 if (Convert.ToInt32(Scalar(c, null, "PRAGMA user_version;")) > 1) throw new InvalidOperationException("Unsupported failure ledger version.");
@@ -63,9 +78,14 @@ PRAGMA user_version=1;");
                 using (var columns = Command(c, null, "PRAGMA table_info(operations);"))
                 using (var reader = columns.ExecuteReader()) while (reader.Read()) if (reader.GetString(1) == "review_required") hasReview = true;
                 if (!hasReview) Execute(c, null, "ALTER TABLE operations ADD COLUMN review_required INTEGER NOT NULL DEFAULT 1;");
+                using (var tx = c.BeginTransaction())
+                {
+                    if (!HasModelKindColumn(c, tx)) Execute(c, tx, "ALTER TABLE models ADD COLUMN is_family_document INTEGER;");
+                    tx.Commit();
+                }
             }
         }
-        private void EnsureInitialized() { Writer(); if (!File.Exists(DatabasePath)) Initialize(); }
+        private void EnsureInitialized() { Writer(); EnsureDatabaseFile(); }
 
         public FailureModel ResolveModel(FailureModelIdentity identity)
         {
@@ -84,6 +104,7 @@ PRAGMA user_version=1;");
                     var known = ReadModel(c, tx, identity.KnownScopeKey);
                     if (known != null)
                     {
+                        UpdateModelKind(c, tx, known.ModelScopeKey, identity.IsFamilyDocument);
                         if (known.IsTransient && !identity.IsTransient) LinkUncertainIdentity(c, tx, known.ModelScopeKey, identity);
                         tx.Commit(); return known;
                     }
@@ -101,6 +122,7 @@ PRAGMA user_version=1;");
                     "$s", scope, "$p", physical, "$m", SafeKey(identity.ModelKey), "$t", FailureCapture.SafeText(identity.Title, 256), "$x", physical == null ? 1 : 0);
                 Execute(c, tx, "UPDATE models SET title=$t,model_key=COALESCE($m,model_key) WHERE scope=$s;",
                     "$s", scope, "$m", SafeKey(identity.ModelKey), "$t", FailureCapture.SafeText(identity.Title, 256));
+                UpdateModelKind(c, tx, scope, identity.IsFamilyDocument);
                 if (!string.IsNullOrEmpty(identity.ModelKey))
                     Execute(c, tx, "INSERT OR IGNORE INTO model_aliases(scope,model_key) VALUES($s,$m);", "$s", scope, "$m", SafeKey(identity.ModelKey));
                 if (physical == null && !identity.IsTransient) LinkUncertainIdentity(c, tx, scope, identity);
@@ -196,10 +218,50 @@ AND NOT ((o.execution='completed' OR o.execution='interrupted_unknown') AND EXIS
         { return new FailureModel { ModelScopeKey = r.GetString(0), ModelKey = r.IsDBNull(1) ? null : r.GetString(1), Title = r.IsDBNull(2) ? null : r.GetString(2), IsTransient = r.GetInt32(3) != 0, Revision = r.GetInt64(4) }; }
         public List<FailureModel> GetModels()
         {
-            var results = new List<FailureModel>(); if (!File.Exists(DatabasePath)) return results;
+            var results = new List<FailureModel>(); EnsureDatabaseFile();
             using (var c = Open(false)) using (var cmd = Command(c, null, "SELECT scope,model_key,title,transient,revision FROM models ORDER BY title,scope;"))
             using (var r = cmd.ExecuteReader()) while (r.Read()) results.Add(Model(r));
             return results;
+        }
+
+        private static bool HasModelKindColumn(SqliteConnection c, SqliteTransaction tx)
+        {
+            using (var cmd = Command(c, tx, "PRAGMA table_info(models);"))
+            using (var reader = cmd.ExecuteReader())
+                while (reader.Read()) if (reader.GetString(1) == "is_family_document") return true;
+            return false;
+        }
+
+        private static void UpdateModelKind(SqliteConnection c, SqliteTransaction tx, string scope, bool? isFamily)
+        {
+            if (isFamily.HasValue && HasModelKindColumn(c, tx))
+                Execute(c, tx, "UPDATE models SET is_family_document=$f WHERE scope=$s;", "$s", scope, "$f", isFamily.Value ? 1 : 0);
+        }
+
+        // Use the incident's host year, falling back to its operation for older receipts.
+        private const string IncidentRevitYear = "COALESCE(NULLIF(json_extract(i.payload,'$.revitYear'),0),NULLIF(json_extract(o.payload,'$.revitYear'),0),0)";
+
+        public List<FailureIssueModel> GetIssueModels(string state = null)
+        {
+            ValidateState(state);
+            var result = new List<FailureIssueModel>();
+            EnsureDatabaseFile();
+            using (var c = Open(false))
+            {
+                var kind = HasModelKindColumn(c, null) ? "m.is_family_document" : "NULL";
+                using (var cmd = Command(c, null, @"SELECT m.scope,
+COALESCE(NULLIF(trim(m.title),''),MAX(NULLIF(trim(json_extract(i.payload,'$.modelTitle')),''))),"
+                    + IncidentRevitYear + "," + kind + @",COUNT(*)
+FROM models m JOIN incidents i ON i.scope=m.scope JOIN operations o ON o.id=i.operation_id
+WHERE ($st IS NULL OR i.state=$st)
+GROUP BY m.scope," + IncidentRevitYear + " ORDER BY 2 COLLATE NOCASE,3 DESC,m.scope;", "$st", state))
+                using (var r = cmd.ExecuteReader()) while (r.Read()) result.Add(new FailureIssueModel {
+                    ModelScopeKey = r.GetString(0), Title = r.IsDBNull(1) ? null : r.GetString(1),
+                    RevitYear = r.GetInt32(2), IsFamilyDocument = r.IsDBNull(3) ? (bool?)null : r.GetInt32(3) != 0,
+                    IssueCount = r.GetInt64(4)
+                });
+            }
+            return result;
         }
 
         public FailurePersistenceResult SaveOperation(FailureOperation operation)
@@ -344,14 +406,14 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
 
         public FailureOperation GetOperation(string operationId)
         {
-            FailureCapture.RequireKey(operationId, "operation ID"); if (!File.Exists(DatabasePath)) return null;
+            FailureCapture.RequireKey(operationId, "operation ID"); EnsureDatabaseFile();
             using (var c = Open(false)) return ReadPayload<FailureOperation>(c, null, "operations", operationId);
         }
         public List<FailureRule> GetRules(string scope) { return Policies<FailureRule>("rules", scope); }
         public List<FailureGrant> GetGrants(string scope) { return Policies<FailureGrant>("grants", scope); }
         private List<T> Policies<T>(string table, string scope)
         {
-            FailureCapture.RequireKey(scope, "model scope key"); var result = new List<T>(); if (!File.Exists(DatabasePath)) return result;
+            FailureCapture.RequireKey(scope, "model scope key"); EnsureDatabaseFile(); var result = new List<T>();
             using (var c = Open(false)) using (var cmd = Command(c, null, "SELECT payload FROM " + table + " WHERE scope=$s ORDER BY id;", "$s", scope))
             using (var r = cmd.ExecuteReader()) while (r.Read()) result.Add(FailureJson.Deserialize<T>(r.GetString(0)));
             return result;
@@ -362,7 +424,7 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
             var gate = new FailureGate();
             lock (_sync) if (_uncertainScopes.Contains(scope)) { gate.Blocked = true; gate.Reason = "FAILURE_STORAGE_FAILED"; }
             if (PendingFor(scope)) { gate.Blocked = true; gate.Reason = "FAILURE_STORAGE_FAILED"; }
-            if (!File.Exists(DatabasePath)) return gate;
+            EnsureDatabaseFile();
             using (var c = Open(false))
             {
                 var model = ReadModel(c, null, scope); gate.Revision = model?.Revision ?? 0;
@@ -388,7 +450,8 @@ AND NOT ((o.execution='completed' OR o.execution='interrupted_unknown') AND EXIS
         public List<string> GetRepeatedRequestIncidents(string scope, string requestHash)
         {
             FailureCapture.RequireKey(scope, "model scope key"); var result = new List<string>();
-            if (string.IsNullOrEmpty(requestHash) || !File.Exists(DatabasePath)) return result;
+            if (string.IsNullOrEmpty(requestHash)) return result;
+            EnsureDatabaseFile();
             using (var c = Open(false))
             using (var cmd = Command(c, null, "SELECT id FROM incidents WHERE scope=$s AND state='open' AND " + CleanRollback
                 + " AND json_extract(payload,'$.requestHash')=$h ORDER BY seq;", "$s", scope, "$h", requestHash))
@@ -400,10 +463,9 @@ AND NOT ((o.execution='completed' OR o.execution='interrupted_unknown') AND EXIS
             if (query == null) throw new ArgumentNullException(nameof(query));
             foreach (var key in new[] { query.ModelScopeKey, query.IncidentId, query.OperationId }) if (key != null) FailureCapture.RequireKey(key, "query identifier");
             if (query.Limit < 1 || query.Limit > 100) throw new ArgumentOutOfRangeException(nameof(query.Limit));
-            if (query.State != null && !new[] { "observed", "open", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule" }.Contains(query.State))
-                throw new ArgumentException("Invalid incident state.");
+            ValidateState(query.State);
             long after = 0, ceiling = long.MaxValue;
-            var filter = FailureCapture.Fingerprint(FailureJson.Serialize(new { query.ModelScopeKey, query.IncidentId, query.OperationId, query.State, query.ElementId, query.From, query.Until, query.NewestFirst }));
+            var filter = FailureCapture.Fingerprint(FailureJson.Serialize(new { query.ModelScopeKey, query.RevitYear, query.IncidentId, query.OperationId, query.State, query.ElementId, query.From, query.Until, query.NewestFirst }));
             if (query.Cursor != null)
             {
                 var parts = query.Cursor.Split('.');
@@ -411,16 +473,18 @@ AND NOT ((o.execution='completed' OR o.execution='interrupted_unknown') AND EXIS
                     || !long.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out ceiling) || parts[2] != filter)
                     throw new ArgumentException("Invalid cursor or changed query filters.");
             }
-            var page = new FailureRecordPage(); if (!File.Exists(DatabasePath)) return page;
+            var page = new FailureRecordPage(); EnsureDatabaseFile();
             using (var c = Open(false))
             using (var tx = c.BeginTransaction(deferred: true))
             {
                 if (query.Cursor == null) ceiling = Convert.ToInt64(Scalar(c, tx, "SELECT COALESCE(MAX(seq),0) FROM incidents;"));
-                using (var cmd = Command(c, tx, @"SELECT seq,payload FROM incidents i WHERE seq>$a AND seq<=$z
-AND ($s IS NULL OR scope=$s) AND ($i IS NULL OR id=$i) AND ($o IS NULL OR operation_id=$o)
-AND ($st IS NULL OR state=$st) AND ($f IS NULL OR created >= $f) AND ($u IS NULL OR created <= $u)
-AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i.id AND f.element_id=$e)) ORDER BY seq" + (query.NewestFirst ? " DESC" : "") + " LIMIT $n;",
+                using (var cmd = Command(c, tx, @"SELECT i.seq,i.payload FROM incidents i JOIN operations o ON o.id=i.operation_id WHERE i.seq>$a AND i.seq<=$z
+AND ($s IS NULL OR i.scope=$s) AND ($i IS NULL OR i.id=$i) AND ($o IS NULL OR i.operation_id=$o)
+AND ($y IS NULL OR " + IncidentRevitYear + @"=$y)
+AND ($st IS NULL OR i.state=$st) AND ($f IS NULL OR i.created >= $f) AND ($u IS NULL OR i.created <= $u)
+AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i.id AND f.element_id=$e)) ORDER BY i.seq" + (query.NewestFirst ? " DESC" : "") + " LIMIT $n;",
                     "$a", after, "$z", ceiling, "$s", query.ModelScopeKey, "$i", query.IncidentId, "$o", query.OperationId,
+                    "$y", query.RevitYear,
                     "$st", query.State, "$f", query.From.HasValue ? Stamp(query.From.Value) : null,
                     "$u", query.Until.HasValue ? Stamp(query.Until.Value) : null, "$e", query.ElementId, "$n", query.Limit + 1))
                 using (var r = cmd.ExecuteReader()) while (r.Read())
@@ -435,6 +499,12 @@ AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i
                 page.Available = true; tx.Commit();
             }
             return page;
+        }
+
+        private static void ValidateState(string state)
+        {
+            if (state != null && !new[] { "observed", "open", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule" }.Contains(state))
+                throw new ArgumentException("Invalid incident state.");
         }
 
         public FailurePersistenceResult ApplyDecision(FailureDecision decision)

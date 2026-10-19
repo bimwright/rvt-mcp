@@ -93,6 +93,7 @@ namespace RvtMcp.Plugin.Failures
             state.Model = Store.ResolveModel(new FailureModelIdentity
             {
                 ModelKey = modelKey, PhysicalKey = physical, Title = doc.Title,
+                IsFamilyDocument = doc.IsFamilyDocument,
                 LiveDocumentId = state.LiveId, HostInstanceId = HostInstanceId,
                 IsTransient = transient || string.IsNullOrEmpty(modelKey),
                 KnownScopeKey = state.Path == path ? state.Model?.ModelScopeKey : null

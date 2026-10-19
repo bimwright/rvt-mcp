@@ -24,6 +24,7 @@ namespace RvtMcp.Failures
         public string HostInstanceId { get; set; }
         public string KnownScopeKey { get; set; }
         public bool IsTransient { get; set; }
+        public bool? IsFamilyDocument { get; set; }
     }
     public sealed class FailureModel
     {
@@ -32,6 +33,14 @@ namespace RvtMcp.Failures
         public string Title { get; set; }
         public bool IsTransient { get; set; }
         public long Revision { get; set; }
+    }
+    public sealed class FailureIssueModel
+    {
+        public string ModelScopeKey { get; set; }
+        public string Title { get; set; }
+        public int RevitYear { get; set; }
+        public bool? IsFamilyDocument { get; set; }
+        public long IssueCount { get; set; }
     }
     public sealed class FailureOperation
     {
@@ -197,6 +206,7 @@ namespace RvtMcp.Failures
     public sealed class FailureRecordQuery
     {
         public string ModelScopeKey { get; set; }
+        public int? RevitYear { get; set; }
         public string IncidentId { get; set; }
         public string OperationId { get; set; }
         public string State { get; set; }

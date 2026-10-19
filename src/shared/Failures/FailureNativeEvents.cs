@@ -254,6 +254,7 @@ namespace RvtMcp.Plugin.Failures
             {
                 PhysicalKey = physical, ModelKey = logical?.Value<string>("key"),
                 Title = Path.GetFileNameWithoutExtension(path), HostInstanceId = HostInstanceId,
+                IsFamilyDocument = string.Equals(Path.GetExtension(path), ".rfa", StringComparison.OrdinalIgnoreCase),
                 LiveDocumentId = Hash("unopened:" + path.ToUpperInvariant()), IsTransient = physical == null
             });
         }
