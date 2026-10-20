@@ -8,6 +8,25 @@ namespace RvtMcp.Plugin.Views
     /// <summary>Pure proposal construction. The native facade and ledger validate again when saving.</summary>
     internal static class FailureIssuesPresentation
     {
+        internal static bool IssueModelIsOpen(string modelScopeKey, ICollection<string> openScopes)
+        {
+            return !string.IsNullOrEmpty(modelScopeKey) && openScopes != null && openScopes.Contains(modelScopeKey);
+        }
+
+        /// <summary>Prefer the active project's row for this Revit year, then any row of that project, then the first row.</summary>
+        internal static FailureIssueModel PreferredIssueModel(IReadOnlyList<FailureIssueModel> models, string activeScope, int activeYear)
+        {
+            if (models == null || models.Count == 0) return null;
+            FailureIssueModel sameProject = null;
+            foreach (var model in models)
+            {
+                if (!string.Equals(model?.ModelScopeKey, activeScope, StringComparison.Ordinal)) continue;
+                if (model.RevitYear == activeYear) return model;
+                if (sameProject == null) sameProject = model;
+            }
+            return sameProject ?? models[0];
+        }
+
         internal static bool NeedsModelVerification(FailureOperation operation)
         {
             return operation == null || operation.Outcome == "partial" || operation.Outcome == "unknown"

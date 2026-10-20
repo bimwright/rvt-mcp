@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -19,7 +20,7 @@ namespace RvtMcp.Plugin.Views
     {
         // Bounded read on the Revit UI thread; the status line says when older issues are left out.
         private const int MaxIssueRows = 500;
-        private readonly ComboBox _models = new ComboBox { Height = 28, MinWidth = 360, MaxWidth = 650, HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Center };
+        private readonly ComboBox _models = new ComboBox { Height = 28, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Center };
         private readonly ComboBox _states = new ComboBox { Height = 28, MinWidth = 130, VerticalContentAlignment = VerticalAlignment.Center };
         private readonly TextBlock _status = new TextBlock { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(4, 0, 4, 6) };
         private readonly DataGrid _grid;
@@ -76,26 +77,34 @@ namespace RvtMcp.Plugin.Views
         {
             _models.ItemTemplate = ModelTemplate();
             TextSearch.SetTextPath(_models, "Title");
+            _models.DropDownOpened += (s, e) => ApplyOpenEmphasis();
             var root = new Grid { Margin = new Thickness(8, 6, 8, 8) };
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 240 });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            var toolbar = new DockPanel { LastChildFill = false, Margin = new Thickness(0, 0, 0, 4) };
-            var filters = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            filters.Children.Add(Label("failure.filter.model"));
-            _models.Margin = new Thickness(0, 0, 8, 0);
-            filters.Children.Add(_models);
-            filters.Children.Add(Label("failure.filter.state"));
-            _states.Margin = new Thickness(0, 0, 8, 0);
+            var toolbar = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+            toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star), MinWidth = 360 });
+            toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star), MinWidth = 420 });
+            // Match the Issues group content box: margin right 4 plus padding 8.
+            var modelHost = new StackPanel { Margin = new Thickness(8, 0, 12, 0) };
+            modelHost.Children.Add(Label("failure.filter.model"));
+            modelHost.Children.Add(_models);
+            toolbar.Children.Add(modelHost);
+            var tools = new DockPanel { LastChildFill = false, VerticalAlignment = VerticalAlignment.Bottom };
+            var refresh = Button("failure.refresh", (s, e) => Refresh());
+            DockPanel.SetDock(refresh, Dock.Right);
+            tools.Children.Add(refresh);
+            var stateHost = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            stateHost.Children.Add(Label("failure.filter.state"));
             foreach (var state in new[] { "", "open", "observed", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule" })
                 _states.Items.Add(new ComboBoxItem { Tag = state, Content = state.Length == 0 ? L.T("failure.filter.all") : L.T("failure.state." + state) });
             _states.SelectedIndex = 1;
-            filters.Children.Add(_states);
-            filters.Children.Add(Button("failure.refresh", (s, e) => Refresh()));
-            DockPanel.SetDock(filters, Dock.Left);
-            toolbar.Children.Add(filters);
+            stateHost.Children.Add(_states);
+            tools.Children.Add(stateHost);
+            Grid.SetColumn(tools, 1);
+            toolbar.Children.Add(tools);
             Add(root, toolbar, 0);
             Add(root, _status, 1);
 
@@ -263,10 +272,13 @@ namespace RvtMcp.Plugin.Views
             try
             {
                 var context = FailureControl.GetUiContext();
+                var open = FailureControl.CopyOpenModelScopes();
                 var state = (_states.SelectedItem as ComboBoxItem)?.Tag as string;
-                var models = Reader().GetIssueModels(string.IsNullOrEmpty(state) ? null : state).Select(m => new ModelRow(m, context)).ToList();
+                var issues = Reader().GetIssueModels(string.IsNullOrEmpty(state) ? null : state);
+                var preferred = FailureIssuesPresentation.PreferredIssueModel(issues, context.IsAvailable ? context.ModelScopeKey : null, context.RevitYear);
+                var models = issues.Select(m => new ModelRow(m, context, open)).ToList();
                 _models.ItemsSource = models;
-                _models.SelectedItem = models.FirstOrDefault(m => m.IsCurrent) ?? models.FirstOrDefault();
+                _models.SelectedItem = models.FirstOrDefault(m => m.Source == preferred) ?? models.FirstOrDefault();
             }
             catch (Exception ex)
             {
@@ -278,6 +290,13 @@ namespace RvtMcp.Plugin.Views
         }
 
         private static FailureLedgerStore Reader() => new FailureLedgerStore(readOnly: true);
+
+        private void ApplyOpenEmphasis()
+        {
+            if (!(_models.ItemsSource is IEnumerable<ModelRow> rows)) return;
+            var open = FailureControl.CopyOpenModelScopes();
+            foreach (var row in rows) row.IsOpen = FailureIssuesPresentation.IssueModelIsOpen(row.ModelScopeKey, open);
+        }
 
         private void LoadPage()
         {
@@ -340,7 +359,6 @@ namespace RvtMcp.Plugin.Views
                 _grid.SelectedItem = rows.FirstOrDefault(r => r.Incident.IncidentId == selectedId) ?? rows.FirstOrDefault();
                 var gate = FailureControl.GetUiGate(model.ModelScopeKey);
                 var parts = new List<string>();
-                parts.Add(L.T("failure.filter.model") + ": " + model.Label);
                 parts.Add(available ? L.T(gate.Blocked ? "failure.gate.blocked" : "failure.gate.clear") : L.T("failure.unavailable"));
                 if (!complete) parts.Add(L.T("failure.detail.incomplete"));
                 if (more) parts.Add(L.T("failure.list.newest", ("count", rows.Count)));
@@ -885,22 +903,37 @@ namespace RvtMcp.Plugin.Views
             return new DataTemplate(typeof(ModelRow)) { VisualTree = row };
         }
 
-        private sealed class ModelRow
+        private sealed class ModelRow : INotifyPropertyChanged
         {
             private readonly FailureIssueModel _model;
+            private bool _isOpen;
+            public FailureIssueModel Source => _model;
             public string ModelScopeKey => _model.ModelScopeKey;
             public int RevitYear => _model.RevitYear;
             public bool IsCurrent { get; }
-            public FontWeight LabelWeight => IsCurrent ? FontWeights.Bold : FontWeights.Normal;
+            public bool IsOpen
+            {
+                get => _isOpen;
+                set
+                {
+                    if (_isOpen == value) return;
+                    _isOpen = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsOpen)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LabelWeight)));
+                }
+            }
+            public FontWeight LabelWeight => IsOpen ? FontWeights.Bold : FontWeights.Normal;
             public string Title => string.IsNullOrWhiteSpace(_model.Title) ? Unknown() + " (" + ModelScopeKey.Substring(0, Math.Min(8, ModelScopeKey.Length)) + ")" : _model.Title;
             public string Label => (RevitYear == 0 ? "R?" : "R" + (RevitYear % 100).ToString("D2", CultureInfo.InvariantCulture))
                 + " - " + (_model.IsFamilyDocument.HasValue ? _model.IsFamilyDocument.Value ? "Family" : "Project" : Unknown()) + " - " + Title;
-            public string Prefix => (IsCurrent ? "● " : "") + Label + " - ";
+            public string Prefix => (IsCurrent ? "● " : "") + Label;
             public string Count => _model.IssueCount.ToString("n0", CultureInfo.CurrentCulture);
-            public string Description => (IsCurrent ? L.T("failure.activeModel", ("title", Title)) + "\n" : "") + Prefix + Count + "\n" + ModelScopeKey;
-            internal ModelRow(FailureIssueModel model, FailureIssuesContext context)
+            public string Description => (IsCurrent ? L.T("failure.activeModel", ("title", Title)) + "\n" : "") + Prefix + "\n" + Count + "\n" + ModelScopeKey;
+            public event PropertyChangedEventHandler PropertyChanged;
+            internal ModelRow(FailureIssueModel model, FailureIssuesContext context, ICollection<string> openScopes)
             {
                 _model = model;
+                _isOpen = FailureIssuesPresentation.IssueModelIsOpen(model.ModelScopeKey, openScopes);
                 IsCurrent = context?.IsAvailable == true && model.ModelScopeKey == context.ModelScopeKey && model.RevitYear == context.RevitYear;
             }
         }

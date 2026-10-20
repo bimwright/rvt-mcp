@@ -37,6 +37,8 @@ namespace RvtMcp.Plugin.Failures
         internal static FailureLedgerStore Store { get; private set; }
         internal static Scope Active { get; private set; }
         private static FailureIssuesContext _uiContext = new FailureIssuesContext();
+        private static readonly object OpenScopeGate = new object();
+        private static HashSet<string> _openModelScopes = new HashSet<string>(StringComparer.Ordinal);
         private static string _revitUser;
         private static string _storageError;
         private static int Year { get { int.TryParse(AuthToken.RevitVersion, out var year); return year; } }
@@ -111,13 +113,38 @@ namespace RvtMcp.Plugin.Failures
                 DocumentState state = null;
                 if (resolveIdentity) state = State(doc);
                 else if (doc != null) Documents.TryGetValue(doc, out state);
+                var open = new HashSet<string>(StringComparer.Ordinal);
+                foreach (Document document in app.Application.Documents)
+                {
+                    try
+                    {
+                        if (document == null || !document.IsValidObject) continue;
+                        DocumentState openState;
+                        if (ReferenceEquals(document, doc)) openState = state;
+                        else if (!resolveIdentity) Documents.TryGetValue(document, out openState);
+                        else openState = State(document);
+                        var key = openState?.Model?.ModelScopeKey;
+                        if (!string.IsNullOrEmpty(key)) open.Add(key);
+                    }
+                    catch { /* One unreadable document does not hide the others. */ }
+                }
+                lock (OpenScopeGate) _openModelScopes = open;
                 _uiContext = state == null ? new FailureIssuesContext() : new FailureIssuesContext
                 {
                     IsAvailable = true, ModelScopeKey = state.Model.ModelScopeKey, ModelTitle = state.Model.Title,
                     RevitYear = Year, DocumentRevision = Revision(state), RevitUser = _revitUser, HostInstanceId = HostInstanceId
                 };
             }
-            catch { _uiContext = new FailureIssuesContext(); }
+            catch
+            {
+                _uiContext = new FailureIssuesContext();
+                lock (OpenScopeGate) _openModelScopes = new HashSet<string>(StringComparer.Ordinal);
+            }
+        }
+
+        internal static HashSet<string> CopyOpenModelScopes()
+        {
+            lock (OpenScopeGate) return new HashSet<string>(_openModelScopes, StringComparer.Ordinal);
         }
 
         private static string Revision(DocumentState state) { return state.LiveId + ":" + state.Revision; }

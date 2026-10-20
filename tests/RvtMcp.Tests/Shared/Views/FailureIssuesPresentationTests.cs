@@ -208,5 +208,26 @@ namespace RvtMcp.Tests
             Assert.Throws<InvalidOperationException>(() => FailureIssuesPresentation.CreateDecision("accept_once", incident, RolledBack(), Context(), "Do not replay", false));
             Assert.Throws<InvalidOperationException>(() => FailureIssuesPresentation.CreateDecision("abandon", incident, RolledBack(), Context(), "Already observed", false));
         }
+
+        [Fact]
+        public void Open_projects_are_marked_and_the_active_project_is_preferred()
+        {
+            var active = IssueModel("active", 2022);
+            var older = IssueModel("active", 2024);
+            var otherOpen = IssueModel("other", 2022);
+            var closed = IssueModel("closed", 2022);
+            var open = new HashSet<string>(StringComparer.Ordinal) { "active", "other" };
+            Assert.True(FailureIssuesPresentation.IssueModelIsOpen(active.ModelScopeKey, open));
+            Assert.True(FailureIssuesPresentation.IssueModelIsOpen(otherOpen.ModelScopeKey, open));
+            Assert.False(FailureIssuesPresentation.IssueModelIsOpen(closed.ModelScopeKey, open));
+            Assert.False(FailureIssuesPresentation.IssueModelIsOpen("active", null));
+            Assert.Same(active, FailureIssuesPresentation.PreferredIssueModel(new[] { older, otherOpen, closed, active }, "active", 2022));
+            Assert.Same(older, FailureIssuesPresentation.PreferredIssueModel(new[] { closed, older, otherOpen }, "active", 2022));
+            Assert.Same(closed, FailureIssuesPresentation.PreferredIssueModel(new[] { closed, otherOpen }, "missing", 2022));
+            Assert.Null(FailureIssuesPresentation.PreferredIssueModel(new FailureIssueModel[0], "active", 2022));
+        }
+
+        private static FailureIssueModel IssueModel(string scope, int year)
+            => new FailureIssueModel { ModelScopeKey = scope, RevitYear = year, IssueCount = 2 };
     }
 }
