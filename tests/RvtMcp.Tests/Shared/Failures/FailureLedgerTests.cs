@@ -85,6 +85,63 @@ namespace RvtMcp.Tests
             Assert.Throws<SqliteException>(() => store.GetGate("model"));
             Assert.Equal("corrupt database", File.ReadAllText(Db));
         }
+
+        [Fact] public void ResetBacksUpByLocalTimeThenEmptiesEveryTableAndUnblocks()
+        {
+            var store = Store(); var model = Model(store); var operation = Operation(store, model.ModelScopeKey);
+            var incident = Incident(store, model.ModelScopeKey, operation);
+            Assert.True(store.GetGate(model.ModelScopeKey).Blocked);
+            var summary = store.GetSummary(new[] { model.ModelScopeKey, "memory_only" });
+            Assert.Equal(1, summary.IssueCount); Assert.Equal(1, summary.ModelCount); Assert.Equal(2, summary.BlockedModelCount);
+            Assert.Throws<InvalidOperationException>(() => new FailureLedgerStore(Db, readOnly: true).Reset(DateTime.Now));
+
+            var time = new DateTime(2026, 10, 20, 15, 30, 12);
+            var backup = store.Reset(time);
+            Assert.Equal(Path.Combine(_root, "failures", "backups", "ledger-20261020-153012.db"), backup);
+            Assert.Equal(1L, Count(backup, "incidents"));
+            Assert.Equal(incident.IncidentId, Scalar(backup, "SELECT id FROM incidents"));
+            using (var connection = new SqliteConnection("Data Source=" + Db + ";Mode=ReadOnly;Pooling=False"))
+            {
+                connection.Open();
+                using var tables = connection.CreateCommand();
+                tables.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'";
+                var names = new List<string>();
+                using (var reader = tables.ExecuteReader()) while (reader.Read()) names.Add(reader.GetString(0));
+                Assert.Contains("incidents", names);
+                foreach (var name in names) Assert.Equal(0L, Count(Db, name));
+            }
+            Assert.False(store.GetGate(model.ModelScopeKey).Blocked);
+            Assert.Equal(0, store.GetSummary().IssueCount);
+
+            // The same model is written again, and a second reset in the same second keeps both backups.
+            var again = Model(store); Assert.Equal(model.ModelScopeKey, again.ModelScopeKey);
+            Incident(store, again.ModelScopeKey, Operation(store, again.ModelScopeKey));
+            Assert.Equal(Path.Combine(_root, "failures", "backups", "ledger-20261020-153012-2.db"), store.Reset(time));
+            Assert.Equal(1L, Count(backup, "incidents"));
+        }
+
+        [Fact] public void ResetIsRefusedWhilePendingRecordsWait()
+        {
+            var store = Store(); var model = Model(store);
+            Incident(store, model.ModelScopeKey, Operation(store, model.ModelScopeKey));
+            var pending = Path.Combine(_root, "failures", "pending");
+            Directory.CreateDirectory(pending);
+            File.WriteAllText(Path.Combine(pending, "waiting.json"), "{}");
+            Assert.True(store.HasPendingRecords());
+            Assert.Equal("FAILURE_RESET_PENDING", Assert.Throws<InvalidOperationException>(() => store.Reset(DateTime.Now)).Message);
+            Assert.Equal(1L, Count(Db, "incidents"));
+            Assert.False(Directory.Exists(store.BackupFolder));
+        }
+
+        private static long Count(string db, string table) => Convert.ToInt64(Scalar(db, "SELECT COUNT(*) FROM \"" + table + "\""));
+        private static object Scalar(string db, string sql)
+        {
+            using var connection = new SqliteConnection("Data Source=" + db + ";Mode=ReadOnly;Pooling=False");
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            return command.ExecuteScalar();
+        }
         [Fact] public void SamePhysicalFileAliasRetainsGateWhileCopyGetsSeparateScope()
         {
             var store = Store(); var first = Model(store); var op = Operation(store, first.ModelScopeKey); Incident(store, first.ModelScopeKey, op);

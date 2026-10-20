@@ -264,6 +264,55 @@ GROUP BY m.scope," + IncidentRevitYear + " ORDER BY 2 COLLATE NOCASE,3 DESC,m.sc
             return result;
         }
 
+        public string BackupFolder { get { return Path.Combine(Path.GetDirectoryName(DatabasePath), "backups"); } }
+        public bool HasPendingRecords() { return Directory.Exists(PendingPath) && Directory.EnumerateFiles(PendingPath, "*.json").Any(); }
+
+        /// <summary>Counts what a reset would clear. <paramref name="alsoBlocked"/> adds scopes the caller blocks in memory.</summary>
+        public FailureLedgerSummary GetSummary(IEnumerable<string> alsoBlocked = null)
+        {
+            var summary = new FailureLedgerSummary(); EnsureDatabaseFile();
+            using (var c = Open(false))
+            {
+                summary.IssueCount = Convert.ToInt64(Scalar(c, null, "SELECT COUNT(*) FROM incidents;"));
+                summary.OpenIssueCount = Convert.ToInt64(Scalar(c, null, "SELECT COUNT(*) FROM incidents WHERE state='open';"));
+                summary.ModelCount = Convert.ToInt32(Scalar(c, null, "SELECT COUNT(DISTINCT scope) FROM incidents;"));
+            }
+            summary.BlockedModelCount = GetModels().Where(m => GetGate(m.ModelScopeKey).Blocked).Select(m => m.ModelScopeKey)
+                .Union(alsoBlocked ?? Enumerable.Empty<string>(), StringComparer.Ordinal).Count();
+            return summary;
+        }
+
+        // Copies the ledger to backups\ledger-<local time>.db, then empties every table under the same write lock.
+        // The file and schema stay in place, so the gateway's readers never see a missing or swapped file.
+        public string Reset(DateTime localTime)
+        {
+            Writer();
+            lock (_sync)
+            {
+                if (HasPendingRecords()) throw new InvalidOperationException("FAILURE_RESET_PENDING");
+                EnsureInitialized();
+                Directory.CreateDirectory(BackupFolder);
+                var stamp = "ledger-" + localTime.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+                var backup = Path.Combine(BackupFolder, stamp + ".db");
+                for (var n = 2; File.Exists(backup); n++) backup = Path.Combine(BackupFolder, stamp + "-" + n + ".db");
+                using (var c = Open(true))
+                using (var tx = c.BeginTransaction())
+                {
+                    // No other writer can commit while this transaction holds the lock, so the copy matches what is emptied.
+                    using (var source = Open(true)) Execute(source, null, "VACUUM INTO $p;", "$p", backup);
+                    var tables = new List<string>();
+                    using (var cmd = Command(c, tx, "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"))
+                    using (var r = cmd.ExecuteReader()) while (r.Read()) tables.Add(r.GetString(0));
+                    Execute(c, tx, "PRAGMA defer_foreign_keys=ON;");
+                    foreach (var table in tables) Execute(c, tx, "DELETE FROM \"" + table + "\";");
+                    Execute(c, tx, "DELETE FROM sqlite_sequence;");
+                    tx.Commit();
+                }
+                _uncertainScopes.Clear();
+                return backup;
+            }
+        }
+
         public FailurePersistenceResult SaveOperation(FailureOperation operation)
         {
             var safe = PrepareOperation(operation);

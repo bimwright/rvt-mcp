@@ -221,6 +221,23 @@ namespace RvtMcp.Plugin.Failures
             catch { return new FailurePersistenceResult { Persistence = "failed", ErrorCode = "FAILURE_DECISION_REJECTED" }; }
         }
 
+        internal static FailureLedgerSummary GetResetSummary()
+        {
+            return Store.GetSummary(UncertainModels);
+        }
+
+        /// <summary>Backs up and empties the ledger. Refused while an MCP operation runs or unrecovered records wait.</summary>
+        internal static string ResetLedger()
+        {
+            if (Store == null || Active != null) throw new InvalidOperationException("FAILURE_RESET_BUSY");
+            var backup = Store.Reset(DateTime.Now);
+            UncertainModels.Clear();
+            NativeRequests.Clear();
+            // Open models are written to the empty ledger again the next time their identity is resolved.
+            foreach (var state in Documents.Values) state.Path = null;
+            return backup;
+        }
+
         internal static Scope Begin(UIApplication app, PendingRequest request)
         {
             if (Active != null) throw new InvalidOperationException("A failure scope is already active.");

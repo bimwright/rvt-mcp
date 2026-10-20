@@ -42,6 +42,13 @@ namespace RvtMcp.Failures
         public bool? IsFamilyDocument { get; set; }
         public long IssueCount { get; set; }
     }
+    public sealed class FailureLedgerSummary
+    {
+        public long IssueCount { get; set; }
+        public long OpenIssueCount { get; set; }
+        public int ModelCount { get; set; }
+        public int BlockedModelCount { get; set; }
+    }
     public sealed class FailureOperation
     {
         public string OperationId { get; set; } = Guid.NewGuid().ToString("N");

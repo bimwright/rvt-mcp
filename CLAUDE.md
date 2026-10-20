@@ -40,7 +40,7 @@ Discovery file format (`schema_version=3`):
 `window_title` is not in the descriptor — the server reads it live from the process. The server binds to exactly one instance by scanning these files (skipping any whose `pid` is dead, deduplicating per-instance vs legacy by pid). Use `--target 2022` / `pid:<n>` / `id:revit-<year>-<pid>` (4-digit calendar year, NOT legacy R-codes) to pin a specific instance when multiple Revits run. Agents should call `revit_list_available_targets` to enumerate live instances and `revit_get_current_target` to inspect the pinned target rather than guessing version strings — `revit_switch_target` hard-fails with an educational error if passed an R-code like `R24`.
 
 Other per-user data under the same root:
-- `failures\ledger.db` — local failure ledger (operations, incidents, user decisions). Never delete it to clear state; open it read-only when inspecting.
+- `failures\ledger.db` — local failure ledger (operations, incidents, user decisions). Never delete it to clear state; the user's Issues → Reset backs it up to `failures\backups\` before emptying it. Open it read-only when inspecting.
 - `catalog\revit-<year>.json` — dialog and failure catalogue the add-in builds at run time from the Revit installed on that machine. It contains Autodesk text: never commit it, package it, or copy its text into tests or docs.
 
 ## Project Structure

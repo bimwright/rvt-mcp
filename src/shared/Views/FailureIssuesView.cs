@@ -96,6 +96,9 @@ namespace RvtMcp.Plugin.Views
             var refresh = Button("failure.refresh", (s, e) => Refresh());
             DockPanel.SetDock(refresh, Dock.Right);
             tools.Children.Add(refresh);
+            var reset = Button("failure.reset", (s, e) => ResetLedger());
+            DockPanel.SetDock(reset, Dock.Right);
+            tools.Children.Add(reset);
             var stateHost = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             stateHost.Children.Add(Label("failure.filter.state"));
             foreach (var state in new[] { "", "open", "observed", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule" })
@@ -290,6 +293,28 @@ namespace RvtMcp.Plugin.Views
         }
 
         private static FailureLedgerStore Reader() => new FailureLedgerStore(readOnly: true);
+
+        // Backs up the ledger and starts it empty after the user confirms what it unblocks.
+        private void ResetLedger()
+        {
+            try
+            {
+                if (FailureControl.Store == null || FailureControl.Active != null) { SetStatus(L.T("failure.reset.busy"), Brushes.Firebrick); return; }
+                if (FailureControl.Store.HasPendingRecords()) { SetStatus(L.T("failure.reset.pending"), Brushes.Firebrick); return; }
+                var summary = FailureControl.GetResetSummary();
+                var confirm = MessageBox.Show(Window.GetWindow(this),
+                    L.T("failure.reset.confirm", ("issues", summary.IssueCount), ("open", summary.OpenIssueCount), ("models", summary.ModelCount),
+                        ("blocked", summary.BlockedModelCount), ("folder", FailureControl.Store.BackupFolder)),
+                    L.T("failure.reset.title"), MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+                if (confirm != MessageBoxResult.OK) return;
+                var backup = FailureControl.ResetLedger();
+                Refresh();
+                SetStatus(L.T("failure.reset.done", ("path", backup)), Brushes.DimGray);
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "FAILURE_RESET_BUSY") { SetStatus(L.T("failure.reset.busy"), Brushes.Firebrick); }
+            catch (InvalidOperationException ex) when (ex.Message == "FAILURE_RESET_PENDING") { SetStatus(L.T("failure.reset.pending"), Brushes.Firebrick); }
+            catch (Exception ex) { SetStatus(L.T("failure.reset.failed", ("error", ex.Message)), Brushes.Firebrick); }
+        }
 
         private void ApplyOpenEmphasis()
         {
