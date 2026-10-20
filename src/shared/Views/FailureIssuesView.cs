@@ -539,8 +539,8 @@ namespace RvtMcp.Plugin.Views
                     : action == "create_rule" ? L.T(dialog != null ? "security.failure.dialogRuleWarning" : "security.failure.ruleWarning")
                     : action == "native_grant" ? L.T("security.failure.nativeWarning") : "";
                 var label = dialog != null && action == "accept_once" ? L.T("security.failure.acceptDialogOnce") : ActionLabel(action);
-                if (FailureIssuesPresentation.RequiresConfirmation(action) && !Confirm(label, warning + "\n\n" + ProtectedConstraints(decision, context)
-                    + "\n\n" + DetailsText(), decision.Reason)) return;
+                if (FailureIssuesPresentation.RequiresConfirmation(action)
+                    && !Confirm(label, warning, L.T("security.failure.review.permits"), ProtectedConstraints(decision, context), DetailsText(), decision.Reason)) return;
                 SaveDecision(decision, context);
             }
             catch (Exception ex) { ShowDecisionFailure(ex); }
@@ -576,7 +576,7 @@ namespace RvtMcp.Plugin.Views
                 if (context?.IsAvailable != true || context.ModelScopeKey != rule.ModelScopeKey)
                     throw new InvalidOperationException("security.failure.currentModelRequired");
                 var reason = FailureDecision.NormalizeReason(_reason.Text);
-                if (!Confirm(L.T("security.failure.revokeRule"), ProtectedRuleText(rule, null, context.DocumentRevision), reason)) return;
+                if (!Confirm(L.T("security.failure.revokeRule"), "", L.T("failure.rules"), ProtectedRuleText(rule, null, context.DocumentRevision), "", reason)) return;
                 SaveDecision(new FailureDecision {
                     ModelScopeKey = rule.ModelScopeKey, Action = "revoke_rule", Rule = rule, Reason = reason,
                     WindowsUser = Environment.UserName, RevitUser = context.RevitUser, HostInstanceId = context.HostInstanceId,
@@ -632,31 +632,10 @@ namespace RvtMcp.Plugin.Views
         private static string DialogSemantic(FailureDialogAdapter adapter) => L.T(adapter.DialogId == "TaskDialog_Unresolved_References"
             ? "security.failure.dialogUnresolved" : "security.failure.dialogAnalytical");
 
-        private bool Confirm(string action, string details, string reason)
+        private bool Confirm(string action, string warning, string constraintsHeading, string constraints, string details, string reason)
         {
             // Scrollable owned review, rather than a message box that can run off-screen for many failures.
-            var owner = Window.GetWindow(this);
-            var window = new Window {
-                Title = L.T("security.failure.confirmTitle"), Owner = owner, Width = 650, Height = 540,
-                MinWidth = 420, MinHeight = 320, MaxHeight = SystemParameters.WorkArea.Height,
-                MaxWidth = SystemParameters.WorkArea.Width, WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                FontFamily = new FontFamily("Segoe UI"), ShowInTaskbar = false
-            };
-            window.Resources.MergedDictionaries.Add(BimwrightStyles.Dictionary);
-            var panel = new DockPanel { Margin = new Thickness(12) };
-            var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-            var cancel = new Button { Content = L.T("update.close"), IsCancel = true, Margin = new Thickness(4) };
-            var approve = new Button { Content = action, Margin = new Thickness(4), MinWidth = 130 };
-            approve.Click += (s, e) => window.DialogResult = true;
-            buttons.Children.Add(cancel); buttons.Children.Add(approve);
-            DockPanel.SetDock(buttons, Dock.Bottom); panel.Children.Add(buttons);
-            panel.Children.Add(new TextBox {
-                Text = L.T("security.failure.confirm", ("action", action), ("details", details), ("reason", reason)),
-                IsReadOnly = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                BorderThickness = new Thickness(0), Background = Brushes.White
-            });
-            window.Content = panel;
-            return window.ShowDialog() == true;
+            return new FailureDecisionReviewWindow(Window.GetWindow(this), action, warning, constraintsHeading, constraints, details, reason).ShowDialog() == true;
         }
 
         private void UpdateActions()
