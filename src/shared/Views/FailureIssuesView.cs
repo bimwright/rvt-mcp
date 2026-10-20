@@ -539,7 +539,7 @@ namespace RvtMcp.Plugin.Views
                     : action == "create_rule" ? L.T(dialog != null ? "security.failure.dialogRuleWarning" : "security.failure.ruleWarning")
                     : action == "native_grant" ? L.T("security.failure.nativeWarning") : "";
                 var label = dialog != null && action == "accept_once" ? L.T("security.failure.acceptDialogOnce") : ActionLabel(action);
-                if (!Confirm(label, warning + "\n\n" + ProtectedConstraints(decision, context)
+                if (FailureIssuesPresentation.RequiresConfirmation(action) && !Confirm(label, warning + "\n\n" + ProtectedConstraints(decision, context)
                     + "\n\n" + DetailsText(), decision.Reason)) return;
                 SaveDecision(decision, context);
             }

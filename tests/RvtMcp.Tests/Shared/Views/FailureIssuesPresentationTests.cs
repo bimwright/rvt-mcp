@@ -227,6 +227,17 @@ namespace RvtMcp.Tests
             Assert.Null(FailureIssuesPresentation.PreferredIssueModel(new FailureIssueModel[0], "active", 2022));
         }
 
+        [Theory]
+        [InlineData("rework", false)]
+        [InlineData("abandon", false)]
+        [InlineData("accept_once", true)]
+        [InlineData("create_rule", true)]
+        [InlineData("native_grant", true)]
+        public void Only_actions_that_permit_a_later_attempt_open_a_review(string action, bool expected)
+        {
+            Assert.Equal(expected, FailureIssuesPresentation.RequiresConfirmation(action));
+        }
+
         private static FailureIssueModel IssueModel(string scope, int year)
             => new FailureIssueModel { ModelScopeKey = scope, RevitYear = year, IssueCount = 2 };
     }

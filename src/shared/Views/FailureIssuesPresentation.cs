@@ -8,6 +8,12 @@ namespace RvtMcp.Plugin.Views
     /// <summary>Pure proposal construction. The native facade and ledger validate again when saving.</summary>
     internal static class FailureIssuesPresentation
     {
+        /// <summary>Actions that permit a later attempt open a review of their exact constraints. Rework and Abandon only close the issue.</summary>
+        internal static bool RequiresConfirmation(string action)
+        {
+            return action == "accept_once" || action == "create_rule" || action == "native_grant";
+        }
+
         internal static bool IssueModelIsOpen(string modelScopeKey, ICollection<string> openScopes)
         {
             return !string.IsNullOrEmpty(modelScopeKey) && openScopes != null && openScopes.Contains(modelScopeKey);
