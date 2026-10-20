@@ -56,13 +56,14 @@ Desktop.ini
 # Research archives (local reference only, not repo artifact)
 docs/research-archive/
 
-# Internal process docs — keep maintainer notes in a separate private repository.
+# Internal process docs — keep maintainer notes in a separate private/local-only area.
 # These legacy locations are ignored to prevent accidental re-addition.
-# Public user/contributor guides and docs/roadmap.md remain tracked.
+# Public guides and explicitly sanitized product validation summaries remain tracked.
 docs/analysis/
 docs/design/
 docs/testing/*
 !docs/testing/2026-10-18-v1.2.0-validation.md
+!docs/testing/2026-10-20-v1.2.1-validation.md
 docs/*-roadmap.md
 docs/superpowers/
 docs/reviews/

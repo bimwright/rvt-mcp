@@ -64,7 +64,7 @@ rvt-mcp --persist-send-code-bodies-for 4h
 
 **Key Policies:**
 - **Default Privacy:** No journal writes occur unless `persistSendCodeBodies` is `true` AND `persistSendCodeBodiesUntil` is a valid UTC date in the future.
-- **TTL bounds:** Min 1 hour, default 4 hours, max 2 days. The CLI/Env clamps values automatically.
+- **TTL bounds (v1.2.1 source):** Min 1 hour, default 4 hours, max 14 days. Settings presets are 1h, 4h, 8h, 12h, 24h, 2d, 7d and 14d. The CLI/Env clamps values automatically.
 - **Journal file:** written to `%LOCALAPPDATA%\Bimwright\rvt-mcp\send-code-journal.jsonl`.
 - **Rotation:** rotates at ~5MB.
 - **Retention:** deleted automatically 7 days after the persist window expires or is disabled.

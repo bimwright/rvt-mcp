@@ -104,11 +104,11 @@ The solution exposes the shared C# source under `Shared source`, grouped by its 
 - Unit conversion: Revit internal feet → mm at the DTO boundary via `SpecTypeId`/`ForgeTypeId`.
 - No `try/catch` around things that can't fail. No defensive null checks on internal invariants. Trust the call chain.
 - Comments explain *why*, not *what*. Identifiers explain *what*.
-- `#if REVIT2024_OR_GREATER` / `REVIT2027_OR_GREATER` are the only version-sniffing allowed. Prefer `RevitCompat` helpers for shared call sites.
+- Prefer `RevitCompat` helpers for shared API differences. When an overload requires a year-specific branch, use the shell's compile-time `REVIT*` constants (for example `REVIT2026`); do not guess API support from runtime product/version display strings.
 
 ## Documentation privacy
 
-This repository is public. Keep maintainer research, development plans, session handoffs, draft issue replies, and raw live-test evidence in a separate private repository, not in product documentation. Review logs and screenshots for local paths, model data, and identifiers before sharing them.
+This repository is public. Keep maintainer research, development plans, session handoffs, draft issue replies, and raw live-test evidence in a separate private/local-only documentation area, not in the product repository. Respect the owner's storage rules; a local-only area must not be initialized as a Git repository. Review logs and screenshots for local paths, model data, and identifiers before sharing them.
 
 Public documentation should describe shipped behavior and reproducible contributor workflows. Tests must use self-contained, non-sensitive fixtures committed here, never depend on private notes or a sibling checkout. Do not force-add ignored internal-document paths.
 

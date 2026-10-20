@@ -2,6 +2,23 @@
 
 The source-builder and `SafeFailuresPreprocessor` additions below shipped in v0.6.2. v0.6.1 and earlier support a plain body or complete source, but detect complete source using the literal substring `class `, including inside comments/strings. Revit must restart after installing an updated plugin.
 
+## Discarding documents opened by a script
+
+During a synchronous `send_code_to_revit` call, direct, statically bound Revit calls to
+`OpenDocumentFile`, `EditFamily`, `NewFamilyDocument`, and `NewProjectDocument` track documents
+newly opened by that script. An explicit `document.Close(false)` can discard such a document,
+including during cleanup after a failed transaction. It never implies permission to save.
+Documents already open at the start of the call, documents left over from an earlier call,
+and `Close(true)` retain the existing native-operation checks.
+
+The compiler instruments these Revit calls by symbol, not by matching text. Reflection,
+dynamic dispatch, conditional access, method-group delegates and precompiled helpers are
+not automatically instrumented; conditional syntax and null short-circuiting stay intact. For those cases, explicitly wrap the open result with
+`RvtMcp.Plugin.McpDocument.TrackOpened(...)` and close via
+`RvtMcp.Plugin.McpDocument.Close(document, false)` in the same call.
+Revit's own restrictions, such as not closing the active UI document or a document with an
+open transaction, still apply. Check the returned Boolean; the plugin does not force a close.
+
 ## Source forms
 
 The updated handler accepts a body with `app`, `doc`, and `uidoc`, ending in `return ...;`. Helper type declarations can accompany the body; the compiler wrapper keeps them outside `Run`:
@@ -35,7 +52,7 @@ For a stair creation request, start with the [stairs conversation workflow](stai
 
 `StairsEditScope` is in `Autodesk.Revit.DB`; `Stairs` and `StairsRun` are in `Autodesk.Revit.DB.Architecture`. Begin the scope with no open transaction, then create runs/landings inside an inner transaction. Check the transaction result before committing the scope.
 
-The plugin provides `RvtMcp.Plugin.SafeFailuresPreprocessor`. During an MCP operation it records failures in `Messages`, preserves severity in `HadWarnings`/`HadErrors`, and sets `WasRolledBack` when the controlled policy requests rollback. Warnings default to rollback; only matching warning decisions or rules saved through Revit's Issues UI permit continuation. Errors are never accepted by warning rules. Outside an MCP operation, the helper retains its existing opt-in behavior. Warning details must still be returned; acceptance does not prove design quality.
+The plugin provides `RvtMcp.Plugin.SafeFailuresPreprocessor`. During an MCP operation it records failures in `Messages`, preserves severity in `HadWarnings`/`HadErrors`, and sets `WasRolledBack` when the controlled policy requests rollback. Warnings default to rollback; matching warning decisions/rules or the explicit `accept-and-log` [warning policy](controlled-failures.md#warning-policy) can permit continuation after complete capture and durable recording. Error, DocumentCorruption, incomplete capture and current persistence failure still require rollback. Outside an MCP operation, the helper retains its existing opt-in behavior. Warning details must still be returned; acceptance does not prove design quality.
 
 Use the same helper for the inner transaction and scope so failures remain inspectable:
 
@@ -84,7 +101,7 @@ This is a control-flow template, not a complete stair generator. `scope.Commit(n
 
 ## Verification limits
 
-The probes below predate controlled failure handling; they do not verify the new default rollback policy. Inspect `_failure` and `_operation` even when custom code returns success. A policy stop prevents subsequent supported transaction commits in the same call but cannot undo earlier commits or external side effects; those calls may have partial outcomes. Custom preprocessors and arbitrary code have unverified failure coverage. Do not retry unchanged after a failure, timeout, or pending result; inspect the operation, incident and model first.
+The older stair probes below predate controlled failure handling; they do not verify the new default rollback policy. The [1.2.1 source validation summary](testing/2026-10-20-v1.2.1-validation.md) separately records scoped native Warning/Error policy checks on Revit 2026; it does not establish native stair acceptance on every year. Inspect `_failure` and `_operation` even when custom code returns success. A policy stop prevents subsequent supported transaction commits in the same call but cannot undo earlier commits or external side effects; those calls may have partial outcomes. Custom preprocessors and arbitrary code have unverified failure coverage. Do not retry unchanged after a failure, timeout, or pending result; inspect the operation, incident and model first.
 
 Revit 2027 build 27.0.10.13 passed source-form, warning-reporting, injected-Error rollback, and exception-cleanup probes in a fresh process loading the deployed plugin. These checks do not reproduce the original Revit 2025 crash. The native `create_stairs` proposal is deferred in favor of the documented conversation and send-code workflow.
 

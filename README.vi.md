@@ -178,7 +178,7 @@ Nếu toolset mà prompt cần chưa bật, prompt trả lời đúng dòng `--t
 
 ## Cấu hình
 
-**v1.2.0:** Warning do MCP phát sinh mặc định rollback; issue chưa xử lý chặn ghi theo model. Người dùng quyết định tại **History → Issues**. Hai tool `revit_get_failure_records` và `revit_get_operation_status` đọc sổ local kể cả khi Revit đang hiện dialog. Không chạy lại lệnh đang pending hoặc chưa rõ kết quả. Xem [controlled failures và giới hạn nghiệm thu (English)](docs/controlled-failures.md).
+**Source v1.2.1 (chưa phát hành):** Issues cũ chỉ phục vụ review, không khóa lệnh ghi sau đó. Warning vẫn mặc định `rollback`; người dùng có thể chọn `accept-and-log` trong **Settings → General → Safety** hoặc qua JSON/env/CLI. Error, corruption, capture thiếu và lỗi ghi hiện tại vẫn rollback. `revit_get_failure_records` và `revit_get_operation_status` đọc sổ local khi Revit đang hiện dialog. Không tự chạy lại lệnh pending/chưa rõ kết quả. Xem [policy và giới hạn nghiệm thu (English)](docs/controlled-failures.md).
 
 Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cục bộ mặc định bật, độc lập với call log; dùng `--disable-change-history` để tắt ghi. Ba tool `meta`: `revit_record_change` gắn lý do với nhóm call ID cụ thể, `revit_get_change_records` tra cứu thay đổi, `revit_resolve_history_identity` ghi lựa chọn tiếp nối hoặc tách lịch sử sau copy/Save As. Xem [ghi nhận thay đổi](docs/change-tracking.md) về riêng tư, giới hạn và phục hồi.
 
@@ -193,6 +193,7 @@ Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cụ
 | Read-only | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
 | send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |
 | Call log | `--enable-call-log` / `--disable-call-log` | `BIMWRIGHT_ENABLE_CALL_LOG` | `enableCallLog` |
+| Warning policy (mặc định `rollback`) | `--warning-policy <mode>` | `BIMWRIGHT_WARNING_POLICY` | `warningPolicy` |
 | Change history (default ON) | `--enable-change-history` / `--disable-change-history` | `BIMWRIGHT_ENABLE_CHANGE_HISTORY` | `enableChangeHistory` |
 | Response guard | `--enable-response-guard` / `--disable-response-guard` | `BIMWRIGHT_ENABLE_RESPONSE_GUARD` | `enableResponseGuard` |
 | Warn bytes | `--response-warn-bytes` | `BIMWRIGHT_RESPONSE_WARN_BYTES` | `responseWarnBytes` |
@@ -205,12 +206,16 @@ Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cụ
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
 | Cache body send_code (cluster bake) | `--cache-send-code-bodies` / `--no-…` | `BIMWRIGHT_CACHE_SEND_CODE_BODIES=1` | `cacheSendCodeBodies` |
 | Journal persist send_code | `--persist-send-code-bodies` / `--no-…` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES=1` | `persistSendCodeBodies` |
-| TTL journal | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
+| TTL journal (1h-14d) | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | Toast hoàn thành (mặc định bật) | ribbon **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
 | Brand trên toast (mặc định tắt, có lưu) | Settings → Toast → **Show branding** | — | `showBranding` |
 | Thời gian toast tự ẩn (mặc định 20 giây) | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
 | Vị trí toast (mặc định trên-trái, không kéo; có lưu) | Settings → Toast → **Horizontal / Vertical alignment**, **Allow dragging the card**, **Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | Ngôn ngữ UI (add-in) | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
+
+Warning policy dùng **Apply / Discard**, có hiệu lực từ call tiếp theo, không đổi call đang chạy hay tự retry. Chỉ CLI/env được client chọn rõ ràng mới override policy đọc lại từ host; JSON lúc gateway khởi động không đóng băng thay đổi Settings sau đó. Env trong tiến trình Revit được hiển thị và khóa row tương ứng.
+
+Journal có đúng tám lựa chọn **1h, 4h, 8h, 12h, 24h, 2d, 7d, 14d**; mặc định 4h. `persistSendCodeBodiesHours` vẫn là số giờ nguyên (1-336). Chọn thời hạn dài hơn giữ nội dung lâu hơn, không tự bật journal.
 
 Đổi cờ server xong: restart kết nối MCP để client nhận tool list mới.
 

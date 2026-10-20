@@ -126,8 +126,8 @@ MCP Server runs from `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`.
 - `revit_batch_execute` (A6): TransactionGroup-wrapped multi-command call, max 20 sub-commands. Caller timeout is separate from native execution: retain the operation ID and query status before retrying; a started request can complete later.
 
 ### Controlled failures (warnings and dialogs)
-- Warnings, errors and dialogs raised during an MCP call are handled in `src/shared/Failures/`. By default a warning or error rolls the change back, records an incident in the local ledger and returns `_failure` / `_operation` receipts to the agent. The model stays writable unless its state is uncertain. Details: [docs/controlled-failures.md](docs/controlled-failures.md).
-- Never add code that dismisses Revit dialogs or deletes warnings just so a call passes. Accepting a warning or answering a dialog needs an explicit, recorded choice (user rules and grants in History → Issues); otherwise it stays with the user, and the agent receives the dialog's information.
+- Warnings, errors and dialogs raised during an MCP call are handled in `src/shared/Failures/`. By default an unapproved warning or error rolls the current change back, records an incident in the local ledger and returns `_failure` / `_operation` receipts. Historical Issues and uncertainty remain review evidence, not a persistent write gate; current-operation, live reservation, capture/storage and native-action checks still apply. Details: [docs/controlled-failures.md](docs/controlled-failures.md).
+- Never add code that dismisses Revit dialogs or deletes warnings just so a call passes. Complete warnings may be acknowledged only after durable recording under the owner's explicit `accept-and-log` warning policy or matching model-specific rules/grants. Error, corruption and incomplete capture still roll back. Warning policy does not authorize answering native dialogs; those need their separate supported UI decisions, otherwise they stay with the user.
 - A call that waits on a dialog or outlives its timeout returns a pending receipt with an `operationId` (`waiting_for_user`, `timed_out_running`). The result arrives later through `revit_get_operation_status` (its `waitSeconds` waits on the server) or once as `_previousOperation`. Never resend the request unchanged.
 - Dialogs and warnings from the user's own work in Revit stay as Revit shows them; the add-in only notes them and reports them once (`_userDialogs`).
 - Non-read commands require a matching gateway and add-in (`controlled_failures_v1`); update both together.
@@ -149,7 +149,7 @@ MCP Server runs from `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`.
 - Plugin: one thin shell per Revit year (`src/plugin-rXX/`), all compiling the same `src/shared/**` source glob
 - Target frameworks: Revit 2022/2023/2024 = .NET 4.8; 2025/2026 = .NET 8 (`net8.0-windows7.0`); 2027 = .NET 10 (`net10.0-windows7.0`)
 - Transport: TCP for Revit 2022–2024, Named Pipe for Revit 2025–2027 (`ITransportServer` abstraction in `src/shared/Transport/`)
-- API version differences handled via `#if REVIT2024_OR_GREATER` / `REVIT2027_OR_GREATER` and the `RevitCompat` helper in `src/shared/Infrastructure/`
+- API version differences use the shell's compile-time `REVIT*` constants (including year-specific overloads such as `REVIT2026`) and the `RevitCompat` helper in `src/shared/Infrastructure/`; do not infer API support from runtime display strings
 - Revit 2026+: `ElementId.IntegerValue` removed → use `.Value` or `RevitCompat.GetId()`
 - Revit 2026+: `EnableDynamicLoading=true` in csproj; Revit 2027 adds `<UseWPF>true</UseWPF>`
 - All shells use Nice3point.Revit.Api NuGet packages pinned to the matching year

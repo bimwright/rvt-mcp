@@ -29,7 +29,13 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ### Critical fixes in History → Issues
 
+- Historical incidents, uncertain outcomes and stale pending captures no longer lock later MCP writes or reject an identical request. Issues remain available for review; a currently running operation, a current storage failure, native dialogs and current transaction failures retain their own checks.
 - Rework, Abandon, Accept once, Add rule and Allow native action no longer require the issue's model to be the active project. Decisions remain bound to the selected incident's model/year/revision; incomplete captures, review acknowledgments, grant expiry and execution-time matching are still enforced.
+- Closing a document no longer hashes its invalid native wrapper while cleaning failure-state caches. Dead entries are pruned before document lookup, preserving identity across equivalent live wrappers and preventing later family operations/target verification from failing because an earlier document closed.
+- Internal capture failures report their stage, exception type and bounded description in the incident and `_failure.captureErrors`, with a stack trace in the local log. A zero-message capture failure is no longer presented only as an empty warning list.
+- A synchronous send-code script can explicitly discard a modified document it opened/created during that call with `Close(false)`, including cleanup after a failed transaction. Existing documents and `Close(true)` retain native checks. Null-conditional source keeps its original syntax and short-circuit behavior rather than being detached by the rewriter. See [supported calls and limits](docs/send-code.md#discarding-documents-opened-by-a-script).
+- Reset backs up the ledger and pending records before clearing them, including malformed or unfinished captures. Confirmation requires acknowledgment that all agents have finished; cancellation leaves records unchanged.
+- Rebar creation on Revit 2026 uses the supported `BarTerminationsData` overload, preserving its intended termination orientations.
 
 ### Issues model picker
 
@@ -38,9 +44,20 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 - Open-model emphasis updates with the native context and matches the Revit year. The active-model dot has been removed.
 - Project/Family labels follow the UI language, including live language changes without changing the selected review.
 
+### Warning policy and Settings
+
+- Add opt-in `accept-and-log` in **Settings → General → Safety → Warning policy**, JSON `warningPolicy`, `BIMWRIGHT_WARNING_POLICY` and `--warning-policy`. The default stays `rollback`. Only complete warnings can be accepted, after durable recording; Error, corruption, incomplete capture and current storage failures still require rollback.
+- Snapshot the resolved policy per call and record `accepted_by_policy` with policy metadata in the ledger and receipts. Settings uses Apply/Discard and affects the next call without retrying earlier operations; explicit client CLI/environment choices override the host default.
+- Settings displays ASCII hyphens instead of long dash variants. Journal retention offers exactly **1h, 4h, 8h, 12h, 24h, 2d, 7d, 14d**; the backend maximum increases to 14d while the default remains 4h.
+
 ### History input text
 
 - Code and SQL input views wrap through WPF layout without inserting invisible characters into copied text.
+- Rename Activity to **Activities**; share an italic placeholder style between Activities search and the Issues reason field. Issues Copy/Expand use compact, accessible icon buttons. Model picker and search widths remain fixed while opening, filtering or showing long model names.
+
+### Validation
+
+Release preparation is local. The [1.2.1 source validation summary](docs/testing/2026-10-20-v1.2.1-validation.md) separates offline regressions, scoped native policy checks on Revit 2026 and remaining coverage. Builds and development-runtime checks do not certify final packages or every supported year. The previously reported family-load/recovery-dialog crash is not claimed fixed.
 
 ## Release asset maintenance — 2026-10-16
 

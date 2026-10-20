@@ -178,7 +178,7 @@ v1.0.0 には 6 つの MCP プロンプトがあります。クライアント�
 
 ## 設定
 
-**v1.2.0:** Controlled failures, model gates and **History → Issues** decisions are described in the [English guide](docs/controlled-failures.md). `revit_get_failure_records` and `revit_get_operation_status` read local state while Revit is modal. Native acceptance remains pending; do not retry pending or unknown operations.
+**v1.2.1 ソース（未公開）:** 過去の Issues はレビュー記録であり、後続の書き込みをロックしません。Warning の既定は `rollback`。**Settings → General → Safety** または JSON/env/CLI で明示的に `accept-and-log` を選択できます。Error、corruption、不完全な capture、現在の保存障害では引き続き rollback します。`revit_get_failure_records` と `revit_get_operation_status` はモーダル中もローカル記録を読めます。pending/unknown の処理を自動再実行しないでください。[方針と検証範囲（英語）](docs/controlled-failures.md)を参照してください。
 
 v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 `_history` を返します。履歴は call log と独立して既定で有効です。記録を止めるには `--disable-change-history` を指定します。`meta` の `revit_record_change` は明示した call ID に理由を関連付け、`revit_get_change_records` は履歴を検索します。プライバシー、制限、復旧は [変更の記録](docs/change-tracking.md) を参照してください。
 
@@ -193,6 +193,7 @@ v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 
 | 読み取り専用 | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
 | send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |
 | Call log | `--enable-call-log` / `--disable-call-log` | `BIMWRIGHT_ENABLE_CALL_LOG` | `enableCallLog` |
+| Warning policy（既定 `rollback`） | `--warning-policy <mode>` | `BIMWRIGHT_WARNING_POLICY` | `warningPolicy` |
 | Change history (default ON) | `--enable-change-history` / `--disable-change-history` | `BIMWRIGHT_ENABLE_CHANGE_HISTORY` | `enableChangeHistory` |
 | Response guard | `--enable-response-guard` / `--disable-response-guard` | `BIMWRIGHT_ENABLE_RESPONSE_GUARD` | `enableResponseGuard` |
 | Warn bytes | `--response-warn-bytes` | `BIMWRIGHT_RESPONSE_WARN_BYTES` | `responseWarnBytes` |
@@ -205,12 +206,16 @@ v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
 | send_code 本体キャッシュ（bake クラスタ） | `--cache-send-code-bodies` / `--no-…` | `BIMWRIGHT_CACHE_SEND_CODE_BODIES=1` | `cacheSendCodeBodies` |
 | send_code journal 永続化 | `--persist-send-code-bodies` / `--no-…` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES=1` | `persistSendCodeBodies` |
-| Journal TTL | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
+| Journal TTL（1h-14d） | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | 完了トースト（既定オン） | リボン **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
 | トースト branding（既定オフ、保存あり） | Settings → Toast → **Show branding** | — | `showBranding` |
 | トーストのアイドル時間（既定 20 秒） | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
 | トーストの位置（既定は左上・ドラッグなし、保存あり） | Settings → Toast → **Horizontal / Vertical alignment**、**Allow dragging the card**、**Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | UI 言語（アドイン） | リボン **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
+
+Warning policy は **Apply / Discard** で保存し、次の MCP call から適用します。実行中の call は変更せず、自動再試行もしません。明示的なクライアント CLI/env のみ host の方針を上書きし、gateway 起動時の JSON は後の Settings 変更を固定しません。Revit プロセスの env override は表示され、その行は編集不可になります。
+
+Journal の選択肢は **1h, 4h, 8h, 12h, 24h, 2d, 7d, 14d** の八つ、既定は 4h です。`persistSendCodeBodiesHours` は整数の時間数（1-336）のままです。長い期間は内容を長く保持しますが、それだけで journal を有効にはしません。
 
 サーバ側フラグ変更後は MCP 接続を再起動し、クライアントが新しいツール一覧を取るようにしてください。
 

@@ -175,7 +175,7 @@ If a prompt's toolsets aren't enabled, it answers with the exact `--toolsets` li
 
 ## Configuration
 
-**v1.2.0:** MCP warnings now default to rollback; unresolved issues block writes for that model. Review decisions in **History → Issues**. The new `revit_get_failure_records` and `revit_get_operation_status` tools read local state even while Revit is modal. Do not retry a pending or unknown operation. See [controlled failures and acceptance limits](docs/controlled-failures.md).
+**v1.2.1 source (release preparation):** Historical Issues no longer block later writes or identical requests. Current transaction warnings still default to rollback; an explicit `accept-and-log` warning policy is available in **Settings → General → Safety**, JSON, environment or CLI. Error, corruption, incomplete capture and current persistence failures still require rollback. Review records in **History → Issues**; `revit_get_failure_records` and `revit_get_operation_status` read local state even while Revit is modal. Inspect pending/unknown outcomes before deciding what to do next. See [controlled failures and acceptance limits](docs/controlled-failures.md).
 
 Since v1.0.0 the server reports `_changes` and local per-model `_history`. History defaults on independently of call logs; use `--disable-change-history` to disable recording. The `meta` tools `revit_record_change`, `revit_get_change_records` and `revit_resolve_history_identity` attach reasons to explicit call IDs, query stored changes and record the owner's history choice after a copy or Save As. See [change tracking](docs/change-tracking.md) for privacy, limits and recovery.
 
@@ -190,6 +190,7 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwr
 | Read-only | `--read-only` | `BIMWRIGHT_READ_ONLY=1` | `readOnly` |
 | send_code | `--enable-send-code` / `--disable-send-code` | `BIMWRIGHT_ENABLE_SEND_CODE` | `enableSendCode` |
 | Call log | `--enable-call-log` / `--disable-call-log` | `BIMWRIGHT_ENABLE_CALL_LOG` | `enableCallLog` |
+| Warning policy (default `rollback`) | `--warning-policy rollback\|accept-and-log` | `BIMWRIGHT_WARNING_POLICY` | `warningPolicy` |
 | Change history (default ON) | `--enable-change-history` / `--disable-change-history` | `BIMWRIGHT_ENABLE_CHANGE_HISTORY` | `enableChangeHistory` |
 | Response guard | `--enable-response-guard` / `--disable-response-guard` | `BIMWRIGHT_ENABLE_RESPONSE_GUARD` | `enableResponseGuard` |
 | Warn bytes | `--response-warn-bytes` | `BIMWRIGHT_RESPONSE_WARN_BYTES` | `responseWarnBytes` |
@@ -203,12 +204,16 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwr
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
 | Cache send_code bodies (bake clusters) | `--cache-send-code-bodies` / `--no-…` | `BIMWRIGHT_CACHE_SEND_CODE_BODIES=1` | `cacheSendCodeBodies` |
 | Persist send_code journal | `--persist-send-code-bodies` / `--no-…` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES=1` | `persistSendCodeBodies` |
-| Journal TTL | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
+| Journal TTL (1h-14d) | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | Completion toast (default on) | ribbon **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
 | Toast branding (default off, saved) | Settings → Toast → **Show branding** | — | `showBranding` |
 | Toast idle duration (default 20 s) | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
 | Toast position (default top-left, no drag; saved) | Settings → Toast → **Horizontal / Vertical alignment**, **Allow dragging the card**, **Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | UI language (add-in) | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
+
+Settings warning-policy changes use **Apply / Discard** and apply to the next MCP call without retrying earlier calls. Only an explicit client CLI/environment policy overrides the host's per-call configuration; a gateway's startup JSON does not freeze the saved Settings value. A Revit-process environment override is shown in Settings and disables that row. See [warning-policy limits and receipts](docs/controlled-failures.md#warning-policy).
+
+Journal retention offers exactly **1h, 4h, 8h, 12h, 24h, 2d, 7d, 14d** in Settings. The saved `persistSendCodeBodiesHours` remains an integer hour count (1-336); the default remains 4h. A longer window explicitly retains journal content longer; it does not enable journaling by itself.
 
 After changing server flags, restart the MCP connection so the client picks up the new tool list.
 
@@ -415,7 +420,7 @@ More: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).
 | [docs/install.md](docs/install.md) | Installer details, upgrade, uninstall, developer and NuGet installs |
 | [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md) | Per-client MCP wiring |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Processes, transport, DTO rules |
-| [docs/controlled-failures.md](docs/controlled-failures.md) | Warning rollback, model gates, Issues decisions and pending-operation recovery |
+| [docs/controlled-failures.md](docs/controlled-failures.md) | Warning policy, advisory Issues, native decisions and pending-operation recovery |
 | [docs/send-code.md](docs/send-code.md) | send_code source forms and failure handling |
 | [docs/bake.md](docs/bake.md) | Adaptive bake and body privacy |
 | [docs/localization.md](docs/localization.md) | UI languages, overrides, hot reload |
