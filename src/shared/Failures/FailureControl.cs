@@ -118,7 +118,8 @@ namespace RvtMcp.Plugin.Failures
                 {
                     try
                     {
-                        if (document == null || !document.IsValidObject) continue;
+                        // Linked models are loaded with their host; they are never MCP targets, so they get no ledger row.
+                        if (document == null || !document.IsValidObject || document.IsLinked) continue;
                         DocumentState openState;
                         if (ReferenceEquals(document, doc)) openState = state;
                         else if (!resolveIdentity) Documents.TryGetValue(document, out openState);
