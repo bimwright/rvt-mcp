@@ -102,12 +102,12 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void Decisions_require_same_active_model_and_open_incident()
+        public void Decisions_allow_another_active_model_but_require_an_open_incident()
         {
             var incident = Incident(); var context = Context();
             context.ModelScopeKey = "different-model";
-            Assert.Throws<InvalidOperationException>(() => FailureIssuesPresentation.CreateDecision(
-                "rework", incident, RolledBack(), context, "Reviewed", false));
+            Assert.Equal(incident.ModelScopeKey, FailureIssuesPresentation.CreateDecision(
+                "rework", incident, RolledBack(), context, "Reviewed", false).ModelScopeKey);
             context.ModelScopeKey = incident.ModelScopeKey;
             incident.State = "accepted_once";
             Assert.Throws<InvalidOperationException>(() => FailureIssuesPresentation.CreateDecision(
@@ -144,8 +144,8 @@ namespace RvtMcp.Tests
                 "accept_once", incomplete, RolledBack(), Context(), "", true));
             var context = Context();
             context.ModelScopeKey = "different-model";
-            Assert.Throws<InvalidOperationException>(() => FailureIssuesPresentation.CreateDecision(
-                "rework", Incident(), RolledBack(), context, " ", true));
+            Assert.Equal("scope-a", FailureIssuesPresentation.CreateDecision(
+                "rework", Incident(), RolledBack(), context, " ", true).ModelScopeKey);
         }
 
         [Fact]
@@ -153,8 +153,9 @@ namespace RvtMcp.Tests
         {
             var incident = Incident(); var context = Context();
             context.RevitYear = 2024;
-            Assert.Throws<InvalidOperationException>(() => FailureIssuesPresentation.CreateDecision(
-                "create_rule", incident, RolledBack(), context, "Reviewed", false));
+            Assert.All(FailureIssuesPresentation.CreateDecision(
+                "create_rule", incident, RolledBack(), context, "Reviewed", false).Rules,
+                rule => Assert.Equal(incident.RevitYear, rule.RevitYear));
             context.RevitYear = 2027;
             var decision = FailureIssuesPresentation.CreateDecision("create_rule", incident, RolledBack(), context, "  Reviewed  ", false);
             Assert.Equal("Reviewed", decision.Reason);
@@ -225,6 +226,26 @@ namespace RvtMcp.Tests
             Assert.Same(older, FailureIssuesPresentation.PreferredIssueModel(new[] { closed, older, otherOpen }, "active", 2022));
             Assert.Same(closed, FailureIssuesPresentation.PreferredIssueModel(new[] { closed, otherOpen }, "missing", 2022));
             Assert.Null(FailureIssuesPresentation.PreferredIssueModel(new FailureIssueModel[0], "active", 2022));
+        }
+
+        [Theory]
+        [InlineData("Cao Bằng Farm", "cao bang", 1.0)]
+        [InlineData("Đồng Nai - Nhà máy", "DONG NAI", 1.0)]
+        [InlineData("KEI-CaoBang-2026.rvt", "caobang", 1.0)]
+        [InlineData("Cao Bang Farm", "caobagn", 6.0 / 7.0)]
+        [InlineData("Alpha", "alpah", 0.8)]
+        [InlineData("Alpha", "alphx", 0.8)]
+        [InlineData("Alpha", "alphax", 5.0 / 6.0)]
+        [InlineData("Alpha", "alha", 0.75)]
+        [InlineData("Alpha", "axpha", 0.8)]
+        [InlineData("Alpha", "axphz", 0.6)]
+        [InlineData("", "alpha", 0.0)]
+        [InlineData(null, "alpha", 0.0)]
+        [InlineData("Cao Bang", "", 1.0)]
+        [InlineData("Cao Bang", "  -  ", 1.0)]
+        public void Model_search_scores_partial_names_accents_and_typing_errors(string title, string query, double expected)
+        {
+            Assert.Equal(expected, FailureIssuesPresentation.ModelNameSearchScore(title, query), 8);
         }
 
         [Theory]

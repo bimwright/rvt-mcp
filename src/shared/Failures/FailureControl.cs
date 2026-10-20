@@ -39,6 +39,7 @@ namespace RvtMcp.Plugin.Failures
         private static FailureIssuesContext _uiContext = new FailureIssuesContext();
         private static readonly object OpenScopeGate = new object();
         private static HashSet<string> _openModelScopes = new HashSet<string>(StringComparer.Ordinal);
+        internal static event EventHandler UiContextChanged;
         private static string _revitUser;
         private static string _storageError;
         private static string _ledgerResetGeneration;
@@ -85,6 +86,7 @@ namespace RvtMcp.Plugin.Failures
 
         private static DocumentState State(Document doc, bool refresh = false)
         {
+            PruneClosedDocuments();
             if (doc == null || !doc.IsValidObject) return null;
             if (!Documents.TryGetValue(doc, out var state))
                 Documents.Add(doc, state = new DocumentState { Document = doc });
@@ -110,6 +112,7 @@ namespace RvtMcp.Plugin.Failures
         {
             try
             {
+                PruneClosedDocuments();
                 RefreshLedgerResetState();
                 resolveIdentity |= _ledgerIdentityRefreshPending;
                 _revitUser = app.Application.Username;
@@ -133,19 +136,57 @@ namespace RvtMcp.Plugin.Failures
                     }
                     catch { /* One unreadable document does not hide the others. */ }
                 }
-                lock (OpenScopeGate) _openModelScopes = open;
-                _uiContext = state == null ? new FailureIssuesContext() : new FailureIssuesContext
+                PublishUiContext(state == null ? new FailureIssuesContext() : new FailureIssuesContext
                 {
                     IsAvailable = true, ModelScopeKey = state.Model.ModelScopeKey, ModelTitle = state.Model.Title,
                     RevitYear = Year, DocumentRevision = Revision(state), RevitUser = _revitUser, HostInstanceId = HostInstanceId
-                };
+                }, open);
                 _ledgerIdentityRefreshPending = false;
             }
             catch
             {
-                _uiContext = new FailureIssuesContext();
-                lock (OpenScopeGate) _openModelScopes = new HashSet<string>(StringComparer.Ordinal);
+                PublishUiContext(new FailureIssuesContext(), new HashSet<string>(StringComparer.Ordinal));
             }
+        }
+
+        private static bool IsLiveDocument(Document document)
+        {
+            try { return document != null && document.IsValidObject; }
+            catch { return false; }
+        }
+
+        private static void PruneDocuments<T>(Dictionary<Document, T> cache)
+        {
+            // Remove(deadDocument) calls its native GetHashCode. Rebuild without ever
+            // hashing invalid keys, while retaining equality between live API wrappers.
+            var live = cache.Where(pair => IsLiveDocument(pair.Key)).ToArray();
+            if (live.Length == cache.Count) return;
+            cache.Clear();
+            foreach (var pair in live) cache.Add(pair.Key, pair.Value);
+        }
+
+        private static void PruneClosedDocuments()
+        {
+            PruneDocuments(Documents);
+            PruneDocuments(Saving);
+            PruneDocuments(SyncAuthorities);
+        }
+
+        private static void PublishUiContext(FailureIssuesContext context, HashSet<string> open)
+        {
+            var previous = _uiContext;
+            bool changed = previous.IsAvailable != context.IsAvailable || previous.ModelScopeKey != context.ModelScopeKey
+                || previous.RevitYear != context.RevitYear;
+            _uiContext = context;
+            lock (OpenScopeGate)
+            {
+                changed |= !_openModelScopes.SetEquals(open);
+                _openModelScopes = open;
+            }
+            if (!changed) return;
+            // UI subscribers marshal their updates until after the native callback has returned.
+            try { UiContextChanged?.Invoke(null, EventArgs.Empty); }
+            catch (Exception ex) { FailureLedgerStore.Diagnostic?.Invoke("Issues context notification failed: " + ex.Message); }
         }
 
         internal static HashSet<string> CopyOpenModelScopes()
@@ -170,6 +211,12 @@ namespace RvtMcp.Plugin.Failures
         {
             var current = GetUiContext();
             if (current.ModelScopeKey == modelScopeKey) return current;
+            PruneClosedDocuments();
+            var live = Documents.Values.FirstOrDefault(d => d.Model?.ModelScopeKey == modelScopeKey);
+            if (live != null) return new FailureIssuesContext {
+                IsAvailable = true, ModelScopeKey = modelScopeKey, ModelTitle = live.Model.Title,
+                RevitYear = Year, DocumentRevision = Revision(live), RevitUser = _revitUser, HostInstanceId = HostInstanceId
+            };
             var pending = NativeRequests.Values.Where(i => i.NativeAction == "open" && i.ModelScopeKey == modelScopeKey
                 && i.CreatedUtc >= DateTimeOffset.UtcNow.AddMinutes(-5)).OrderByDescending(i => i.CreatedUtc).FirstOrDefault();
             return pending == null ? new FailureIssuesContext() : new FailureIssuesContext
@@ -201,23 +248,16 @@ namespace RvtMcp.Plugin.Failures
                 decision.WindowsUser = Environment.UserName;
                 decision.RevitUser = _revitUser;
                 decision.HostInstanceId = HostInstanceId;
-                decision.DocumentRevision = GetUiContext(decision.ModelScopeKey).DocumentRevision;
-                if (decision.ModelScopeKey != _uiContext.ModelScopeKey && decision.Action != "native_grant")
-                    throw new InvalidOperationException("Activate this model in Revit before making an issue decision.");
+                PruneClosedDocuments();
                 var grants = new List<FailureGrant>();
                 if (decision.Grant != null) grants.Add(decision.Grant);
                 if (decision.Grants != null) grants.AddRange(decision.Grants);
                 foreach (var grant in grants)
                 {
                     var live = Documents.Values.FirstOrDefault(d => d.Model?.ModelScopeKey == decision.ModelScopeKey);
-                    if (grant.NativeAction == "open")
-                    {
-                        if (!NativeRequests.TryGetValue(grant.NativeContextHash ?? "", out var native)
-                            || native.ModelScopeKey != decision.ModelScopeKey || native.RequestHash != grant.RequestHash
-                            || native.CreatedUtc < DateTimeOffset.UtcNow.AddMinutes(-5))
-                            throw new InvalidOperationException("Native open context expired; prepare a new bounded attempt.");
-                    }
-                    else if (live == null || Revision(live) != grant.DocumentRevision)
+                    // Closed-model decisions retain the recorded revision. The execution policy
+                    // revalidates year, request, revision, native context and expiry before use.
+                    if (grant.NativeAction != "open" && grant.RevitYear == Year && live != null && Revision(live) != grant.DocumentRevision)
                         throw new InvalidOperationException("The model changed; inspect it and prepare a new attempt.");
                 }
                 var result = Store.ApplyDecision(decision);
@@ -241,8 +281,7 @@ namespace RvtMcp.Plugin.Failures
             _ledgerIdentityRefreshPending = true;
             UncertainModels.Clear(); NativeRequests.Clear(); _storageError = null;
             foreach (var state in Documents.Values) state.Path = null;
-            _uiContext = new FailureIssuesContext();
-            lock (OpenScopeGate) _openModelScopes.Clear();
+            PublishUiContext(new FailureIssuesContext(), new HashSet<string>(StringComparer.Ordinal));
         }
 
         /// <summary>Backs up ledger and pending records. Refused while an MCP operation holds the shared activity lock.</summary>

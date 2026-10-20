@@ -20,7 +20,10 @@ namespace RvtMcp.Plugin.Views
     {
         // Bounded read on the Revit UI thread; the status line says when older issues are left out.
         private const int MaxIssueRows = 500;
-        private readonly ComboBox _models = new ComboBox { Height = 28, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Center };
+        private readonly FailureModelPicker _models = new FailureModelPicker { Height = 28, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Center };
+        private TextBox _modelSearch => _models.SearchBox;
+        private TextBlock _modelSearchHint => _models.SearchHint;
+        private TextBlock _modelSearchEmpty => _models.EmptyHint;
         private readonly ComboBox _states = new ComboBox { Height = 28, MinWidth = 130, VerticalContentAlignment = VerticalAlignment.Center };
         private readonly TextBlock _status = new TextBlock { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(4, 0, 4, 6) };
         private readonly DataGrid _grid;
@@ -36,7 +39,7 @@ namespace RvtMcp.Plugin.Views
         private readonly TextBox _reason = new TextBox { Height = 28, MaxLength = 2000, VerticalContentAlignment = VerticalAlignment.Center };
         private readonly TextBlock _reasonWatermark = new TextBlock {
             Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center,
-            Foreground = MutedBrush, TextTrimming = TextTrimming.CharacterEllipsis
+            Foreground = PlaceholderBrush, TextTrimming = TextTrimming.CharacterEllipsis
         };
         private readonly CheckBox _verified = new CheckBox();
         private readonly CheckBox _dialogConsent = new CheckBox { Margin = new Thickness(0, 4, 0, 0), Visibility = Visibility.Collapsed };
@@ -61,6 +64,7 @@ namespace RvtMcp.Plugin.Views
         private FailureOperation _operation;
         private static readonly SolidColorBrush DecisionHintBrush = Freeze(0x9A, 0x34, 0x12);
         private static readonly SolidColorBrush MutedBrush = Freeze(0x64, 0x74, 0x8B);
+        private static readonly SolidColorBrush PlaceholderBrush = Freeze(0x94, 0xA3, 0xB8);
         private static readonly SolidColorBrush ErrorBrush = Freeze(0x99, 0x1B, 0x1B);
         private static readonly SolidColorBrush ErrorBackground = Freeze(0xFE, 0xF2, 0xF2);
         private static readonly SolidColorBrush ErrorBorder = Freeze(0xDC, 0x26, 0x26);
@@ -76,46 +80,45 @@ namespace RvtMcp.Plugin.Views
         internal FailureIssuesView()
         {
             _models.ItemTemplate = ModelTemplate();
-            TextSearch.SetTextPath(_models, "Title");
+            _models.IsTextSearchEnabled = false;
+            _models.ItemContainerStyle = ModelSearchStyle();
             _models.DropDownOpened += (s, e) => ApplyOpenEmphasis();
-            var root = new Grid { Margin = new Thickness(8, 6, 8, 8) };
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            _modelSearch.TextChanged += (s, e) => {
+                _modelSearchHint.Visibility = string.IsNullOrEmpty(_modelSearch.Text) ? Visibility.Visible : Visibility.Collapsed;
+                ApplyOpenEmphasis();
+            };
+            var root = new Grid { Margin = new Thickness(8, 6, 8, 0) };
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 240 });
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            var toolbar = new Grid { Margin = new Thickness(0, 0, 0, 4) };
-            toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star), MinWidth = 360 });
-            toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star), MinWidth = 420 });
-            // Match the Issues group content box: margin right 4 plus padding 8.
-            var modelHost = new StackPanel { Margin = new Thickness(8, 0, 12, 0) };
-            modelHost.Children.Add(Label("failure.filter.model"));
-            modelHost.Children.Add(_models);
-            toolbar.Children.Add(modelHost);
-            var tools = new DockPanel { LastChildFill = false, VerticalAlignment = VerticalAlignment.Bottom };
-            var refresh = Button("failure.refresh", (s, e) => Refresh());
-            DockPanel.SetDock(refresh, Dock.Right);
-            tools.Children.Add(refresh);
-            var reset = Button("failure.reset", (s, e) => ResetLedger());
-            DockPanel.SetDock(reset, Dock.Right);
-            tools.Children.Add(reset);
-            var stateHost = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            stateHost.Children.Add(Label("failure.filter.state"));
+            var toolbar = new DockPanel { LastChildFill = false, Margin = new Thickness(0, 0, 0, 6) };
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            actions.Children.Add(Button("failure.reset", (s, e) => ResetLedger()));
+            actions.Children.Add(Button("failure.refresh", (s, e) => Refresh()));
+            DockPanel.SetDock(actions, Dock.Right);
+            toolbar.Children.Add(actions);
+            var filters = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            filters.Children.Add(Label("failure.filter.model"));
+            _models.MinWidth = 210;
+            _models.MaxWidth = 340;
+            _models.Margin = new Thickness(0, 0, 8, 0);
+            filters.Children.Add(_models);
+            filters.Children.Add(Label("failure.filter.state"));
             foreach (var state in new[] { "", "open", "observed", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule" })
                 _states.Items.Add(new ComboBoxItem { Tag = state, Content = state.Length == 0 ? L.T("failure.filter.all") : L.T("failure.state." + state) });
             _states.SelectedIndex = 1;
-            stateHost.Children.Add(_states);
-            tools.Children.Add(stateHost);
-            Grid.SetColumn(tools, 1);
-            toolbar.Children.Add(tools);
+            _states.Margin = new Thickness(0, 0, 8, 0);
+            filters.Children.Add(_states);
+            DockPanel.SetDock(filters, Dock.Left);
+            toolbar.Children.Add(filters);
             Add(root, toolbar, 0);
-            Add(root, _status, 1);
 
             _grid = new DataGrid {
                 IsReadOnly = true, AutoGenerateColumns = false, CanUserAddRows = false,
                 SelectionMode = DataGridSelectionMode.Single, HeadersVisibility = DataGridHeadersVisibility.Column,
                 GridLinesVisibility = DataGridGridLinesVisibility.Horizontal, Margin = new Thickness(0)
             };
+            BimwrightStyles.KeepSelectionHighlight(_grid);
             var header = new Style(typeof(DataGridColumnHeader));
             header.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Bold));
             header.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
@@ -136,17 +139,27 @@ namespace RvtMcp.Plugin.Views
             _facts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 48 });
             _facts.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             _facts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 48 });
-            var recordHeader = new TextBlock { FontWeight = FontWeights.SemiBold };
-            var record = new Expander { Header = recordHeader, IsExpanded = false, Margin = new Thickness(0, 6, 0, 0), Content = _facts };
+            var factsOpen = false;
+            var expand = new Button { Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            expand.Click += (s, e) =>
+            {
+                factsOpen = !factsOpen;
+                _facts.Visibility = factsOpen ? Visibility.Visible : Visibility.Collapsed;
+                expand.Content = L.T(factsOpen ? "failure.group.collapse" : "failure.group.record");
+            };
+            _facts.Visibility = Visibility.Collapsed;
+            _facts.Margin = new Thickness(0, 6, 0, 0);
             var titleRow = new DockPanel { LastChildFill = true };
             _copyDetails = Button("failure.copy", (s, e) => CopyDetails());
             _copyDetails.Margin = new Thickness(8, 0, 0, 0);
+            DockPanel.SetDock(expand, Dock.Right);
+            titleRow.Children.Add(expand);
             DockPanel.SetDock(_copyDetails, Dock.Right);
             titleRow.Children.Add(_copyDetails);
             titleRow.Children.Add(_issueHeadline);
             var heading = new StackPanel { Margin = new Thickness(0, 0, 0, 4) };
             heading.Children.Add(titleRow);
-            heading.Children.Add(record);
+            heading.Children.Add(_facts);
 
             _warningScroll = new ScrollViewer {
                 Content = _warningCards, Background = Brushes.White, PanningMode = PanningMode.VerticalOnly,
@@ -189,18 +202,13 @@ namespace RvtMcp.Plugin.Views
             right.Children.Add(_decisionGroup);
 
             var body = new Grid();
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star), MinWidth = 360 });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star), MinWidth = 420 });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(5, GridUnitType.Star), MinWidth = 360 });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(6, GridUnitType.Star), MinWidth = 420 });
             Grid.SetColumn(_issuesGroup, 0);
             body.Children.Add(_issuesGroup);
             Grid.SetColumn(right, 1);
             body.Children.Add(right);
-            Add(root, body, 2);
-
-            var closeBar = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 4, 0, 0) };
-            var close = Button("update.close", (s, e) => Window.GetWindow(this)?.Close());
-            closeBar.Children.Add(close);
-            Add(root, closeBar, 3);
+            Add(root, body, 1);
             Content = root;
 
             _localizers.Add(() => _issuesGroup.Header = L.T("failure.tab.issues"));
@@ -209,9 +217,15 @@ namespace RvtMcp.Plugin.Views
             _localizers.Add(() => _warningsGroup.Header = L.T("failure.group.warnings"));
             _localizers.Add(() => rulesTitle.Text = L.T("failure.rules"));
             _localizers.Add(() => _rulesEmpty.Text = L.T("failure.rules.empty"));
-            _localizers.Add(() => recordHeader.Text = L.T("failure.group.record"));
-            _localizers.Add(() => HistoryChrome.Guide(recordHeader, L.T("failure.record.tip")));
+            _localizers.Add(() => expand.Content = L.T(factsOpen ? "failure.group.collapse" : "failure.group.record"));
+            _localizers.Add(() => HistoryChrome.Guide(expand, L.T("failure.record.tip")));
             _localizers.Add(() => HistoryChrome.Guide(_models, L.T("failure.tip.model")));
+            _localizers.Add(() => {
+                _modelSearchHint.Text = L.T("failure.modelSearch");
+                HistoryChrome.Guide(_modelSearch, _modelSearchHint.Text);
+                System.Windows.Automation.AutomationProperties.SetName(_modelSearch, _modelSearchHint.Text);
+                _modelSearchEmpty.Text = L.T("failure.modelSearch.empty");
+            });
             _localizers.Add(() => HistoryChrome.Guide(_states, L.T("failure.tip.state")));
             _localizers.Add(() => HistoryChrome.Guide(_grid, L.T("failure.detail.prompt")));
             _localizers.Add(() => HistoryChrome.Guide(_copyDetails, L.T("failure.copy")));
@@ -232,8 +246,8 @@ namespace RvtMcp.Plugin.Views
                 if (Dispatcher.CheckAccess()) ApplyLocalization();
                 else Dispatcher.BeginInvoke(new Action(ApplyLocalization));
             };
-            Loaded += (s, e) => { L.Changed += _languageChanged; ApplyLocalization(); Refresh(); };
-            Unloaded += (s, e) => L.Changed -= _languageChanged;
+            Loaded += (s, e) => { L.Changed += _languageChanged; FailureControl.UiContextChanged += OnUiContextChanged; ApplyLocalization(); Refresh(); };
+            Unloaded += (s, e) => { L.Changed -= _languageChanged; FailureControl.UiContextChanged -= OnUiContextChanged; };
             ApplyLocalization();
         }
 
@@ -253,7 +267,6 @@ namespace RvtMcp.Plugin.Views
             Grid.SetColumn(reasonInput, 1);
             reasonRow.Children.Add(reasonInput);
             panel.Children.Add(reasonRow);
-            panel.Children.Add(_decisionHint);
             var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
             _rework = DecisionButton("failure.action.rework", "rework");
             _abandon = DecisionButton("failure.action.abandon", "abandon");
@@ -266,6 +279,8 @@ namespace RvtMcp.Plugin.Views
             actions.Children.Add(_createRule);
             actions.Children.Add(_native);
             panel.Children.Add(actions);
+            _verified.Checked += (s, e) => UpdateActions();
+            _verified.Unchecked += (s, e) => UpdateActions();
             return panel;
         }
 
@@ -277,11 +292,31 @@ namespace RvtMcp.Plugin.Views
                 var context = FailureControl.GetUiContext();
                 var open = FailureControl.CopyOpenModelScopes();
                 var state = (_states.SelectedItem as ComboBoxItem)?.Tag as string;
+                var kept = _models.SelectedItem as ModelRow;
                 var issues = Reader().GetIssueModels(string.IsNullOrEmpty(state) ? null : state);
-                var preferred = FailureIssuesPresentation.PreferredIssueModel(issues, context.IsAvailable ? context.ModelScopeKey : null, context.RevitYear);
                 var models = issues.Select(m => new ModelRow(m, context, open)).ToList();
+                if (kept != null && !models.Any(m => SameModel(m, kept)))
+                {
+                    var stillThere = Reader().GetIssueModels(null).FirstOrDefault(m =>
+                        m.ModelScopeKey == kept.ModelScopeKey && m.RevitYear == kept.RevitYear);
+                    if (stillThere != null)
+                    {
+                        stillThere.IssueCount = 0;
+                        models.Add(new ModelRow(stillThere, context, open));
+                    }
+                }
+                foreach (var model in models) model.UpdateSearch(_modelSearch.Text);
+                models = OrderModels(models);
                 _models.ItemsSource = models;
-                _models.SelectedItem = models.FirstOrDefault(m => m.Source == preferred) ?? models.FirstOrDefault();
+                var selected = kept == null ? null : models.FirstOrDefault(m => SameModel(m, kept));
+                if (selected == null)
+                {
+                    var preferred = FailureIssuesPresentation.PreferredIssueModel(models.Select(m => m.Source).ToList(),
+                        context.IsAvailable ? context.ModelScopeKey : null, context.RevitYear);
+                    selected = models.FirstOrDefault(m => m.Source == preferred) ?? models.FirstOrDefault();
+                }
+                _models.SelectedItem = selected;
+                UpdateSearchEmpty(models);
             }
             catch (Exception ex)
             {
@@ -320,8 +355,46 @@ namespace RvtMcp.Plugin.Views
         private void ApplyOpenEmphasis()
         {
             if (!(_models.ItemsSource is IEnumerable<ModelRow> rows)) return;
+            var context = FailureControl.GetUiContext();
             var open = FailureControl.CopyOpenModelScopes();
-            foreach (var row in rows) row.IsOpen = FailureIssuesPresentation.IssueModelIsOpen(row.ModelScopeKey, open);
+            foreach (var row in rows) { row.UpdateContext(context, open); row.UpdateSearch(_modelSearch.Text); }
+            UpdateSearchEmpty(rows);
+            var ordered = OrderModels(rows);
+            if (ordered.SequenceEqual(rows)) return;
+            var selected = _models.SelectedItem;
+            var wasLoading = _loading;
+            _loading = true;
+            try { _models.ItemsSource = ordered; _models.SelectedItem = selected; }
+            finally { _loading = wasLoading; }
+        }
+
+        private static bool SameModel(ModelRow row, ModelRow kept)
+        {
+            return row.ModelScopeKey == kept.ModelScopeKey && row.RevitYear == kept.RevitYear;
+        }
+
+        private static List<ModelRow> OrderModels(IEnumerable<ModelRow> rows)
+        {
+            return rows.OrderByDescending(row => row.SearchScore).ThenByDescending(row => row.IsOpen).ThenByDescending(row => row.IsCurrent)
+                .ThenByDescending(row => row.RevitYear).ThenBy(row => row.Title, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(row => row.ModelScopeKey, StringComparer.Ordinal).ToList();
+        }
+
+        private void UpdateSearchEmpty(IEnumerable<ModelRow> rows)
+        {
+            _modelSearchEmpty.Visibility = !string.IsNullOrWhiteSpace(_modelSearch.Text) && !rows.Any(row => row.MatchesSearch)
+                ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void OnUiContextChanged(object sender, EventArgs args)
+        {
+            if (Dispatcher.HasShutdownStarted) return;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (!IsLoaded) return;
+                ApplyOpenEmphasis();
+                UpdateActions();
+            }));
         }
 
         private void LoadPage()
@@ -467,7 +540,9 @@ namespace RvtMcp.Plugin.Views
                 _warningCards.Children.Add(Notice(L.T("failure.detail.incomplete"), true));
             if (!string.IsNullOrWhiteSpace(_incident.NativeAction))
                 _warningCards.Children.Add(Notice(_incident.NativeAction + " · " + _incident.NativeContextDescription, false));
-            if (messages.Count == 0)
+            if (_incident.Action == "capture_failed" && !string.IsNullOrEmpty(_incident.NativeContextDescription))
+                _warningCards.Children.Add(Notice(_incident.NativeContextDescription, true));
+            else if (messages.Count == 0)
                 _warningCards.Children.Add(Notice(L.T("failure.detail.noWarnings"), false));
             for (var i = 0; i < messages.Count; i++)
                 _warningCards.Children.Add(WarningCard(messages[i], i + 1, messages.Count));
@@ -528,12 +603,12 @@ namespace RvtMcp.Plugin.Views
             if (_incident == null) return;
             try
             {
-                var context = action == "native_grant" ? FailureControl.GetUiContext(_incident.ModelScopeKey) : FailureControl.GetUiContext();
+                var context = FailureControl.GetUiContext(_incident.ModelScopeKey);
                 var dialog = FailureIssuesPresentation.DialogAdapter(_incident);
                 if (dialog != null && (action == "accept_once" || action == "create_rule") && _dialogConsent.IsChecked != true)
                     throw new InvalidOperationException("security.failure.dialogChoiceRequired");
                 var decision = action == "native_grant"
-                    ? NativeDecision(context)
+                    ? FailureIssuesPresentation.CreateNativeDecision(_incident, _operation, context, _reason.Text, _verified.IsChecked == true)
                     : FailureIssuesPresentation.CreateDecision(action, _incident, _operation, context,
                         _reason.Text, _verified.IsChecked == true);
                 var warning = action == "accept_once" ? L.T(dialog != null ? "security.failure.dialogOnceWarning" : "security.failure.onceWarning")
@@ -542,29 +617,9 @@ namespace RvtMcp.Plugin.Views
                 var label = dialog != null && action == "accept_once" ? L.T("security.failure.acceptDialogOnce") : ActionLabel(action);
                 if (FailureIssuesPresentation.RequiresConfirmation(action)
                     && !Confirm(label, warning, L.T("security.failure.review.permits"), ProtectedConstraints(decision, context), DetailsText(), decision.Reason)) return;
-                SaveDecision(decision, context);
+                SaveDecision(decision);
             }
             catch (Exception ex) { ShowDecisionFailure(ex); }
-        }
-
-        private FailureDecision NativeDecision(FailureIssuesContext context)
-        {
-            var decision = FailureIssuesPresentation.CreateDecision("rework", _incident, _operation, context,
-                _reason.Text, _verified.IsChecked == true);
-            if (!_incident.Complete || string.IsNullOrWhiteSpace(_incident.NativeAction) || string.IsNullOrWhiteSpace(_incident.NativeContextHash)
-                || string.IsNullOrWhiteSpace(_incident.NativeContextDescription) || string.IsNullOrWhiteSpace(_incident.RequestHash)
-                || string.IsNullOrWhiteSpace(context.DocumentRevision) || context.RevitYear != _incident.RevitYear)
-                throw new InvalidOperationException("security.failure.stale");
-            if (context.DocumentRevision != _incident.DocumentRevision && _verified.IsChecked != true)
-                throw new InvalidOperationException("security.failure.revisionVerificationRequired");
-            decision.Action = "native_grant";
-            decision.Grant = new FailureGrant {
-                ModelScopeKey = _incident.ModelScopeKey, RevitYear = _incident.RevitYear,
-                OperationContext = _incident.OperationContext, NativeAction = _incident.NativeAction,
-                NativeContextHash = _incident.NativeContextHash, RequestHash = _incident.RequestHash,
-                DocumentRevision = context.DocumentRevision, ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(5)
-            };
-            return decision;
         }
 
         private void RevokeRule()
@@ -582,18 +637,13 @@ namespace RvtMcp.Plugin.Views
                     ModelScopeKey = rule.ModelScopeKey, Action = "revoke_rule", Rule = rule, Reason = reason,
                     WindowsUser = Environment.UserName, RevitUser = context.RevitUser, HostInstanceId = context.HostInstanceId,
                     Channel = "revit_ui", DocumentRevision = context.DocumentRevision
-                }, context);
+                });
             }
             catch (Exception ex) { ShowDecisionFailure(ex); }
         }
 
-        private void SaveDecision(FailureDecision decision, FailureIssuesContext reviewedContext)
+        private void SaveDecision(FailureDecision decision)
         {
-            var current = decision.Action == "native_grant" ? FailureControl.GetUiContext(decision.ModelScopeKey) : FailureControl.GetUiContext();
-            if (current?.IsAvailable != true || current.ModelScopeKey != reviewedContext.ModelScopeKey
-                || current.DocumentRevision != reviewedContext.DocumentRevision
-                || current.RevitYear != reviewedContext.RevitYear || current.HostInstanceId != reviewedContext.HostInstanceId)
-                throw new InvalidOperationException("security.failure.stale");
             var result = FailureControl.ApplyUiDecision(decision);
             if (result == null || !result.Recorded || !result.Durable)
             {
@@ -615,7 +665,7 @@ namespace RvtMcp.Plugin.Views
                     ("fingerprint", decision.Grant.NativeContextHash), ("request", decision.Grant.RequestHash),
                     ("revision", decision.Grant.DocumentRevision));
             var rules = decision.Rules.Cast<FailureRule>().Concat(decision.Grants).ToList();
-            return string.Join("\n\n", rules.Select(rule => ProtectedRuleText(rule, _incident.RequestHash, context.DocumentRevision)));
+            return string.Join("\n\n", rules.Select(rule => ProtectedRuleText(rule, _incident.RequestHash, decision.DocumentRevision)));
         }
 
         private static string ProtectedRuleText(FailureRule rule, string request, string revision)
@@ -642,33 +692,35 @@ namespace RvtMcp.Plugin.Views
         private void UpdateActions()
         {
             var context = FailureControl.GetUiContext();
-            var sameModel = context?.IsAvailable == true && context.ModelScopeKey == _incident?.ModelScopeKey;
             var settled = _operation == null || _operation.Execution == "completed" || _operation.Execution == "interrupted_unknown";
-            var active = sameModel && settled && _incident?.State == "open";
-            foreach (var button in _decisionButtons) button.IsEnabled = active;
+            // Decisions belong to the selected incident, even when its model is inactive or closed.
+            var active = settled && _incident?.State == "open";
+            var reviewed = _verified.IsChecked == true;
+            foreach (var button in _decisionButtons) button.IsEnabled = active && reviewed;
             var warning = active && FailureIssuesPresentation.CanAcceptWarning(_incident);
             var dialog = FailureIssuesPresentation.DialogAdapter(_incident);
-            _accept.IsEnabled = _createRule.IsEnabled = warning || (active && dialog != null);
-            if (sameModel && settled && _incident?.State == "observed" && dialog != null) _createRule.IsEnabled = true;
+            _accept.IsEnabled = _createRule.IsEnabled = reviewed && (warning || (active && dialog != null));
+            if (settled && _incident?.State == "observed" && dialog != null) _createRule.IsEnabled = reviewed;
             _accept.Content = L.T(dialog == null ? "failure.action.acceptOnce" : "failure.action.allowOnce");
             HistoryChrome.Guide(_rework, L.T("failure.tip.rework"));
             HistoryChrome.Guide(_abandon, L.T("failure.tip.abandon"));
             HistoryChrome.Guide(_accept, L.T(dialog != null ? "security.failure.dialogOnceWarning" : warning ? "security.failure.onceWarning" : "security.failure.warningOnly"));
             HistoryChrome.Guide(_createRule, L.T(dialog != null ? "security.failure.dialogRuleWarning" : warning ? "security.failure.ruleWarning" : "security.failure.warningOnly"));
             HistoryChrome.Guide(_native, L.T("security.failure.nativeWarning"));
-            _decisionHint.Text = _incident == null
-                ? L.T("failure.detail.prompt")
-                : !sameModel ? L.T("security.failure.currentModelRequired") : "";
+            _decisionHint.Text = _incident == null ? L.T("failure.detail.prompt") : "";
             _decisionHint.Visibility = string.IsNullOrEmpty(_decisionHint.Text) ? Visibility.Collapsed : Visibility.Visible;
             _dialogConsent.Visibility = dialog == null ? Visibility.Collapsed : Visibility.Visible;
             _dialogConsent.Content = dialog == null ? "" : L.T("security.failure.dialogChoice", ("semantic", DialogSemantic(dialog)));
             _native.Visibility = string.IsNullOrWhiteSpace(_incident?.NativeAction) ? Visibility.Collapsed : Visibility.Visible;
             var nativeContext = _incident == null ? null : FailureControl.GetUiContext(_incident.ModelScopeKey);
-            _native.IsEnabled = nativeContext?.IsAvailable == true && nativeContext.ModelScopeKey == _incident?.ModelScopeKey
-                && settled && _incident?.State == "open" && _incident.Complete && !string.IsNullOrWhiteSpace(_incident.NativeContextHash)
-                && !string.IsNullOrWhiteSpace(_incident.NativeContextDescription);
+            var nativeRevision = nativeContext?.IsAvailable == true && nativeContext.ModelScopeKey == _incident?.ModelScopeKey
+                && nativeContext.RevitYear == _incident.RevitYear ? nativeContext.DocumentRevision : _incident?.DocumentRevision;
+            _native.IsEnabled = reviewed && active && _incident.Complete && !string.IsNullOrWhiteSpace(_incident.NativeAction)
+                && !string.IsNullOrWhiteSpace(_incident.NativeContextHash) && !string.IsNullOrWhiteSpace(_incident.NativeContextDescription)
+                && !string.IsNullOrWhiteSpace(_incident.RequestHash) && !string.IsNullOrWhiteSpace(nativeRevision);
             var rule = (_rules.SelectedItem as RuleRow)?.Rule;
             _revoke.IsEnabled = rule?.Enabled == true && context?.IsAvailable == true && context.ModelScopeKey == rule.ModelScopeKey;
+            PublishShellStatus();
         }
 
         private void ApplyLocalization()
@@ -705,11 +757,49 @@ namespace RvtMcp.Plugin.Views
             SetStatus(L.T("security.failure.saveFailed", ("error", error)), Brushes.Firebrick);
         }
 
+        internal string ShellStatusText { get; private set; } = "";
+        internal Brush ShellStatusBrush { get; private set; } = Brushes.DimGray;
+        internal event EventHandler ShellStatusChanged;
+
         private void SetStatus(string text, Brush foreground)
         {
             _status.Text = text ?? "";
             _status.Foreground = foreground ?? Brushes.DimGray;
-            HistoryChrome.Guide(_status, _status.Text);
+            PublishShellStatus();
+        }
+
+        private void PublishShellStatus()
+        {
+            var banner = _status.Text ?? "";
+            var hint = _decisionHint.Visibility == Visibility.Visible ? (_decisionHint.Text ?? "") : "";
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(banner)) parts.Add(banner.Trim());
+            if (!string.IsNullOrWhiteSpace(hint)) parts.Add(hint.Trim());
+            ShellStatusText = string.Join(" · ", parts);
+            ShellStatusBrush = ReferenceEquals(_status.Foreground, Brushes.Firebrick)
+                ? Brushes.Firebrick
+                : !string.IsNullOrWhiteSpace(hint) ? DecisionHintBrush : (_status.Foreground ?? Brushes.DimGray);
+            ShellStatusChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private static string SoftWrap(string text)
+        {
+            if (string.IsNullOrEmpty(text) || text.Length < 24) return text;
+            var sb = new System.Text.StringBuilder(text.Length + 8);
+            var run = 0;
+            for (var i = 0; i < text.Length; i++)
+            {
+                var c = text[i];
+                sb.Append(c);
+                if (char.IsWhiteSpace(c)) { run = 0; continue; }
+                run++;
+                if (run >= 24 || c == '_' || c == '/' || c == '\\' || c == '.' || c == ',' || c == ';' || c == ':' || c == '-' || c == '|')
+                {
+                    sb.Append('\u200B');
+                    run = 0;
+                }
+            }
+            return sb.ToString();
         }
 
         private Button DecisionButton(string key, string action)
@@ -832,12 +922,12 @@ namespace RvtMcp.Plugin.Views
             stack.Children.Add(head);
             stack.Children.Add(new TextBlock
             {
-                Text = string.IsNullOrWhiteSpace(message.Description) ? Unknown() : message.Description,
+                Text = SoftWrap(string.IsNullOrWhiteSpace(message.Description) ? Unknown() : message.Description),
                 TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0)
             });
             stack.Children.Add(new TextBlock
             {
-                Text = ids.Count == 0 ? L.T("failure.detail.noElements") : L.T("failure.detail.elements", ("ids", string.Join(", ", ids.Take(8)))),
+                Text = SoftWrap(ids.Count == 0 ? L.T("failure.detail.noElements") : L.T("failure.detail.elements", ("ids", string.Join(", ", ids.Take(8))))),
                 TextWrapping = TextWrapping.Wrap, Foreground = MutedBrush, Margin = new Thickness(0, 6, 0, 0)
             });
             if (ids.Count > 8)
@@ -847,7 +937,7 @@ namespace RvtMcp.Plugin.Views
             foreach (var snapshot in snapshots.Take(3))
                 stack.Children.Add(new TextBlock
                 {
-                    Text = snapshot.ElementId + " · " + snapshot.Category + " · " + snapshot.Type + " · " + snapshot.Level,
+                    Text = SoftWrap(snapshot.ElementId + " · " + snapshot.Category + " · " + snapshot.Type + " · " + snapshot.Level),
                     TextWrapping = TextWrapping.Wrap, Foreground = MutedBrush, Margin = new Thickness(0, 2, 0, 0)
                 });
             if (snapshots.Count > 3)
@@ -908,6 +998,16 @@ namespace RvtMcp.Plugin.Views
             return new DataTemplate(typeof(ModelRow)) { VisualTree = row };
         }
 
+        private static Style ModelSearchStyle()
+        {
+            var style = FailureModelPicker.CreateItemStyle();
+            var hidden = new DataTrigger { Binding = new Binding("MatchesSearch"), Value = false };
+            hidden.Setters.Add(new Setter(UIElement.VisibilityProperty, Visibility.Collapsed));
+            hidden.Setters.Add(new Setter(UIElement.IsEnabledProperty, false));
+            style.Triggers.Add(hidden);
+            return style;
+        }
+
         private sealed class ModelRow : INotifyPropertyChanged
         {
             private readonly FailureIssueModel _model;
@@ -915,7 +1015,9 @@ namespace RvtMcp.Plugin.Views
             public FailureIssueModel Source => _model;
             public string ModelScopeKey => _model.ModelScopeKey;
             public int RevitYear => _model.RevitYear;
-            public bool IsCurrent { get; }
+            public bool IsCurrent { get; private set; }
+            public double SearchScore { get; private set; } = 1;
+            public bool MatchesSearch => SearchScore >= 0.8;
             public bool IsOpen
             {
                 get => _isOpen;
@@ -930,16 +1032,36 @@ namespace RvtMcp.Plugin.Views
             public FontWeight LabelWeight => IsOpen ? FontWeights.Bold : FontWeights.Normal;
             public string Title => string.IsNullOrWhiteSpace(_model.Title) ? Unknown() + " (" + ModelScopeKey.Substring(0, Math.Min(8, ModelScopeKey.Length)) + ")" : _model.Title;
             public string Label => (RevitYear == 0 ? "R?" : "R" + (RevitYear % 100).ToString("D2", CultureInfo.InvariantCulture))
-                + " - " + (_model.IsFamilyDocument.HasValue ? _model.IsFamilyDocument.Value ? "Family" : "Project" : Unknown()) + " - " + Title;
-            public string Prefix => (IsCurrent ? "● " : "") + Label;
+                + " - " + (_model.IsFamilyDocument.HasValue
+                    ? L.T(_model.IsFamilyDocument.Value ? "failure.modelKind.family" : "failure.modelKind.project") : Unknown()) + " - " + Title;
+            public string Prefix => Label;
             public string Count => _model.IssueCount.ToString("n0", CultureInfo.CurrentCulture);
             public string Description => (IsCurrent ? L.T("failure.activeModel", ("title", Title)) + "\n" : "") + Prefix + "\n" + Count + "\n" + ModelScopeKey;
             public event PropertyChangedEventHandler PropertyChanged;
             internal ModelRow(FailureIssueModel model, FailureIssuesContext context, ICollection<string> openScopes)
             {
                 _model = model;
-                _isOpen = FailureIssuesPresentation.IssueModelIsOpen(model.ModelScopeKey, openScopes);
-                IsCurrent = context?.IsAvailable == true && model.ModelScopeKey == context.ModelScopeKey && model.RevitYear == context.RevitYear;
+                UpdateContext(context, openScopes);
+            }
+
+            internal void UpdateContext(FailureIssuesContext context, ICollection<string> openScopes)
+            {
+                IsOpen = RevitYear == context?.RevitYear && FailureIssuesPresentation.IssueModelIsOpen(ModelScopeKey, openScopes);
+                var current = context?.IsAvailable == true && ModelScopeKey == context.ModelScopeKey && RevitYear == context.RevitYear;
+                if (IsCurrent == current) return;
+                IsCurrent = current;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCurrent)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Prefix)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Description)));
+            }
+
+            internal void UpdateSearch(string query)
+            {
+                var score = FailureIssuesPresentation.ModelNameSearchScore(_model.Title, query);
+                if (SearchScore == score) return;
+                SearchScore = score;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SearchScore)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MatchesSearch)));
             }
         }
 

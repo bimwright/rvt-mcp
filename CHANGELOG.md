@@ -25,6 +25,23 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
+## v1.2.1 — unreleased
+
+### Critical fixes in History → Issues
+
+- Rework, Abandon, Accept once, Add rule and Allow native action no longer require the issue's model to be the active project. Decisions remain bound to the selected incident's model/year/revision; incomplete captures, review acknowledgments, grant expiry and execution-time matching are still enforced.
+
+### Issues model picker
+
+- Search is integrated into the Model combobox, retaining accent-insensitive approximate name matching, state-specific counts, Revit year and Project/Family/Unknown labels.
+- Mouse and keyboard share one preview highlight; Enter commits, Escape cancels, and opening callbacks cannot reset rapid navigation. The row template uses the actual dependency property so the highlight is visibly painted.
+- Open-model emphasis updates with the native context and matches the Revit year. The active-model dot has been removed.
+- Project/Family labels follow the UI language, including live language changes without changing the selected review.
+
+### History input text
+
+- Code and SQL input views wrap through WPF layout without inserting invisible characters into copied text.
+
 ## Release asset maintenance — 2026-10-16
 
 The [existing GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.1.0) now has six uploaded assets: Setup ZIP, Claude Desktop MCPB and server-only NuGet package, each with its own `.sha256` file. GitHub also displays its two source archives. The package bytes, hashes, versions and download URLs are unchanged; this maintenance did not publish a new product build.

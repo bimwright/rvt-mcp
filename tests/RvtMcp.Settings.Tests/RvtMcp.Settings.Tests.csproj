@@ -4,8 +4,19 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
-  <!-- The production Settings window on an STA dispatcher with in-memory state: no Revit, no config writes. -->
+  <!-- Production Settings/History views on an STA dispatcher; host and ledger facades stay in memory. -->
   <ItemGroup>
+    <Compile Include="../../src/shared/Views/HistoryWindow.cs" Link="HistoryWindow.cs" />
+    <Compile Include="../../src/shared/Views/HistoryChrome.cs" Link="HistoryChrome.cs" />
+    <Compile Include="../../src/shared/Views/FailureIssuesView.cs" Link="FailureIssuesView.cs" />
+    <Compile Include="../../src/shared/Views/FailureIssuesPresentation.cs" Link="FailureIssuesPresentation.cs" />
+    <Compile Include="../../src/shared/Views/FailureIssuesContext.cs" Link="FailureIssuesContext.cs" />
+    <Compile Include="../../src/shared/Views/FailureDecisionReviewWindow.cs" Link="FailureDecisionReviewWindow.cs" />
+    <Compile Include="../../src/shared/Failures/FailureContracts.cs" Link="FailureContracts.cs" />
+    <Compile Include="../../src/shared/Failures/FailurePolicy.cs" Link="FailurePolicy.cs" />
+    <Compile Include="../../src/shared/Views/Toast/ToolActivityClassifier.cs" Link="ToolActivityClassifier.cs" />
+    <Compile Include="../../src/shared/Infrastructure/ToolReadPolicy.cs" Link="ToolReadPolicy.cs" />
+    <Compile Include="../../src/shared/Views/FailureModelPicker.cs" Link="FailureModelPicker.cs" />
     <Compile Include="../../src/shared/Views/FailureResetDialog.cs" Link="FailureResetDialog.cs" />
     <Compile Include="../../src/shared/Views/Settings/AboutInfo.cs" Link="Settings\AboutInfo.cs" />
     <Compile Include="../../src/shared/Views/Settings/LicenseWindow.cs" Link="Settings\LicenseWindow.cs" />
@@ -21,11 +32,15 @@
     <Compile Include="../../src/shared/Views/ScrollBarFadeBehavior.cs" Link="ScrollBarFadeBehavior.cs" />
     <Compile Include="../../src/shared/ToolCatalog/ToolCatalogModels.cs" Link="ToolCatalog\ToolCatalogModels.cs" />
     <Compile Include="../../src/shared/Localization/L.cs" Link="Localization\L.cs" />
+    <Compile Include="../../src/shared/Localization/EmbeddedCatalog.cs" Link="Localization\EmbeddedCatalog.cs" />
     <Compile Include="../../src/shared/Localization/StringTable.cs" Link="Localization\StringTable.cs" />
     <Compile Include="../../src/shared/Localization/LocaleResolver.cs" Link="Localization\LocaleResolver.cs" />
     <Compile Include="../../src/shared/Localization/ToolSummaryCatalog.cs" Link="Localization\ToolSummaryCatalog.cs" />
     <EmbeddedResource Include="../../LICENSE" LogicalName="RvtMcp.LICENSE" />
     <EmbeddedResource Include="../../src/shared/Localization/Catalog/strings.en.json" WithCulture="false" LogicalName="ResetStrings" />
+    <EmbeddedResource Include="../../src/shared/Localization/Catalog/strings.*.json" WithCulture="false">
+      <LogicalName>RvtMcp.Localization.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 </Project>

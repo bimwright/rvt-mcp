@@ -28,6 +28,10 @@ Captured context is bounded. Raw code, credentials and full argument bodies are 
 
 Open **History → Issues** from the Revit ribbon or History window. Select the correct model and incident, inspect the outcome, captured elements and any incomplete evidence, then choose an action. The reason is optional: the input shows a hint while empty, and a blank or whitespace-only reason is recorded as `No reason provided`. Model-review confirmations and acceptance constraints still apply. **Rework** and **Abandon** are saved as soon as you click them and the status line confirms it. **Accept once**, **Create rule**, **Allow native action once** and **Revoke rule** first open a review of the exact constraints, which you must approve.
 
+The model dropdown puts models open in this Revit instance first, with the active model at the top of that group. Within each group, rows sort by Revit version from newest to oldest, then by model name; unknown versions come last. Open models are bold only for this host's Revit year; there is no active-model dot. The emphasis and ordering update when the active model or open models change, while preserving the model selected for review. Model-kind labels follow the UI language. The list shows models with issues matching the chosen state, plus the previously selected model with a zero count if it still has issues in another state. Refresh preserves that selection. When there is no retained selection, Issues prefers the active model, then the first available row.
+
+Open the Model combobox to search within its embedded editor. Partial names match directly; approximate matches require at least **80% similarity** to the typed fragment. Search ignores case, accents, spaces and punctuation; adjacent swapped characters count as one typing error. For example, `caobagn` finds `Cao Bằng Farm`. Search ranks the closest matches first, using open/active priority to break ties. Clearing the search restores open-model priority. Typing only filters dropdown choices and preserves the selected review until you choose another model. Up/Down previews a result without committing it; Enter selects the preview. Escape closes the dropdown and clears the search without changing the selected model.
+
 | Action | Effect |
 | --- | --- |
 | **Rework** | Records that the attempt will be reworked. It does not execute the revised operation. |
@@ -80,6 +84,14 @@ Caller timeout and native execution completion are different events. A timed-out
 Use a matching gateway and add-in build, and restart Revit after an add-in update. Non-read dispatch requires the controlled-failure capability handshake; `PAIRING_REQUIRED` means update the pair together. Tool discovery and an ordinary read do not prove the mutation policy ran.
 
 ## Native operation and API limits
+
+The five issue actions (Rework, Abandon, Accept once, Add rule and Allow native action)
+can be reviewed from another active project or without the target model open. They apply
+to the selected incident, not the active document. If that target is live in the current
+host its current revision is checked; otherwise the recorded incident revision is retained.
+Reopening/changing a model can invalidate a one-use permission, and execution still checks
+the exact model, Revit year, request, native context and expiry. This does not allow accepting
+incomplete captures or errors as warnings, nor deciding an operation that is still running.
 
 Supported Open, Save, Save As and Synchronize pre-events check the live native context and any required one-use UI grant. A denied Sync is reported as cancelled even if the native API returns normally. If an event cannot be cancelled or its identity/options cannot be verified, the result reports enforcement unavailable or an unknown outcome; it does not claim a successful block.
 

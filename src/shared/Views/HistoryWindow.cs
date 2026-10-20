@@ -32,7 +32,15 @@ namespace RvtMcp.Plugin.Views
         private readonly TextBlock _warningLabel;
         private readonly ContentControl _inputContent;
         private readonly StackPanel _outputContainer;
-        private readonly TextBlock _footerText;
+        private readonly TextBlock _shellStatus = new TextBlock
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextWrapping = TextWrapping.NoWrap,
+            Margin = new Thickness(0, 0, 12, 0)
+        };
+        private string _activityStatus = "";
+        private Brush _activityBrush = Brushes.DimGray;
         private readonly CommandDispatcher _dispatcher;
         private readonly McpEventHandler _eventHandler;
         private readonly Autodesk.Revit.UI.ExternalEvent _externalEvent;
@@ -54,6 +62,8 @@ namespace RvtMcp.Plugin.Views
         private TextBlock _whatSection;
         private TextBlock _inputSection;
         private TextBlock _outputSection;
+        private Border _inputCard;
+        private Border _outputCard;
         private Button _logsButton;
         private Button _newSessionButton;
         private Button _closeButton;
@@ -121,7 +131,6 @@ namespace RvtMcp.Plugin.Views
             var mainGrid = new Grid();
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var toolbar = CreateToolbar();
             Grid.SetRow(toolbar, 0);
@@ -143,6 +152,7 @@ namespace RvtMcp.Plugin.Views
                 ItemsSource = _viewSource.View,
                 Margin = new Thickness(0)
             };
+            BimwrightStyles.KeepSelectionHighlight(_grid);
             // Pixel units: HistoryChrome.Wheel steps in pixels; the DataGrid default (Item) would turn one notch into ~31 rows.
             VirtualizingPanel.SetScrollUnit(_grid, ScrollUnit.Pixel);
             _grid.PreviewMouseWheel += (s, e) =>
@@ -217,64 +227,85 @@ namespace RvtMcp.Plugin.Views
             _grid.Columns.Add(_colStatus);
             _grid.SelectionChanged += OnSelectionChanged;
 
-            var body = new Grid();
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star), MinWidth = 400 });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 200 });
-            _activityGroup = new GroupBox { Margin = new Thickness(8, 0, 4, 4), Padding = new Thickness(8), Content = _grid };
+            // Same inset and 5:6 split as FailureIssuesView, so the grid and detail match the Issues tab.
+            var body = new Grid { Margin = new Thickness(8, 0, 8, 0) };
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(5, GridUnitType.Star), MinWidth = 360 });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(6, GridUnitType.Star), MinWidth = 420 });
+            _activityGroup = new GroupBox { Margin = new Thickness(0, 0, 4, 4), Padding = new Thickness(8), Content = _grid };
             Grid.SetColumn(_activityGroup, 0);
             body.Children.Add(_activityGroup);
             var detailScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             detailScroll.PreviewMouseWheel += (s, e) => HistoryChrome.Wheel(detailScroll, e, 0.26);
-            _detailPanel = new Grid { Margin = new Thickness(4) };
-            _detailPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            _detailPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            for (var r = 0; r < 6; r++)
-                _detailPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-            void Add(UIElement el, int row, int col)
+            var sectionHeader = FrozenBrush(0xF7, 0xF8, 0xFA);
+            var sectionRule = FrozenBrush(0xE0, 0xE0, 0xE0);
+            var sectionLabel = FrozenBrush(0x64, 0x74, 0x8B);
+            Border SectionCard(TextBlock label, UIElement sectionBody, Thickness margin)
             {
-                Grid.SetRow(el, row);
-                Grid.SetColumn(el, col);
-                _detailPanel.Children.Add(el);
+                label.FontWeight = FontWeights.SemiBold;
+                label.FontSize = 11;
+                label.Foreground = sectionLabel;
+                label.Margin = new Thickness(0);
+                var header = new Border
+                {
+                    Background = sectionHeader,
+                    BorderBrush = sectionRule,
+                    BorderThickness = new Thickness(0, 0, 0, 1),
+                    Padding = new Thickness(8, 4, 8, 4),
+                    Child = label
+                };
+                var content = new Border { Padding = new Thickness(8, 6, 8, 8), Child = sectionBody };
+                var stack = new StackPanel();
+                stack.Children.Add(header);
+                stack.Children.Add(content);
+                return new Border
+                {
+                    Background = Brushes.White,
+                    BorderBrush = sectionRule,
+                    BorderThickness = new Thickness(1),
+                    SnapsToDevicePixels = true,
+                    ClipToBounds = true,
+                    Margin = margin,
+                    Child = stack
+                };
             }
-            TextBlock SectionLabel() => new TextBlock
-            {
-                FontWeight = FontWeights.Bold,
-                Foreground = Brushes.Gray,
-                FontSize = 10,
-                VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 2, 10, 0)
-            };
+
+            _detailPanel = new Grid();
+            var sections = new StackPanel();
+            _detailPanel.Children.Add(sections);
 
             _whatName = new TextBlock { FontWeight = FontWeights.Bold, FontSize = 14, TextWrapping = TextWrapping.Wrap };
-            _whatDesc = new TextBlock { FontStyle = FontStyles.Italic, Foreground = Brushes.Gray, FontSize = 11, Margin = new Thickness(0, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
-            _warningLabel = new TextBlock { Foreground = Brushes.OrangeRed, FontSize = 11, Margin = new Thickness(0, 0, 0, 8), Visibility = Visibility.Collapsed };
-            _whatSection = SectionLabel();
-            Add(_whatSection, 0, 0);
-            Add(_whatName, 0, 1);
-            Add(_whatDesc, 1, 1);
-            Add(_warningLabel, 2, 1);
+            _whatDesc = new TextBlock { FontStyle = FontStyles.Italic, Foreground = Brushes.Gray, FontSize = 11, Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap };
+            _warningLabel = new TextBlock { Foreground = Brushes.OrangeRed, FontSize = 11, Margin = new Thickness(0, 4, 0, 0), Visibility = Visibility.Collapsed };
+            var whatBody = new StackPanel();
+            whatBody.Children.Add(_whatName);
+            whatBody.Children.Add(_whatDesc);
+            whatBody.Children.Add(_warningLabel);
+            _whatSection = new TextBlock();
+            sections.Children.Add(SectionCard(_whatSection, whatBody, new Thickness(0, 0, 0, 8)));
 
-            // INPUT section
-            _inputContent = new ContentControl { Margin = new Thickness(0, 0, 0, 8) };
-            _inputSection = SectionLabel();
-            Add(_inputSection, 3, 0);
-            Add(_inputContent, 3, 1);
+            _inputContent = new ContentControl();
+            _inputSection = new TextBlock();
+            _inputCard = SectionCard(_inputSection, _inputContent, new Thickness(0, 0, 0, 8));
+            sections.Children.Add(_inputCard);
 
-            // OUTPUT section
-            _outputContainer = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
-            _outputSection = SectionLabel();
-            Add(_outputSection, 4, 0);
-            Add(_outputContainer, 4, 1);
-
-            // Footer
-            _footerText = new TextBlock { Foreground = Brushes.Gray, FontSize = 10, Margin = new Thickness(0, 8, 0, 0) };
-            Add(_footerText, 5, 1);
+            _outputContainer = new StackPanel();
+            _outputSection = new TextBlock();
+            _outputCard = SectionCard(_outputSection, _outputContainer, new Thickness(0));
+            sections.Children.Add(_outputCard);
+            _rerunButton = new Button
+            {
+                Style = (Style)FindResource(BimwrightStyles.PrimaryButtonKey),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 8, 0, 0),
+                IsEnabled = false
+            };
+            _rerunButton.Click += OnRerunClick;
+            sections.Children.Add(_rerunButton);
 
             detailScroll.Content = _detailPanel;
             _detailGroup = new GroupBox
             {
-                Margin = new Thickness(4, 0, 8, 4),
+                Margin = new Thickness(4, 0, 0, 4),
                 Padding = new Thickness(8),
                 Content = detailScroll
             };
@@ -283,33 +314,35 @@ namespace RvtMcp.Plugin.Views
             Grid.SetRow(body, 1);
             mainGrid.Children.Add(body);
 
-            var actions = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                Margin = new Thickness(8, 4, 8, 8)
-            };
-            _rerunButton = new Button
-            {
-                Style = (Style)FindResource(BimwrightStyles.PrimaryButtonKey),
-                Margin = new Thickness(0, 0, 8, 0),
-                IsEnabled = false
-            };
-            _rerunButton.Click += OnRerunClick;
-            _closeButton = new Button();
-            _closeButton.Click += (s, e) => Close();
-            actions.Children.Add(_rerunButton);
-            actions.Children.Add(_closeButton);
-            Grid.SetRow(actions, 2);
-            mainGrid.Children.Add(actions);
-
             _issuesView = new FailureIssuesView();
             _activityTab = new TabItem { Content = mainGrid };
             _issuesTab = new TabItem { Content = _issuesView };
             _tabs = new TabControl();
             _tabs.Items.Add(_activityTab);
             _tabs.Items.Add(_issuesTab);
-            Content = _tabs;
+            _tabs.SelectionChanged += (s, e) => { if (ReferenceEquals(e.Source, _tabs)) ShowShellStatus(); };
+            _issuesView.ShellStatusChanged += (s, e) => ShowShellStatus();
+            var shell = new Grid();
+            shell.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            shell.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            shell.Children.Add(_tabs);
+            _closeButton = new Button { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+            _closeButton.Click += (s, e) => Close();
+            var closeBarPanel = new DockPanel { LastChildFill = true };
+            DockPanel.SetDock(_closeButton, Dock.Right);
+            closeBarPanel.Children.Add(_closeButton);
+            closeBarPanel.Children.Add(_shellStatus);
+            var closeBar = new Border
+            {
+                Background = FrozenBrush(0xF7, 0xF8, 0xFA),
+                BorderBrush = FrozenBrush(0xE0, 0xE0, 0xE0),
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                Padding = new Thickness(8, 6, 8, 8),
+                Child = closeBarPanel
+            };
+            Grid.SetRow(closeBar, 1);
+            shell.Children.Add(closeBar);
+            Content = shell;
             _lastSeenL10nVersion = L.Version;
             ApplyLocalization();
             if (_grid.SelectedItem == null)
@@ -544,35 +577,40 @@ namespace RvtMcp.Plugin.Views
                 _warningLabel.Visibility = Visibility.Collapsed;
                 _inputContent.Content = null;
                 _outputContainer.Children.Clear();
-                _footerText.Text = "";
+                _inputCard.Visibility = Visibility.Collapsed;
+                _outputCard.Visibility = Visibility.Collapsed;
+                SetActivityStatus("", Brushes.DimGray);
                 return;
             }
 
+            _inputCard.Visibility = Visibility.Visible;
+            _outputCard.Visibility = Visibility.Visible;
+
             // WHAT
-            _whatName.Text = entry.ToolName;
-            _whatDesc.Text = entry.ToolDescription ?? "";
+            _whatName.Text = SoftWrap(entry.ToolName);
+            _whatDesc.Text = SoftWrap(entry.ToolDescription ?? "");
             _warningLabel.Foreground = Brushes.OrangeRed;
             if (entry.IsHistorical)
             {
-                _warningLabel.Text = L.T("history.detail.historicalNote");
+                _warningLabel.Text = SoftWrap(L.T("history.detail.historicalNote"));
                 _warningLabel.Foreground = Brushes.Gray;
                 _warningLabel.Visibility = Visibility.Visible;
             }
             else if (entry.ToolName == "send_code_to_revit" && string.IsNullOrEmpty(entry.CodeSnippet))
             {
-                _warningLabel.Text = IsRerunPossible(entry)
+                _warningLabel.Text = SoftWrap(IsRerunPossible(entry)
                     ? L.T("security.send_code.journal_redacted_rerun")
-                    : L.T("security.send_code.redacted_no_rerun");
+                    : L.T("security.send_code.redacted_no_rerun"));
                 _warningLabel.Visibility = Visibility.Visible;
             }
             else if (entry.ParamsTruncated)
             {
-                _warningLabel.Text = L.T("security.send_code.params_truncated");
+                _warningLabel.Text = SoftWrap(L.T("security.send_code.params_truncated"));
                 _warningLabel.Visibility = Visibility.Visible;
             }
             else if (entry.ToolName == "send_code_to_revit")
             {
-                _warningLabel.Text = L.T("security.send_code.execute_warning");
+                _warningLabel.Text = SoftWrap(L.T("security.send_code.execute_warning"));
                 _warningLabel.Visibility = Visibility.Visible;
             }
             else
@@ -594,7 +632,32 @@ namespace RvtMcp.Plugin.Views
             var sessionNote = entry.IsHistorical
                 ? L.T("history.footer.session", ("tag", entry.SessionTag))
                 : "";
-            _footerText.Text = $"{entry.DurationMs}ms · {(entry.Success ? L.T("history.footer.ok") : L.T("history.footer.fail"))} · {entry.TimeLabel}{rerunNote}{sessionNote}";
+            SetActivityStatus($"{entry.DurationMs}ms · {(entry.Success ? L.T("history.footer.ok") : L.T("history.footer.fail"))} · {entry.TimeLabel}{rerunNote}{sessionNote}",
+                entry.Success ? Brushes.DimGray : Brushes.Firebrick);
+        }
+
+        private void SetActivityStatus(string text, Brush brush)
+        {
+            _activityStatus = text ?? "";
+            _activityBrush = brush ?? Brushes.DimGray;
+            ShowShellStatus();
+        }
+
+        private void ShowShellStatus()
+        {
+            if (_shellStatus == null || _tabs == null) return;
+            if (_tabs.SelectedItem == _issuesTab)
+                ApplyShellStatus(_issuesView.ShellStatusText, _issuesView.ShellStatusBrush);
+            else
+                ApplyShellStatus(_activityStatus, _activityBrush);
+        }
+
+        private void ApplyShellStatus(string text, Brush brush)
+        {
+            _shellStatus.Text = text ?? "";
+            _shellStatus.Foreground = brush ?? Brushes.DimGray;
+            if (string.IsNullOrEmpty(_shellStatus.Text)) _shellStatus.ToolTip = null;
+            else HistoryChrome.Guide(_shellStatus, _shellStatus.Text);
         }
 
         private UIElement BuildInputControl(McpCallEntry entry)
@@ -608,13 +671,14 @@ namespace RvtMcp.Plugin.Views
 
                 var codeBox = new TextBox
                 {
+                    // Layout wrapping must not add characters to selectable source text.
                     Text = sb.ToString(),
                     FontFamily = new FontFamily("Consolas"),
                     FontSize = 11,
                     IsReadOnly = true,
-                    TextWrapping = TextWrapping.NoWrap,
+                    TextWrapping = TextWrapping.Wrap,
                     VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                     MaxHeight = 250,
                     BorderThickness = new Thickness(1),
                     BorderBrush = Brushes.LightGray,
@@ -635,7 +699,7 @@ namespace RvtMcp.Plugin.Views
             }
 
             if (string.IsNullOrEmpty(entry.ParamsJson))
-                return new TextBlock { Text = L.T("history.input.noParams"), Foreground = Brushes.Gray };
+                return new TextBlock { Text = L.T("history.input.noParams"), Foreground = Brushes.Gray, TextWrapping = TextWrapping.Wrap };
 
             try
             {
@@ -674,7 +738,7 @@ namespace RvtMcp.Plugin.Views
                 }
                 return new TextBlock
                 {
-                    Text = sb.ToString(),
+                    Text = SoftWrap(sb.ToString()),
                     FontFamily = new FontFamily("Consolas"),
                     FontSize = 11,
                     TextWrapping = TextWrapping.Wrap
@@ -682,7 +746,7 @@ namespace RvtMcp.Plugin.Views
             }
             catch
             {
-                return new TextBlock { Text = entry.ParamsJson, TextWrapping = TextWrapping.Wrap };
+                return new TextBlock { Text = SoftWrap(entry.ParamsJson), TextWrapping = TextWrapping.Wrap };
             }
         }
 
@@ -701,7 +765,7 @@ namespace RvtMcp.Plugin.Views
             {
                 container.Children.Add(new TextBlock
                 {
-                    Text = entry.ErrorMessage ?? L.T("history.output.unknownError"),
+                    Text = SoftWrap(entry.ErrorMessage ?? L.T("history.output.unknownError")),
                     Foreground = Brushes.Red,
                     FontFamily = new FontFamily("Consolas"),
                     FontSize = 11,
@@ -743,7 +807,7 @@ namespace RvtMcp.Plugin.Views
                             var binding = new Binding($"[{col.Name}]");
                             var column = new DataGridTextColumn { Header = col.Name, Binding = binding, MaxWidth = 250 };
                             var cellStyle = new Style(typeof(TextBlock));
-                            cellStyle.Setters.Add(new Setter(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis));
+                            cellStyle.Setters.Add(new Setter(TextBlock.TextWrappingProperty, TextWrapping.Wrap));
                             cellStyle.Setters.Add(new Setter(ToolTipProperty, new Binding($"[{col.Name}]")));
                             column.ElementStyle = cellStyle;
                             tableGrid.Columns.Add(column);
@@ -785,7 +849,7 @@ namespace RvtMcp.Plugin.Views
                     }
                     container.Children.Add(new TextBlock
                     {
-                        Text = sb.ToString(),
+                        Text = SoftWrap(sb.ToString()),
                         FontFamily = new FontFamily("Consolas"),
                         FontSize = 11,
                         TextWrapping = TextWrapping.Wrap
@@ -796,7 +860,7 @@ namespace RvtMcp.Plugin.Views
             {
                 container.Children.Add(new TextBlock
                 {
-                    Text = entry.ResultJson,
+                    Text = SoftWrap(entry.ResultJson),
                     FontFamily = new FontFamily("Consolas"),
                     FontSize = 11,
                     TextWrapping = TextWrapping.Wrap
@@ -951,12 +1015,13 @@ namespace RvtMcp.Plugin.Views
                                     var sign = delta > 0 ? "+" : "";
                                     _outputContainer.Children.Add(new TextBlock
                                     {
-                                        Text = L.T("history.rerun.diffLine",
+                                        Text = SoftWrap(L.T("history.rerun.diffLine",
                                             ("name", prop.Name), ("value", newVal),
-                                            ("old", oldVal), ("delta", sign + delta.ToString())),
+                                            ("old", oldVal), ("delta", sign + delta.ToString()))),
                                         Foreground = Brushes.DarkCyan,
                                         FontFamily = new FontFamily("Consolas"),
-                                        FontSize = 11
+                                        FontSize = 11,
+                                        TextWrapping = TextWrapping.Wrap
                                     });
                                 }
                             }
@@ -974,14 +1039,15 @@ namespace RvtMcp.Plugin.Views
                 };
                 FormatOutput(rerunEntry, _outputContainer);
 
-                _footerText.Text = $"{sw.ElapsedMilliseconds}ms · {(result.Success ? L.T("history.footer.ok") : L.T("history.footer.fail"))}{L.T("history.footer.rerunOf", ("index", originalIndex))}";
+                SetActivityStatus($"{sw.ElapsedMilliseconds}ms · {(result.Success ? L.T("history.footer.ok") : L.T("history.footer.fail"))}{L.T("history.footer.rerunOf", ("index", originalIndex))}",
+                    result.Success ? Brushes.DimGray : Brushes.Firebrick);
             }
             catch (Exception ex)
             {
                 _outputContainer.Children.Clear();
                 _outputContainer.Children.Add(new TextBlock
                 {
-                    Text = L.T("history.rerun.failed", ("message", ex.Message)),
+                    Text = SoftWrap(L.T("history.rerun.failed", ("message", ex.Message))),
                     Foreground = Brushes.Red,
                     TextWrapping = TextWrapping.Wrap
                 });
@@ -993,6 +1059,26 @@ namespace RvtMcp.Plugin.Views
                 _rerunButton.Content = L.T("history.rerun.button");
                 _rerunButton.IsEnabled = true;
             }
+        }
+
+        private static string SoftWrap(string text)
+        {
+            if (string.IsNullOrEmpty(text) || text.Length < 24) return text;
+            var sb = new System.Text.StringBuilder(text.Length + 8);
+            var run = 0;
+            for (var i = 0; i < text.Length; i++)
+            {
+                var c = text[i];
+                sb.Append(c);
+                if (char.IsWhiteSpace(c)) { run = 0; continue; }
+                run++;
+                if (run >= 24 || c == '_' || c == '/' || c == '\\' || c == '.' || c == ',' || c == ';' || c == ':' || c == '-' || c == '|')
+                {
+                    sb.Append('\u200B');
+                    run = 0;
+                }
+            }
+            return sb.ToString();
         }
 
         private static string Truncate(string text, int max)

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Globalization;
+using System.Text;
 using RvtMcp.Failures;
 
 namespace RvtMcp.Plugin.Views
@@ -17,6 +19,45 @@ namespace RvtMcp.Plugin.Views
         internal static bool IssueModelIsOpen(string modelScopeKey, ICollection<string> openScopes)
         {
             return !string.IsNullOrEmpty(modelScopeKey) && openScopes != null && openScopes.Contains(modelScopeKey);
+        }
+
+        // Approximate substring matching: one edit per five query characters is the 80% cutoff.
+        // Adjacent transpositions count as one edit. Matching only titles keeps scope IDs out of search results.
+        internal static double ModelNameSearchScore(string title, string query)
+        {
+            var pattern = NormalizeModelSearch(query);
+            if (pattern.Length == 0) return 1;
+            var text = NormalizeModelSearch(title);
+            if (text.Length == 0) return 0;
+            if (text.Contains(pattern)) return 1;
+            var previous = new int[text.Length + 1]; // Zero-cost prefixes allow a match anywhere in the title.
+            var beforePrevious = new int[text.Length + 1];
+            var current = new int[text.Length + 1];
+            for (var i = 1; i <= pattern.Length; i++)
+            {
+                current[0] = i;
+                for (var j = 1; j <= text.Length; j++)
+                {
+                    current[j] = Math.Min(Math.Min(previous[j] + 1, current[j - 1] + 1),
+                        previous[j - 1] + (pattern[i - 1] == text[j - 1] ? 0 : 1));
+                    if (i > 1 && j > 1 && pattern[i - 1] == text[j - 2] && pattern[i - 2] == text[j - 1])
+                        current[j] = Math.Min(current[j], beforePrevious[j - 2] + 1);
+                }
+                var reuse = beforePrevious; beforePrevious = previous; previous = current; current = reuse;
+            }
+            return 1.0 - (double)previous.Min() / pattern.Length;
+        }
+
+        private static string NormalizeModelSearch(string value)
+        {
+            var text = new StringBuilder();
+            foreach (var ch in (value ?? "").Normalize(NormalizationForm.FormD))
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(ch) == UnicodeCategory.NonSpacingMark) continue;
+                var lower = char.ToLowerInvariant(ch);
+                if (char.IsLetterOrDigit(lower)) text.Append(lower == 'đ' ? 'd' : lower);
+            }
+            return text.ToString();
         }
 
         /// <summary>Prefer the active project's row for this Revit year, then any row of that project, then the first row.</summary>
@@ -93,9 +134,10 @@ namespace RvtMcp.Plugin.Views
         internal static FailureDecision CreateDecision(string action, FailureIncident incident,
             FailureOperation operation, FailureIssuesContext context, string reason, bool verifiedModel)
         {
-            if (context == null || !context.IsAvailable || incident == null
-                || context.ModelScopeKey != incident.ModelScopeKey)
-                throw new InvalidOperationException("security.failure.currentModelRequired");
+            if (incident == null) throw new InvalidOperationException("security.failure.stale");
+            // Review belongs to the selected incident, never to whichever project happens to be active.
+            var revision = context?.IsAvailable == true && context.ModelScopeKey == incident.ModelScopeKey
+                && context.RevitYear == incident.RevitYear ? context.DocumentRevision : incident.DocumentRevision;
             if (incident.State != "open" && !(incident.State == "observed" && action == "create_rule" && DialogAdapter(incident) != null))
                 throw new InvalidOperationException("security.failure.stale");
             if (NeedsModelVerification(operation) && !verifiedModel)
@@ -106,32 +148,50 @@ namespace RvtMcp.Plugin.Views
             var decision = new FailureDecision {
                 IncidentId = incident.IncidentId, ModelScopeKey = incident.ModelScopeKey,
                 Action = action, Reason = FailureDecision.NormalizeReason(reason), WindowsUser = Environment.UserName,
-                RevitUser = context.RevitUser, HostInstanceId = context.HostInstanceId,
-                DocumentRevision = context.DocumentRevision,
+                RevitUser = context?.RevitUser, HostInstanceId = context?.HostInstanceId,
+                DocumentRevision = revision,
                 Channel = "revit_ui", VerifiedModel = verifiedModel,
                 Verification = verifiedModel ? "human_asserted" : null
             };
             if (action == "rework" || action == "abandon") return decision;
-            if (context.RevitYear != incident.RevitYear)
-                throw new InvalidOperationException("security.failure.stale");
             var rules = AcceptanceConstraints(incident);
             if (action == "create_rule")
             {
                 decision.Rules = rules;
                 return decision;
             }
-            if (string.IsNullOrWhiteSpace(incident.RequestHash) || string.IsNullOrWhiteSpace(context.DocumentRevision))
+            if (string.IsNullOrWhiteSpace(incident.RequestHash) || string.IsNullOrWhiteSpace(revision))
                 throw new InvalidOperationException("security.failure.stale");
-            if (context.DocumentRevision != incident.DocumentRevision && !verifiedModel)
+            if (revision != incident.DocumentRevision && !verifiedModel)
                 throw new InvalidOperationException("security.failure.revisionVerificationRequired");
             decision.Grants = rules.Select(rule => new FailureGrant {
                 ModelScopeKey = rule.ModelScopeKey, DefinitionId = rule.DefinitionId,
                 Severity = rule.Severity, RevitYear = rule.RevitYear,
                 OperationContext = rule.OperationContext, MaxCount = rule.MaxCount,
                 ExistingElementIds = rule.ExistingElementIds,
-                RequestHash = incident.RequestHash, DocumentRevision = context.DocumentRevision,
+                RequestHash = incident.RequestHash, DocumentRevision = revision,
                 ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(5), Enabled = true
             }).ToList();
+            return decision;
+        }
+
+        internal static FailureDecision CreateNativeDecision(FailureIncident incident, FailureOperation operation,
+            FailureIssuesContext context, string reason, bool verifiedModel)
+        {
+            var decision = CreateDecision("rework", incident, operation, context, reason, verifiedModel);
+            if (!incident.Complete || string.IsNullOrWhiteSpace(incident.NativeAction) || string.IsNullOrWhiteSpace(incident.NativeContextHash)
+                || string.IsNullOrWhiteSpace(incident.NativeContextDescription) || string.IsNullOrWhiteSpace(incident.RequestHash)
+                || string.IsNullOrWhiteSpace(decision.DocumentRevision))
+                throw new InvalidOperationException("security.failure.stale");
+            if (decision.DocumentRevision != incident.DocumentRevision && !verifiedModel)
+                throw new InvalidOperationException("security.failure.revisionVerificationRequired");
+            decision.Action = "native_grant";
+            decision.Grant = new FailureGrant {
+                ModelScopeKey = incident.ModelScopeKey, RevitYear = incident.RevitYear,
+                OperationContext = incident.OperationContext, NativeAction = incident.NativeAction,
+                NativeContextHash = incident.NativeContextHash, RequestHash = incident.RequestHash,
+                DocumentRevision = decision.DocumentRevision, ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(5)
+            };
             return decision;
         }
     }

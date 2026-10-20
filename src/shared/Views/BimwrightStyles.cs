@@ -1,5 +1,7 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Markup;
+using System.Windows.Media;
 
 namespace RvtMcp.Plugin.Views
 {
@@ -16,6 +18,25 @@ namespace RvtMcp.Plugin.Views
         private static ResourceDictionary _dictionary;
 
         public static ResourceDictionary Dictionary => _dictionary ??= Parse();
+
+        /// <summary>
+        /// Selected cells keep the focused highlight after the grid loses focus.
+        /// The brushes stay on the cell style. A window-level SystemColors override
+        /// paints the whole DataGrid, including the empty area.
+        /// </summary>
+        public static void KeepSelectionHighlight(DataGrid grid)
+        {
+            var selected = new Trigger { Property = DataGridCell.IsSelectedProperty, Value = true };
+            selected.Setters.Add(new Setter(Control.BackgroundProperty, SystemColors.HighlightBrush));
+            selected.Setters.Add(new Setter(Control.ForegroundProperty, SystemColors.HighlightTextBrush));
+            selected.Setters.Add(new Setter(Control.BorderBrushProperty, SystemColors.HighlightBrush));
+            var style = new Style(typeof(DataGridCell));
+            style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+            style.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+            style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(1)));
+            style.Triggers.Add(selected);
+            grid.CellStyle = style;
+        }
 
         private static ResourceDictionary Parse()
         {

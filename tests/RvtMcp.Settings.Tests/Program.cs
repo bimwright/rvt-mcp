@@ -18,6 +18,21 @@ internal static class Program
     {
         try
         {
+            if (args.Length >= 3 && args[0] == "--model-picker-diagnostics")
+            {
+                FailureModelPickerDiagnostics.Run(args[1], args[2], args.Length > 3 && args[3] == "--demo");
+                return 0;
+            }
+            if (args.Length == 1 && args[0] == "--history-only")
+            {
+                HistoryRegressionChecks.Run();
+                return 0;
+            }
+            if (args.Length >= 1 && args[0] == "--model-picker-only")
+            {
+                FailureModelPickerChecks.Run(args.Length == 2 ? args[1] : null);
+                return 0;
+            }
             if (args.Length == 1 && args[0] == "--demo")
                 return Demo();
             if (args.Length == 2 && args[0] == "--snapshot")
@@ -27,6 +42,7 @@ internal static class Program
                 CheckFailureReset(args.Length == 2 ? args[1] : null);
                 return 0;
             }
+            HistoryRegressionChecks.Run();
             CheckFailureReset(null);
             CheckTabs();
             CheckStagedFooter();

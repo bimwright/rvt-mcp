@@ -429,9 +429,7 @@ namespace RvtMcp.Plugin.Failures
                 Closing.Remove(args.DocumentId);
                 if (args.Status == RevitAPIEventStatus.Succeeded)
                 {
-                    Documents.Remove(state.Document);
-                    Saving.Remove(state.Document);
-                    SyncAuthorities.Remove(state.Document);
+                    PruneClosedDocuments();
                 }
             }
             if (Scoped()) ObserveCancelledOrFailed(args.Status, "close", null);
