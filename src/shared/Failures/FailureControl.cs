@@ -293,12 +293,12 @@ namespace RvtMcp.Plugin.Failures
             return backup;
         }
 
-        internal static Scope Begin(UIApplication app, PendingRequest request)
+        internal static Scope Begin(UIApplication app, PendingRequest request, string warningPolicy = WarningPolicyModes.Rollback)
         {
             if (Active != null) throw new InvalidOperationException("A failure scope is already active.");
             IDisposable activity = null;
             bool activityFailed = false;
-            try { activity = Store?.BeginActivity(); }
+            try { activity = Store?.BeginActivity(PendingRequestLifecycle.For(request.Tcs).OperationId); }
             catch (InvalidOperationException ex) when (ex.Message == "FAILURE_RESET_BUSY") { throw; }
             catch (Exception ex)
             {
@@ -309,8 +309,7 @@ namespace RvtMcp.Plugin.Failures
             try
             {
                 RefreshContext(app, !ToolReadPolicy.IsReadOnly(request.CommandName));
-                if (activityFailed) _storageError = "FAILURE_STORAGE_FAILED";
-                var scope = new Scope(app, request) { Activity = activity };
+                var scope = new Scope(app, request, warningPolicy) { Activity = activity, ActivityFailed = activityFailed };
                 Active = scope;
                 scope.Start();
                 return scope;
@@ -321,6 +320,7 @@ namespace RvtMcp.Plugin.Failures
         internal sealed class Scope : IDisposable
         {
             internal IDisposable Activity;
+            internal bool ActivityFailed;
             internal readonly UIApplication Application;
             internal readonly PendingRequest Request;
             internal readonly PendingRequestLifecycle Lifecycle;
@@ -333,7 +333,6 @@ namespace RvtMcp.Plugin.Failures
             internal bool Stopped, Cancelled, BatchRolledBack, AnyCommitted, NativeCommitted, StorageFailed, Persisted, ExecutionStarted;
             internal string ErrorCode;
             internal string FailureModelKey;
-            private readonly List<string> _gateIncidentIds = new List<string>();
             internal string OpenPath;
             internal string NativeOutcome;
             internal readonly Stack<bool> GroupStates = new Stack<bool>();
@@ -348,7 +347,7 @@ namespace RvtMcp.Plugin.Failures
             private bool _activeDocumentBeforeObserved;
             private int _cycle;
 
-            internal Scope(UIApplication app, PendingRequest request)
+            internal Scope(UIApplication app, PendingRequest request, string warningPolicy = WarningPolicyModes.Rollback)
             {
                 Application = app; Request = request; Lifecycle = PendingRequestLifecycle.For(request.Tcs);
                 IsRead = ToolReadPolicy.IsReadOnly(request.CommandName);
@@ -357,7 +356,7 @@ namespace RvtMcp.Plugin.Failures
                 {
                     OperationId = Lifecycle.OperationId, SessionId = SessionId, HostInstanceId = HostInstanceId,
                     Tool = request.CommandName, RequestHash = Hash(request.CommandName + "\n" + Canonical(request.ParamsJson)),
-                    RevitYear = Year,
+                    RevitYear = Year, WarningPolicy = WarningPolicyModes.Normalize(warningPolicy),
                     ObservationCoverage = request.CommandName == "send_code_to_revit" || request.CommandName == "run_baked_tool"
                         ? "dynamic_code_unverified" : "supported_handlers_only"
                 };
@@ -378,13 +377,15 @@ namespace RvtMcp.Plugin.Failures
             {
                 try { var current = Application.ActiveUIDocument?.Document; _userDialogKey = UserDialogBuffer.Key(current?.PathName, current?.Title); }
                 catch { }
-                if (Store == null || _storageError != null)
+                if (Store == null || ActivityFailed)
                 {
                     if (!IsRead) Stop("FAILURE_STORAGE_FAILED", null);
                     return;
                 }
                 try
                 {
+                    // A past initialization fault is not a permanent lock; recheck the store for this operation.
+                    if (_storageError != null && !IsRead) { Store.Initialize(); _storageError = null; }
                     DocumentState state = null;
                     var activeDocument = Application.ActiveUIDocument?.Document;
                     if (IsRead) { if (activeDocument != null) Documents.TryGetValue(activeDocument, out state); }
@@ -399,12 +400,6 @@ namespace RvtMcp.Plugin.Failures
                         // Native opening validates and reserves the actual target before it opens.
                         if (!IsRead && !_opensModel)
                         {
-                            var gate = Store.GetGate(state.Model.ModelScopeKey, Operation.OperationId);
-                            if (gate.Blocked || UncertainModels.Contains(state.Model.ModelScopeKey))
-                            { Stop("REVIT_MODEL_BLOCKED", state); return; }
-                            var repeated = Store.GetRepeatedRequestIncidents(state.Model.ModelScopeKey, Operation.RequestHash);
-                            if (repeated.Count > 0)
-                            { Stop("REVIT_REQUEST_REPEATED", state); _gateIncidentIds.AddRange(repeated); return; }
                             Reserve();
                             if (!Stopped) IndexAndBaseline(state);
                         }
@@ -476,7 +471,8 @@ namespace RvtMcp.Plugin.Failures
                     OperationId = Operation.OperationId, ModelScopeKey = state?.Model.ModelScopeKey ?? Operation.ActiveModelBefore,
                     ModelTitle = state?.Model.Title, Source = source, TransactionName = Bounded(transaction),
                     RequestHash = Operation.RequestHash, DocumentRevision = state == null ? Operation.DocumentRevision : Revision(state),
-                    RevitYear = Year, OperationContext = OpenPath == null ? "edit" : "open", State = status, Action = action
+                    RevitYear = Year, OperationContext = OpenPath == null ? "edit" : "open", State = status, Action = action,
+                    WarningPolicy = Operation.WarningPolicy
                 };
             }
 
@@ -501,14 +497,9 @@ namespace RvtMcp.Plugin.Failures
             private void Reserve()
             {
                 var reservation = Store.ReserveOperation(Operation);
-                if (reservation.ErrorCode == "REVIT_MODEL_BLOCKED")
+                if (reservation.ErrorCode == "REVIT_BUSY")
                 {
-                    Stopped = true; ErrorCode = "REVIT_MODEL_BLOCKED";
-                    foreach (var key in Operation.ModelScopeKeys)
-                    {
-                        var gate = Store.GetGate(key, Operation.OperationId);
-                        if (gate.Blocked) { FailureModelKey = key; _gateIncidentIds.AddRange(gate.IncidentIds); }
-                    }
+                    Stopped = true; ErrorCode = "REVIT_BUSY";
                     return;
                 }
                 Persisted = true;
@@ -528,25 +519,22 @@ namespace RvtMcp.Plugin.Failures
                 Attach(state); Stopped = true; ErrorCode = code;
                 FailureModelKey = FailureCapture.ReceiptModelScopeKey(state?.Model.ModelScopeKey ?? FailureModelKey,
                     Operation.Tool, Operation.ActiveModelBefore, Operation.ModelScopeKeys, null);
-                if (code == "REVIT_MODEL_BLOCKED" && FailureModelKey != null)
-                {
-                    try { _gateIncidentIds.AddRange(Store.GetGate(FailureModelKey, Operation.OperationId).IncidentIds); } catch { StorageFailure(); }
-                }
             }
 
             internal FailureProcessingResult Process(FailuresAccessor accessor, string source)
             {
                 DocumentState state = null;
+                var stage = "get_failure_messages";
                 try
                 {
                     var failures = accessor.GetFailureMessages();
                     if (OpenPath != null && !Stopped && failures.Count == 0) return FailureProcessingResult.Continue;
+                    stage = "resolve_document";
                     state = State(accessor.GetDocument()); Attach(state);
                     if (Stopped) return Rollback(accessor);
-                    if (state == null) { Stop("FAILURE_CAPTURE_INCOMPLETE", null); return Rollback(accessor); }
-                    if (!IsRead && Store.GetGate(state.Model.ModelScopeKey, Operation.OperationId).Blocked)
-                    { Stop("REVIT_MODEL_BLOCKED", state); return Rollback(accessor); }
+                    if (state == null) throw new InvalidOperationException("The failure document is unavailable or no longer valid.");
                     if (failures.Count == 0) return FailureProcessingResult.Continue;
+                    stage = "capture_messages";
                     var incident = NewIncident(state, source, accessor.GetTransactionName());
                     incident.Severity = accessor.GetSeverity().ToString();
                     incident.MessageCount = failures.Count;
@@ -592,24 +580,42 @@ namespace RvtMcp.Plugin.Failures
                     }
                     bool openingWarnings = OpenPath != null && incident.Messages.All(m => m.Severity == "Warning") && incident.Complete;
                     var accumulated = Incidents.Where(i => i.ModelScopeKey == incident.ModelScopeKey && i.OperationContext == incident.OperationContext
-                        && (i.State == "accepted_by_rule" || i.State == "accepted_once")).SelectMany(i => i.Messages).Concat(incident.Messages);
+                        && (i.State == "accepted_by_rule" || i.State == "accepted_once" || i.State == "accepted_by_policy")).SelectMany(i => i.Messages).Concat(incident.Messages);
                     var policy = openingWarnings ? new FailurePolicyResult { Action = "continue", Reason = "opened_with_warnings" }
                         : FailurePolicy.Evaluate(accumulated, incident.Complete, state.Model.ModelScopeKey, Year,
-                            incident.OperationContext, Operation.RequestHash, incident.DocumentRevision, Store.GetRules(state.Model.ModelScopeKey), Store.GetGrants(state.Model.ModelScopeKey));
+                            incident.OperationContext, Operation.RequestHash, incident.DocumentRevision, Store.GetRules(state.Model.ModelScopeKey), Store.GetGrants(state.Model.ModelScopeKey),
+                            warningPolicy: Operation.WarningPolicy);
                     incident.RuleIds = policy.RuleIds; incident.GrantIds = policy.GrantIds;
-                    incident.State = policy.Action == "continue" ? (openingWarnings ? "observed" : policy.RuleIds.Count == 0 && policy.GrantIds.Count > 0 ? "accepted_once" : "accepted_by_rule") : "open";
+                    incident.State = policy.Action == "continue" ? (openingWarnings ? "observed" : policy.Reason == "accepted_by_policy" ? "accepted_by_policy"
+                        : policy.RuleIds.Count == 0 && policy.GrantIds.Count > 0 ? "accepted_once" : "accepted_by_rule") : "open";
                     incident.Action = policy.Action == "continue" ? (openingWarnings ? "opened_with_warnings" : "accepted_warning") : "rolled_back";
+                    stage = "record_incident";
                     Record(incident, policy.GrantIds);
                     if (policy.Action != "continue" || StorageFailed)
                     { Stop(StorageFailed ? "FAILURE_STORAGE_FAILED" : !incident.Complete ? "FAILURE_CAPTURE_INCOMPLETE" : "REVIT_FAILURE_ROLLED_BACK", state); return Rollback(accessor); }
+                    stage = "apply_accepted_warnings";
                     foreach (var failure in failures) if (failure.GetSeverity() == FailureSeverity.Warning) accessor.DeleteWarning(failure);
                     return FailureProcessingResult.Continue;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    Stop("FAILURE_CAPTURE_INCOMPLETE", state); Operation.Complete = false;
+                    // Do not call Attach again when resolving/claiming the document itself failed.
+                    Stopped = true; ErrorCode = "FAILURE_CAPTURE_INCOMPLETE"; Operation.Complete = false;
+                    Operation.RequiresReview = true;
+                    App.DebugLog("Failure capture failed at " + stage + " for " + Request.CommandName + ": " + ex);
                     if (state != null) UncertainModels.Add(state.Model.ModelScopeKey);
-                    try { Record(NewIncident(state, "capture", "Failure capture incomplete", action: "capture_failed")); } catch { StorageFailure(); }
+                    try
+                    {
+                        var incident = NewIncident(state, "capture", "Failure capture incomplete: " + stage, action: "capture_failed");
+                        incident.Complete = false;
+                        incident.NativeContextDescription = FailureCapture.SafeText(stage + ": " + ex.GetType().Name + ": " + ex.Message, 512);
+                        Record(incident);
+                    }
+                    catch (Exception recordingError)
+                    {
+                        App.DebugLog("Recording capture diagnostic failed: " + recordingError);
+                        StorageFailure();
+                    }
                     return Rollback(accessor);
                 }
             }
@@ -678,9 +684,9 @@ namespace RvtMcp.Plugin.Failures
                 if (own.Count > 0 || Stopped)
                 {
                     var messages = own.SelectMany(i => i.Messages).ToList();
-                    // Only an uncertain model is gated; a clean Revit rollback or a refused repeat leaves it writable.
-                    bool blocked = Operation.RequiresReview || StorageFailed
-                        || ErrorCode == "REVIT_MODEL_BLOCKED" || ErrorCode == "FAILURE_STORAGE_FAILED" || ErrorCode == "FAILURE_CAPTURE_INCOMPLETE"
+                    // Review status describes the recorded outcome; it never locks later commands.
+                    bool needsReview = Operation.RequiresReview || StorageFailed
+                        || ErrorCode == "FAILURE_STORAGE_FAILED" || ErrorCode == "FAILURE_CAPTURE_INCOMPLETE"
                         || own.Any(i => i.State == "open" && !((i.Action == "rolled_back" || i.Action == "cancelled") && i.Complete));
                     var groups = new JArray(messages.GroupBy(m => new { m.DefinitionId, m.Severity }).Take(20).Select(g => new JObject
                     { ["failureDefinitionId"] = g.Key.DefinitionId, ["severity"] = g.Key.Severity, ["count"] = g.Count(),
@@ -690,17 +696,20 @@ namespace RvtMcp.Plugin.Failures
                     envelope["_failure"] = new JObject
                     {
                         ["schemaVersion"] = 1, ["operationId"] = Operation.OperationId,
-                        ["incidentIds"] = new JArray(Operation.IncidentIds.Where(id => !baselineIds.Contains(id)).Concat(_gateIncidentIds).Distinct().Take(100)),
+                        ["incidentIds"] = new JArray(Operation.IncidentIds.Where(id => !baselineIds.Contains(id)).Distinct().Take(100)),
                         ["modelScopeKey"] = FailureCapture.ReceiptModelScopeKey(FailureModelKey, Operation.Tool,
                             Operation.ActiveModelBefore, Operation.ModelScopeKeys, own.Select(i => i.ModelScopeKey)),
                         ["action"] = Operation.Outcome, ["mutationApplied"] = Operation.MutationApplied,
-                        ["gate"] = blocked ? "blocked" : "open",
+                        ["gate"] = "open", ["requiresReview"] = needsReview, ["warningPolicy"] = Operation.WarningPolicy,
                         ["persistence"] = StorageFailed ? "failed" : "recorded",
                         ["complete"] = Operation.Complete && own.All(i => i.Complete),
                         ["messageCount"] = own.Sum(i => i.MessageCount), ["observationCoverage"] = Operation.ObservationCoverage,
                         ["groups"] = groups,
-                        ["nextStep"] = FailureCapture.NextStep(Stopped ? ErrorCode ?? "REVIT_FAILURE_ROLLED_BACK" : null, blocked,
-                            own.Any(i => i.State == "accepted_by_rule" || i.State == "accepted_once"))
+                        ["captureErrors"] = new JArray(own.Where(i => i.Action == "capture_failed").Take(10).Select(i => new JObject
+                        { ["incidentId"] = i.IncidentId, ["description"] = FailureCapture.SafeText(i.NativeContextDescription, 512) })),
+                        ["nextStep"] = FailureCapture.NextStep(Stopped ? ErrorCode ?? "REVIT_FAILURE_ROLLED_BACK" : null, needsReview,
+                            own.Any(i => i.State == "accepted_by_rule" || i.State == "accepted_once" || i.State == "accepted_by_policy"),
+                            own.Any(i => i.State == "accepted_by_policy") ? WarningPolicyModes.AcceptAndLog : WarningPolicyModes.Rollback)
                     };
                 }
                 if (!IsRead || Persisted || Stopped)
@@ -709,7 +718,7 @@ namespace RvtMcp.Plugin.Failures
                         ["execution"] = Operation.Execution, ["outcome"] = Operation.Outcome, ["mutationApplied"] = Operation.MutationApplied,
                         ["activeModelBefore"] = Operation.ActiveModelBefore, ["activeModelAfter"] = Operation.ActiveModelAfter,
                         ["activeDocumentChanged"] = Operation.ActiveDocumentChanged.HasValue ? new JValue(Operation.ActiveDocumentChanged.Value) : JValue.CreateNull(),
-                        ["complete"] = Operation.Complete, ["requiresReview"] = Operation.RequiresReview,
+                        ["complete"] = Operation.Complete, ["requiresReview"] = Operation.RequiresReview, ["warningPolicy"] = Operation.WarningPolicy,
                         ["observationCoverage"] = Operation.ObservationCoverage };
                 if (baselineIds.Count > 0 && envelope["_operation"] is JObject operation)
                     operation["baselineIncidentId"] = baselineIds.First();

@@ -15,6 +15,13 @@ namespace RvtMcp.Failures
         public static string Serialize(object value) { return JsonConvert.SerializeObject(value, Settings); }
         public static T Deserialize<T>(string value) { return JsonConvert.DeserializeObject<T>(value, Settings); }
     }
+    public static class WarningPolicyModes
+    {
+        public const string Rollback = "rollback";
+        public const string AcceptAndLog = "accept-and-log";
+        public static string Normalize(string value) => string.Equals(value?.Trim(), AcceptAndLog, StringComparison.OrdinalIgnoreCase)
+            ? AcceptAndLog : Rollback;
+    }
     public sealed class FailureModelIdentity
     {
         public string ModelKey { get; set; }
@@ -47,6 +54,7 @@ namespace RvtMcp.Failures
         public long IssueCount { get; set; }
         public long OpenIssueCount { get; set; }
         public int ModelCount { get; set; }
+        // Legacy name; counts unresolved review findings. Old Issues no longer block MCP writes.
         public int BlockedModelCount { get; set; }
     }
     public sealed class FailureOperation
@@ -64,6 +72,7 @@ namespace RvtMcp.Failures
         public string Outcome { get; set; } = "unknown";
         public bool? MutationApplied { get; set; }
         public string ObservationCoverage { get; set; } = "supported_handlers_only";
+        public string WarningPolicy { get; set; } = WarningPolicyModes.Rollback;
         // Capture completeness is retained while the UI is waiting. Wire completion
         // additionally requires execution to have finished.
         [JsonIgnore]
@@ -128,6 +137,7 @@ namespace RvtMcp.Failures
         public int? BatchIndex { get; set; }
         public string Severity { get; set; }
         public string Action { get; set; } = "rolled_back";
+        public string WarningPolicy { get; set; } = WarningPolicyModes.Rollback;
         public string State { get; set; } = "open";
         public bool Complete { get; set; } = true;
         public string CountKind { get; set; } = "exact";

@@ -25,6 +25,20 @@ public class FailureDocumentLifetimeTests
         Assert.True((bool)result[4]);
     }
 
+    [Theory]
+    [InlineData(true, true, true, false)]
+    [InlineData(true, true, false, false)]
+    [InlineData(false, true, false, true)]
+    [InlineData(false, false, true, true)]
+    public void Actual_closing_handler_allows_owned_discard_cleanup_even_after_a_stop(
+        bool authorized, bool modified, bool stopped, bool expectedCancelled)
+    {
+        var values = (object[])CompileProbe().DeclaringType!.GetMethod("ClosingProbe")!
+            .Invoke(null, new object[] { authorized, modified, stopped })!;
+        Assert.Equal(expectedCancelled, values[0]);
+        Assert.Equal(authorized ? 0 : 1, values[1]);
+    }
+
     private static MethodInfo CompileProbe([CallerFilePath] string file = "")
     {
         var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(file)!, "..", "..", "..", ".."));

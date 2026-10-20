@@ -33,6 +33,47 @@ namespace RvtMcp.Tests
         }
         private FailureDecision Decision(FailureIncident i, string action = "rework")
         { return new FailureDecision { ModelScopeKey = i.ModelScopeKey, IncidentId = i.IncidentId, Action = action, Reason = "Reviewed in Revit", WindowsUser = "tester", VerifiedModel = true }; }
+
+        [Theory]
+        [InlineData("unknown", false)]
+        [InlineData("partial", false)]
+        [InlineData("rolled_back", true)]
+        public void OldIssuesRemainRecordedButDoNotRejectTheNextRequest(string outcome, bool complete)
+        {
+            var store = Store(); var model = Model(store);
+            var old = Operation(store, model.ModelScopeKey, outcome); old.Complete = complete; old.RequiresReview = !complete;
+            Assert.True(store.SaveOperation(old).Recorded);
+            var incident = Incident(store, model.ModelScopeKey, old, action: outcome == "rolled_back" ? "rolled_back" : "outcome_unknown");
+            var next = new FailureOperation { ModelScopeKeys = new List<string> { model.ModelScopeKey }, RequestHash = old.RequestHash };
+            Assert.True(store.ReserveOperation(next).Recorded);
+            var retained = Assert.Single(store.Query(new FailureRecordQuery { OperationId = old.OperationId }).Records);
+            Assert.Equal(incident.IncidentId, retained.IncidentId);
+            Assert.Equal("open", retained.State);
+            Assert.NotNull(store.GetOperation(next.OperationId));
+        }
+
+        [Fact] public void OnlyAnActiveLeaseCanRejectDispatchNotAStaleRunningRecord()
+        {
+            var store = Store(); var model = Model(store);
+            var first = new FailureOperation { ModelScopeKeys = new List<string> { model.ModelScopeKey } };
+            var stale = new FailureOperation { ModelScopeKeys = new List<string> { model.ModelScopeKey } };
+            Assert.True(store.ReserveOperation(first).Recorded);
+            Assert.True(store.ReserveOperation(stale).Recorded);
+            var next = new FailureOperation { ModelScopeKeys = new List<string> { model.ModelScopeKey } };
+            using (store.BeginActivity(first.OperationId))
+                Assert.Equal("REVIT_BUSY", Store().ReserveOperation(next).ErrorCode);
+            Assert.True(Store().ReserveOperation(next).Recorded);
+            Assert.False(store.HasPendingRecords());
+        }
+
+        [Fact] public void PendingCapturesDoNotRejectANewOperationAndAreNotDeleted()
+        {
+            var store = Store(); var model = Model(store);
+            var pending = Path.Combine(_root, "failures", "pending"); Directory.CreateDirectory(pending);
+            File.WriteAllText(Path.Combine(pending, "old.json"), "unreadable old capture");
+            Assert.True(store.ReserveOperation(new FailureOperation { ModelScopeKeys = new List<string> { model.ModelScopeKey } }).Recorded);
+            Assert.Equal("unreadable old capture", File.ReadAllText(Path.Combine(pending, "old.json")));
+        }
         private FailureRule Rule(FailureIncident i)
         { return new FailureRule { ModelScopeKey = i.ModelScopeKey, DefinitionId = i.Messages[0].DefinitionId, RevitYear = i.RevitYear, OperationContext = i.OperationContext, MaxCount = 1, ExistingElementIds = new List<long> { 10 } }; }
 
@@ -458,12 +499,12 @@ namespace RvtMcp.Tests
             var store = Store(); var m = Model(store); var op = Operation(store, m.ModelScopeKey);
             op.FinalResult = new JObject { ["success"] = false, ["_failure"] = new JObject {
                 ["operationId"] = op.OperationId, ["incidentIds"] = new JArray("incident_id"), ["modelScopeKey"] = m.ModelScopeKey,
-                ["action"] = "rolled_back", ["gate"] = "blocked", ["persistence"] = "recorded", ["complete"] = true,
+                ["action"] = "rolled_back", ["gate"] = "open", ["requiresReview"] = true, ["persistence"] = "recorded", ["complete"] = true,
                 ["groups"] = new JArray(Enumerable.Range(0, 294).Select(i => new JObject { ["description"] = new string('界', 4096) })) } };
             op.UpdatedUtc = DateTimeOffset.UtcNow; Assert.True(store.SaveOperation(op).Recorded);
             var final = store.GetOperation(op.OperationId).FinalResult;
             Assert.Equal("incident_id", final["_failure"]["incidentIds"][0].Value<string>());
-            Assert.Equal("blocked", final["_failure"].Value<string>("gate")); Assert.Equal("recorded", final["_failure"].Value<string>("persistence"));
+            Assert.Equal("open", final["_failure"].Value<string>("gate")); Assert.True(final["_failure"].Value<bool>("requiresReview")); Assert.Equal("recorded", final["_failure"].Value<string>("persistence"));
             Assert.Equal("rolled_back", final["_failure"].Value<string>("action")); Assert.True(System.Text.Encoding.UTF8.GetByteCount(final.ToString()) <= 4096);
         }
         [Fact] public void OperationFallbackRecoveryCreatesReviewableIncidentAndDoesNotClaimFinalOutcome()
@@ -484,17 +525,19 @@ namespace RvtMcp.Tests
             var independentCopy = Model(store, "copied_physical_file", "path_copy");
             Assert.NotEqual(model.ModelScopeKey, independentCopy.ModelScopeKey); Assert.False(store.GetGate(independentCopy.ModelScopeKey).Blocked);
         }
-        [Fact] public void AtomicReservationPreventsTwoHostsStartingSameModelAndAllowsOtherModel()
+        [Fact] public void LiveReservationPreventsTwoHostsStartingSameModelAndAllowsOtherModel()
         {
             var store = Store(); var a = Model(store); var b = Model(store, "physical_b");
             var first = new FailureOperation { HostInstanceId = "host_one", ModelScopeKeys = new List<string> { a.ModelScopeKey } };
             var second = new FailureOperation { HostInstanceId = "host_two", ModelScopeKeys = new List<string> { a.ModelScopeKey } };
+            using var firstActivity = store.BeginActivity(first.OperationId);
+            using var secondActivity = store.BeginActivity(second.OperationId);
             Assert.True(store.ReserveOperation(first).Recorded);
-            Assert.Equal("REVIT_MODEL_BLOCKED", new FailureLedgerStore(Db).ReserveOperation(second).ErrorCode);
+            Assert.Equal("REVIT_BUSY", new FailureLedgerStore(Db).ReserveOperation(second).ErrorCode);
             Assert.Null(store.GetOperation(second.OperationId));
             second.ModelScopeKeys = new List<string> { b.ModelScopeKey }; Assert.True(store.ReserveOperation(second).Recorded);
             Assert.True(store.ReserveOperation(first).Recorded);
-            first.ModelScopeKeys.Add(b.ModelScopeKey); Assert.Equal("REVIT_MODEL_BLOCKED", store.ReserveOperation(first).ErrorCode);
+            first.ModelScopeKeys.Add(b.ModelScopeKey); Assert.Equal("REVIT_BUSY", store.ReserveOperation(first).ErrorCode);
         }
         [Fact] public async System.Threading.Tasks.Task SimultaneousHostReservationsPermitExactlyOneWriter()
         {
@@ -504,11 +547,14 @@ namespace RvtMcp.Tests
                 var tasks = Enumerable.Range(1, 2).Select(n => System.Threading.Tasks.Task.Run(() => {
                     var contender = new FailureLedgerStore(Db);
                     var op = new FailureOperation { HostInstanceId = "host_" + n, ModelScopeKeys = new List<string> { model.ModelScopeKey } };
+                    using var activity = contender.BeginActivity(op.OperationId);
                     Assert.True(barrier.SignalAndWait(TimeSpan.FromSeconds(10)));
-                    return contender.ReserveOperation(op);
+                    var result = contender.ReserveOperation(op);
+                    Assert.True(barrier.SignalAndWait(TimeSpan.FromSeconds(10)));
+                    return result;
                 })).ToArray();
                 var results = await System.Threading.Tasks.Task.WhenAll(tasks);
-                Assert.Single(results.Where(r => r.Recorded)); Assert.Single(results.Where(r => r.ErrorCode == "REVIT_MODEL_BLOCKED"));
+                Assert.Single(results.Where(r => r.Recorded)); Assert.Single(results.Where(r => r.ErrorCode == "REVIT_BUSY"));
             }
         }
         [Fact] public void FailedGrantInvalidationIsDurableAndRecoveredBeforeGateReopens()
@@ -540,7 +586,7 @@ namespace RvtMcp.Tests
             Assert.Equal("identity_uncertain", synthetic.Action); Assert.Contains(original.ModelScopeKey, synthetic.RelatedModelScopeKeys);
             Assert.True(store.ApplyDecision(Decision(synthetic)).Recorded);
             Assert.True(store.GetGate(unknown.ModelScopeKey).Blocked); // reviewing ambiguity alone cannot clear the original model issue
-            Assert.Equal("REVIT_MODEL_BLOCKED", store.ReserveOperation(new FailureOperation { ModelScopeKeys = new List<string> { unknown.ModelScopeKey } }).ErrorCode);
+            Assert.True(store.ReserveOperation(new FailureOperation { Execution = "completed", Outcome = "committed", ModelScopeKeys = new List<string> { unknown.ModelScopeKey } }).Recorded);
             var provenCopy = Model(store, "independent_physical", "known_model_key");
             Assert.False(store.GetGate(provenCopy.ModelScopeKey).Blocked); Assert.Empty(store.GetRules(provenCopy.ModelScopeKey));
             Assert.True(store.ApplyDecision(Decision(unresolved)).Recorded);
@@ -568,9 +614,10 @@ namespace RvtMcp.Tests
             var secondScope = ambiguousFirst ? proven.ModelScopeKey : ambiguous.ModelScopeKey;
             var first = new FailureOperation { HostInstanceId = "first_host", ModelScopeKeys = new List<string> { firstScope } };
             var second = new FailureOperation { HostInstanceId = "second_host", ModelScopeKeys = new List<string> { secondScope } };
+            using var activity = store.BeginActivity(first.OperationId);
             Assert.True(store.ReserveOperation(first).Recorded);
             Assert.True(new FailureLedgerStore(Db, true).GetGate(secondScope).Blocked);
-            Assert.Equal("REVIT_MODEL_BLOCKED", new FailureLedgerStore(Db).ReserveOperation(second).ErrorCode);
+            Assert.Equal("REVIT_BUSY", new FailureLedgerStore(Db).ReserveOperation(second).ErrorCode);
             Assert.Null(store.GetOperation(second.OperationId));
         }
         [Fact] public void ProvenScopeSeesActualAmbiguousFailureButNotDerivedIdentityExplanation()
@@ -595,19 +642,24 @@ namespace RvtMcp.Tests
             var q2 = store.ResolveModel(new FailureModelIdentity { ModelKey = "known_model_key", HostInstanceId = "host_q2", LiveDocumentId = "doc_q2" });
             var first = new FailureOperation { ModelScopeKeys = new List<string> { firstSiblingFirst ? q1.ModelScopeKey : q2.ModelScopeKey } };
             var second = new FailureOperation { ModelScopeKeys = new List<string> { firstSiblingFirst ? q2.ModelScopeKey : q1.ModelScopeKey } };
+            using var activity = store.BeginActivity(first.OperationId);
             Assert.True(store.ReserveOperation(first).Recorded);
             Assert.True(new FailureLedgerStore(Db, true).GetGate(second.ModelScopeKeys[0]).Blocked);
-            Assert.Equal("REVIT_MODEL_BLOCKED", new FailureLedgerStore(Db).ReserveOperation(second).ErrorCode);
+            Assert.Equal("REVIT_BUSY", new FailureLedgerStore(Db).ReserveOperation(second).ErrorCode);
         }
         [Fact] public void SharedAmbiguousCandidateDoesNotMergeProvenDistinctPhysicalFiles()
         {
             var store = Store(); var k1 = Model(store, "physical_one", "shared_alias"); var k2 = Model(store, "physical_two", "shared_alias");
             var unknown = store.ResolveModel(new FailureModelIdentity { ModelKey = "shared_alias", HostInstanceId = "unknown_host", LiveDocumentId = "unknown_doc" });
-            Assert.True(store.ReserveOperation(new FailureOperation { ModelScopeKeys = new List<string> { k1.ModelScopeKey } }).Recorded);
+            var first = new FailureOperation { ModelScopeKeys = new List<string> { k1.ModelScopeKey } };
+            using var firstActivity = store.BeginActivity(first.OperationId);
+            Assert.True(store.ReserveOperation(first).Recorded);
             Assert.False(store.GetGate(k2.ModelScopeKey).Blocked);
-            Assert.True(new FailureLedgerStore(Db).ReserveOperation(new FailureOperation { ModelScopeKeys = new List<string> { k2.ModelScopeKey } }).Recorded);
+            var second = new FailureOperation { ModelScopeKeys = new List<string> { k2.ModelScopeKey } };
+            using var secondActivity = store.BeginActivity(second.OperationId);
+            Assert.True(new FailureLedgerStore(Db).ReserveOperation(second).Recorded);
             Assert.True(store.GetGate(unknown.ModelScopeKey).Blocked);
-            Assert.Equal("REVIT_MODEL_BLOCKED", store.ReserveOperation(new FailureOperation { ModelScopeKeys = new List<string> { unknown.ModelScopeKey } }).ErrorCode);
+            Assert.Equal("REVIT_BUSY", store.ReserveOperation(new FailureOperation { ModelScopeKeys = new List<string> { unknown.ModelScopeKey } }).ErrorCode);
         }
         public void Dispose() { if (Directory.Exists(_root)) Directory.Delete(_root, true); }
     }

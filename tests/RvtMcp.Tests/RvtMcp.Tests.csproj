@@ -27,6 +27,7 @@
     <Compile Include="../../src/shared/Views/FailureIssuesContext.cs" Link="Shared/Views/FailureIssuesContext.cs" />
     <Compile Include="../../src/shared/Views/FailureIssuesPresentation.cs" Link="Shared/Views/FailureIssuesPresentation.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\SendCodeSourceBuilder.cs" Link="Shared\Infrastructure\SendCodeSourceBuilder.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\SendCodeDocumentRewriter.cs" Link="Shared\Infrastructure\SendCodeDocumentRewriter.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\NoDocumentGuidance.cs" Link="Shared\Infrastructure\NoDocumentGuidance.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\RecentFileList.cs" Link="Shared\Infrastructure\RecentFileList.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\McpAddinDiscovery.cs" Link="Shared\Infrastructure\McpAddinDiscovery.cs" />

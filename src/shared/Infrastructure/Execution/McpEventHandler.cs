@@ -168,7 +168,7 @@ namespace RvtMcp.Plugin
                     }
 
                     CommandResult result;
-                    failureScope = Failures.FailureControl.Begin(app, request);
+                    failureScope = Failures.FailureControl.Begin(app, request, runtimeConfig.WarningPolicyOrDefault);
                     Failures.FailureControl.ThrowIfStopped();
                     var surveySnapshot = Survey.SurveyHistoryBridge.Before(app, request, runtimeConfig.EnableChangeHistoryOrDefault);
                     using (var capture = McpChangeTracker.Begin(request.History?.IsValid == true && runtimeConfig.EnableChangeHistoryOrDefault))

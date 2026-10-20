@@ -36,7 +36,7 @@ namespace RvtMcp.Server
                 if (Fits()) return Result();
                 data.Remove(key);
             }
-            foreach (var key in new[] { "hostInstanceId", "schemaVersion", "messageCount", "observationCoverage", "modelScopeKey", "requiresReview", "summaryTruncated" })
+            foreach (var key in new[] { "hostInstanceId", "schemaVersion", "messageCount", "observationCoverage", "modelScopeKey", "requiresReview", "warningPolicy", "summaryTruncated" })
             {
                 if (Fits()) return Result();
                 failure?.Remove(key);

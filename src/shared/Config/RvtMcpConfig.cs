@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using RvtMcp.Failures;
 
 namespace RvtMcp.Plugin
 {
@@ -41,6 +42,7 @@ namespace RvtMcp.Plugin
         public const string EnvResponseBudgetBytes = "BIMWRIGHT_RESPONSE_BUDGET_BYTES";
         public const string EnvMaxResponseBytes = "BIMWRIGHT_MAX_RESPONSE_BYTES";
         public const string EnvSpillRetentionHours = "BIMWRIGHT_SPILL_RETENTION_HOURS";
+        public const string EnvWarningPolicy = "BIMWRIGHT_WARNING_POLICY";
 
         public const bool DefaultReadOnly                  = false;
         public const bool DefaultAllowLanBind              = false;
@@ -76,6 +78,17 @@ namespace RvtMcp.Plugin
 
         [JsonProperty("enableResponseGuard")]
         public bool? EnableResponseGuard { get; set; }
+
+        /// <summary>Only an explicit accept-and-log string enables warning acceptance; malformed values stay strict.</summary>
+        [JsonProperty("warningPolicy")]
+        public JToken WarningPolicy { get; set; }
+        [JsonIgnore]
+        public string WarningPolicyOrDefault => WarningPolicy?.Type == JTokenType.String
+            ? WarningPolicyModes.Normalize(WarningPolicy.Value<string>()) : WarningPolicyModes.Rollback;
+        // A gateway's startup JSON must not override later Settings edits. Only explicit env/CLI
+        // choices travel; the host rereads the shared JSON at the start of each MCP call.
+        [JsonIgnore]
+        internal string WarningPolicyRuntimeOverride { get; set; }
 
         [JsonProperty("responseWarnBytes")]
         public int? ResponseWarnBytes { get; set; }
@@ -222,7 +235,8 @@ namespace RvtMcp.Plugin
                 ResponseStrongWarnBytes = ResponseStrongWarnBytesOrDefault,
                 ResponseBudgetBytes = ResponseBudgetBytesOrDefault,
                 MaxResponseBytes = MaxResponseBytesOrDefault,
-                SpillRetentionHours = new JValue(SpillRetentionHoursOrDefault)
+                SpillRetentionHours = new JValue(SpillRetentionHoursOrDefault),
+                WarningPolicy = WarningPolicyRuntimeOverride == null ? null : new JValue(WarningPolicyRuntimeOverride)
             };
         }
 
@@ -230,7 +244,7 @@ namespace RvtMcp.Plugin
         {
             if (runtime == null) return this;
             var result = (RvtMcpConfig)MemberwiseClone();
-            // A client may tighten host policy, never relax it.
+            // A client may tighten read-only/send-code restrictions, never relax them.
             result.ReadOnly = ReadOnlyOrDefault || runtime.ReadOnlyOrDefault;
             result.EnableSendCode = EnableSendCodeOrDefault && runtime.EnableSendCodeOrDefault;
             result.EnableCallLog = runtime.EnableCallLog ?? EnableCallLog;
@@ -241,6 +255,8 @@ namespace RvtMcp.Plugin
             result.ResponseBudgetBytes = runtime.ResponseBudgetBytes ?? ResponseBudgetBytes;
             result.MaxResponseBytes = runtime.MaxResponseBytes ?? MaxResponseBytes;
             result.SpillRetentionHours = runtime.SpillRetentionHours ?? SpillRetentionHours;
+            if (runtime.WarningPolicy != null && runtime.WarningPolicy.Type != JTokenType.Null)
+                result.WarningPolicy = new JValue(runtime.WarningPolicyOrDefault);
             result.ValidateResponseLimits();
             return result;
         }
@@ -402,6 +418,8 @@ namespace RvtMcp.Plugin
             config.ResponseBudgetBytes = ParseBytes(lookup(EnvResponseBudgetBytes), EnvResponseBudgetBytes) ?? config.ResponseBudgetBytes;
             config.MaxResponseBytes = ParseBytes(lookup(EnvMaxResponseBytes), EnvMaxResponseBytes) ?? config.MaxResponseBytes;
             ApplySpillRetention(config, lookup(EnvSpillRetentionHours), EnvSpillRetentionHours);
+            var warningPolicy = lookup(EnvWarningPolicy);
+            if (warningPolicy != null) ApplyWarningPolicyOverride(config, warningPolicy);
 
             var allowLan = ParseBool(lookup(EnvAllowLanBind));
             if (allowLan.HasValue) config.AllowLanBind = allowLan;
@@ -508,6 +526,10 @@ namespace RvtMcp.Plugin
                     case "--spill-retention-hours":
                         ApplySpillRetention(config, i + 1 < args.Length ? args[++i] : null, arg);
                         break;
+                    case "--warning-policy":
+                        ApplyWarningPolicyOverride(config, i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal)
+                            ? args[++i] : null);
+                        break;
                     case "--allow-lan-bind":
                         config.AllowLanBind = true;
                         break;
@@ -590,6 +612,13 @@ namespace RvtMcp.Plugin
             Console.Error.WriteLine($"[rvt-mcp] {source}: '{text}' is not 1-{MaxSpillRetentionHours} hours; using {DefaultSpillRetentionHours}.");
         }
 
+        private static void ApplyWarningPolicyOverride(RvtMcpConfig config, string value)
+        {
+            var mode = WarningPolicyModes.Normalize(value);
+            config.WarningPolicy = new JValue(mode);
+            config.WarningPolicyRuntimeOverride = mode;
+        }
+
         private static int ReadBytes(string[] args, ref int index)
         {
             var flag = args[index];
@@ -643,6 +672,7 @@ namespace RvtMcp.Plugin
             public int? PersistSendCodeBodiesHours { get; set; }
             public bool? PersistSendCodeBodies { get; set; }
             public bool? CacheSendCodeBodies { get; set; }
+            public string WarningPolicy { get; set; }
         }
 
         public sealed class ApplyFailure
@@ -685,6 +715,17 @@ namespace RvtMcp.Plugin
         public static bool TrySaveAutoStartTransport(bool enabled, out string error, string configFilePath = null)
         {
             return TryUpdateConfig(configFilePath, root => root["autoStartTransport"] = enabled, out error);
+        }
+
+        public static bool TrySaveWarningPolicy(string policy, out string error, string configFilePath = null)
+        {
+            if (!string.Equals(policy?.Trim(), WarningPolicyModes.Rollback, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(policy?.Trim(), WarningPolicyModes.AcceptAndLog, StringComparison.OrdinalIgnoreCase))
+            {
+                error = "Warning policy must be rollback or accept-and-log.";
+                return false;
+            }
+            return TryUpdateConfig(configFilePath, root => root["warningPolicy"] = WarningPolicyModes.Normalize(policy), out error);
         }
 
         public static bool TrySaveShowBranding(bool show, out string error, string configFilePath = null)
@@ -956,6 +997,12 @@ namespace RvtMcp.Plugin
                     result.Failed.Add(new ApplyFailure("cacheSendCodeBodies", error));
             }
 
+            if (patch.WarningPolicy != null)
+            {
+                string error;
+                if (TrySaveWarningPolicy(patch.WarningPolicy, out error, configFilePath)) result.Applied.Add("warningPolicy");
+                else result.Failed.Add(new ApplyFailure("warningPolicy", error));
+            }
             return result;
         }
 

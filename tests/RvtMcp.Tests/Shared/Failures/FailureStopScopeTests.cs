@@ -32,11 +32,8 @@ namespace RvtMcp.Tests
             Assert.Equal(expected, result[1]); // Receipt resolver, after that incident.
             Assert.True((bool)result[3]);
             Assert.Equal(code, result[4]);
-            if (code == "REVIT_MODEL_BLOCKED")
-            {
-                Assert.Equal(expected, result[2]); // Read the target gate, never the active model's gate.
-                Assert.Equal(new[] { "gate_" + expected }, (string[])result[5]);
-            }
+            Assert.Null(result[2]); // Stopping this operation never consults a historical model gate.
+            Assert.Empty((string[])result[5]);
         }
 
         private static MethodInfo CompileProbe([CallerFilePath] string testFile = "")

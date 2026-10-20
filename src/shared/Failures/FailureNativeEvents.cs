@@ -405,6 +405,15 @@ namespace RvtMcp.Plugin.Failures
             DocumentState state = null;
             try
             {
+                // This token exists only around an explicit Close(false) on a document
+                // tracked as newly opened by this send-code call. Cleanup remains possible
+                // after a transaction/capture failure; it cannot discard a pre-existing document.
+                if (Scoped() && McpDocument.IsDiscardAuthorized(args.Document))
+                {
+                    PruneClosedDocuments();
+                    if (Documents.TryGetValue(args.Document, out state)) Closing[args.DocumentId] = state;
+                    return;
+                }
                 state = State(args.Document);
                 if (Scoped())
                 {
@@ -513,8 +522,7 @@ namespace RvtMcp.Plugin.Failures
             if (!Scoped()) return true;
             if (model == null) throw new InvalidOperationException("Native model identity is unavailable.");
             Active.ClaimModel(model);
-            var gate = Store.GetGate(model.ModelScopeKey, Active.Operation.OperationId);
-            bool blocked = Active.Stopped || gate.Blocked || UncertainModels.Contains(model.ModelScopeKey);
+            bool blocked = Active.Stopped;
             if (!blocked && complete && !requiresGrant && !args.IsCancelled()) return true;
 
             var incident = Active.NewIncident(state, "native", action);
@@ -541,7 +549,7 @@ namespace RvtMcp.Plugin.Failures
                     if (NativeRequests.Count < 50) NativeRequests[contextHash] = incident;
                 }
                 Cancel(args, state, action, Active.StorageFailed ? "FAILURE_STORAGE_FAILED"
-                    : Active.ErrorCode ?? (blocked ? "REVIT_MODEL_BLOCKED" : "REVIT_OPERATION_REQUIRES_USER"));
+                    : Active.ErrorCode ?? "REVIT_OPERATION_REQUIRES_USER");
                 incident.Action = Active.NativeOutcome == "cancelled" ? "cancelled" : "enforcement_unavailable";
                 if (Active.NativeOutcome != "cancelled") incident.Complete = false;
                 Active.Record(incident);

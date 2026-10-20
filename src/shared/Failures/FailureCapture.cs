@@ -59,7 +59,8 @@ namespace RvtMcp.Failures
                 Source = input.Source, TransactionName = input.TransactionName, RequestHash = input.RequestHash, DocumentRevision = input.DocumentRevision,
                 RevitYear = input.RevitYear, OperationContext = input.OperationContext, NativeAction = input.NativeAction, NativeContextHash = input.NativeContextHash,
                 NativeContextDescription = input.NativeContextDescription, ModelTitle = input.ModelTitle, RelatedModelScopeKeys = input.RelatedModelScopeKeys.ToList(), BatchIndex = input.BatchIndex, Severity = input.Severity,
-                Action = input.Action, State = input.State, Complete = input.Complete, CountKind = input.CountKind, MessageCount = input.MessageCount,
+                Action = input.Action, State = input.State, WarningPolicy = WarningPolicyModes.Normalize(input.WarningPolicy),
+                Complete = input.Complete, CountKind = input.CountKind, MessageCount = input.MessageCount,
                 OmittedMessageCount = input.OmittedMessageCount, OmittedElementCount = input.OmittedElementCount, RuleIds = input.RuleIds.ToList(),
                 GrantIds = input.GrantIds.ToList(), RuleRevisions = new Dictionary<string, long>(input.RuleRevisions), Persistence = input.Persistence, CreatedUtc = input.CreatedUtc };
             incident.TransactionName = SafeText(incident.TransactionName, 256);
@@ -133,37 +134,36 @@ namespace RvtMcp.Failures
             + "Send it again once Revit is free.";
 
         // Written for the agent: it cannot act in Revit UI, but it can read, resurvey and revise its plan.
-        public static string NextStep(string errorCode, bool gateBlocked, bool acceptedWarnings)
+        public static string NextStep(string errorCode, bool reviewRequired, bool acceptedWarnings, string warningPolicy = WarningPolicyModes.Rollback)
         {
             const string records = "Read the incidents with revit_get_failure_records (includeDetails=true)";
-            const string decide = "Only the user can rework, abandon or accept it in Revit (History > Issues).";
-            const string reads = "Typed read tools (views, elements, parameters, survey, warnings, history) still work; "
-                + "revit_send_code_to_revit and revit_batch_execute count as writes even when they only read, and other write tools are blocked.";
+            const string review = "The user can review it in Revit (History > Issues).";
+            const string admission = "Previous Issues do not block subsequent MCP commands or repeated requests. ";
             switch (errorCode)
             {
                 case "REVIT_FAILURE_ROLLED_BACK":
-                    if (gateBlocked) break;
+                    if (reviewRequired) return "Revit rejected this operation, but the full outcome is uncertain or earlier changes may remain. "
+                        + records + ", inspect the model and revise the plan. " + admission + review;
                     return "Revit rejected your change and rolled it back; this operation left the model unchanged. " + records
-                        + ", survey the listed elements with read tools, and revise the plan. The model stays writable, but the same request "
-                        + "is refused while the incident is open: do not resend it unchanged. The incident stays open for the user to rework, "
-                        + "abandon or accept in Revit (History > Issues); mention it when you report to the user.";
+                        + ", survey the listed elements with read tools, and revise the plan. The model stays writable. " + admission + review;
                 case "REVIT_REQUEST_REPEATED":
-                    return "Not started: Revit already rolled back this exact request (incidentIds) and the user has not decided yet. "
-                        + records + ", then change the request based on what you find, or ask the user to accept it in Revit (History > Issues). "
-                        + "Other writes to this model still work.";
                 case "REVIT_MODEL_BLOCKED":
-                    return "Not started: this model has open incidents whose outcome is uncertain (incidentIds). " + records
-                        + ". " + reads + " Tell the user what happened and what you propose. " + decide;
+                    return "An earlier build refused this request because of recorded issues. " + records
+                        + ", inspect the actual outcome and revise the plan as needed. " + admission + review;
+                case "REVIT_BUSY":
+                    return NotStartedNextStep;
                 case "REVIT_OPERATION_REQUIRES_USER":
                     return "This native action needs the user in Revit and was not completed by the agent. Check _operation for the actual outcome, "
                         + "tell the user what you intended, and let them perform or approve it in Revit. Do not retry unchanged.";
                 case "FAILURE_CAPTURE_INCOMPLETE":
                 case "FAILURE_STORAGE_FAILED":
                     return "The failure could not be fully recorded; treat the outcome as uncertain. Inspect the model with read tools "
-                        + "and ask the user to review it in Revit before further writes. Do not retry unchanged.";
+                        + "and report the recording failure to the user. " + admission + review;
             }
-            if (errorCode != null || gateBlocked)
-                return "The outcome needs review and writes to this model are blocked. " + records + ", inspect the model with read tools, and tell the user. " + reads + " " + decide;
+            if (errorCode != null || reviewRequired)
+                return "The outcome needs review. " + records + ", inspect the model with read tools, and tell the user. " + admission + review;
+            if (acceptedWarnings && warningPolicy == WarningPolicyModes.AcceptAndLog)
+                return "Warnings were accepted and recorded under the user's accept-and-log policy. Check the recorded outcome; acceptance does not certify model correctness or repair earlier operations.";
             if (acceptedWarnings)
                 return "Committed with warnings the user accepted by rule or one-use grant (see the incident). The warnings remain in the model; this does not certify design quality.";
             return "Revit reported conditions during this operation. " + records + " before relying on the result.";
@@ -182,6 +182,9 @@ namespace RvtMcp.Failures
         public static JObject Summary(FailureIncident incident, bool? mutationApplied, string gate)
         {
             var bounded = Bound(incident);
+            bool reviewRequired = gate == "blocked" || !bounded.Complete;
+            bool acceptedWarnings = mutationApplied == true && bounded.Action == "accepted_warning"
+                && (bounded.State == "accepted_by_policy" || bounded.State == "accepted_by_rule" || bounded.State == "accepted_once");
             var groups = new JArray(bounded.Messages.GroupBy(m => new { m.DefinitionId, m.Severity }).Take(20).Select(g => new JObject {
                 ["failureDefinitionId"] = g.Key.DefinitionId, ["severity"] = g.Key.Severity, ["count"] = g.Count(),
                 ["description"] = SafeText(g.First().Description, 256),
@@ -190,9 +193,11 @@ namespace RvtMcp.Failures
             var result = new JObject { ["schemaVersion"] = 1, ["operationId"] = bounded.OperationId,
                 ["incidentIds"] = new JArray(bounded.IncidentId), ["modelScopeKey"] = bounded.ModelScopeKey,
                 ["action"] = bounded.Action, ["mutationApplied"] = mutationApplied.HasValue ? (JToken)mutationApplied.Value : JValue.CreateNull(),
-                ["gate"] = gate, ["persistence"] = bounded.Persistence, ["complete"] = bounded.Complete,
+                ["gate"] = "open", ["requiresReview"] = reviewRequired, ["warningPolicy"] = bounded.WarningPolicy,
+                ["persistence"] = bounded.Persistence, ["complete"] = bounded.Complete,
                 ["messageCount"] = bounded.MessageCount, ["countKind"] = bounded.CountKind, ["groups"] = groups,
-                ["nextStep"] = NextStep("REVIT_FAILURE_ROLLED_BACK", gate == "blocked", false) };
+                ["nextStep"] = NextStep(acceptedWarnings ? null : "REVIT_FAILURE_ROLLED_BACK", reviewRequired, acceptedWarnings,
+                    bounded.State == "accepted_by_policy" ? bounded.WarningPolicy : WarningPolicyModes.Rollback) };
             while (Encoding.UTF8.GetByteCount(result.ToString(Newtonsoft.Json.Formatting.None)) > 16 * 1024 && groups.Count > 0)
                 groups.RemoveAt(groups.Count - 1);
             return result;

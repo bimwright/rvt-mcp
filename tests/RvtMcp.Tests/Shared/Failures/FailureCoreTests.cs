@@ -86,28 +86,30 @@ namespace RvtMcp.Tests
             Assert.True(Encoding.UTF8.GetByteCount(json) <= 16384); Assert.DoesNotContain("private.rvt", json); Assert.DoesNotContain("abcdefghijkl", json);
             Assert.Equal(294, summary.Value<int>("messageCount")); Assert.NotNull(summary["incidentIds"]); Assert.Equal("rolled_back", summary.Value<string>("action"));
         }
-        [Fact] public void NextStepTellsTheAgentToInvestigateAndLeavesDecisionsToTheUser()
+        [Fact] public void NextStepsPreserveTheCurrentFailureButDoNotLockLaterCommands()
         {
             var rolledBack = FailureCapture.NextStep("REVIT_FAILURE_ROLLED_BACK", false, false);
-            Assert.Contains("revit_get_failure_records", rolledBack); Assert.Contains("survey", rolledBack);
-            Assert.Contains("revise the plan", rolledBack); Assert.Contains("stays writable", rolledBack); Assert.Contains("do not resend it unchanged", rolledBack);
-            Assert.Contains("History > Issues", rolledBack); Assert.DoesNotContain("blocked", rolledBack);
-            var repeated = FailureCapture.NextStep("REVIT_REQUEST_REPEATED", false, false);
-            Assert.Contains("exact request", repeated); Assert.Contains("change the request", repeated); Assert.Contains("Other writes", repeated);
-            var blocked = FailureCapture.NextStep("REVIT_MODEL_BLOCKED", true, false);
-            Assert.Contains("uncertain", blocked); Assert.Contains("read tools", blocked); Assert.Contains("Only the user", blocked);
-            Assert.Contains("revit_send_code_to_revit and revit_batch_execute count as writes", blocked);
-            Assert.Contains("writes to this model are blocked", FailureCapture.NextStep("REVIT_FAILURE_ROLLED_BACK", true, false));
-            Assert.Contains("uncertain", FailureCapture.NextStep("FAILURE_STORAGE_FAILED", true, false));
-            Assert.Contains("uncertain", FailureCapture.NextStep("FAILURE_CAPTURE_INCOMPLETE", true, false));
+            Assert.Contains("rolled it back", rolledBack); Assert.Contains("survey", rolledBack);
+            Assert.Contains("revise the plan", rolledBack); Assert.Contains("stays writable", rolledBack);
+            Assert.Contains("History > Issues", rolledBack);
+            foreach (var code in new[] { "REVIT_REQUEST_REPEATED", "REVIT_MODEL_BLOCKED", "FAILURE_STORAGE_FAILED", "FAILURE_CAPTURE_INCOMPLETE", null })
+            {
+                var next = FailureCapture.NextStep(code, true, false);
+                Assert.Contains("Previous Issues do not block subsequent MCP commands or repeated requests", next);
+                Assert.DoesNotContain("writes to this model are blocked", next);
+                Assert.DoesNotContain("same request is refused", next);
+            }
+            var partial = FailureCapture.NextStep("REVIT_FAILURE_ROLLED_BACK", true, false);
+            Assert.Contains("earlier changes may remain", partial);
+            Assert.DoesNotContain("left the model unchanged", partial);
             Assert.Contains("needs the user", FailureCapture.NextStep("REVIT_OPERATION_REQUIRES_USER", true, false));
-            Assert.Contains("blocked", FailureCapture.NextStep(null, true, false));
-            Assert.Contains("count as writes", FailureCapture.NextStep(null, true, false));
+            Assert.Equal(FailureCapture.NotStartedNextStep, FailureCapture.NextStep("REVIT_BUSY", false, false));
             var accepted = FailureCapture.NextStep(null, false, true);
             Assert.Contains("user accepted", accepted); Assert.Contains("remain in the model", accepted);
-            Assert.DoesNotContain("Warnings were recorded", FailureCapture.NextStep(null, false, false));
             var summary = FailureCapture.Summary(new FailureIncident { OperationId = "op", ModelScopeKey = "model_a", Messages = { Warning() } }, false, "open");
             Assert.Equal(rolledBack, summary.Value<string>("nextStep"));
+            var advisory = FailureCapture.Summary(new FailureIncident { OperationId = "op", ModelScopeKey = "model_a", Complete = false }, null, "blocked");
+            Assert.Equal("open", advisory.Value<string>("gate")); Assert.True(advisory.Value<bool>("requiresReview"));
         }
         [Fact] public void ExactDialogAdaptersRejectUnverifiedYearsContextsAndGenericDialogs()
         {

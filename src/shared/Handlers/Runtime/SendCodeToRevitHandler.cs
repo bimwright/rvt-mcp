@@ -44,6 +44,7 @@ namespace RvtMcp.Plugin.Handlers
                     new[] { syntaxTree },
                     references,
                     new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+                compilation = SendCodeDocumentRewriter.Apply(compilation, syntaxTree);
 
                 using (var ms = new MemoryStream())
                 {
@@ -71,7 +72,9 @@ namespace RvtMcp.Plugin.Handlers
                     if (method == null)
                         return Fail("Method 'Run(UIApplication)' not found in McpDynamicScript.");
 
-                    var output = method.Invoke(null, new object[] { app });
+                    object output;
+                    using (McpDocument.Begin(app))
+                        output = method.Invoke(null, new object[] { app });
                     // Live wire returns raw output so the agent can read structured JSON
                     // (anonymous objects serialize properly, strings stay strings, numbers stay numbers).
                     // Persistence paths (McpLogger, McpSessionLog, JournalEntry, bake suggestions, usage

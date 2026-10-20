@@ -31,13 +31,17 @@ namespace RvtMcp.Failures
         public static FailurePolicyResult Evaluate(IEnumerable<FailureMessage> messages, bool complete,
             string modelScopeKey, int revitYear, string operationContext, string requestHash,
             string documentRevision, IEnumerable<FailureRule> rules = null,
-            IEnumerable<FailureGrant> grants = null, DateTimeOffset? now = null)
+            IEnumerable<FailureGrant> grants = null, DateTimeOffset? now = null, string warningPolicy = WarningPolicyModes.Rollback)
         {
             var all = (messages ?? Enumerable.Empty<FailureMessage>()).ToList();
-            if (!complete || all.Any(m => m == null || !m.Complete)) return Stop("FAILURE_CAPTURE_INCOMPLETE");
+            if (!complete || all.Any(m => m == null || !m.Complete || m.TextTruncated)) return Stop("FAILURE_CAPTURE_INCOMPLETE");
             if (all.Count == 0) return new FailurePolicyResult { Action = "continue" };
             if (all.Any(m => m.Severity != "Warning" || string.IsNullOrEmpty(m.DefinitionId)))
                 return Stop("REVIT_FAILURE_ROLLED_BACK");
+            // The opt-in covers warnings only, after completeness and severity validation.
+            // No one-use grant is consumed: the operation records its explicit policy instead.
+            if (WarningPolicyModes.Normalize(warningPolicy) == WarningPolicyModes.AcceptAndLog)
+                return new FailurePolicyResult { Action = "continue", Reason = "accepted_by_policy" };
             var result = new FailurePolicyResult { Action = "continue", Reason = "accepted_warnings" };
             foreach (var group in all.GroupBy(m => m.DefinitionId, StringComparer.OrdinalIgnoreCase))
             {

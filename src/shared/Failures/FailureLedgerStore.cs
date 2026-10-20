@@ -177,8 +177,8 @@ WHERE a.model_key=$k AND m.transient=0 AND a.scope!=$s;", "$k", identity.ModelKe
                 foreach (var possibleDocument in InverseCandidateScopes(c, tx, file)) conflicts.Add(possibleDocument);
             return conflicts.OrderBy(s => s, StringComparer.Ordinal).ToList();
         }
-        // A complete Revit rollback left the model unchanged: it stays open for the user but does not gate the model.
-        // Only uncertainty (unknown outcome, incomplete capture, storage or identity doubt) gates it.
+        // Legacy review classification: uncertainty needs review, while a complete rollback is informational.
+        // These queries retain identity/review evidence; they do not decide admission of new commands.
         private const string CleanRollback = "(json_extract(payload,'$.action') IN ('rolled_back','cancelled') AND json_extract(payload,'$.complete')=1)";
         private const string BlockingIncident = "state='open' AND NOT " + CleanRollback;
         private static bool HasDatabaseBlocker(SqliteConnection c, SqliteTransaction tx, string scope, string excludedOperation, bool excludeDerivedIdentity = false)
@@ -269,7 +269,37 @@ GROUP BY m.scope," + IncidentRevitYear + " ORDER BY 2 COLLATE NOCASE,3 DESC,m.sc
         public bool HasPendingRecords() { return Directory.Exists(PendingPath) && Directory.EnumerateFiles(PendingPath, "*.json").Any(); }
 
         // Shared for the lifetime of an MCP operation; Reset takes the same file exclusively across Revit hosts.
-        public IDisposable BeginActivity() { Writer(); return OpenActivity(false); }
+        public IDisposable BeginActivity(string operationId = null)
+        {
+            Writer(); var ledger = OpenActivity(false);
+            if (operationId == null) return ledger;
+            try
+            {
+                FailureCapture.RequireKey(operationId, "operation ID");
+                var folder = Path.Combine(Path.GetDirectoryName(DatabasePath), "active");
+                Directory.CreateDirectory(folder);
+                var operation = new FileStream(Path.Combine(folder, operationId + ".lock"), FileMode.OpenOrCreate,
+                    FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+                return new OperationActivity(ledger, operation);
+            }
+            catch { ledger.Dispose(); throw; }
+        }
+
+        private sealed class OperationActivity : IDisposable
+        {
+            private readonly IDisposable _ledger, _operation;
+            internal OperationActivity(IDisposable ledger, IDisposable operation) { _ledger = ledger; _operation = operation; }
+            public void Dispose() { try { _operation.Dispose(); } finally { _ledger.Dispose(); } }
+        }
+
+        private bool IsOperationActive(string operationId)
+        {
+            var path = Path.Combine(Path.GetDirectoryName(DatabasePath), "active", operationId + ".lock");
+            if (!File.Exists(path)) return false;
+            try { using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) return false; }
+            catch (IOException ex) when ((ex.HResult & 0xffff) == 32 || (ex.HResult & 0xffff) == 33) { return true; }
+            catch (FileNotFoundException) { return false; }
+        }
         private FileStream OpenActivity(bool exclusive)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath));
@@ -293,7 +323,7 @@ GROUP BY m.scope," + IncidentRevitYear + " ORDER BY 2 COLLATE NOCASE,3 DESC,m.sc
             }
         }
 
-        /// <summary>Counts what a reset would clear. <paramref name="alsoBlocked"/> adds scopes the caller blocks in memory.</summary>
+        /// <summary>Counts what a reset would clear. <paramref name="alsoBlocked"/> adds unresolved in-memory review scopes.</summary>
         public FailureLedgerSummary GetSummary(IEnumerable<string> alsoBlocked = null)
         {
             var summary = new FailureLedgerSummary(); EnsureDatabaseFile();
@@ -364,8 +394,7 @@ GROUP BY m.scope," + IncidentRevitYear + " ORDER BY 2 COLLATE NOCASE,3 DESC,m.sc
             var safe = PrepareOperation(operation);
             return Persist("operation", safe, safe.ModelScopeKeys, (c, tx) => WriteOperation(c, tx, safe));
         }
-        // Atomic per-model reservation closes the check-then-dispatch race across local Revit hosts.
-        // Repeating it for the same operation is allowed when a new native document is first touched.
+        // Only a live operation can hold a reservation. Historical incidents, pending captures and stale running rows are advisory.
         public FailurePersistenceResult ReserveOperation(FailureOperation operation)
         {
             var safe = PrepareOperation(operation);
@@ -374,13 +403,18 @@ GROUP BY m.scope," + IncidentRevitYear + " ORDER BY 2 COLLATE NOCASE,3 DESC,m.sc
                 foreach (var scope in safe.ModelScopeKeys)
                 {
                     foreach (var candidate in ConflictingScopes(c, tx, scope))
-                        if (IsUncertain(candidate) || PendingFor(candidate) || HasDatabaseBlocker(c, tx, candidate, safe.OperationId, candidate != scope))
-                            throw new GateDeniedException();
+                    {
+                        var operations = new List<string>();
+                        using (var cmd = Command(c, tx, @"SELECT o.id FROM operations o JOIN operation_scopes s ON s.operation_id=o.id
+WHERE s.scope=$s AND o.id!=$i AND o.execution!='completed' AND o.execution!='interrupted_unknown';", "$s", candidate, "$i", safe.OperationId))
+                        using (var reader = cmd.ExecuteReader()) while (reader.Read()) operations.Add(reader.GetString(0));
+                        if (operations.Any(IsOperationActive)) throw new OperationBusyException();
+                    }
                 }
                 WriteOperation(c, tx, safe);
             });
         }
-        private sealed class GateDeniedException : Exception { }
+        private sealed class OperationBusyException : Exception { }
         private static FailureOperation PrepareOperation(FailureOperation operation)
         {
             if (operation == null) throw new ArgumentNullException(nameof(operation));
@@ -420,7 +454,7 @@ GROUP BY m.scope," + IncidentRevitYear + " ORDER BY 2 COLLATE NOCASE,3 DESC,m.sc
             {
                 if (!(result[receiptName] is JObject receipt)) continue;
                 var retained = new JObject();
-                foreach (var field in new[] { "schemaVersion", "operationId", "incidentIds", "modelScopeKey", "action", "outcome", "execution", "gate", "persistence", "complete", "mutationApplied", "activeDocumentChanged", "activeModelBefore", "activeModelAfter", "messageCount", "countKind", "id", "callId", "recorded", "modelKey" })
+                foreach (var field in new[] { "schemaVersion", "operationId", "incidentIds", "modelScopeKey", "action", "outcome", "execution", "gate", "requiresReview", "warningPolicy", "persistence", "complete", "mutationApplied", "activeDocumentChanged", "activeModelBefore", "activeModelAfter", "messageCount", "countKind", "id", "callId", "recorded", "modelKey" })
                 {
                     if (receipt[field] is JArray ids) retained[field] = new JArray(ids.Take(20));
                     else if (receipt[field] is JValue value) retained[field] = value.Type == JTokenType.String ? (JToken)FailureCapture.SafeText(value.Value<string>(), 64) : value.DeepClone();
@@ -452,6 +486,7 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
             var bounded = FailureCapture.Bound(incident);
             bounded.NativeContextDescription = FailureCapture.SafeText(bounded.NativeContextDescription, 512);
             var grants = (matchedGrantIds ?? bounded.GrantIds).Distinct().ToList();
+            var acceptedByPolicy = bounded.State == "accepted_by_policy";
             return Persist("incident", bounded, new[] { bounded.ModelScopeKey }, (c, tx) =>
             {
                 // A callback may repeat. The initial event and grant consumption are one durable transaction.
@@ -461,7 +496,17 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
                 {
                     bounded.OmittedMessageCount += bounded.Messages.Count; bounded.Messages.Clear(); bounded.Complete = false;
                     bounded.CountKind = "at_least"; bounded.State = "open"; bounded.Action = "capture_incomplete";
-                    if (grants.Count > 0 || bounded.RuleIds.Count > 0) throw new InvalidOperationException("Acceptance capture limit exceeded.");
+                    if (acceptedByPolicy || grants.Count > 0 || bounded.RuleIds.Count > 0) throw new InvalidOperationException("Acceptance capture limit exceeded.");
+                }
+                if (acceptedByPolicy)
+                {
+                    var operation = ReadPayload<FailureOperation>(c, tx, "operations", bounded.OperationId);
+                    if (operation?.WarningPolicy != WarningPolicyModes.AcceptAndLog || bounded.WarningPolicy != WarningPolicyModes.AcceptAndLog
+                        || !bounded.Complete || bounded.CountKind != "exact" || bounded.OmittedMessageCount != 0 || bounded.OmittedElementCount != 0
+                        || bounded.MessageCount == 0 || bounded.MessageCount != bounded.Messages.Count || grants.Count != 0 || bounded.RuleIds.Count != 0
+                        || FailurePolicy.Evaluate(bounded.Messages, true, bounded.ModelScopeKey, bounded.RevitYear, bounded.OperationContext,
+                            bounded.RequestHash, bounded.DocumentRevision, warningPolicy: bounded.WarningPolicy).Reason != "accepted_by_policy")
+                        throw new InvalidOperationException("Policy acceptance requires complete captured warnings and an opted-in operation.");
                 }
                 if (bounded.RuleIds.Count > 0 || grants.Count > 0 && string.IsNullOrEmpty(bounded.NativeAction))
                 {
@@ -513,6 +558,7 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
             using (var r = cmd.ExecuteReader()) while (r.Read()) result.Add(FailureJson.Deserialize<T>(r.GetString(0)));
             return result;
         }
+        // Legacy API name: Blocked describes unresolved review findings, not an enforced dispatch gate.
         public FailureGate GetGate(string scope, string excludingOperationId = null)
         {
             FailureCapture.RequireKey(scope, "model scope key");
@@ -599,7 +645,7 @@ AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i
 
         private static void ValidateState(string state)
         {
-            if (state != null && !new[] { "observed", "open", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule" }.Contains(state))
+            if (state != null && !new[] { "observed", "open", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule", "accepted_by_policy" }.Contains(state))
                 throw new ArgumentException("Invalid incident state.");
         }
 
@@ -774,8 +820,8 @@ AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i
             using var activity = BeginActivity();
             Writer(); var membership = scopes.Distinct().ToList();
             try { EnsureInitialized(); RefreshResetState(); using (var c = Open(true)) using (var tx = c.BeginTransaction()) { write(c, tx); tx.Commit(); } return Recorded(); }
-            catch (GateDeniedException)
-            { return new FailurePersistenceResult { Persistence = "failed", ErrorCode = "REVIT_MODEL_BLOCKED" }; }
+            catch (OperationBusyException)
+            { return new FailurePersistenceResult { Persistence = "failed", ErrorCode = "REVIT_BUSY" }; }
             catch (Exception ex)
             {
                 Diagnostic?.Invoke("Failure ledger " + kind + " write failed: " + ex.GetType().Name + ": " + ex.Message);
