@@ -145,10 +145,14 @@ namespace RvtMcp.Plugin.Handlers
 
         private static Rebar CreateRebarFromCurves(Document doc, RebarBarType barType, Element host, XYZ normal, IList<Curve> curves)
         {
-#if REVIT2027_OR_GREATER
-            // R27+ removed the legacy RebarHookType/RebarHookOrientation overload.
-            // Use the new BarTerminationsData overload (default = no hooks, no end treatments).
-            var terms = new BarTerminationsData(doc);
+#if REVIT2026 || REVIT2027_OR_GREATER
+            // R26+ supports BarTerminationsData (default = no hooks, no end treatments).
+            using var terms = new BarTerminationsData(doc);
+#if REVIT2026
+            // Preserve the legacy R26 orientations; R27 keeps its existing defaults.
+            terms.TerminationOrientationAtStart = RebarTerminationOrientation.Right;
+            terms.TerminationOrientationAtEnd = RebarTerminationOrientation.Left;
+#endif
             return Rebar.CreateFromCurves(
                 doc,
                 RebarStyle.Standard,
@@ -160,7 +164,7 @@ namespace RvtMcp.Plugin.Handlers
                 useExistingShapeIfPossible: true,
                 createNewShape: true);
 #else
-            // R22-R26: legacy overload accepts null hook types and Right/Left orientations.
+            // R22-R25: legacy overload accepts null hook types and Right/Left orientations.
             return Rebar.CreateFromCurves(
                 doc,
                 RebarStyle.Standard,
