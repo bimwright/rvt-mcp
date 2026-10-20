@@ -22,6 +22,12 @@ internal static class Program
                 return Demo();
             if (args.Length == 2 && args[0] == "--snapshot")
                 return Snapshot(args[1]);
+            if (args.Length >= 1 && args[0] == "--reset-only")
+            {
+                CheckFailureReset(args.Length == 2 ? args[1] : null);
+                return 0;
+            }
+            CheckFailureReset(null);
             CheckTabs();
             CheckStagedFooter();
             CheckInlineApplyError();
@@ -38,6 +44,51 @@ internal static class Program
             Console.Error.WriteLine(ex);
             return 1;
         }
+    }
+
+    private static void CheckFailureReset(string snapshot)
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        using var stream = assembly.GetManifestResourceStream("ResetStrings");
+        var catalog = Newtonsoft.Json.Linq.JObject.Parse(new StreamReader(stream).ReadToEnd()).Properties()
+            .Where(p => p.Value.Type == Newtonsoft.Json.Linq.JTokenType.String).ToDictionary(p => p.Name, p => (string)p.Value);
+        RvtMcp.Plugin.Localization.L.Initialize("English", "en",
+            locale => RvtMcp.Plugin.Localization.StringTable.Build(locale, catalog, catalog, null), null);
+        try
+        {
+            foreach (var accept in new[] { false, true })
+            {
+                var text = RvtMcp.Plugin.Localization.L.T("failure.reset.confirm", ("issues", 123), ("open", 12),
+                    ("models", 5), ("blocked", 2), ("folder", @"C:\Users\Sample\AppData\Local\Bimwright\rvt-mcp\failures\backups"));
+                var dialog = new RvtMcp.Plugin.Views.FailureResetDialog(text);
+                Exception failure = null;
+                dialog.Loaded += (s, e) => dialog.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        var acknowledged = Field<CheckBox>(dialog, "_acknowledged");
+                        var reset = Field<Button>(dialog, "_reset");
+                        Expect(acknowledged.IsChecked != true && !reset.IsEnabled && !reset.IsDefault,
+                            "Reset is unavailable before the agent/risk acknowledgment; Enter cannot accept it by default");
+                        Click(reset); // A routed click must not bypass the acknowledgment either.
+                        Expect(dialog.IsVisible && dialog.DialogResult != true, "unacknowledged click cannot reset");
+                        acknowledged.IsChecked = true;
+                        Expect(reset.IsEnabled, "agent acknowledgment enables Reset");
+                        acknowledged.IsChecked = false;
+                        Expect(!reset.IsEnabled, "removing acknowledgment disables Reset again");
+                        if (!accept && snapshot != null) { Pump(); Save(dialog, snapshot); }
+                        if (accept) { acknowledged.IsChecked = true; Click(reset); }
+                        else dialog.Close();
+                    }
+                    catch (Exception ex) { failure = ex; dialog.Close(); }
+                }));
+                var result = dialog.ShowDialog();
+                if (failure != null) throw failure;
+                Expect((result == true) == accept, "closing cancels; only an acknowledged Reset accepts");
+            }
+        }
+        finally { RvtMcp.Plugin.Localization.L.ResetForTests(); }
+        Console.WriteLine("PASS: Reset requires agent/risk acknowledgment, rejects bypass clicks, cancels safely and accepts after confirmation");
     }
 
     private static void CheckTabs()

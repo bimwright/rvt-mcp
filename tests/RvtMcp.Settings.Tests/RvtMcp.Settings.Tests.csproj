@@ -6,6 +6,7 @@
   </PropertyGroup>
   <!-- The production Settings window on an STA dispatcher with in-memory state: no Revit, no config writes. -->
   <ItemGroup>
+    <Compile Include="../../src/shared/Views/FailureResetDialog.cs" Link="FailureResetDialog.cs" />
     <Compile Include="../../src/shared/Views/Settings/AboutInfo.cs" Link="Settings\AboutInfo.cs" />
     <Compile Include="../../src/shared/Views/Settings/LicenseWindow.cs" Link="Settings\LicenseWindow.cs" />
     <Compile Include="../../src/shared/Views/Settings/SettingsModels.cs" Link="Settings\SettingsModels.cs" />
@@ -24,6 +25,7 @@
     <Compile Include="../../src/shared/Localization/LocaleResolver.cs" Link="Localization\LocaleResolver.cs" />
     <Compile Include="../../src/shared/Localization/ToolSummaryCatalog.cs" Link="Localization\ToolSummaryCatalog.cs" />
     <EmbeddedResource Include="../../LICENSE" LogicalName="RvtMcp.LICENSE" />
+    <EmbeddedResource Include="../../src/shared/Localization/Catalog/strings.en.json" WithCulture="false" LogicalName="ResetStrings" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 </Project>

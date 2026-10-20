@@ -41,6 +41,8 @@ namespace RvtMcp.Plugin.Failures
         private static HashSet<string> _openModelScopes = new HashSet<string>(StringComparer.Ordinal);
         private static string _revitUser;
         private static string _storageError;
+        private static string _ledgerResetGeneration;
+        private static bool _ledgerIdentityRefreshPending;
         private static int Year { get { int.TryParse(AuthToken.RevitVersion, out var year); return year; } }
         public static bool IsStopped { get { return Active != null && Active.Stopped; } }
 
@@ -108,6 +110,8 @@ namespace RvtMcp.Plugin.Failures
         {
             try
             {
+                RefreshLedgerResetState();
+                resolveIdentity |= _ledgerIdentityRefreshPending;
                 _revitUser = app.Application.Username;
                 var doc = app.ActiveUIDocument?.Document;
                 DocumentState state = null;
@@ -135,6 +139,7 @@ namespace RvtMcp.Plugin.Failures
                     IsAvailable = true, ModelScopeKey = state.Model.ModelScopeKey, ModelTitle = state.Model.Title,
                     RevitYear = Year, DocumentRevision = Revision(state), RevitUser = _revitUser, HostInstanceId = HostInstanceId
                 };
+                _ledgerIdentityRefreshPending = false;
             }
             catch
             {
@@ -227,30 +232,56 @@ namespace RvtMcp.Plugin.Failures
             return Store.GetSummary(UncertainModels);
         }
 
-        /// <summary>Backs up and empties the ledger. Refused while an MCP operation runs or unrecovered records wait.</summary>
+        private static void RefreshLedgerResetState()
+        {
+            if (Store == null) return;
+            var generation = Store.RefreshResetState();
+            if (generation == _ledgerResetGeneration) return;
+            _ledgerResetGeneration = generation;
+            _ledgerIdentityRefreshPending = true;
+            UncertainModels.Clear(); NativeRequests.Clear(); _storageError = null;
+            foreach (var state in Documents.Values) state.Path = null;
+            _uiContext = new FailureIssuesContext();
+            lock (OpenScopeGate) _openModelScopes.Clear();
+        }
+
+        /// <summary>Backs up ledger and pending records. Refused while an MCP operation holds the shared activity lock.</summary>
         internal static string ResetLedger()
         {
             if (Store == null || Active != null) throw new InvalidOperationException("FAILURE_RESET_BUSY");
             var backup = Store.Reset(DateTime.Now);
-            UncertainModels.Clear();
-            NativeRequests.Clear();
-            // Open models are written to the empty ledger again the next time their identity is resolved.
-            foreach (var state in Documents.Values) state.Path = null;
+            RefreshLedgerResetState();
             return backup;
         }
 
         internal static Scope Begin(UIApplication app, PendingRequest request)
         {
             if (Active != null) throw new InvalidOperationException("A failure scope is already active.");
-            RefreshContext(app, !ToolReadPolicy.IsReadOnly(request.CommandName));
-            var scope = new Scope(app, request);
-            Active = scope;
-            scope.Start();
-            return scope;
+            IDisposable activity = null;
+            bool activityFailed = false;
+            try { activity = Store?.BeginActivity(); }
+            catch (InvalidOperationException ex) when (ex.Message == "FAILURE_RESET_BUSY") { throw; }
+            catch (Exception ex)
+            {
+                // A storage fault still permits read-only tools; Start blocks writes using this error.
+                activityFailed = true;
+                App.DebugLog("Failure activity lock failed: " + ex.GetType().Name + ": " + ex.Message);
+            }
+            try
+            {
+                RefreshContext(app, !ToolReadPolicy.IsReadOnly(request.CommandName));
+                if (activityFailed) _storageError = "FAILURE_STORAGE_FAILED";
+                var scope = new Scope(app, request) { Activity = activity };
+                Active = scope;
+                scope.Start();
+                return scope;
+            }
+            catch { Active = null; activity?.Dispose(); throw; }
         }
 
         internal sealed class Scope : IDisposable
         {
+            internal IDisposable Activity;
             internal readonly UIApplication Application;
             internal readonly PendingRequest Request;
             internal readonly PendingRequestLifecycle Lifecycle;
@@ -685,9 +716,13 @@ namespace RvtMcp.Plugin.Failures
 
             public void Dispose()
             {
-                if (!_finished) Complete(null);
-                if (ReferenceEquals(Active, this)) Active = null;
-                RefreshContext(Application, !IsRead);
+                try
+                {
+                    if (!_finished) Complete(null);
+                    if (ReferenceEquals(Active, this)) Active = null;
+                    RefreshContext(Application, !IsRead);
+                }
+                finally { if (ReferenceEquals(Active, this)) Active = null; Activity?.Dispose(); Activity = null; }
             }
         }
 

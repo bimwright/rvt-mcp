@@ -53,6 +53,7 @@ namespace RvtMcp.Plugin.Failures
             FailureLedgerStore.Diagnostic = App.DebugLog;
             try
             {
+                _ledgerResetGeneration = Store.RefreshResetState();
                 Store.Initialize();
                 Store.RecoverPending();
                 var live = new HashSet<string>(StringComparer.Ordinal) { HostInstanceId };

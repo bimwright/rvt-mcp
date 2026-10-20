@@ -16,6 +16,7 @@ namespace RvtMcp.Failures
         private readonly bool _readOnly;
         private readonly HashSet<string> _uncertainScopes = new HashSet<string>(StringComparer.Ordinal);
         private readonly object _sync = new object();
+        private string _resetGeneration;
         /// <summary>Receives the type and message of a swallowed write failure. The plugin points it at its local debug log.</summary>
         public static Action<string> Diagnostic;
         public string DatabasePath { get; }
@@ -267,6 +268,31 @@ GROUP BY m.scope," + IncidentRevitYear + " ORDER BY 2 COLLATE NOCASE,3 DESC,m.sc
         public string BackupFolder { get { return Path.Combine(Path.GetDirectoryName(DatabasePath), "backups"); } }
         public bool HasPendingRecords() { return Directory.Exists(PendingPath) && Directory.EnumerateFiles(PendingPath, "*.json").Any(); }
 
+        // Shared for the lifetime of an MCP operation; Reset takes the same file exclusively across Revit hosts.
+        public IDisposable BeginActivity() { Writer(); return OpenActivity(false); }
+        private FileStream OpenActivity(bool exclusive)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath));
+            try { return new FileStream(DatabasePath + ".activity", FileMode.OpenOrCreate, FileAccess.ReadWrite, exclusive ? FileShare.None : FileShare.ReadWrite); }
+            catch (IOException ex) when ((ex.HResult & 0xffff) == 32 || (ex.HResult & 0xffff) == 33)
+            { throw new InvalidOperationException("FAILURE_RESET_BUSY", ex); }
+        }
+
+        // The generation is committed with the reset so other open hosts can discard stale identities and gates.
+        public string RefreshResetState()
+        {
+            lock (_sync)
+            {
+                EnsureDatabaseFile();
+                string generation;
+                using (var c = Open(false))
+                    generation = Scalar(c, null, "SELECT 1 FROM sqlite_master WHERE type='table' AND name='reset_state';") == null
+                        ? null : Scalar(c, null, "SELECT generation FROM reset_state WHERE id=1;") as string;
+                if (generation != _resetGeneration) { _uncertainScopes.Clear(); _resetGeneration = generation; }
+                return generation;
+            }
+        }
+
         /// <summary>Counts what a reset would clear. <paramref name="alsoBlocked"/> adds scopes the caller blocks in memory.</summary>
         public FailureLedgerSummary GetSummary(IEnumerable<string> alsoBlocked = null)
         {
@@ -282,33 +308,53 @@ GROUP BY m.scope," + IncidentRevitYear + " ORDER BY 2 COLLATE NOCASE,3 DESC,m.sc
             return summary;
         }
 
-        // Copies the ledger to backups\ledger-<local time>.db, then empties every table under the same write lock.
+        // Copies the ledger and archives the entire pending folder before clearing records under the same write lock.
         // The file and schema stay in place, so the gateway's readers never see a missing or swapped file.
         public string Reset(DateTime localTime)
         {
             Writer();
             lock (_sync)
+            using (OpenActivity(true))
             {
-                if (HasPendingRecords()) throw new InvalidOperationException("FAILURE_RESET_PENDING");
                 EnsureInitialized();
                 Directory.CreateDirectory(BackupFolder);
                 var stamp = "ledger-" + localTime.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
                 var backup = Path.Combine(BackupFolder, stamp + ".db");
-                for (var n = 2; File.Exists(backup); n++) backup = Path.Combine(BackupFolder, stamp + "-" + n + ".db");
-                using (var c = Open(true))
-                using (var tx = c.BeginTransaction())
+                for (var n = 2; File.Exists(backup) || Directory.Exists(backup + ".pending"); n++) backup = Path.Combine(BackupFolder, stamp + "-" + n + ".db");
+                bool movedPending = false;
+                var generation = Guid.NewGuid().ToString("N");
+                try
                 {
-                    // No other writer can commit while this transaction holds the lock, so the copy matches what is emptied.
-                    using (var source = Open(true)) Execute(source, null, "VACUUM INTO $p;", "$p", backup);
-                    var tables = new List<string>();
-                    using (var cmd = Command(c, tx, "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"))
-                    using (var r = cmd.ExecuteReader()) while (r.Read()) tables.Add(r.GetString(0));
-                    Execute(c, tx, "PRAGMA defer_foreign_keys=ON;");
-                    foreach (var table in tables) Execute(c, tx, "DELETE FROM \"" + table + "\";");
-                    Execute(c, tx, "DELETE FROM sqlite_sequence;");
-                    tx.Commit();
+                    using (var c = Open(true))
+                    using (var tx = c.BeginTransaction())
+                    {
+                        // No other database writer can commit while the snapshot and clear are in progress.
+                        using (var source = Open(true)) Execute(source, null, "VACUUM INTO $p;", "$p", backup);
+                        if (Directory.Exists(PendingPath)) { Directory.Move(PendingPath, backup + ".pending"); movedPending = true; }
+                        var tables = new List<string>();
+                        using (var cmd = Command(c, tx, "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name!='reset_state';"))
+                        using (var r = cmd.ExecuteReader()) while (r.Read()) tables.Add(r.GetString(0));
+                        Execute(c, tx, "PRAGMA defer_foreign_keys=ON;");
+                        foreach (var table in tables) Execute(c, tx, "DELETE FROM \"" + table + "\";");
+                        Execute(c, tx, "DELETE FROM sqlite_sequence;");
+                        Execute(c, tx, "CREATE TABLE IF NOT EXISTS reset_state(id INTEGER PRIMARY KEY CHECK(id=1),generation TEXT NOT NULL);");
+                        Execute(c, tx, "INSERT OR REPLACE INTO reset_state(id,generation) VALUES(1,$g);", "$g", generation);
+                        tx.Commit();
+                    }
+                }
+                catch (Exception resetError)
+                {
+                    // Restore pending on a failed clear; the SQLite transaction has already rolled back.
+                    if (movedPending)
+                    {
+                        try { Directory.Move(backup + ".pending", PendingPath); }
+                        catch (Exception restoreError)
+                        { throw new IOException("Reset failed; pending records remain archived at " + backup + ".pending", new AggregateException(resetError, restoreError)); }
+                    }
+                    throw;
                 }
                 _uncertainScopes.Clear();
+                _resetGeneration = generation;
                 return backup;
             }
         }
@@ -470,6 +516,7 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
         public FailureGate GetGate(string scope, string excludingOperationId = null)
         {
             FailureCapture.RequireKey(scope, "model scope key");
+            RefreshResetState();
             var gate = new FailureGate();
             lock (_sync) if (_uncertainScopes.Contains(scope)) { gate.Blocked = true; gate.Reason = "FAILURE_STORAGE_FAILED"; }
             if (PendingFor(scope)) { gate.Blocked = true; gate.Reason = "FAILURE_STORAGE_FAILED"; }
@@ -724,8 +771,9 @@ AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i
 
         private FailurePersistenceResult Persist(string kind, object payload, IEnumerable<string> scopes, Action<SqliteConnection, SqliteTransaction> write)
         {
+            using var activity = BeginActivity();
             Writer(); var membership = scopes.Distinct().ToList();
-            try { EnsureInitialized(); using (var c = Open(true)) using (var tx = c.BeginTransaction()) { write(c, tx); tx.Commit(); } return Recorded(); }
+            try { EnsureInitialized(); RefreshResetState(); using (var c = Open(true)) using (var tx = c.BeginTransaction()) { write(c, tx); tx.Commit(); } return Recorded(); }
             catch (GateDeniedException)
             { return new FailurePersistenceResult { Persistence = "failed", ErrorCode = "REVIT_MODEL_BLOCKED" }; }
             catch (Exception ex)
@@ -766,6 +814,7 @@ AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i
         { if (new FileInfo(file).Length > FailureCapture.MaxOperationBytes) throw new IOException("Pending capture is too large."); return FailureJson.Deserialize<JObject>(File.ReadAllText(file)); }
         public int RecoverPending()
         {
+            using var activity = BeginActivity();
             Writer(); if (!Directory.Exists(PendingPath)) return 0; EnsureInitialized(); int count = 0;
             // Operations precede incidents for FK consistency; updates are ordered by durable timestamp.
             var files = Directory.EnumerateFiles(PendingPath, "*.json").Select(f => new { File = f, Envelope = ReadPending(f) })

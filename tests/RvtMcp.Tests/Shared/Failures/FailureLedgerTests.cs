@@ -104,7 +104,7 @@ namespace RvtMcp.Tests
             {
                 connection.Open();
                 using var tables = connection.CreateCommand();
-                tables.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'";
+                tables.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name!='reset_state'";
                 var names = new List<string>();
                 using (var reader = tables.ExecuteReader()) while (reader.Read()) names.Add(reader.GetString(0));
                 Assert.Contains("incidents", names);
@@ -112,25 +112,139 @@ namespace RvtMcp.Tests
             }
             Assert.False(store.GetGate(model.ModelScopeKey).Blocked);
             Assert.Equal(0, store.GetSummary().IssueCount);
+            var generation = store.RefreshResetState();
+            Assert.False(string.IsNullOrEmpty(generation));
+            Assert.Equal(generation, new FailureLedgerStore(Db, readOnly: true).RefreshResetState());
 
             // The same model is written again, and a second reset in the same second keeps both backups.
             var again = Model(store); Assert.Equal(model.ModelScopeKey, again.ModelScopeKey);
             Incident(store, again.ModelScopeKey, Operation(store, again.ModelScopeKey));
             Assert.Equal(Path.Combine(_root, "failures", "backups", "ledger-20261020-153012-2.db"), store.Reset(time));
+            Assert.NotEqual(generation, store.RefreshResetState());
             Assert.Equal(1L, Count(backup, "incidents"));
         }
 
-        [Fact] public void ResetIsRefusedWhilePendingRecordsWait()
+        [Fact] public void ResetArchivesEveryPendingByteWithoutRecoveryAndContinuesWithoutRestart()
         {
             var store = Store(); var model = Model(store);
             Incident(store, model.ModelScopeKey, Operation(store, model.ModelScopeKey));
             var pending = Path.Combine(_root, "failures", "pending");
             Directory.CreateDirectory(pending);
-            File.WriteAllText(Path.Combine(pending, "waiting.json"), "{}");
+            // Even an unreadable recovery record and an unfinished capture are preserved without parsing.
+            var invalid = new byte[] { 0xff, 0x00, 0x7b };
+            File.WriteAllBytes(Path.Combine(pending, "waiting.json"), invalid);
+            Directory.CreateDirectory(Path.Combine(pending, "nested"));
+            File.WriteAllText(Path.Combine(pending, "nested", "capture.tmp"), "unfinished capture");
             Assert.True(store.HasPendingRecords());
-            Assert.Equal("FAILURE_RESET_PENDING", Assert.Throws<InvalidOperationException>(() => store.Reset(DateTime.Now)).Message);
+            Assert.True(store.GetGate(model.ModelScopeKey).Blocked);
+            var backup = store.Reset(DateTime.Now);
+            Assert.Equal(1L, Count(backup, "incidents"));
+            Assert.Equal(invalid, File.ReadAllBytes(Path.Combine(backup + ".pending", "waiting.json")));
+            Assert.Equal("unfinished capture", File.ReadAllText(Path.Combine(backup + ".pending", "nested", "capture.tmp")));
+            Assert.False(Directory.Exists(pending));
+            Assert.False(store.HasPendingRecords());
+            Assert.Equal(0, store.RecoverPending());
+            Assert.False(store.GetGate(model.ModelScopeKey).Blocked);
+            var reopened = Model(store);
+            Assert.True(store.SaveOperation(new FailureOperation { ModelScopeKeys = new List<string> { reopened.ModelScopeKey }, Execution = "completed" }).Recorded);
+        }
+
+        [Fact] public void ResetIsRefusedWhileAnyStoreHasAnActiveOperation()
+        {
+            var store = Store(); var otherHost = Store();
+            var model = Model(store); Incident(store, model.ModelScopeKey, Operation(store, model.ModelScopeKey));
+            using (store.BeginActivity())
+            using (otherHost.BeginActivity())
+            {
+                Assert.Equal("FAILURE_RESET_BUSY", Assert.Throws<InvalidOperationException>(() => Store().Reset(DateTime.Now)).Message);
+                Assert.Equal(1L, Count(Db, "incidents"));
+                Assert.False(Directory.Exists(store.BackupFolder));
+            }
+            store.Reset(DateTime.Now);
+            Assert.Equal(0L, Count(Db, "incidents"));
+        }
+
+        [Fact] public void AnotherOpenStoreDiscardsItsStorageFailureGateAfterReset()
+        {
+            var store = Store(); var model = Model(store);
+            using (var connection = new SqliteConnection("Data Source=" + Db + ";Pooling=False"))
+            {
+                connection.Open();
+                using (var tx = connection.BeginTransaction())
+                    Assert.Equal("fallback", store.SaveOperation(new FailureOperation { ModelScopeKeys = new List<string> { model.ModelScopeKey } }).Persistence);
+            }
+            Assert.True(store.GetGate(model.ModelScopeKey).Blocked);
+            var backup = Store().Reset(DateTime.Now);
+            Assert.True(Directory.Exists(backup + ".pending"));
+            Assert.False(store.GetGate(model.ModelScopeKey).Blocked);
+            Assert.Equal(0, store.RecoverPending());
+            Assert.Equal(Store().RefreshResetState(), store.RefreshResetState());
+        }
+
+        [Fact] public void NewActivitiesCannotStartWhileResetOwnsTheExclusiveLock()
+        {
+            var store = Store(); Model(store);
+            using (var resetLock = new FileStream(Db + ".activity", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
+            {
+                Assert.Equal("FAILURE_RESET_BUSY", Assert.Throws<InvalidOperationException>(() => Store().BeginActivity()).Message);
+                Assert.Equal("FAILURE_RESET_BUSY", Assert.Throws<InvalidOperationException>(() => store.SaveOperation(new FailureOperation())).Message);
+                Assert.Equal("FAILURE_RESET_BUSY", Assert.Throws<InvalidOperationException>(() => store.RecoverPending()).Message);
+                Assert.False(store.HasPendingRecords());
+            }
+            using (store.BeginActivity()) { }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void NewStorageFailuresAfterResetRemainBlockedEvenWithoutAPendingFile(bool newStore)
+        {
+            var store = Store(); Model(store); store.Reset(DateTime.Now);
+            if (newStore) store = Store();
+            var model = Model(store);
+            using (var c = new SqliteConnection("Data Source=" + Db + ";Pooling=False"))
+            {
+                c.Open(); using var cmd = c.CreateCommand();
+                cmd.CommandText = "CREATE TRIGGER prevent_write BEFORE INSERT ON operations BEGIN SELECT RAISE(ABORT,'simulated write failure'); END;";
+                cmd.ExecuteNonQuery();
+            }
+            File.WriteAllText(Path.Combine(_root, "failures", "pending"), "cannot create pending files here");
+            Assert.False(store.SaveOperation(new FailureOperation { ModelScopeKeys = new List<string> { model.ModelScopeKey } }).Durable);
+            Assert.False(store.HasPendingRecords());
+            Assert.True(store.GetGate(model.ModelScopeKey).Blocked);
+            Assert.True(store.GetGate(model.ModelScopeKey).Blocked);
+        }
+
+        [Fact] public void FailedResetRestoresPendingAndLeavesTheDatabaseAndGenerationUnchanged()
+        {
+            var store = Store(); var model = Model(store); Incident(store, model.ModelScopeKey, Operation(store, model.ModelScopeKey));
+            var pending = Path.Combine(_root, "failures", "pending"); Directory.CreateDirectory(pending);
+            File.WriteAllText(Path.Combine(pending, "waiting.json"), "unreadable pending capture");
+            using (var c = new SqliteConnection("Data Source=" + Db + ";Pooling=False"))
+            {
+                c.Open(); using var cmd = c.CreateCommand();
+                cmd.CommandText = "CREATE TRIGGER prevent_reset BEFORE DELETE ON incidents BEGIN SELECT RAISE(ABORT,'simulated clear failure'); END;";
+                cmd.ExecuteNonQuery();
+            }
+            Assert.Throws<SqliteException>(() => store.Reset(DateTime.Now));
             Assert.Equal(1L, Count(Db, "incidents"));
-            Assert.False(Directory.Exists(store.BackupFolder));
+            Assert.Null(store.RefreshResetState());
+            Assert.Equal("unreadable pending capture", File.ReadAllText(Path.Combine(pending, "waiting.json")));
+            var backup = Assert.Single(Directory.GetFiles(store.BackupFolder, "*.db"));
+            Assert.Equal(1L, Count(backup, "incidents"));
+            Assert.False(Directory.Exists(backup + ".pending"));
+        }
+
+        [Fact] public void ResetBackupFailureLeavesPendingAndLedgerUntouched()
+        {
+            var store = Store(); var model = Model(store); Incident(store, model.ModelScopeKey, Operation(store, model.ModelScopeKey));
+            var pending = Path.Combine(_root, "failures", "pending"); Directory.CreateDirectory(pending);
+            File.WriteAllText(Path.Combine(pending, "waiting.json"), "pending");
+            File.WriteAllText(store.BackupFolder, "cannot create a backup directory here");
+            Assert.Throws<IOException>(() => store.Reset(DateTime.Now));
+            Assert.Equal(1L, Count(Db, "incidents"));
+            Assert.Equal("pending", File.ReadAllText(Path.Combine(pending, "waiting.json")));
+            Assert.Null(store.RefreshResetState());
         }
 
         private static long Count(string db, string table) => Convert.ToInt64(Scalar(db, "SELECT COUNT(*) FROM \"" + table + "\""));

@@ -300,20 +300,21 @@ namespace RvtMcp.Plugin.Views
             try
             {
                 if (FailureControl.Store == null || FailureControl.Active != null) { SetStatus(L.T("failure.reset.busy"), Brushes.Firebrick); return; }
-                if (FailureControl.Store.HasPendingRecords()) { SetStatus(L.T("failure.reset.pending"), Brushes.Firebrick); return; }
                 var summary = FailureControl.GetResetSummary();
-                var confirm = MessageBox.Show(Window.GetWindow(this),
-                    L.T("failure.reset.confirm", ("issues", summary.IssueCount), ("open", summary.OpenIssueCount), ("models", summary.ModelCount),
-                        ("blocked", summary.BlockedModelCount), ("folder", FailureControl.Store.BackupFolder)),
-                    L.T("failure.reset.title"), MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
-                if (confirm != MessageBoxResult.OK) return;
+                if (!ConfirmReset(summary)) return;
                 var backup = FailureControl.ResetLedger();
                 Refresh();
                 SetStatus(L.T("failure.reset.done", ("path", backup)), Brushes.DimGray);
             }
             catch (InvalidOperationException ex) when (ex.Message == "FAILURE_RESET_BUSY") { SetStatus(L.T("failure.reset.busy"), Brushes.Firebrick); }
-            catch (InvalidOperationException ex) when (ex.Message == "FAILURE_RESET_PENDING") { SetStatus(L.T("failure.reset.pending"), Brushes.Firebrick); }
             catch (Exception ex) { SetStatus(L.T("failure.reset.failed", ("error", ex.Message)), Brushes.Firebrick); }
+        }
+
+        private bool ConfirmReset(FailureLedgerSummary summary)
+        {
+            return new FailureResetDialog(L.T("failure.reset.confirm", ("issues", summary.IssueCount),
+                ("open", summary.OpenIssueCount), ("models", summary.ModelCount), ("blocked", summary.BlockedModelCount),
+                ("folder", FailureControl.Store.BackupFolder))) { Owner = Window.GetWindow(this) }.ShowDialog() == true;
         }
 
         private void ApplyOpenEmphasis()
