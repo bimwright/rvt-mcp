@@ -137,7 +137,7 @@ namespace RvtMcp.Tests
         [Fact]
         public void Invalid_durations_normalize_to_spec_defaults()
         {
-            var config = new RvtMcpConfig { ToastIdleSeconds = 7, PersistSendCodeBodiesHours = 99 };
+            var config = new RvtMcpConfig { ToastIdleSeconds = 7, PersistSendCodeBodiesHours = 999 };
             Assert.Equal(RvtMcpConfig.DefaultToastIdleSeconds, config.ToastIdleSecondsOrDefault);
             Assert.Equal(RvtMcpConfig.DefaultPersistSendCodeBodiesHours, config.PersistSendCodeBodiesHoursOrDefault);
 
@@ -148,7 +148,7 @@ namespace RvtMcp.Tests
                 var result = RvtMcpConfig.TryApplySettings(new RvtMcpConfig.SettingsPatch
                 {
                     ToastIdleSeconds = 7,
-                    PersistSendCodeBodiesHours = 99,
+                    PersistSendCodeBodiesHours = 999,
                 }, path);
                 Assert.Equal(2, result.Applied.Count);
                 var root = ParseRaw(path);
@@ -177,8 +177,11 @@ namespace RvtMcp.Tests
         [InlineData(1, 1)]
         [InlineData(48, 48)]
         [InlineData(0, 4)]
-        [InlineData(49, 4)]
-        public void Journal_duration_is_clamped_to_one_to_48_hours(int input, int expected)
+        [InlineData(49, 49)]
+        [InlineData(168, 168)]
+        [InlineData(336, 336)]
+        [InlineData(337, 4)]
+        public void Journal_duration_accepts_one_hour_through_fourteen_days(int input, int expected)
         {
             Assert.Equal(expected, RvtMcpConfig.NormalizePersistSendCodeBodiesHours(input));
         }

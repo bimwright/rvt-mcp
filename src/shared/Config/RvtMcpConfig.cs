@@ -158,7 +158,7 @@ namespace RvtMcp.Plugin
         [JsonProperty("persistSendCodeBodiesUntil")]
         public string PersistSendCodeBodiesUntil { get; set; }
 
-        /// <summary>Journal retention duration in hours. Settings accepts 1 through 48 hours.</summary>
+        /// <summary>Journal retention in hours, up to 14 days. Settings offers common hour/day presets.</summary>
         [JsonProperty("persistSendCodeBodiesHours")]
         public int? PersistSendCodeBodiesHours { get; set; }
 
@@ -288,7 +288,7 @@ namespace RvtMcp.Plugin
 
         public static int NormalizePersistSendCodeBodiesHours(int? hours)
         {
-            return hours >= 1 && hours <= 48 ? hours.Value : DefaultPersistSendCodeBodiesHours;
+            return hours >= 1 && hours <= 14 * 24 ? hours.Value : DefaultPersistSendCodeBodiesHours;
         }
 
         public bool IsPersistSendCodeBodiesActive(DateTimeOffset? now = null)
@@ -461,7 +461,7 @@ namespace RvtMcp.Plugin
                         {
                             var clamped = PersistSendCodeTtl.Clamp(parsedTtl);
                             if (clamped != parsedTtl)
-                                Console.Error.WriteLine($"[rvt-mcp] persist send_code TTL '{ttlStr}' clamped to {FormatTtl(clamped)} (allowed 1h–2d).");
+                                Console.Error.WriteLine($"[rvt-mcp] persist send_code TTL '{ttlStr}' clamped to {FormatTtl(clamped)} (allowed 1h-14d).");
                             ttl = clamped;
                         }
                         var until = DateTimeOffset.UtcNow.Add(ttl);
@@ -571,7 +571,7 @@ namespace RvtMcp.Plugin
                             {
                                 var clamped = PersistSendCodeTtl.Clamp(parsedTtl);
                                 if (clamped != parsedTtl)
-                                    Console.Error.WriteLine($"[rvt-mcp] persist send_code TTL '{ttlStr}' clamped to {FormatTtl(clamped)} (allowed 1h–2d).");
+                                    Console.Error.WriteLine($"[rvt-mcp] persist send_code TTL '{ttlStr}' clamped to {FormatTtl(clamped)} (allowed 1h-14d).");
                                 ttl = clamped;
                             }
                             else

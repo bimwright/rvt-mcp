@@ -11,6 +11,10 @@ internal sealed class FakeSettings : ISettingsPresentation
     private bool _cache;
     private bool _persist;
     private int _hours = 4;
+    private string _warningPolicy = "rollback";
+    public string SavedWarningPolicy = "rollback";
+    public bool IsWarningPolicyWriteDisabled => false;
+    public string WarningPolicy { get => _warningPolicy; set { _warningPolicy = value; Changed(); } }
 
     public int SavedIdle = 20;
     public bool SavedCache;
@@ -39,7 +43,7 @@ internal sealed class FakeSettings : ISettingsPresentation
     public bool CacheSendCodeBodies { get => _cache; set { _cache = value; Changed(); } }
     public bool PersistSendCodeBodies { get => _persist; set { _persist = value; Changed(); } }
     public int PersistSendCodeBodiesHours { get => _hours; set { _hours = value; Changed(); } }
-    public bool IsDirty => _idle != SavedIdle || _cache != SavedCache || _persist != SavedPersist || _hours != SavedHours;
+    public bool IsDirty => _idle != SavedIdle || _cache != SavedCache || _persist != SavedPersist || _hours != SavedHours || _warningPolicy != SavedWarningPolicy;
     public string ImmediateWarning { get; private set; }
     public string ImmediateWarningKey { get; private set; }
     public string RevitYear { get; set; } = "2024";
@@ -120,6 +124,7 @@ internal sealed class FakeSettings : ISettingsPresentation
         if (_cache != SavedCache) Commit("cacheSendCodeBodies", () => SavedCache = _cache);
         if (_persist != SavedPersist) Commit("persistSendCodeBodies", () => SavedPersist = _persist);
         if (_hours != SavedHours) Commit("persistSendCodeBodiesHours", () => SavedHours = _hours);
+        if (_warningPolicy != SavedWarningPolicy) Commit("warningPolicy", () => SavedWarningPolicy = _warningPolicy);
         Changed();
         return report;
     }
@@ -130,6 +135,7 @@ internal sealed class FakeSettings : ISettingsPresentation
         _cache = SavedCache;
         _persist = SavedPersist;
         _hours = SavedHours;
+        _warningPolicy = SavedWarningPolicy;
         Changed();
     }
 

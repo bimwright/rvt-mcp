@@ -9,8 +9,12 @@ namespace RvtMcp.Plugin.Views.Settings
         public static string Text(string key, string fallback, params (string Name, object Value)[] args)
         {
             var value = L.T(key, args);
-            return string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
+            return AsciiDashes(string.Equals(value, key, StringComparison.Ordinal) ? fallback : value);
         }
+
+        // Typography normalization is UI-only; wire tool descriptions and stored data stay unchanged.
+        public static string AsciiDashes(string text) => text?.Replace('\u2010', '-').Replace('\u2011', '-')
+            .Replace('\u2012', '-').Replace('\u2013', '-').Replace('\u2014', '-').Replace('\u2212', '-');
     }
 
     /// <summary>
@@ -21,7 +25,7 @@ namespace RvtMcp.Plugin.Views.Settings
     {
         public const string Heading = "Language";
         public const string RowLabel = "Interface language";
-        public const string AutoOption = "Auto — follow Revit";
+        public const string AutoOption = "Auto - follow Revit";
         public const string CurrentlyUsingPrefix = "Currently using: ";
         public const string SourcePrefix = "Source: ";
         public const string SourceEnvironmentOverride = "Environment override";

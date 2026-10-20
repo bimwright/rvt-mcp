@@ -127,9 +127,11 @@ namespace RvtMcp.Plugin.Views.Settings
               <ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='Chrome' Property='BorderBrush' Value='#007ACC'/></Trigger></ControlTemplate.Triggers>
             </ControlTemplate></ToggleButton.Template>
           </ToggleButton>
-          <ContentPresenter IsHitTestVisible='False' Content='{TemplateBinding SelectionBoxItem}' ContentTemplate='{TemplateBinding SelectionBoxItemTemplate}'
+          <ContentPresenter x:Name='SelectionDisplay' IsHitTestVisible='False' Content='{TemplateBinding SelectionBoxItem}' ContentTemplate='{TemplateBinding SelectionBoxItemTemplate}'
                             ContentStringFormat='{TemplateBinding SelectionBoxItemStringFormat}'
                             Margin='10,3,30,3' VerticalAlignment='Center' HorizontalAlignment='Left'/>
+          <TextBlock x:Name='ReadOnlyDisplay' Text='{TemplateBinding Text}' IsHitTestVisible='False' Visibility='Collapsed'
+                     Margin='10,3,30,3' VerticalAlignment='Center' HorizontalAlignment='Left'/>
           <Popup x:Name='PART_Popup' IsOpen='{TemplateBinding IsDropDownOpen}' Placement='Bottom' AllowsTransparency='True' Focusable='False'>
             <Border Background='White' BorderBrush='#CBD5E1' BorderThickness='1' CornerRadius='6' Margin='0,3,0,3'
                     MinWidth='{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}' MaxHeight='{TemplateBinding MaxDropDownHeight}'>
@@ -137,7 +139,15 @@ namespace RvtMcp.Plugin.Views.Settings
             </Border>
           </Popup>
         </Grid>
-        <ControlTemplate.Triggers><Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.4'/></Trigger></ControlTemplate.Triggers>
+        <ControlTemplate.Triggers>
+          <MultiTrigger><MultiTrigger.Conditions>
+            <Condition Property='IsEditable' Value='True'/><Condition Property='IsReadOnly' Value='True'/>
+          </MultiTrigger.Conditions>
+            <Setter TargetName='SelectionDisplay' Property='Visibility' Value='Collapsed'/>
+            <Setter TargetName='ReadOnlyDisplay' Property='Visibility' Value='Visible'/>
+          </MultiTrigger>
+          <Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.4'/></Trigger>
+        </ControlTemplate.Triggers>
       </ControlTemplate>
     </Setter.Value></Setter>
   </Style>

@@ -21,6 +21,9 @@
     <Compile Include="../../src/shared/Views/Settings/AboutInfo.cs" Link="Settings\AboutInfo.cs" />
     <Compile Include="../../src/shared/Views/Settings/LicenseWindow.cs" Link="Settings\LicenseWindow.cs" />
     <Compile Include="../../src/shared/Views/Settings/SettingsModels.cs" Link="Settings\SettingsModels.cs" />
+    <Compile Include="../../src/shared/Views/Settings/SettingsViewModel.cs" Link="Settings\SettingsViewModel.cs" />
+    <Compile Include="../../src/shared/Config/RvtMcpConfig.cs" Link="RvtMcpConfig.cs" />
+    <Compile Include="../../src/shared/Logging/PersistSendCodeTtl.cs" Link="PersistSendCodeTtl.cs" />
     <Compile Include="../../src/shared/Views/Settings/SettingsPresentation.cs" Link="Settings\SettingsPresentation.cs" />
     <Compile Include="../../src/shared/Views/Settings/SettingsStyles.cs" Link="Settings\SettingsStyles.cs" />
     <Compile Include="../../src/shared/Views/Settings/SettingsText.cs" Link="Settings\SettingsText.cs" />

@@ -448,12 +448,8 @@ namespace RvtMcp.Plugin.Views
             };
             _searchPrompt = new TextBlock
             {
-                FontStyle = FontStyles.Italic,
-                Foreground = Brushes.Gray,
-                Margin = new Thickness(8, 0, 4, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                IsHitTestVisible = false
+                Style = (Style)BimwrightStyles.Dictionary[BimwrightStyles.PlaceholderTextKey],
+                Margin = new Thickness(8, 0, 4, 0)
             };
             _searchBox.TextChanged += (s, e) =>
             {

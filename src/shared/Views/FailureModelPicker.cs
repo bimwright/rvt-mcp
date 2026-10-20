@@ -62,7 +62,7 @@ namespace RvtMcp.Plugin.Views
     <Popup x:Name='PART_Popup' Placement='Bottom' AllowsTransparency='True' Focusable='False'
            IsOpen='{TemplateBinding IsDropDownOpen}'>
       <Border Background='White' BorderBrush='#ABADB3' BorderThickness='1'
-              MinWidth='{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}'>
+              Width='{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}'>
         <StackPanel>
           <ContentControl x:Name='Empty'/>
           <ScrollViewer MaxHeight='{Binding MaxDropDownHeight, RelativeSource={RelativeSource TemplatedParent}}'

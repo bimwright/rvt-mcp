@@ -23,6 +23,11 @@ internal static class Program
                 FailureModelPickerDiagnostics.Run(args[1], args[2], args.Length > 3 && args[3] == "--demo");
                 return 0;
             }
+            if (args.Length == 1 && args[0] == "--warning-policy-only")
+            {
+                WarningPolicySettingsChecks.Run();
+                return 0;
+            }
             if (args.Length == 1 && args[0] == "--history-only")
             {
                 HistoryRegressionChecks.Run();
@@ -43,6 +48,7 @@ internal static class Program
                 return 0;
             }
             HistoryRegressionChecks.Run();
+            WarningPolicySettingsChecks.Run();
             CheckFailureReset(null);
             CheckTabs();
             CheckStagedFooter();

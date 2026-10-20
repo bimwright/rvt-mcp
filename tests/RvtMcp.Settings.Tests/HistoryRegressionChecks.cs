@@ -19,7 +19,7 @@ internal static class HistoryRegressionChecks
     internal static void Run()
     {
         var failures = new List<string>();
-        foreach (var check in new Action[] { CrossModelActions, DecisionGuards, CopyInputs, LocalizedModelKinds })
+        foreach (var check in new Action[] { CrossModelActions, DecisionGuards, CopyInputs, LocalizedModelKinds, Chrome })
         {
             InitializeLanguage();
             try { check(); Console.WriteLine("PASS: History " + check.Method.Name); }
@@ -212,6 +212,50 @@ internal static class HistoryRegressionChecks
                 picker.IsDropDownOpen = false; Pump();
             }
         });
+    }
+
+    private static void Chrome()
+    {
+        Fixture();
+        FailureLedgerStore.Models.Add(new FailureIssueModel { ModelScopeKey = "long", RevitYear = 2027,
+            Title = new string('M', 180), IssueCount = 1000 });
+        var history = new HistoryWindow(new McpSessionLog(), new CommandDispatcher(), new McpEventHandler(), new Autodesk.Revit.UI.ExternalEvent());
+        try
+        {
+            history.Show(); Pump();
+            var tab = Field<TabItem>(history, "_activityTab");
+            Expect((string)tab.Header == "Activities", "the tab is named Activities");
+            var activityHint = Field<TextBlock>(history, "_searchPrompt");
+            history.ShowIssues(); Pump();
+            var view = Field<FailureIssuesView>(history, "_issuesView");
+            var reasonHint = Field<TextBlock>(view, "_reasonWatermark");
+            Expect(reasonHint.FontStyle == FontStyles.Italic && ReferenceEquals(reasonHint.Style, activityHint.Style), "reason and Activities search share one italic dictionary style");
+            var copy = Field<Button>(view, "_copyDetails");
+            Expect(copy.Content is string copyGlyph && copyGlyph.Length == 1 && copy.ActualWidth <= 32, "Copy is a compact icon button");
+            var expand = FindButtons(view).Single(button => System.Windows.Automation.AutomationProperties.GetName(button) == L.T("failure.group.record"));
+            Expect(expand.Content is string expandGlyph && expandGlyph.Length == 1 && expand.ActualWidth <= 32, "Expand is a compact accessible icon button");
+            expand.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); Pump();
+            Expect(Field<Grid>(view, "_facts").Visibility == Visibility.Visible && System.Windows.Automation.AutomationProperties.GetName(expand) == L.T("failure.group.collapse"), "the expansion icon updates its accessible action");
+            var picker = Field<ComboBox>(view, "_models");
+            var width = picker.ActualWidth;
+            Expect(!double.IsNaN(picker.Width), "the model picker has an explicit fixed width");
+            picker.IsDropDownOpen = true; Pump();
+            var popup = (Popup)picker.Template.FindName("PART_Popup", picker);
+            Expect(Math.Abs(((FrameworkElement)popup.Child).ActualWidth - width) < 1, "the dropdown has the same fixed width");
+            ((FailureModelPicker)picker).SearchBox.Text = "MMMM"; Pump();
+            Expect(Math.Abs(picker.ActualWidth - width) < 1, "search cannot resize the model picker");
+            picker.IsDropDownOpen = false; Pump();
+            picker.SelectedIndex = picker.Items.Count - 1; Pump();
+            Expect(Math.Abs(picker.ActualWidth - width) < 1, "selecting a long model name cannot resize the model picker");
+        }
+        finally { history.Close(); }
+    }
+
+    private static IEnumerable<Button> FindButtons(DependencyObject root)
+    {
+        if (root is Button button) yield return button;
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+            foreach (var value in FindButtons(VisualTreeHelper.GetChild(root, i))) yield return value;
     }
 
     private static IEnumerable<TextBlock> TextBlocks(DependencyObject root)

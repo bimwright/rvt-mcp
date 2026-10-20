@@ -63,7 +63,7 @@ namespace RvtMcp.Server
                 "                          Stamps %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\rvtmcp.config.json so the",
                 "                          Revit plugin (sole journal writer) can see the window.",
                 "  --persist-send-code-bodies-for <ttl>",
-                "                          Duration for the journal window (1h–2d; e.g. 4h, 2d, 90m).",
+                "                          Duration for the journal window (1h-14d; e.g. 4h, 7d, 14d).",
                 "                          Out-of-range values are clamped. Default 4h.",
                 "  --no-persist-send-code-bodies",
                 "                          Disable send_code body journal and clear the JSON stamp.",

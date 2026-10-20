@@ -34,9 +34,9 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void Clamp_AboveMax_BecomesTwoDays()
+        public void Clamp_AboveMax_BecomesFourteenDays()
         {
-            Assert.Equal(PersistSendCodeTtl.Max, PersistSendCodeTtl.Clamp(TimeSpan.FromDays(9)));
+            Assert.Equal(TimeSpan.FromDays(14), PersistSendCodeTtl.Clamp(TimeSpan.FromDays(90)));
         }
     }
 }

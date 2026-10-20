@@ -49,6 +49,8 @@ namespace RvtMcp.Plugin.Views.Settings
         private Button _copyPort;
         private ComboBox _language;
         private TextBlock _languageCaption;
+        private ComboBox _warningPolicy;
+        private TextBlock _warningPolicyCaption;
         private CheckBox _cacheSendCodeBodies;
         private CheckBox _persistSendCodeBodies;
         private ComboBox _journalHours;
@@ -237,6 +239,26 @@ namespace RvtMcp.Plugin.Views.Settings
             _languageCaption = RowCaptionText();
             page.Children.Add(Card(Row(languageLabel, _languageCaption, _language, "uiLanguage")));
 
+            page.Children.Add(SectionTitle("settings.general.safety", "Safety"));
+            var policyLabel = RowLabel("security.warningPolicy.label", "Warning policy");
+            _warningPolicy = new ComboBox { Width = 220 };
+            foreach (var mode in new[] { RvtMcp.Failures.WarningPolicyModes.Rollback, RvtMcp.Failures.WarningPolicyModes.AcceptAndLog })
+            {
+                var option = new ComboBoxItem { Tag = mode };
+                _localizedText.Add(() => option.Content = SettingsText.Text(mode == RvtMcp.Failures.WarningPolicyModes.Rollback
+                    ? "security.warningPolicy.rollback" : "security.warningPolicy.acceptAndLog",
+                    mode == RvtMcp.Failures.WarningPolicyModes.Rollback ? "Rollback (default)" : "Accept warnings and log"));
+                _warningPolicy.Items.Add(option);
+            }
+            _localizedText.Add(() => AutomationProperties.SetName(_warningPolicy, policyLabel.Text));
+            _warningPolicy.SelectionChanged += (_, __) =>
+            {
+                if (!_syncingControls && _warningPolicy.SelectedItem is ComboBoxItem selected)
+                    _viewModel.WarningPolicy = selected.Tag as string;
+            };
+            _warningPolicyCaption = RowCaptionText();
+            page.Children.Add(Card(Row(policyLabel, _warningPolicyCaption, _warningPolicy, "warningPolicy")));
+
             page.Children.Add(SectionTitle("settings.general.privacy", "Privacy"));
             var cacheLabel = RowLabel("settings.general.cacheBodies", "Cache send_code bodies");
             _cacheSendCodeBodies = Switch(cacheLabel);
@@ -247,7 +269,11 @@ namespace RvtMcp.Plugin.Views.Settings
             _persistSendCodeBodies.Checked += (_, __) => { if (!_syncingControls) _viewModel.PersistSendCodeBodies = true; };
             _persistSendCodeBodies.Unchecked += (_, __) => { if (!_syncingControls) _viewModel.PersistSendCodeBodies = false; };
             // The duration sits beside the journal switch it belongs to; its label names/tooltips it.
-            _journalHours = new ComboBox { Width = 84, ItemsSource = Enumerable.Range(1, 48).ToArray(), ItemStringFormat = "{0} h", Margin = new Thickness(0, 0, 12, 0) };
+            _journalHours = new ComboBox { Width = 84, ItemsSource = new[] { 1, 4, 8, 12, 24, 48, 168, 336 },
+                IsReadOnly = true, IsTextSearchEnabled = false, Margin = new Thickness(0, 0, 12, 0) };
+            var durationText = new FrameworkElementFactory(typeof(TextBlock));
+            durationText.SetBinding(TextBlock.TextProperty, new Binding { Converter = new JournalHoursConverter() });
+            _journalHours.ItemTemplate = new DataTemplate { VisualTree = durationText };
             _localizedText.Add(() =>
             {
                 var hoursText = SettingsText.Text("settings.general.journalDuration", "Journal duration (hours)");
@@ -702,6 +728,13 @@ namespace RvtMcp.Plugin.Views.Settings
             UpdateDynamicText();
         }
 
+        private sealed class JournalHoursConverter : IValueConverter
+        {
+            internal static string Label(int hours) => hours >= 48 && hours % 24 == 0 ? (hours / 24) + "d" : hours + "h";
+            public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) => value is int hours ? Label(hours) : "";
+            public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) => Binding.DoNothing;
+        }
+
         private void OnCopyPort(object sender, RoutedEventArgs e)
         {
             _viewModel.CopyPort();
@@ -755,9 +788,20 @@ namespace RvtMcp.Plugin.Views.Settings
                 _toastReset.IsEnabled = _viewModel.ToastEnabled && position.HasOffset;
                 _toastIdle.SelectedItem = _viewModel.ToastIdleSeconds;
                 _toastIdle.IsEnabled = _viewModel.ToastEnabled;
+                _warningPolicy.SelectedItem = _warningPolicy.Items.OfType<ComboBoxItem>().FirstOrDefault(item => Equals(item.Tag, _viewModel.WarningPolicy));
+                _warningPolicy.IsEnabled = !_viewModel.IsWarningPolicyWriteDisabled;
+                _warningPolicyCaption.Text = SettingsText.Text("security.warningPolicy.help",
+                    "Applies from the next MCP call. Accept mode acknowledges warnings and records them; errors, corruption and incomplete capture still roll back. It does not retry or repair earlier operations. Explicit client env/CLI choices can override this default.")
+                    + (_viewModel.IsWarningPolicyWriteDisabled ? "\n" + SettingsText.Text("security.warningPolicy.environmentOverride",
+                        "BIMWRIGHT_WARNING_POLICY overrides the saved setting in this Revit process.") : "");
+                AutomationProperties.SetHelpText(_warningPolicy, _warningPolicyCaption.Text);
                 _cacheSendCodeBodies.IsChecked = _viewModel.CacheSendCodeBodies;
                 _persistSendCodeBodies.IsChecked = _viewModel.PersistSendCodeBodies;
                 _journalHours.SelectedItem = _viewModel.PersistSendCodeBodiesHours;
+                // Presets use their formatted item template, including immediately after selection.
+                // Legacy custom values use a read-only text display without adding another preset.
+                _journalHours.IsEditable = _journalHours.SelectedItem == null;
+                if (_journalHours.IsEditable) _journalHours.Text = JournalHoursConverter.Label(_viewModel.PersistSendCodeBodiesHours);
             }
             finally
             {

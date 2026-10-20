@@ -253,13 +253,13 @@ namespace RvtMcp.Plugin.Views.Settings
 
         public static string TimeoutDisplay(RvtMcp.ToolCatalog.TimeoutPolicy timeout)
         {
-            if (timeout == null) return "—";
+            if (timeout == null) return "-";
             if (timeout.PolicyKind == "fixed" && timeout.DefaultSeconds.HasValue)
                 return timeout.DefaultSeconds.Value + " s";
             if (timeout.PolicyKind == "long_run_parameter" && timeout.ParameterDefaultSeconds.HasValue
                 && timeout.ParameterMinimumSeconds.HasValue && timeout.ParameterMaximumSeconds.HasValue)
-                return timeout.ParameterDefaultSeconds.Value + " s (" + timeout.ParameterMinimumSeconds.Value + "–" + timeout.ParameterMaximumSeconds.Value + " s)";
-            return "—";
+                return timeout.ParameterDefaultSeconds.Value + " s (" + timeout.ParameterMinimumSeconds.Value + "-" + timeout.ParameterMaximumSeconds.Value + " s)";
+            return "-";
         }
 
         public static string TimeoutHelp(RvtMcp.ToolCatalog.TimeoutPolicy timeout)

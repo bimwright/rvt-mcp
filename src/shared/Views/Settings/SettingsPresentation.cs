@@ -19,6 +19,8 @@ namespace RvtMcp.Plugin.Views.Settings
         ToastPositionOptions ToastPosition { get; }
         int ToastIdleSeconds { get; set; }
         bool CacheSendCodeBodies { get; set; }
+        string WarningPolicy { get; set; }
+        bool IsWarningPolicyWriteDisabled { get; }
         bool PersistSendCodeBodies { get; set; }
         int PersistSendCodeBodiesHours { get; set; }
         bool IsDirty { get; }

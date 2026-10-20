@@ -13,28 +13,30 @@ namespace RvtMcp.Plugin.Views.Settings
         {
             get
             {
-                if (!IsSummaryFallback) return Description;
+                var description = SettingsText.AsciiDashes(Description);
+                if (!IsSummaryFallback) return description;
                 var marker = SettingsText.Text("settings.tools.fallback", "(fallback)");
                 var suffix = " " + marker;
-                if (ToolSummaryCatalog.ScalarLength(Description) + ToolSummaryCatalog.ScalarLength(suffix) <= 160)
-                    return Description + suffix;
+                if (ToolSummaryCatalog.ScalarLength(description) + ToolSummaryCatalog.ScalarLength(suffix) <= 160)
+                    return description + suffix;
                 var limit = Math.Max(0, 160 - ToolSummaryCatalog.ScalarLength(suffix));
-                return ToolCatalogCodec.TakeScalars(Description, limit).TrimEnd() + suffix;
+                return ToolCatalogCodec.TakeScalars(description, limit).TrimEnd() + suffix;
             }
         }
         public bool IsSummaryFallback { get; internal set; }
         public string Source { get; internal set; }
-        public string TimeoutDisplay { get; internal set; }
-        public string TimeoutHelpText { get; internal set; }
+        private string _timeoutDisplay, _timeoutHelpText;
+        public string TimeoutDisplay { get => SettingsText.AsciiDashes(_timeoutDisplay); internal set => _timeoutDisplay = value; }
+        public string TimeoutHelpText { get => SettingsText.AsciiDashes(_timeoutHelpText); internal set => _timeoutHelpText = value; }
 
         /// <summary>Name plus the full description, including text the cell ellipsizes.</summary>
         public string ToolTipText
         {
             get
             {
-                if (string.IsNullOrWhiteSpace(Name)) return Description ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(Name)) return SettingsText.AsciiDashes(Description ?? string.Empty);
                 if (string.IsNullOrWhiteSpace(Description)) return Name;
-                return Name + "\n" + Description;
+                return Name + "\n" + SettingsText.AsciiDashes(Description);
             }
         }
 

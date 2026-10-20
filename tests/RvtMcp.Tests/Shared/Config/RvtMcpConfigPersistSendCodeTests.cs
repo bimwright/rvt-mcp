@@ -124,10 +124,10 @@ namespace RvtMcp.Tests
 
             // Let's verify clamp max
             config = new RvtMcpConfig();
-            RvtMcpConfig.ApplyCliArgs(config, new[] { "--persist-send-code-bodies-for", "5d" }, _tempConfigPath);
+            RvtMcpConfig.ApplyCliArgs(config, new[] { "--persist-send-code-bodies-for", "50d" }, _tempConfigPath);
             parsedUntil = DateTimeOffset.Parse(config.PersistSendCodeBodiesUntil);
             diff = parsedUntil - DateTimeOffset.UtcNow;
-            Assert.True(diff.TotalDays > 1.9 && diff.TotalDays < 2.1); // Clamped to 2d
+            Assert.True(diff.TotalDays > 13.9 && diff.TotalDays < 14.1); // Clamped to 14d
 
             // Disable
             config = new RvtMcpConfig();

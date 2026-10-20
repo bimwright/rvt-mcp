@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Threading;
 using Autodesk.Revit.UI;
 using RvtMcp.Plugin.Localization;
+using RvtMcp.Failures;
 
 namespace RvtMcp.Plugin.Views.Settings
 {
@@ -23,6 +24,9 @@ namespace RvtMcp.Plugin.Views.Settings
         private bool _persistSendCodeBodies;
         private int _persistSendCodeBodiesHours;
         private bool _cacheSendCodeBodies;
+        private string _warningPolicy;
+        private string _baselineWarningPolicy;
+        private bool _warningPolicyDirty;
         private int _baselineToastIdleSeconds;
         private bool _baselinePersistSendCodeBodies;
         private int _baselinePersistSendCodeBodiesHours;
@@ -83,13 +87,24 @@ namespace RvtMcp.Plugin.Views.Settings
             get => _cacheSendCodeBodies;
             set => SetStaged(ref _cacheSendCodeBodies, value, ref _cacheSendCodeBodiesDirty, nameof(CacheSendCodeBodies));
         }
+        public bool IsWarningPolicyWriteDisabled =>
+            Environment.GetEnvironmentVariable(RvtMcpConfig.EnvWarningPolicy) != null;
+        public string WarningPolicy
+        {
+            get => _warningPolicy;
+            set
+            {
+                if (IsWarningPolicyWriteDisabled) return;
+                SetStaged(ref _warningPolicy, WarningPolicyModes.Normalize(value), ref _warningPolicyDirty, nameof(WarningPolicy));
+            }
+        }
         public bool IsDirty { get; private set; }
         public string ImmediateWarning { get; private set; }
         public string ImmediateWarningKey { get; private set; }
         public bool IsListenerRunning => _app.IsTransportRunning && _app.Transport != null;
         public bool IsClientConnected => IsListenerRunning && _app.Transport.IsClientConnected;
 
-        public string RevitYear => Snapshot?.RevitYear ?? "—";
+        public string RevitYear => Snapshot?.RevitYear ?? "-";
         public string TransportKind
         {
             get
@@ -98,7 +113,7 @@ namespace RvtMcp.Plugin.Views.Settings
                 var info = _app.Transport?.ConnectionInfo ?? string.Empty;
                 if (info.StartsWith("TCP:", StringComparison.OrdinalIgnoreCase)) _transportKind = "TCP";
                 else if (info.StartsWith("Pipe:", StringComparison.OrdinalIgnoreCase)) _transportKind = "Named Pipe";
-                return _transportKind ?? Snapshot?.TransportKind ?? "—";
+                return _transportKind ?? Snapshot?.TransportKind ?? "-";
             }
         }
         public string ConnectionState
@@ -128,6 +143,8 @@ namespace RvtMcp.Plugin.Views.Settings
             _persistSendCodeBodies = _snapshot.IsPersistSendCodeBodiesActive();
             _persistSendCodeBodiesHours = _snapshot.PersistSendCodeBodiesHoursOrDefault;
             _cacheSendCodeBodies = _snapshot.CacheSendCodeBodiesOrDefault;
+            _warningPolicy = _baselineWarningPolicy = _snapshot.WarningPolicyOrDefault;
+            _warningPolicyDirty = false;
             _baselineToastIdleSeconds = _toastIdleSeconds;
             _baselinePersistSendCodeBodies = _persistSendCodeBodies;
             _baselinePersistSendCodeBodiesHours = _persistSendCodeBodiesHours;
@@ -149,8 +166,8 @@ namespace RvtMcp.Plugin.Views.Settings
                 LocaleSource = HasEnvironmentLanguageOverride
                     ? InvariantLanguageText.SourceEnvironmentOverride
                     : (_snapshot.UiLanguage == null ? InvariantLanguageText.AutoOption : InvariantLanguageText.SourceSavedSetting),
-                RevitYear = AuthToken.RevitVersion ?? "—",
-                TransportKind = isTcp ? "TCP" : (info.StartsWith("Pipe:", StringComparison.OrdinalIgnoreCase) ? "Named Pipe" : "—"),
+                RevitYear = AuthToken.RevitVersion ?? "-",
+                TransportKind = isTcp ? "TCP" : (info.StartsWith("Pipe:", StringComparison.OrdinalIgnoreCase) ? "Named Pipe" : "-"),
                 IsDirty = false,
                 ReadAtUtc = DateTimeOffset.UtcNow,
             };
@@ -168,12 +185,14 @@ namespace RvtMcp.Plugin.Views.Settings
                 try { journalExpiredWhileOpen = !RvtMcpConfig.LoadReadOnly().IsPersistSendCodeBodiesActive(); }
                 catch { }
             }
+            var warningPolicyBlocked = _warningPolicyDirty && IsWarningPolicyWriteDisabled;
             var patch = new RvtMcpConfig.SettingsPatch
             {
                 ToastIdleSeconds = _toastIdleDirty ? (int?)ToastIdleSeconds : null,
                 PersistSendCodeBodiesHours = _persistSendCodeBodiesHoursDirty ? (int?)PersistSendCodeBodiesHours : null,
                 PersistSendCodeBodies = _persistSendCodeBodiesDirty ? (bool?)PersistSendCodeBodies : null,
                 CacheSendCodeBodies = _cacheSendCodeBodiesDirty ? (bool?)CacheSendCodeBodies : null,
+                WarningPolicy = _warningPolicyDirty && !warningPolicyBlocked ? WarningPolicy : null,
             };
             var applied = RvtMcpConfig.TryApplySettings(patch);
             foreach (var key in applied.Applied) result.Applied.Add(key);
@@ -183,6 +202,12 @@ namespace RvtMcp.Plugin.Views.Settings
                 result.Failed.Add(message);
                 result.FieldErrors[failure.Key] = message;
                 App.DebugLog("Settings apply failed for " + failure.Key + ": " + failure.Error);
+            }
+            if (warningPolicyBlocked)
+            {
+                var message = SettingsText.Text("security.warningPolicy.environmentOverride", "BIMWRIGHT_WARNING_POLICY overrides the saved setting in this Revit process.");
+                result.Failed.Add(message);
+                result.FieldErrors["warningPolicy"] = message;
             }
             result.JournalWasExpired = applied.JournalWasExpired;
             if (journalExpiredWhileOpen)
@@ -225,7 +250,13 @@ namespace RvtMcp.Plugin.Views.Settings
                 _baselineCacheSendCodeBodies = CacheSendCodeBodies;
                 _cacheSendCodeBodiesDirty = false;
             }
-            IsDirty = _toastIdleDirty || _persistSendCodeBodiesHoursDirty || _persistSendCodeBodiesDirty || _cacheSendCodeBodiesDirty;
+            if (applied.Applied.Contains("warningPolicy") || warningPolicyBlocked)
+            {
+                _warningPolicy = _baselineWarningPolicy = _snapshot.WarningPolicyOrDefault;
+                _warningPolicyDirty = false;
+                OnPropertyChanged(nameof(WarningPolicy));
+            }
+            IsDirty = _toastIdleDirty || _persistSendCodeBodiesHoursDirty || _persistSendCodeBodiesDirty || _cacheSendCodeBodiesDirty || _warningPolicyDirty;
             OnPropertyChanged(nameof(IsDirty));
             return result;
         }
@@ -243,6 +274,7 @@ namespace RvtMcp.Plugin.Views.Settings
                 _app.Config.PersistSendCodeBodiesUntil = persisted.PersistSendCodeBodiesUntil;
                 _app.Config.PersistSendCodeBodiesRequiresExplicitEnable = persisted.PersistSendCodeBodiesRequiresExplicitEnable;
                 _app.Config.CacheSendCodeBodies = persisted.CacheSendCodeBodies;
+                _app.Config.WarningPolicy = persisted.WarningPolicy?.DeepClone();
             }
             catch
             {
@@ -442,7 +474,8 @@ namespace RvtMcp.Plugin.Views.Settings
             else if (name == nameof(PersistSendCodeBodies)) dirty = !Equals(value, _baselinePersistSendCodeBodies);
             else if (name == nameof(PersistSendCodeBodiesHours)) dirty = !Equals(value, _baselinePersistSendCodeBodiesHours);
             else if (name == nameof(CacheSendCodeBodies)) dirty = !Equals(value, _baselineCacheSendCodeBodies);
-            IsDirty = _toastIdleDirty || _persistSendCodeBodiesDirty || _persistSendCodeBodiesHoursDirty || _cacheSendCodeBodiesDirty;
+            else if (name == nameof(WarningPolicy)) dirty = !Equals(value, _baselineWarningPolicy);
+            IsDirty = _toastIdleDirty || _persistSendCodeBodiesDirty || _persistSendCodeBodiesHoursDirty || _cacheSendCodeBodiesDirty || _warningPolicyDirty;
             OnPropertyChanged(name);
             OnPropertyChanged(nameof(IsDirty));
         }

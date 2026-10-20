@@ -30,7 +30,7 @@ namespace RvtMcp.Plugin.Views.Settings
             {
                 ProductName = "rvt-mcp",
                 PluginInformationalVersion = version,
-                RevitYear = revitYear ?? "—",
+                RevitYear = revitYear ?? "-",
                 LicenseId = "Apache-2.0",
                 LicenseSourceUrl = CreateLicenseSourceUrl(version),
                 RepositoryUrl = repository,

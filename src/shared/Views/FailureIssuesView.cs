@@ -38,8 +38,8 @@ namespace RvtMcp.Plugin.Views
         private readonly TextBlock _decisionHint = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), Foreground = DecisionHintBrush };
         private readonly TextBox _reason = new TextBox { Height = 28, MaxLength = 2000, VerticalContentAlignment = VerticalAlignment.Center };
         private readonly TextBlock _reasonWatermark = new TextBlock {
-            Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center,
-            Foreground = PlaceholderBrush, TextTrimming = TextTrimming.CharacterEllipsis
+            Margin = new Thickness(6, 0, 6, 0),
+            Style = (Style)BimwrightStyles.Dictionary[BimwrightStyles.PlaceholderTextKey]
         };
         private readonly CheckBox _verified = new CheckBox();
         private readonly CheckBox _dialogConsent = new CheckBox { Margin = new Thickness(0, 4, 0, 0), Visibility = Visibility.Collapsed };
@@ -64,7 +64,6 @@ namespace RvtMcp.Plugin.Views
         private FailureOperation _operation;
         private static readonly SolidColorBrush DecisionHintBrush = Freeze(0x9A, 0x34, 0x12);
         private static readonly SolidColorBrush MutedBrush = Freeze(0x64, 0x74, 0x8B);
-        private static readonly SolidColorBrush PlaceholderBrush = Freeze(0x94, 0xA3, 0xB8);
         private static readonly SolidColorBrush ErrorBrush = Freeze(0x99, 0x1B, 0x1B);
         private static readonly SolidColorBrush ErrorBackground = Freeze(0xFE, 0xF2, 0xF2);
         private static readonly SolidColorBrush ErrorBorder = Freeze(0xDC, 0x26, 0x26);
@@ -99,12 +98,11 @@ namespace RvtMcp.Plugin.Views
             toolbar.Children.Add(actions);
             var filters = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             filters.Children.Add(Label("failure.filter.model"));
-            _models.MinWidth = 210;
-            _models.MaxWidth = 340;
+            _models.Width = 320;
             _models.Margin = new Thickness(0, 0, 8, 0);
             filters.Children.Add(_models);
             filters.Children.Add(Label("failure.filter.state"));
-            foreach (var state in new[] { "", "open", "observed", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule" })
+            foreach (var state in new[] { "", "open", "observed", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule", "accepted_by_policy" })
                 _states.Items.Add(new ComboBoxItem { Tag = state, Content = state.Length == 0 ? L.T("failure.filter.all") : L.T("failure.state." + state) });
             _states.SelectedIndex = 1;
             _states.Margin = new Thickness(0, 0, 8, 0);
@@ -140,17 +138,25 @@ namespace RvtMcp.Plugin.Views
             _facts.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             _facts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 48 });
             var factsOpen = false;
-            var expand = new Button { Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            var expand = IconButton("failure.group.record", "\uE70D", null);
+            expand.Margin = new Thickness(8, 0, 0, 0);
+            void UpdateExpand()
+            {
+                expand.Content = factsOpen ? "\uE70E" : "\uE70D";
+                var action = L.T(factsOpen ? "failure.group.collapse" : "failure.group.record");
+                System.Windows.Automation.AutomationProperties.SetName(expand, action);
+                HistoryChrome.Guide(expand, action + "\n" + L.T("failure.record.tip"));
+            }
             expand.Click += (s, e) =>
             {
                 factsOpen = !factsOpen;
                 _facts.Visibility = factsOpen ? Visibility.Visible : Visibility.Collapsed;
-                expand.Content = L.T(factsOpen ? "failure.group.collapse" : "failure.group.record");
+                UpdateExpand();
             };
             _facts.Visibility = Visibility.Collapsed;
             _facts.Margin = new Thickness(0, 6, 0, 0);
             var titleRow = new DockPanel { LastChildFill = true };
-            _copyDetails = Button("failure.copy", (s, e) => CopyDetails());
+            _copyDetails = IconButton("failure.copy", "\uE8C8", (s, e) => CopyDetails());
             _copyDetails.Margin = new Thickness(8, 0, 0, 0);
             DockPanel.SetDock(expand, Dock.Right);
             titleRow.Children.Add(expand);
@@ -217,8 +223,7 @@ namespace RvtMcp.Plugin.Views
             _localizers.Add(() => _warningsGroup.Header = L.T("failure.group.warnings"));
             _localizers.Add(() => rulesTitle.Text = L.T("failure.rules"));
             _localizers.Add(() => _rulesEmpty.Text = L.T("failure.rules.empty"));
-            _localizers.Add(() => expand.Content = L.T(factsOpen ? "failure.group.collapse" : "failure.group.record"));
-            _localizers.Add(() => HistoryChrome.Guide(expand, L.T("failure.record.tip")));
+            _localizers.Add(UpdateExpand);
             _localizers.Add(() => HistoryChrome.Guide(_models, L.T("failure.tip.model")));
             _localizers.Add(() => {
                 _modelSearchHint.Text = L.T("failure.modelSearch");
@@ -533,7 +538,8 @@ namespace RvtMcp.Plugin.Views
                 L.T("failure.fact.coverage"), _operation?.ObservationCoverage,
                 L.T("failure.fact.evidence"), L.T(_incident.Complete && _operation?.Complete == true ? "failure.evidence.complete" : "failure.evidence.incomplete"),
                 L.T("failure.fact.persistence"), _incident.Persistence,
-                L.T("failure.fact.rules"), ruleText);
+                L.T("failure.fact.rules"), ruleText,
+                L.T("security.warningPolicy.label"), _incident.WarningPolicy);
             if (FailureIssuesPresentation.NeedsModelVerification(_operation))
                 _warningCards.Children.Add(Notice(L.T("failure.detail.partial"), true));
             if (!_incident.Complete || _operation?.Complete == false)
@@ -566,6 +572,7 @@ namespace RvtMcp.Plugin.Views
             if (!_incident.Complete || _operation?.Complete != true) text.AppendLine(L.T("failure.detail.incomplete"));
             text.AppendLine(L.T("failure.detail.temporary"));
             text.AppendLine("Request: " + _incident.RequestHash + "\nRevision: " + _incident.DocumentRevision);
+            text.AppendLine(L.T("security.warningPolicy.label") + ": " + _incident.WarningPolicy);
             if (!string.IsNullOrEmpty(_incident.NativeAction))
             {
                 text.AppendLine(_incident.NativeAction);
@@ -806,6 +813,19 @@ namespace RvtMcp.Plugin.Views
         {
             var button = Button(key, (s, e) => RecordDecision(action));
             _decisionButtons.Add(button); return button;
+        }
+
+        private Button IconButton(string key, string glyph, RoutedEventHandler click)
+        {
+            var button = new Button { Content = glyph, Style = (Style)BimwrightStyles.Dictionary[BimwrightStyles.IconButtonKey],
+                VerticalAlignment = VerticalAlignment.Center };
+            _localizers.Add(() => {
+                var label = L.T(key);
+                System.Windows.Automation.AutomationProperties.SetName(button, label);
+                HistoryChrome.Guide(button, label);
+            });
+            if (click != null) button.Click += click;
+            return button;
         }
 
         private Button Button(string key, RoutedEventHandler click)

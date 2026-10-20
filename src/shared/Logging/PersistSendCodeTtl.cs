@@ -8,7 +8,7 @@ namespace RvtMcp.Plugin
     {
         public static readonly TimeSpan Min = TimeSpan.FromHours(1);
         public static readonly TimeSpan Default = TimeSpan.FromHours(4);
-        public static readonly TimeSpan Max = TimeSpan.FromDays(2);
+        public static readonly TimeSpan Max = TimeSpan.FromDays(14);
 
         private static readonly Regex Pattern = new Regex(
             @"^\s*(\d+)\s*([hmd])\s*$",

@@ -14,6 +14,8 @@ namespace RvtMcp.Plugin.Views
     {
         public const string ToolbarButtonKey = "BimToolbarButton";
         public const string PrimaryButtonKey = "BimPrimaryButton";
+        public const string PlaceholderTextKey = "BimPlaceholderText";
+        public const string IconButtonKey = "BimIconButton";
 
         private static ResourceDictionary _dictionary;
 
@@ -61,6 +63,13 @@ namespace RvtMcp.Plugin.Views
     <!-- Font family (Segoe UI) for common controls -->
     <Style TargetType=""{x:Type TextBlock}"">
         <Setter Property=""FontFamily"" Value=""Segoe UI""/>
+    </Style>
+    <Style x:Key=""BimPlaceholderText"" TargetType=""{x:Type TextBlock}"" BasedOn=""{StaticResource {x:Type TextBlock}}"">
+        <Setter Property=""FontStyle"" Value=""Italic""/>
+        <Setter Property=""Foreground"" Value=""#FF94A3B8""/>
+        <Setter Property=""TextTrimming"" Value=""CharacterEllipsis""/>
+        <Setter Property=""VerticalAlignment"" Value=""Center""/>
+        <Setter Property=""IsHitTestVisible"" Value=""False""/>
     </Style>
     <Style TargetType=""{x:Type TextBox}"">
         <Setter Property=""FontFamily"" Value=""Segoe UI""/>
@@ -162,6 +171,15 @@ namespace RvtMcp.Plugin.Views
         <Setter Property=""MinWidth"" Value=""0""/>
         <Setter Property=""Padding"" Value=""8,3""/>
         <Setter Property=""Margin"" Value=""3,2""/>
+    </Style>
+
+    <Style x:Key=""BimIconButton"" TargetType=""{x:Type Button}"" BasedOn=""{StaticResource {x:Type Button}}"">
+        <Setter Property=""Width"" Value=""28""/>
+        <Setter Property=""MinWidth"" Value=""28""/>
+        <Setter Property=""Height"" Value=""28""/>
+        <Setter Property=""Padding"" Value=""0""/>
+        <Setter Property=""FontFamily"" Value=""Segoe MDL2 Assets""/>
+        <Setter Property=""FontSize"" Value=""13""/>
     </Style>
 
     <!-- Primary action: filled blue, same ring/press choreography -->
