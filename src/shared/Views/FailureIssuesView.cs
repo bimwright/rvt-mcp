@@ -397,7 +397,7 @@ namespace RvtMcp.Plugin.Views
         private void OnVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (_disposed) return;
-            if (IsVisible && IsLoaded) _vm.Activate(); else _vm.Deactivate();
+            if (IsVisible && _observing) _vm.Activate(refresh: false); else _vm.Deactivate();
         }
         private void OnViewModelChanged(object sender, PropertyChangedEventArgs e)
         {

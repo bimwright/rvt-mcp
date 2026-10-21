@@ -144,16 +144,41 @@ internal static class IssuesStateChecks
             Expect(shell.StatusText == view.ViewModel.StatusText && shell.StatusTone == view.ViewModel.StatusTone, "Issues status and review tone reach shared shell");
             shell.SelectedTab = HistoryTab.Activities; pump();
             var activityStatus = shell.StatusText;
-            view.ViewModel.Reason = "hidden issue reason";
+            var hiddenStatus = view.ViewModel.StatusText;
+            view.ViewModel.CopyCommand.Execute(null); pump();
+            Expect(view.ViewModel.StatusText != hiddenStatus, "hidden Issues action actually changes its own status");
             Expect(shell.StatusText == activityStatus, "hidden Issues status cannot overwrite Activities");
             shell.SelectedTab = HistoryTab.Issues; pump();
             Expect(view.ViewModel.SelectedModel.ModelScopeKey == selected.ModelScopeKey && view.ViewModel.SelectedModel.RevitYear == selected.RevitYear,
                 "tab navigation preserves selected model scope and year");
-            var activations = issues.Activations;
-            window.Close(); pump();
-            Expect(!window.IsVisible && issues.Deactivations > 0, "hide deactivates Issues observations");
-            window.Show(); pump();
-            Expect(issues.Activations == activations + 1, "reopen activates Issues exactly once");
+            var vm = view.ViewModel;
+            var incident = vm.SelectedIssue;
+            var rule = vm.Rules[0];
+            vm.SelectedRule = rule; vm.VerifiedModel = true; vm.DialogConsent = true; vm.Reason = "retained review reason";
+            var queries = issues.PageQueries;
+            for (var cycle = 0; cycle < 3; cycle++)
+            {
+                var activations = issues.Activations;
+                window.Close(); pump();
+                Expect(!window.IsVisible && issues.Deactivations > 0, "hide deactivates Issues observations");
+                // A context change while hidden must be reflected on resume without replacing review rows.
+                issues.Current = new FailureIssuesContext { IsAvailable = true, ModelScopeKey = "selected-b", RevitYear = 2027, DocumentRevision = "live-b" };
+                window.Show(); pump();
+                Expect(issues.Activations == activations + 1, "reopen activates Issues exactly once");
+                Expect(vm.VerifiedModel && vm.DialogConsent && vm.Reason == "retained review reason"
+                    && ReferenceEquals(vm.SelectedIssue, incident) && ReferenceEquals(vm.SelectedRule, rule),
+                    "visibility-only resume preserves selected incident/rule and all review inputs");
+                Expect(issues.PageQueries == queries && vm.RevokeCommand.CanExecute(null),
+                    "visibility-only resume updates current context without reloading review rows");
+            }
+            vm.RefreshCommand.Execute(null); pump();
+            Expect(issues.PageQueries == queries + 1 && !vm.VerifiedModel && !vm.DialogConsent && vm.SelectedRule == null,
+                "explicit refresh retains baseline review acknowledgement clearing");
+            vm.VerifiedModel = true; vm.DialogConsent = true;
+            shell.SelectedTab = HistoryTab.Activities; pump();
+            shell.SelectedTab = HistoryTab.Issues; pump();
+            Expect(issues.PageQueries == queries + 2 && !vm.VerifiedModel && !vm.DialogConsent,
+                "actual tab reload retains baseline refresh and acknowledgement clearing");
         }
         finally { window.CloseForShutdown(); pump(); }
         Expect(issues.Disposals == 1 && issues.Subscribers == 0 && activities.Disposals == 1 && activities.Subscribers == 0,

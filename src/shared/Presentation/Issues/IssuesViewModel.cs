@@ -20,7 +20,7 @@ namespace RvtMcp.Plugin.Presentation.Issues
         private FailureIncident _incident;
         private FailureOperation _operation;
         private string _state = "open", _search = "", _reason = "", _lastScope;
-        private bool _verified, _consent, _loading, _disposed, _active;
+        private bool _verified, _consent, _loading, _disposed, _active, _hasActivated;
         private UiTone _bannerTone;
         private int _languageVersion;
         private bool _canRework, _canAccept, _canRule, _canNative, _canRevoke;
@@ -79,12 +79,20 @@ namespace RvtMcp.Plugin.Presentation.Issues
             get => _selectedRule;
             set { if (!_loading && SetProperty(ref _selectedRule, value)) RefreshActions(); }
         }
-        public void Activate()
+        public void Activate(bool refresh = true)
         {
             if (_active || _disposed) return;
+            var firstActivation = !_hasActivated;
             _active = true;
+            _hasActivated = true;
             _runtime.Activate();
-            Refresh();
+            if (refresh || firstActivation) Refresh();
+            else
+            {
+                // Hide/Show resumes observation without discarding the existing review.
+                ApplyOpenEmphasis();
+                OnLanguageChanged(this, EventArgs.Empty);
+            }
         }
         public void Deactivate() { if (_active) { _active = false; _runtime.Deactivate(); } }
         private void OnContextChanged(object sender, EventArgs e) { if (_active && !_disposed) { ApplyOpenEmphasis(); RefreshActions(); } }
