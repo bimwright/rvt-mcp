@@ -7,7 +7,7 @@ namespace RvtMcp.Plugin.Views.Settings
     {
         // Host wiring lives outside the presentation so the real UI can be exercised without Autodesk.
         public SettingsWindow(App app, SettingsTab initialTab = SettingsTab.General)
-            : this(new SettingsViewModel(app ?? throw new ArgumentNullException(nameof(app))),
+            : this(new SettingsViewModel(new Infrastructure.UI.SettingsRuntime(app ?? throw new ArgumentNullException(nameof(app)))),
                 new ToolsViewModel(app.BakedToolRegistry, Assembly.GetExecutingAssembly()), initialTab)
         {
         }

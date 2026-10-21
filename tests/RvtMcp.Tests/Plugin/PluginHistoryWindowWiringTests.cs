@@ -103,22 +103,6 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void Settings_branding_applies_saves_and_reports_failure_immediately()
-        {
-            var source = File.ReadAllText(Path.Combine(GetRepoRoot(),
-                "src", "shared", "Views", "Settings", "SettingsViewModel.cs"));
-            var start = source.IndexOf("public void SetShowBranding(bool show)", System.StringComparison.Ordinal);
-            var end = source.IndexOf("public void SetLanguage(", start, System.StringComparison.Ordinal);
-            var method = source.Substring(start, end - start);
-            Assert.Contains("_app.Config.ShowBranding = show", method);
-            Assert.Contains("_app.ToastNotifier?.SetShowBranding(show)", method);
-            Assert.Contains("RvtMcpConfig.TrySaveShowBranding(show, out error)", method);
-            Assert.Contains("ImmediateWarningKey = persisted ? null : \"showBranding\"", method);
-            Assert.Contains("SaveFailed(\"showBranding\")", method);
-            Assert.Contains("OnPropertyChanged(nameof(ImmediateWarning))", method);
-        }
-
-        [Fact]
         public void LocalizationHost_init_is_nonfatal_and_logs_missing_keys()
         {
             var source = File.ReadAllText(Path.Combine(GetRepoRoot(),

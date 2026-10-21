@@ -1,8 +1,6 @@
 using System;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using System.Windows.Threading;
-using Autodesk.Revit.UI;
+using RvtMcp.Plugin.Presentation;
+using RvtMcp.Plugin.Presentation.Settings;
 using RvtMcp.Plugin.Localization;
 using RvtMcp.Failures;
 
@@ -12,11 +10,9 @@ namespace RvtMcp.Plugin.Views.Settings
     /// Staged Settings state. Loading is deliberately read-only; only Apply and the
     /// immediate On/Off and language actions write preferences.
     /// </summary>
-    public sealed class SettingsViewModel : ISettingsPresentation
+    public sealed class SettingsViewModel : ObservableObject, ISettingsPresentation
     {
-        private readonly App _app;
-        private readonly Dispatcher _dispatcher;
-        private RvtMcpConfig _snapshot;
+        private readonly ISettingsRuntime _runtime;
         private bool _toastEnabled;
         private bool _showBranding;
         private ToastPositionOptions _toastPosition = new ToastPositionOptions();
@@ -37,29 +33,24 @@ namespace RvtMcp.Plugin.Views.Settings
         private bool _cacheSendCodeBodiesDirty;
         private string _selectedLanguage;
         private bool _disposed;
-        private string _transportKind;
         private int _lastLanguageVersion;
 
-        public SettingsViewModel(App app)
+        public SettingsViewModel(ISettingsRuntime runtime)
         {
-            _app = app ?? throw new ArgumentNullException(nameof(app));
-            _dispatcher = Dispatcher.CurrentDispatcher;
-            _lastLanguageVersion = L.Version;
-            ReloadReadOnly();
-            L.Changed += OnLanguageChanged;
-            _app.ToastEnabledChanged += OnAppToastEnabledChanged;
-            if (_app.ToastNotifier != null)
-                _app.ToastNotifier.PositionSaved += OnToastPositionSaved;
+            _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            try { ReloadReadOnly(); }
+            catch { _runtime.Dispose(); throw; }
+            _runtime.LanguageChanged += OnLanguageChanged;
+            _runtime.ToastEnabledChanged += OnToastEnabledChanged;
+            _runtime.PositionSaved += OnToastPositionSaved;
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
         public event EventHandler LanguageChanged;
 
         public SettingsSnapshot Snapshot { get; private set; }
         public string SelectedLanguage => _selectedLanguage;
-        public string EffectiveLanguage => L.Locale;
-        public bool HasEnvironmentLanguageOverride =>
-            !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(RvtMcpConfig.EnvUiLanguage));
+        public string EffectiveLanguage => _runtime.EffectiveLanguage;
+        public bool HasEnvironmentLanguageOverride => _runtime.IsLanguageWriteDisabled;
         public bool IsLanguageWriteDisabled => HasEnvironmentLanguageOverride;
         public bool ToastEnabled => _toastEnabled;
         public bool ShowBranding => _showBranding;
@@ -67,7 +58,7 @@ namespace RvtMcp.Plugin.Views.Settings
         public int ToastIdleSeconds
         {
             get => _toastIdleSeconds;
-            set => SetStaged(ref _toastIdleSeconds, RvtMcpConfig.NormalizeToastIdleSeconds(value), ref _toastIdleDirty, nameof(ToastIdleSeconds));
+            set => SetStaged(ref _toastIdleSeconds, PreferenceValues.ToastIdleSeconds(value), ref _toastIdleDirty, nameof(ToastIdleSeconds));
         }
 
         public bool PersistSendCodeBodies
@@ -79,7 +70,7 @@ namespace RvtMcp.Plugin.Views.Settings
         public int PersistSendCodeBodiesHours
         {
             get => _persistSendCodeBodiesHours;
-            set => SetStaged(ref _persistSendCodeBodiesHours, RvtMcpConfig.NormalizePersistSendCodeBodiesHours(value), ref _persistSendCodeBodiesHoursDirty, nameof(PersistSendCodeBodiesHours));
+            set => SetStaged(ref _persistSendCodeBodiesHours, PreferenceValues.JournalHours(value), ref _persistSendCodeBodiesHoursDirty, nameof(PersistSendCodeBodiesHours));
         }
 
         public bool CacheSendCodeBodies
@@ -87,8 +78,7 @@ namespace RvtMcp.Plugin.Views.Settings
             get => _cacheSendCodeBodies;
             set => SetStaged(ref _cacheSendCodeBodies, value, ref _cacheSendCodeBodiesDirty, nameof(CacheSendCodeBodies));
         }
-        public bool IsWarningPolicyWriteDisabled =>
-            Environment.GetEnvironmentVariable(RvtMcpConfig.EnvWarningPolicy) != null;
+        public bool IsWarningPolicyWriteDisabled => _runtime.IsWarningPolicyWriteDisabled;
         public string WarningPolicy
         {
             get => _warningPolicy;
@@ -101,76 +91,32 @@ namespace RvtMcp.Plugin.Views.Settings
         public bool IsDirty { get; private set; }
         public string ImmediateWarning { get; private set; }
         public string ImmediateWarningKey { get; private set; }
-        public bool IsListenerRunning => _app.IsTransportRunning && _app.Transport != null;
-        public bool IsClientConnected => IsListenerRunning && _app.Transport.IsClientConnected;
-
+        public bool IsListenerRunning => _runtime.IsListenerRunning;
+        public bool IsClientConnected => _runtime.IsClientConnected;
         public string RevitYear => Snapshot?.RevitYear ?? "-";
-        public string TransportKind
-        {
-            get
-            {
-                // Live while a listener runs; keeps the last known kind while it is stopped.
-                var info = _app.Transport?.ConnectionInfo ?? string.Empty;
-                if (info.StartsWith("TCP:", StringComparison.OrdinalIgnoreCase)) _transportKind = "TCP";
-                else if (info.StartsWith("Pipe:", StringComparison.OrdinalIgnoreCase)) _transportKind = "Named Pipe";
-                return _transportKind ?? Snapshot?.TransportKind ?? "-";
-            }
-        }
-        public string ConnectionState
-        {
-            get
-            {
-                var transport = _app.Transport;
-                if (transport == null || !_app.IsTransportRunning)
-                    return SettingsText.Text("settings.general.state.listenerStopped", "Listener stopped");
-                return transport.IsClientConnected
-                    ? SettingsText.Text("settings.general.state.connected", "Connected")
-                    : SettingsText.Text("settings.general.state.waiting", "Waiting for MCP client");
-            }
-        }
-        public bool CanCopyPort => _app.Transport is TcpTransportServer && _app.IsTransportRunning;
-        public string PortText => CanCopyPort
-            ? ((TcpTransportServer)_app.Transport).Port.ToString()
-            : SettingsText.Text("settings.general.notApplicable", "Not applicable");
+        public string TransportKind => _runtime.TransportKind;
+        public string ConnectionState => !IsListenerRunning
+            ? SettingsText.Text("settings.general.state.listenerStopped", "Listener stopped")
+            : SettingsText.Text(IsClientConnected ? "settings.general.state.connected" : "settings.general.state.waiting",
+                IsClientConnected ? "Connected" : "Waiting for MCP client");
+        public bool CanCopyPort => _runtime.CanCopyPort;
+        public string PortText => _runtime.PortText;
 
         public void ReloadReadOnly()
         {
-            _snapshot = RvtMcpConfig.LoadReadOnly();
-            _toastEnabled = _app.ToastEnabled;
-            _showBranding = _app.ToastNotifier?.ShowBranding ?? _snapshot.ShowBrandingOrDefault;
-            _toastPosition = _app.ToastNotifier?.PositionOptions ?? _snapshot.ToastPositionOrDefault;
-            _toastIdleSeconds = _snapshot.ToastIdleSecondsOrDefault;
-            _persistSendCodeBodies = _snapshot.IsPersistSendCodeBodiesActive();
-            _persistSendCodeBodiesHours = _snapshot.PersistSendCodeBodiesHoursOrDefault;
-            _cacheSendCodeBodies = _snapshot.CacheSendCodeBodiesOrDefault;
-            _warningPolicy = _baselineWarningPolicy = _snapshot.WarningPolicyOrDefault;
-            _warningPolicyDirty = false;
-            _baselineToastIdleSeconds = _toastIdleSeconds;
-            _baselinePersistSendCodeBodies = _persistSendCodeBodies;
-            _baselinePersistSendCodeBodiesHours = _persistSendCodeBodiesHours;
-            _baselineCacheSendCodeBodies = _cacheSendCodeBodies;
-            _toastIdleDirty = false;
-            _persistSendCodeBodiesDirty = false;
-            _persistSendCodeBodiesHoursDirty = false;
-            _cacheSendCodeBodiesDirty = false;
-            _lastLanguageVersion = L.Version;
-            _selectedLanguage = LocaleResolver.NormalizeCode(_snapshot.UiLanguage);
-
-            var transport = _app.Transport;
-            var info = transport?.ConnectionInfo ?? string.Empty;
-            var isTcp = info.StartsWith("TCP:", StringComparison.OrdinalIgnoreCase);
-            Snapshot = new SettingsSnapshot
-            {
-                LocaleRequested = _selectedLanguage,
-                LocaleEffective = L.Locale,
-                LocaleSource = HasEnvironmentLanguageOverride
-                    ? InvariantLanguageText.SourceEnvironmentOverride
-                    : (_snapshot.UiLanguage == null ? InvariantLanguageText.AutoOption : InvariantLanguageText.SourceSavedSetting),
-                RevitYear = AuthToken.RevitVersion ?? "-",
-                TransportKind = isTcp ? "TCP" : (info.StartsWith("Pipe:", StringComparison.OrdinalIgnoreCase) ? "Named Pipe" : "-"),
-                IsDirty = false,
-                ReadAtUtc = DateTimeOffset.UtcNow,
-            };
+            var values = _runtime.Read();
+            Snapshot = values.Snapshot;
+            _toastEnabled = values.ToastEnabled;
+            _showBranding = values.ShowBranding;
+            _toastPosition = values.ToastPosition;
+            _toastIdleSeconds = _baselineToastIdleSeconds = values.ToastIdleSeconds;
+            _persistSendCodeBodies = _baselinePersistSendCodeBodies = values.PersistSendCodeBodies;
+            _persistSendCodeBodiesHours = _baselinePersistSendCodeBodiesHours = values.PersistSendCodeBodiesHours;
+            _cacheSendCodeBodies = _baselineCacheSendCodeBodies = values.CacheSendCodeBodies;
+            _warningPolicy = _baselineWarningPolicy = values.WarningPolicy;
+            _toastIdleDirty = _persistSendCodeBodiesDirty = _persistSendCodeBodiesHoursDirty = _cacheSendCodeBodiesDirty = _warningPolicyDirty = false;
+            _lastLanguageVersion = _runtime.LanguageVersion;
+            _selectedLanguage = values.SelectedLanguage;
             IsDirty = false;
             NotifyAll();
         }
@@ -178,42 +124,15 @@ namespace RvtMcp.Plugin.Views.Settings
         /// <summary>Apply only staged values. Toast On/Off and language are immediate.</summary>
         public SettingsApplyReport Apply()
         {
-            var result = new SettingsApplyReport();
-            var journalExpiredWhileOpen = false;
-            if (_snapshot != null && _snapshot.IsPersistSendCodeBodiesActive())
-            {
-                try { journalExpiredWhileOpen = !RvtMcpConfig.LoadReadOnly().IsPersistSendCodeBodiesActive(); }
-                catch { }
-            }
             var warningPolicyBlocked = _warningPolicyDirty && IsWarningPolicyWriteDisabled;
-            var patch = new RvtMcpConfig.SettingsPatch
+            var result = _runtime.Apply(new SettingsChanges
             {
                 ToastIdleSeconds = _toastIdleDirty ? (int?)ToastIdleSeconds : null,
                 PersistSendCodeBodiesHours = _persistSendCodeBodiesHoursDirty ? (int?)PersistSendCodeBodiesHours : null,
                 PersistSendCodeBodies = _persistSendCodeBodiesDirty ? (bool?)PersistSendCodeBodies : null,
                 CacheSendCodeBodies = _cacheSendCodeBodiesDirty ? (bool?)CacheSendCodeBodies : null,
-                WarningPolicy = _warningPolicyDirty && !warningPolicyBlocked ? WarningPolicy : null,
-            };
-            var applied = RvtMcpConfig.TryApplySettings(patch);
-            foreach (var key in applied.Applied) result.Applied.Add(key);
-            foreach (var failure in applied.Failed)
-            {
-                var message = SaveFailed(failure.Key);
-                result.Failed.Add(message);
-                result.FieldErrors[failure.Key] = message;
-                App.DebugLog("Settings apply failed for " + failure.Key + ": " + failure.Error);
-            }
-            if (warningPolicyBlocked)
-            {
-                var message = SettingsText.Text("security.warningPolicy.environmentOverride", "BIMWRIGHT_WARNING_POLICY overrides the saved setting in this Revit process.");
-                result.Failed.Add(message);
-                result.FieldErrors["warningPolicy"] = message;
-            }
-            result.JournalWasExpired = applied.JournalWasExpired;
-            if (journalExpiredWhileOpen)
-            {
-                result.JournalWasExpired = true;
-            }
+                WarningPolicy = _warningPolicyDirty ? WarningPolicy : null,
+            });
             if (result.JournalWasExpired)
             {
                 ImmediateWarningKey = "persistSendCodeBodies";
@@ -221,38 +140,29 @@ namespace RvtMcp.Plugin.Views.Settings
                     "The send_code journal expired while Settings was open; it was not re-enabled.");
                 OnPropertyChanged(nameof(ImmediateWarning));
             }
-            RefreshEffectiveConfigAfterApply();
-            if (applied.Applied.Contains("toastIdleSeconds") && _app.Config != null)
-                _app.Config.ToastIdleSeconds = ToastIdleSeconds;
-            if (applied.Applied.Contains("persistSendCodeBodiesHours") && _app.Config != null)
-                _app.Config.PersistSendCodeBodiesHours = PersistSendCodeBodiesHours;
-            if (applied.Applied.Contains("persistSendCodeBodies") && _app.Config != null)
-                _app.Config.PersistSendCodeBodies = PersistSendCodeBodies;
-            if (applied.Applied.Contains("cacheSendCodeBodies") && _app.Config != null)
-                _app.Config.CacheSendCodeBodies = CacheSendCodeBodies;
-            if (applied.Applied.Contains("toastIdleSeconds"))
+            if (result.Applied.Contains("toastIdleSeconds"))
             {
                 _baselineToastIdleSeconds = ToastIdleSeconds;
                 _toastIdleDirty = false;
             }
-            if (applied.Applied.Contains("persistSendCodeBodiesHours"))
+            if (result.Applied.Contains("persistSendCodeBodiesHours"))
             {
                 _baselinePersistSendCodeBodiesHours = PersistSendCodeBodiesHours;
                 _persistSendCodeBodiesHoursDirty = false;
             }
-            if (applied.Applied.Contains("persistSendCodeBodies"))
+            if (result.Applied.Contains("persistSendCodeBodies"))
             {
                 _baselinePersistSendCodeBodies = PersistSendCodeBodies;
                 _persistSendCodeBodiesDirty = false;
             }
-            if (applied.Applied.Contains("cacheSendCodeBodies"))
+            if (result.Applied.Contains("cacheSendCodeBodies"))
             {
                 _baselineCacheSendCodeBodies = CacheSendCodeBodies;
                 _cacheSendCodeBodiesDirty = false;
             }
-            if (applied.Applied.Contains("warningPolicy") || warningPolicyBlocked)
+            if (result.Applied.Contains("warningPolicy") || warningPolicyBlocked)
             {
-                _warningPolicy = _baselineWarningPolicy = _snapshot.WarningPolicyOrDefault;
+                _warningPolicy = _baselineWarningPolicy = _runtime.EffectiveWarningPolicy;
                 _warningPolicyDirty = false;
                 OnPropertyChanged(nameof(WarningPolicy));
             }
@@ -261,39 +171,11 @@ namespace RvtMcp.Plugin.Views.Settings
             return result;
         }
 
-        private void RefreshEffectiveConfigAfterApply()
-        {
-            try
-            {
-                var persisted = RvtMcpConfig.LoadReadOnly();
-                _snapshot = persisted;
-                if (_app.Config == null) return;
-                _app.Config.ToastIdleSeconds = persisted.ToastIdleSeconds;
-                _app.Config.PersistSendCodeBodiesHours = persisted.PersistSendCodeBodiesHours;
-                _app.Config.PersistSendCodeBodies = persisted.PersistSendCodeBodies;
-                _app.Config.PersistSendCodeBodiesUntil = persisted.PersistSendCodeBodiesUntil;
-                _app.Config.PersistSendCodeBodiesRequiresExplicitEnable = persisted.PersistSendCodeBodiesRequiresExplicitEnable;
-                _app.Config.CacheSendCodeBodies = persisted.CacheSendCodeBodies;
-                _app.Config.WarningPolicy = persisted.WarningPolicy?.DeepClone();
-            }
-            catch
-            {
-                // The atomic writer already reported any write error. A refresh failure
-                // must not turn a successful Apply into a second, misleading failure.
-            }
-        }
-
         public void SetToastEnabled(bool enabled)
         {
             _toastEnabled = enabled;
-            _app.ToastEnabled = enabled;
-            if (_app.Config != null) _app.Config.EnableToast = enabled;
-            string error;
-            var persisted = RvtMcpConfig.TrySaveEnableToast(enabled, out error);
-            if (!persisted) App.DebugLog("Settings save enableToast failed: " + error);
-            ImmediateWarningKey = persisted ? null : "enableToast";
-            ImmediateWarning = persisted ? null : SaveFailed("enableToast");
-            _app.ToastNotifier?.OnToastEnabledChanged(enabled, persisted);
+            var persisted = _runtime.SetToastEnabled(enabled);
+            SetImmediateResult("enableToast", persisted);
             OnPropertyChanged(nameof(ToastEnabled));
             OnPropertyChanged(nameof(ImmediateWarning));
         }
@@ -301,13 +183,8 @@ namespace RvtMcp.Plugin.Views.Settings
         public void SetShowBranding(bool show)
         {
             _showBranding = show;
-            if (_app.Config != null) _app.Config.ShowBranding = show;
-            _app.ToastNotifier?.SetShowBranding(show);
-            string error;
-            var persisted = RvtMcpConfig.TrySaveShowBranding(show, out error);
-            if (!persisted) App.DebugLog("Settings save showBranding failed: " + error);
-            ImmediateWarningKey = persisted ? null : "showBranding";
-            ImmediateWarning = persisted ? null : SaveFailed("showBranding");
+            var persisted = _runtime.SetShowBranding(show);
+            SetImmediateResult("showBranding", persisted);
             OnPropertyChanged(nameof(ShowBranding));
             OnPropertyChanged(nameof(ImmediateWarning));
         }
@@ -315,12 +192,8 @@ namespace RvtMcp.Plugin.Views.Settings
         public void SetToastPosition(ToastPositionOptions options)
         {
             _toastPosition = options ?? new ToastPositionOptions();
-            _app.ToastNotifier?.SetPositionOptions(_toastPosition);
-            string error;
-            var persisted = RvtMcpConfig.TrySaveToastPosition(_toastPosition, out error);
-            if (!persisted) App.DebugLog("Settings save toast position failed: " + error);
-            ImmediateWarningKey = persisted ? null : "toastPosition";
-            ImmediateWarning = persisted ? null : SaveFailed("toastPosition");
+            var persisted = _runtime.SetToastPosition(_toastPosition);
+            SetImmediateResult("toastPosition", persisted);
             OnPropertyChanged(nameof(ToastPosition));
             OnPropertyChanged(nameof(ImmediateWarning));
         }
@@ -329,41 +202,30 @@ namespace RvtMcp.Plugin.Views.Settings
         private void OnToastPositionSaved(bool saved)
         {
             if (_disposed) return;
-            Action refresh = () =>
-            {
-                if (_disposed) return;
-                _toastPosition = _app.ToastNotifier?.PositionOptions ?? _toastPosition;
-                ImmediateWarningKey = saved ? null : "toastPosition";
-                ImmediateWarning = saved ? null : SaveFailed("toastPosition");
-                OnPropertyChanged(nameof(ToastPosition));
-                OnPropertyChanged(nameof(ImmediateWarning));
-            };
-            try
-            {
-                if (_dispatcher.CheckAccess()) refresh();
-                else _dispatcher.BeginInvoke(refresh);
-            }
-            catch { }
+            _toastPosition = _runtime.ToastPosition ?? _toastPosition;
+            SetImmediateResult("toastPosition", saved);
+            OnPropertyChanged(nameof(ToastPosition));
+            OnPropertyChanged(nameof(ImmediateWarning));
+        }
+
+        private void SetImmediateResult(string key, bool saved)
+        {
+            ImmediateWarningKey = saved ? null : key;
+            ImmediateWarning = saved ? null : SaveFailed(key);
         }
 
         public void SetLanguage(string requested)
         {
             var code = LocaleResolver.NormalizeCode(requested);
             _selectedLanguage = code;
-            if (!IsLanguageWriteDisabled)
-            {
-                string error;
-                var persisted = RvtMcpConfig.TrySaveUiLanguage(code, out error);
-                if (!persisted) App.DebugLog("Settings save uiLanguage failed: " + error);
-                ImmediateWarningKey = persisted ? null : "uiLanguage";
-                ImmediateWarning = persisted ? null : SaveFailed("uiLanguage");
-            }
-            else
+            var blocked = IsLanguageWriteDisabled;
+            var saved = _runtime.SetLanguage(code);
+            SetImmediateResult("uiLanguage", saved);
+            if (blocked)
             {
                 ImmediateWarningKey = "uiLanguage";
                 ImmediateWarning = InvariantLanguageText.SessionOnlyWarning;
             }
-            L.SetLanguage(code);
             OnPropertyChanged(nameof(SelectedLanguage));
             OnPropertyChanged(nameof(ImmediateWarning));
         }
@@ -377,7 +239,7 @@ namespace RvtMcp.Plugin.Views.Settings
         {
             if (running == IsListenerRunning) return;
             if (running) StartListener();
-            else _app.StopTransport();
+            else _runtime.StopListener();
             NotifyConnection();
         }
 
@@ -391,14 +253,12 @@ namespace RvtMcp.Plugin.Views.Settings
 
         private void StartListener()
         {
-            try
+            if (_runtime.StartListener())
             {
-                _app.CreateAndStartTransport();
                 if (ImmediateWarningKey == "listener") ImmediateWarning = ImmediateWarningKey = null;
             }
-            catch (Exception ex)
+            else
             {
-                App.DebugLog("Settings listener start failed: " + ex.Message);
                 ImmediateWarningKey = "listener";
                 ImmediateWarning = SettingsText.Text("settings.general.listenerFailed", "The MCP listener could not be started.");
             }
@@ -418,7 +278,7 @@ namespace RvtMcp.Plugin.Views.Settings
         public void CopyPort()
         {
             if (!CanCopyPort) return;
-            try { System.Windows.Clipboard.SetText(PortText); } catch { }
+            _runtime.CopyPort();
         }
 
         private static string SaveFailed(string key)
@@ -430,29 +290,19 @@ namespace RvtMcp.Plugin.Views.Settings
         private void OnLanguageChanged(object sender, EventArgs e)
         {
             if (_disposed) return;
-            if (!_dispatcher.CheckAccess())
-            {
-                try { _dispatcher.BeginInvoke(new Action(() => OnLanguageChanged(null, EventArgs.Empty))); } catch { }
-                return;
-            }
-            var version = L.Version;
+            var version = _runtime.LanguageVersion;
             if (version <= _lastLanguageVersion) return;
             _lastLanguageVersion = version;
-            Snapshot.LocaleEffective = L.Locale;
+            Snapshot.LocaleEffective = EffectiveLanguage;
             OnPropertyChanged(nameof(EffectiveLanguage));
             OnPropertyChanged(nameof(Snapshot));
             LanguageChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        private void OnAppToastEnabledChanged(object sender, EventArgs e)
+        private void OnToastEnabledChanged(object sender, EventArgs e)
         {
             if (_disposed) return;
-            if (!_dispatcher.CheckAccess())
-            {
-                try { _dispatcher.BeginInvoke(new Action(() => OnAppToastEnabledChanged(null, EventArgs.Empty))); } catch { }
-                return;
-            }
-            _toastEnabled = _app.ToastEnabled;
+            _toastEnabled = _runtime.ToastEnabled;
             OnPropertyChanged(nameof(ToastEnabled));
         }
 
@@ -480,16 +330,14 @@ namespace RvtMcp.Plugin.Views.Settings
             OnPropertyChanged(nameof(IsDirty));
         }
 
-        private void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-
         public void Dispose()
         {
             if (_disposed) return;
             _disposed = true;
-            L.Changed -= OnLanguageChanged;
-            _app.ToastEnabledChanged -= OnAppToastEnabledChanged;
-            if (_app.ToastNotifier != null)
-                _app.ToastNotifier.PositionSaved -= OnToastPositionSaved;
+            _runtime.LanguageChanged -= OnLanguageChanged;
+            _runtime.ToastEnabledChanged -= OnToastEnabledChanged;
+            _runtime.PositionSaved -= OnToastPositionSaved;
+            _runtime.Dispose();
         }
     }
 }

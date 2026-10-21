@@ -51,6 +51,20 @@ internal static class WarningPolicySettingsChecks
                 Click(window, "Apply");
                 Expect(RvtMcpConfig.LoadReadOnly().WarningPolicyOrDefault == "rollback", "Apply can restore strict behavior for the next call");
             });
+            WithWindow(app, (window, model) => {
+                var before = File.ReadAllText(RvtMcpConfig.ConfigFilePathOverride);
+                var branding = !model.ShowBranding;
+                model.SetShowBranding(branding);
+                Expect(app.Config.ShowBranding == branding && RvtMcpConfig.LoadReadOnly().ShowBrandingOrDefault == branding
+                    && !model.IsDirty, "branding applies to the host and persists immediately without staged changes");
+                File.WriteAllText(RvtMcpConfig.ConfigFilePathOverride, "{");
+                model.SetShowBranding(!branding);
+                Expect(model.ImmediateWarningKey == "showBranding" && model.ImmediateWarning != null
+                    && File.ReadAllText(RvtMcpConfig.ConfigFilePathOverride) == "{", "branding failure is visible without overwriting invalid config");
+                File.WriteAllText(RvtMcpConfig.ConfigFilePathOverride, before);
+                model.SetShowBranding(branding);
+                Expect(model.ImmediateWarning == null, "branding retry clears the save warning");
+            });
             foreach (var hostPolicy in new[] { "accept-and-log", "invalid-mode", " " })
             {
                 Environment.SetEnvironmentVariable(RvtMcpConfig.EnvWarningPolicy, hostPolicy);
@@ -120,7 +134,7 @@ internal static class WarningPolicySettingsChecks
 
     private static void WithWindow(App app, Action<SettingsWindow, SettingsViewModel> check)
     {
-        var model = new SettingsViewModel(app);
+        var model = new SettingsViewModel(new RvtMcp.Plugin.Infrastructure.UI.SettingsRuntime(app));
         var window = new SettingsWindow(model, new FakeTools());
         window.Show();
         try { Pump(); check(window, model); }

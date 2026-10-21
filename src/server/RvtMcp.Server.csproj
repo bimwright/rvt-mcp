@@ -42,6 +42,7 @@
     <Compile Include="..\shared\Failures\FailureLedgerStore.cs" Link="Shared\Failures\FailureLedgerStore.cs" />
     <Compile Include="..\shared\Failures\RevitMessageCatalogModel.cs" Link="Shared\Failures\RevitMessageCatalogModel.cs" />
     <Compile Include="..\shared\Config\RvtMcpConfig.cs" Link="Shared\Config\RvtMcpConfig.cs" />
+    <Compile Include="..\shared\Config\PreferenceValues.cs" Link="Shared\Config\PreferenceValues.cs" />
     <Compile Include="..\shared\Config\ToastPositionOptions.cs" Link="Shared\Config\ToastPositionOptions.cs" />
     <Compile Include="..\shared\Logging\PersistSendCodeTtl.cs" Link="Shared\Logging\PersistSendCodeTtl.cs" />
     <Compile Include="..\shared\Security\BakeRedactor.cs" Link="Shared\Security\BakeRedactor.cs" />

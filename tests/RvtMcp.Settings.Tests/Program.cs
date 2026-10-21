@@ -18,6 +18,11 @@ internal static class Program
     {
         try
         {
+            if (args.Length == 1 && args[0] == "--settings-state-only")
+            {
+                SettingsStateChecks.Run();
+                return 0;
+            }
             if (args.Length >= 3 && args[0] == "--model-picker-diagnostics")
             {
                 FailureModelPickerDiagnostics.Run(args[1], args[2], args.Length > 3 && args[3] == "--demo");
@@ -47,6 +52,7 @@ internal static class Program
                 CheckFailureReset(args.Length == 2 ? args[1] : null);
                 return 0;
             }
+            SettingsStateChecks.Run();
             HistoryRegressionChecks.Run();
             WarningPolicySettingsChecks.Run();
             CheckFailureReset(null);

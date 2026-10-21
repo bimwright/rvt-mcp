@@ -53,8 +53,8 @@ namespace RvtMcp.Plugin
         public const bool DefaultAutoStartTransport        = true;
         public const bool DefaultShowBranding              = false;
         public const bool DefaultPersistSendCodeBodies     = false;
-        public const int DefaultToastIdleSeconds           = 20;
-        public const int DefaultPersistSendCodeBodiesHours = 4;
+        public const int DefaultToastIdleSeconds           = PreferenceValues.DefaultToastIdleSeconds;
+        public const int DefaultPersistSendCodeBodiesHours = PreferenceValues.DefaultJournalHours;
         public const int DefaultSpillRetentionHours        = 36;
         public const int MaxSpillRetentionHours            = 24 * 365;
 
@@ -272,24 +272,9 @@ namespace RvtMcp.Plugin
         public int ToastIdleSecondsOrDefault      => NormalizeToastIdleSeconds(ToastIdleSeconds);
         public int PersistSendCodeBodiesHoursOrDefault => NormalizePersistSendCodeBodiesHours(PersistSendCodeBodiesHours);
 
-        public static int NormalizeToastIdleSeconds(int? seconds)
-        {
-            switch (seconds)
-            {
-                case 10:
-                case 20:
-                case 30:
-                case 60:
-                    return seconds.Value;
-                default:
-                    return DefaultToastIdleSeconds;
-            }
-        }
+        public static int NormalizeToastIdleSeconds(int? seconds) => PreferenceValues.ToastIdleSeconds(seconds);
 
-        public static int NormalizePersistSendCodeBodiesHours(int? hours)
-        {
-            return hours >= 1 && hours <= 14 * 24 ? hours.Value : DefaultPersistSendCodeBodiesHours;
-        }
+        public static int NormalizePersistSendCodeBodiesHours(int? hours) => PreferenceValues.JournalHours(hours);
 
         public bool IsPersistSendCodeBodiesActive(DateTimeOffset? now = null)
         {
