@@ -209,6 +209,7 @@ internal sealed class FakeTools : ISettingsToolsPresentation
 
     public FakeTools()
     {
+        RefreshCommand = new RelayCommand(Refresh);
         Rows = new ObservableCollection<ToolRow>();
         SortBy("Name");
     }
@@ -231,6 +232,14 @@ internal sealed class FakeTools : ISettingsToolsPresentation
         }
     }
 
+    private string _selectedName;
+    private bool _rebuilding;
+    public ICommand RefreshCommand { get; }
+    public ToolRow SelectedTool
+    {
+        get => Rows.FirstOrDefault(row => row.Name == _selectedName);
+        set { if (!_rebuilding || value != null) _selectedName = value?.Name; }
+    }
     public void Refresh()
     {
         RefreshCount++;
@@ -254,6 +263,7 @@ internal sealed class FakeTools : ISettingsToolsPresentation
             _ => t => t.Name,
         };
         var ordered = SortAscending ? Sample.OrderBy(key, StringComparer.Ordinal) : Sample.OrderByDescending(key, StringComparer.Ordinal);
+        _rebuilding = true;
         Rows.Clear();
         var no = 0;
         foreach (var tool in ordered)
@@ -263,7 +273,9 @@ internal sealed class FakeTools : ISettingsToolsPresentation
             row.No = ++no;
             Rows.Add(row);
         }
+        _rebuilding = false;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Rows)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedTool)));
     }
 
     public void Dispose() => Disposed = true;

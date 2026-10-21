@@ -6,6 +6,7 @@ namespace RvtMcp.Plugin.Presentation.Settings
     /// <summary>A per-window adapter. Disposing it detaches observations, never stops shared host resources.</summary>
     public interface ISettingsRuntime : IDisposable
     {
+        event EventHandler ConnectionChanged;
         event EventHandler LanguageChanged;
         event EventHandler ToastEnabledChanged;
         event Action<bool> PositionSaved;

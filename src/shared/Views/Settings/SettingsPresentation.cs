@@ -69,6 +69,8 @@ namespace RvtMcp.Plugin.Views.Settings
         bool SortAscending { get; }
         /// <summary>Filters the visible rows by tool name or description. Not saved.</summary>
         string SearchText { get; set; }
+        ICommand RefreshCommand { get; }
+        ToolRow SelectedTool { get; set; }
         void Refresh();
         void SortBy(string column);
     }

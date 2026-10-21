@@ -1,26 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Windows.Threading;
 using RvtMcp.Plugin.Localization;
-using RvtMcp.Plugin.ToolBaker;
-using CatalogEntry = RvtMcp.ToolCatalog.ToolCatalogEntry;
+using RvtMcp.Plugin.Presentation;
+using RvtMcp.Plugin.Presentation.Settings;
+using System.Windows.Input;
 using CatalogStatus = RvtMcp.ToolCatalog.ToolCatalogStatus;
-using CatalogStore = RvtMcp.ToolCatalog.ToolCatalogStore;
-using CatalogCodec = RvtMcp.ToolCatalog.ToolCatalogCodec;
 
 namespace RvtMcp.Plugin.Views.Settings
 {
     /// <summary>Read-only projection of the current server catalog plus baked metadata.</summary>
-    public sealed class ToolsViewModel : ISettingsToolsPresentation
+    public sealed class ToolsViewModel : ObservableObject, ISettingsToolsPresentation
     {
-        private readonly BakedToolRegistry _registry;
-        private readonly Assembly _summaryAssembly;
-        private readonly Dispatcher _dispatcher;
+        private readonly IToolsCatalogSource _source;
+        private string _selectedName;
+        private bool _rebuilding;
         private readonly List<ToolRow> _allRows = new List<ToolRow>();
         private bool _disposed;
         private string _sortColumn = "Name";
@@ -33,18 +28,22 @@ namespace RvtMcp.Plugin.Views.Settings
         private int _cataloguedBuiltInCount;
         private int _bakedCount;
 
-        public ToolsViewModel(BakedToolRegistry registry, Assembly summaryAssembly = null)
+        public ToolsViewModel(IToolsCatalogSource source)
         {
-            _registry = registry;
-            _summaryAssembly = summaryAssembly ?? Assembly.GetExecutingAssembly();
-            _dispatcher = Dispatcher.CurrentDispatcher;
+            _source = source ?? throw new ArgumentNullException(nameof(source));
             Rows = new ObservableCollection<ToolRow>();
-            CatalogStore.Changed += OnCatalogChanged;
-            L.Changed += OnLanguageChanged;
-            Refresh();
+            RefreshCommand = new RelayCommand(Refresh, () => !_disposed);
+            try { Refresh(); }
+            catch { _source.Dispose(); throw; }
+            _source.Changed += OnSourceChanged;
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public ICommand RefreshCommand { get; }
+        public ToolRow SelectedTool
+        {
+            get => Rows.FirstOrDefault(row => row.Name == _selectedName);
+            set { if (!_rebuilding || value != null) SetProperty(ref _selectedName, value?.Name, nameof(SelectedTool)); }
+        }
         public ObservableCollection<ToolRow> Rows { get; }
         public CatalogStatus Status => _status;
         public string StatusText => _statusText;
@@ -75,18 +74,14 @@ namespace RvtMcp.Plugin.Views.Settings
 
         public void Refresh()
         {
-            if (!_dispatcher.CheckAccess())
-            {
-                try { _dispatcher.BeginInvoke(new Action(Refresh)); } catch { }
-                return;
-            }
             if (_disposed) return;
-            _status = CatalogStore.Status;
+            var snapshot = _source.Read();
+            _status = snapshot.Status;
             _allRows.Clear();
-            Rows.Clear();
-            _builtInCount = 0;
-            _cataloguedBuiltInCount = 0;
-            _bakedCount = 0;
+            _allRows.AddRange(snapshot.Rows);
+            _builtInCount = snapshot.BuiltInCount;
+            _cataloguedBuiltInCount = snapshot.CataloguedBuiltInCount;
+            _bakedCount = snapshot.BakedCount;
             switch (_status)
             {
                 case CatalogStatus.NotConnected:
@@ -99,10 +94,9 @@ namespace RvtMcp.Plugin.Views.Settings
                     break;
                 case CatalogStatus.Invalid:
                     _statusText = SettingsText.Text("settings.tools.status.invalid", "The server tool catalog was rejected.");
-                    _statusHelpText = CatalogStore.Error;
+                    _statusHelpText = snapshot.Error;
                     break;
                 case CatalogStatus.Current:
-                    BuildRows(CatalogStore.Current);
                     _statusText = _allRows.Count == 0 ? SettingsText.Text("settings.tools.status.empty", "No tools are exposed by the connected server.") : string.Empty;
                     _statusHelpText = null;
                     break;
@@ -148,6 +142,7 @@ namespace RvtMcp.Plugin.Views.Settings
             var ordered = _sortAscending
                 ? visible.OrderBy(key, StringComparer.Ordinal).ThenBy(row => row.Name, StringComparer.Ordinal)
                 : visible.OrderByDescending(key, StringComparer.Ordinal).ThenBy(row => row.Name, StringComparer.Ordinal);
+            _rebuilding = true;
             Rows.Clear();
             var no = 0;
             foreach (var row in ordered)
@@ -155,7 +150,9 @@ namespace RvtMcp.Plugin.Views.Settings
                 row.No = ++no;
                 Rows.Add(row);
             }
+            _rebuilding = false;
             OnPropertyChanged(nameof(Rows));
+            OnPropertyChanged(nameof(SelectedTool));
             ApplyFilterStatus();
         }
 
@@ -171,60 +168,7 @@ namespace RvtMcp.Plugin.Views.Settings
             OnPropertyChanged(nameof(StatusText));
         }
 
-        private void BuildRows(RvtMcp.ToolCatalog.ToolCatalog catalog)
-        {
-            if (catalog == null) return;
-            var rows = catalog.Tools.Select(entry =>
-            {
-                var summary = ToolSummaryCatalog.ResolveWithFallback(_summaryAssembly, L.Locale, entry.McpName, entry.ShortDescriptionEn);
-                return new ToolRow
-                {
-                    Name = entry.McpName,
-                    Description = summary.Text,
-                    IsSummaryFallback = summary.IsFallback,
-                    Source = SourceBuiltIn,
-                    TimeoutDisplay = TimeoutDisplay(entry.Timeout),
-                    TimeoutHelpText = TimeoutHelp(entry.Timeout),
-                };
-            }).ToList();
-            _builtInCount = rows.Count;
-            _cataloguedBuiltInCount = catalog.CataloguedBuiltInCount;
-
-            var bakedGate = catalog.Tools.Any(entry => string.Equals(entry.McpName, "revit_run_baked_tool", StringComparison.Ordinal));
-            if (bakedGate && _registry != null)
-            {
-                var bakedTimeout = catalog.Tools.First(entry => string.Equals(entry.McpName, "revit_run_baked_tool", StringComparison.Ordinal)).Timeout;
-                foreach (var meta in _registry.GetAllSortedForList())
-                {
-                    if (meta == null || string.IsNullOrWhiteSpace(meta.Name)) continue;
-                    rows.Add(new ToolRow
-                    {
-                        Name = meta.Name,
-                        Description = Truncate(meta.Description),
-                        Source = SourceBaked,
-                        TimeoutDisplay = TimeoutDisplay(bakedTimeout),
-                        TimeoutHelpText = TimeoutHelp(bakedTimeout),
-                    });
-                }
-                _bakedCount = rows.Count - _builtInCount;
-            }
-
-            _allRows.AddRange(rows);
-        }
-
-        private void OnCatalogChanged(object sender, EventArgs e)
-        {
-            if (_disposed) return;
-            if (_dispatcher.CheckAccess()) Refresh();
-            else try { _dispatcher.BeginInvoke(new Action(Refresh)); } catch { }
-        }
-
-        private void OnLanguageChanged(object sender, EventArgs e)
-        {
-            if (_disposed) return;
-            if (_dispatcher.CheckAccess()) Refresh();
-            else try { _dispatcher.BeginInvoke(new Action(Refresh)); } catch { }
-        }
+        private void OnSourceChanged(object sender, EventArgs e) => Refresh();
 
         private void NotifyAll()
         {
@@ -238,48 +182,13 @@ namespace RvtMcp.Plugin.Views.Settings
             OnPropertyChanged(nameof(Rows));
         }
 
-        private void OnPropertyChanged([CallerMemberName] string name = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
-
         public void Dispose()
         {
             if (_disposed) return;
             _disposed = true;
-            CatalogStore.Changed -= OnCatalogChanged;
-            L.Changed -= OnLanguageChanged;
+            _source.Changed -= OnSourceChanged;
+            _source.Dispose();
+            ((RelayCommand)RefreshCommand).RaiseCanExecuteChanged();
         }
-
-        public static string TimeoutDisplay(RvtMcp.ToolCatalog.TimeoutPolicy timeout)
-        {
-            if (timeout == null) return "-";
-            if (timeout.PolicyKind == "fixed" && timeout.DefaultSeconds.HasValue)
-                return timeout.DefaultSeconds.Value + " s";
-            if (timeout.PolicyKind == "long_run_parameter" && timeout.ParameterDefaultSeconds.HasValue
-                && timeout.ParameterMinimumSeconds.HasValue && timeout.ParameterMaximumSeconds.HasValue)
-                return timeout.ParameterDefaultSeconds.Value + " s (" + timeout.ParameterMinimumSeconds.Value + "-" + timeout.ParameterMaximumSeconds.Value + " s)";
-            return "-";
-        }
-
-        public static string TimeoutHelp(RvtMcp.ToolCatalog.TimeoutPolicy timeout)
-        {
-            if (timeout == null) return SettingsText.Text("settings.tools.timeout.unavailable", "Timeout policy is unavailable.");
-            if (timeout.PolicyKind == "server_local") return SettingsText.Text("settings.tools.timeout.serverLocal", "Runs in the server; does not go through Revit.");
-            var budget = TimeoutDisplay(timeout);
-            var value = L.T("settings.tools.timeout.budget", ("budget", budget), ("grace", timeout.TransportGraceSeconds));
-            return string.Equals(value, "settings.tools.timeout.budget", StringComparison.Ordinal)
-                ? "Server budget " + budget + "; transport grace " + timeout.TransportGraceSeconds + " s."
-                : value;
-        }
-
-        private static string Truncate(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
-            var text = string.Join(" ", value.Split((char[])null, StringSplitOptions.RemoveEmptyEntries)).Trim();
-            return CatalogCodec.TruncateScalars(text, 160);
-        }
-
-
     }
 }

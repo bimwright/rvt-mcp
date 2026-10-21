@@ -48,6 +48,7 @@ namespace RvtMcp.Plugin.Views.Settings
             try { ReloadReadOnly(); }
             catch { _runtime.Dispose(); throw; }
             _runtime.LanguageChanged += OnLanguageChanged;
+            _runtime.ConnectionChanged += OnConnectionChanged;
             _runtime.ToastEnabledChanged += OnToastEnabledChanged;
             _runtime.PositionSaved += OnToastPositionSaved;
         }
@@ -291,6 +292,8 @@ namespace RvtMcp.Plugin.Views.Settings
             OnPropertyChanged(nameof(ImmediateWarning));
         }
 
+        private void OnConnectionChanged(object sender, EventArgs e) { if (!_disposed) NotifyConnection(); }
+
         private void NotifyConnection()
         {
             OnPropertyChanged(nameof(IsListenerRunning));
@@ -385,6 +388,7 @@ namespace RvtMcp.Plugin.Views.Settings
             if (_disposed) return;
             _disposed = true;
             _runtime.LanguageChanged -= OnLanguageChanged;
+            _runtime.ConnectionChanged -= OnConnectionChanged;
             _runtime.ToastEnabledChanged -= OnToastEnabledChanged;
             _runtime.PositionSaved -= OnToastPositionSaved;
             _runtime.Dispose();

@@ -6,6 +6,8 @@
   </PropertyGroup>
   <!-- Production Settings/History views on an STA dispatcher; host and ledger facades stay in memory. -->
   <ItemGroup>
+    <Compile Include="../../src/shared/Presentation/Settings/IToolsCatalogSource.cs" Link="Presentation/IToolsCatalogSource.cs" />
+    <Compile Include="../../src/shared/Views/Settings/ToolsViewModel.cs" Link="Settings/ToolsViewModel.cs" />
     <Compile Include="../../src/shared/Presentation/Common/ObservableObject.cs" Link="Presentation/ObservableObject.cs" />
     <Compile Include="../../src/shared/Presentation/Common/RelayCommand.cs" Link="Presentation/RelayCommand.cs" />
     <Compile Include="../../src/shared/Presentation/Settings/ISettingsRuntime.cs" Link="Presentation/ISettingsRuntime.cs" />

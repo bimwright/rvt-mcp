@@ -106,13 +106,14 @@ internal static class SettingsStateChecks
 
     private sealed class Runtime : ISettingsRuntime
     {
+        public event EventHandler ConnectionChanged;
         public event EventHandler LanguageChanged;
         public event EventHandler ToastEnabledChanged;
         public event Action<bool> PositionSaved;
         public Action<bool> PositionCallback => PositionSaved;
         public EventHandler LanguageCallback => LanguageChanged;
         public int Subscribers => (LanguageChanged?.GetInvocationList().Length ?? 0)
-            + (ToastEnabledChanged?.GetInvocationList().Length ?? 0) + (PositionSaved?.GetInvocationList().Length ?? 0);
+            + (ConnectionChanged?.GetInvocationList().Length ?? 0) + (ToastEnabledChanged?.GetInvocationList().Length ?? 0) + (PositionSaved?.GetInvocationList().Length ?? 0);
         public int Reads, Writes, ImmediateWrites, Disposals;
         public bool SaveSucceeds = true;
         public string Language = "auto";

@@ -64,7 +64,6 @@ namespace RvtMcp.Plugin.Views.Settings
         private TextBlock _toolsStatus;
         private TextBlock _toolSearchPlaceholder;
         private TextBox _toolSearch;
-        private string _toolsSelectedName;
         private Ellipse _footerDot;
         private TextBlock _footerText;
         private Button _apply;
@@ -119,9 +118,7 @@ namespace RvtMcp.Plugin.Views.Settings
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
             _viewModel.LanguageChanged += OnViewModelLanguageChanged;
             _toolsViewModel.PropertyChanged += OnToolsPropertyChanged;
-            _toolsViewModel.Rows.CollectionChanged += OnToolsRowsChanged;
             _tabs.SelectionChanged += OnTabsSelectionChanged;
-            ToolCatalogStore.Changed += OnCatalogStoreChanged;
             SelectTab(initialTab);
             UpdateLocalizedChrome();
             UpdateDynamicText();
@@ -129,6 +126,9 @@ namespace RvtMcp.Plugin.Views.Settings
 
         private void BindControls()
         {
+            Bind(_toolSearch, TextBox.TextProperty, nameof(ISettingsToolsPresentation.SearchText), BindingMode.TwoWay, source: _toolsViewModel);
+            Bind(_toolsGrid, ItemsControl.ItemsSourceProperty, nameof(ISettingsToolsPresentation.Rows), source: _toolsViewModel);
+            Bind(_toolsGrid, System.Windows.Controls.Primitives.Selector.SelectedItemProperty, nameof(ISettingsToolsPresentation.SelectedTool), BindingMode.TwoWay, source: _toolsViewModel);
             Bind(_listenerEnabled, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.IsListenerRunning), BindingMode.TwoWay);
             Bind(_toastEnabled, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.ToastEnabled), BindingMode.TwoWay);
             Bind(_showBranding, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.ShowBranding), BindingMode.TwoWay);
@@ -155,10 +155,10 @@ namespace RvtMcp.Plugin.Views.Settings
         }
 
         private void Bind(FrameworkElement target, DependencyProperty property, string path,
-            BindingMode mode = BindingMode.OneWay, IValueConverter converter = null)
+            BindingMode mode = BindingMode.OneWay, IValueConverter converter = null, object source = null)
         {
             _boundControls.Add(target);
-            target.SetBinding(property, new Binding(path) { Source = _viewModel, Mode = mode,
+            target.SetBinding(property, new Binding(path) { Source = source ?? _viewModel, Mode = mode,
                 UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged, Converter = converter });
         }
 
@@ -402,7 +402,7 @@ namespace RvtMcp.Plugin.Views.Settings
             toolbar.Children.Add(summary);
             var refresh = new Button { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
             LocalizedButton(refresh, "settings.tools.refresh", "Refresh");
-            refresh.Click += (_, __) => _toolsViewModel.Refresh();
+            Bind(refresh, Button.CommandProperty, nameof(ISettingsToolsPresentation.RefreshCommand), source: _toolsViewModel);
             Grid.SetColumn(refresh, 1);
             toolbar.Children.Add(refresh);
             DockPanel.SetDock(toolbar, Dock.Top);
@@ -422,7 +422,6 @@ namespace RvtMcp.Plugin.Views.Settings
                 CanUserResizeRows = false,
                 HeadersVisibility = DataGridHeadersVisibility.Column,
                 GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
-                ItemsSource = _toolsViewModel.Rows,
                 SelectionMode = DataGridSelectionMode.Single,
                 SelectionUnit = DataGridSelectionUnit.FullRow,
                 MinColumnWidth = 50,
@@ -462,7 +461,6 @@ namespace RvtMcp.Plugin.Views.Settings
             rowStyle.Setters.Add(new Setter(FrameworkElement.ToolTipProperty, new Binding(nameof(ToolRow.ToolTipText))));
             _toolsGrid.RowStyle = rowStyle;
             _toolsGrid.Sorting += OnToolsGridSorting;
-            _toolsGrid.SelectionChanged += OnToolsGridSelectionChanged;
             _toolsGrid.Columns[1].SortDirection = System.ComponentModel.ListSortDirection.Ascending;
             page.Children.Add(new Border
             {
@@ -509,7 +507,6 @@ namespace RvtMcp.Plugin.Views.Settings
                 _toolSearchPlaceholder.Visibility = string.IsNullOrEmpty(_toolSearch.Text)
                     ? Visibility.Visible
                     : Visibility.Collapsed;
-                _toolsViewModel.SearchText = _toolSearch.Text ?? string.Empty;
             };
             host.Children.Add(_toolSearch);
             host.Children.Add(_toolSearchPlaceholder);
@@ -879,12 +876,6 @@ namespace RvtMcp.Plugin.Views.Settings
             UpdateToolsText();
         }
 
-        private void OnCatalogStoreChanged(object sender, EventArgs e)
-        {
-            // Fires on the transport thread (BeginConnection/Clear); UpdateDynamicText marshals.
-            UpdateDynamicText();
-        }
-
         private void OnTabsSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             // Child selectors (grid, combos) bubble SelectionChanged here; only a real tab switch counts.
@@ -904,20 +895,6 @@ namespace RvtMcp.Plugin.Views.Settings
                 column.SortDirection = string.Equals(column.SortMemberPath, _toolsViewModel.SortColumn, StringComparison.Ordinal)
                     ? direction
                     : (System.ComponentModel.ListSortDirection?)null;
-        }
-
-        private void OnToolsGridSelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var row = _toolsGrid.SelectedItem as ToolRow;
-            if (row != null) _toolsSelectedName = row.Name;
-        }
-
-        private void OnToolsRowsChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
-        {
-            if (_toolsSelectedName == null || _toolsGrid == null) return;
-            var match = _toolsViewModel.Rows.FirstOrDefault(row => string.Equals(row.Name, _toolsSelectedName, StringComparison.Ordinal));
-            if (match != null && !ReferenceEquals(_toolsGrid.SelectedItem, match))
-                _toolsGrid.SelectedItem = match;
         }
 
         private void OnClosing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -943,9 +920,7 @@ namespace RvtMcp.Plugin.Views.Settings
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _viewModel.LanguageChanged -= OnViewModelLanguageChanged;
             _toolsViewModel.PropertyChanged -= OnToolsPropertyChanged;
-            _toolsViewModel.Rows.CollectionChanged -= OnToolsRowsChanged;
             _tabs.SelectionChanged -= OnTabsSelectionChanged;
-            ToolCatalogStore.Changed -= OnCatalogStoreChanged;
             PreviewKeyDown -= OnPreviewKeyDown;
             foreach (var control in _boundControls) BindingOperations.ClearAllBindings(control);
             _boundControls.Clear();

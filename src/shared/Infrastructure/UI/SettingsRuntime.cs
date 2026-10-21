@@ -21,6 +21,7 @@ namespace RvtMcp.Plugin.Infrastructure.UI
             _app = app ?? throw new ArgumentNullException(nameof(app));
             _dispatcher = Dispatcher.CurrentDispatcher;
             L.Changed += OnLanguageChanged;
+            RvtMcp.ToolCatalog.ToolCatalogStore.Changed += OnConnectionChanged;
             _app.ToastEnabledChanged += OnToastEnabledChanged;
             // Capture the subscribed instance: a later host replacement must not retain this adapter.
             var notifier = _app.ToastNotifier;
@@ -31,6 +32,7 @@ namespace RvtMcp.Plugin.Infrastructure.UI
             }
         }
 
+        public event EventHandler ConnectionChanged;
         public event EventHandler LanguageChanged;
         public event EventHandler ToastEnabledChanged;
         public event Action<bool> PositionSaved;
@@ -194,6 +196,7 @@ namespace RvtMcp.Plugin.Infrastructure.UI
         public void CopyPort() { if (CanCopyPort) { try { System.Windows.Clipboard.SetText(PortText); } catch { } } }
 
         private static string SaveFailed(string key) => SettingsText.Text("settings.footer.saveFailed", key + ": could not be saved", ("key", key));
+        private void OnConnectionChanged(object sender, EventArgs e) => Post(() => ConnectionChanged?.Invoke(this, EventArgs.Empty));
         private void OnLanguageChanged(object sender, EventArgs e) => Post(() => LanguageChanged?.Invoke(this, EventArgs.Empty));
         private void OnToastEnabledChanged(object sender, EventArgs e) => Post(() => ToastEnabledChanged?.Invoke(this, EventArgs.Empty));
         private void OnPositionSaved(bool saved) => Post(() => PositionSaved?.Invoke(saved));
@@ -209,6 +212,7 @@ namespace RvtMcp.Plugin.Infrastructure.UI
             if (_disposed) return;
             _disposed = true;
             L.Changed -= OnLanguageChanged;
+            RvtMcp.ToolCatalog.ToolCatalogStore.Changed -= OnConnectionChanged;
             _app.ToastEnabledChanged -= OnToastEnabledChanged;
             _detachPosition?.Invoke();
         }
