@@ -281,7 +281,7 @@ namespace RvtMcp.Plugin.Views
         /// combo contents (stable Tag survives), the summary column (recomputed
         /// from in-memory ParamsJson/ResultJson), and the open detail pane.
         /// </summary>
-        private void ApplyLocalization()
+        private void ApplyLocalization(bool restoreSelection = false)
         {
             var version = L.Version;
             var localeChanged = version != _lastSeenL10nVersion;
@@ -310,7 +310,7 @@ namespace RvtMcp.Plugin.Views
                 _viewSource.View.Refresh();
             }
             // Re-run results live in _outputContainer — a locale swap must not wipe them.
-            if (!_rerunInProgress && !_detailShowsRerun)
+            if (restoreSelection || (!_rerunInProgress && !_detailShowsRerun))
                 ShowEntry(_selectedEntry);
         }
 
@@ -709,7 +709,8 @@ namespace RvtMcp.Plugin.Views
             _observing = true;
             _vm.PropertyChanged += OnViewModelChanged;
             _detailShowsRerun = _vm.RerunOutput != null || _vm.RerunError != null;
-            ApplyLocalization();
+            // Selection can change through collection eviction while this renderer is detached.
+            ApplyLocalization(restoreSelection: true);
             if (_vm.RerunOutput != null) RenderRerun();
             else if (_vm.RerunError != null) RenderRerunError();
         }

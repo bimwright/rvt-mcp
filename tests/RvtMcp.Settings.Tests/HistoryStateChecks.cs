@@ -99,6 +99,54 @@ internal static class HistoryStateChecks
         Console.WriteLine("PASS: History VM filters, frozen/single rerun, confirmation, error, late completion and real tab/status/lifetime wiring");
     }
 
+    internal static void RunHiddenSelectionChecks()
+    {
+        foreach (var completion in new[] { "success", "failure", "pending" })
+        {
+            using var bindings = new WpfBindingErrors();
+            var runtime = new Runtime();
+            var first = new McpCallEntry { Index = 1, ToolName = "create_level", ParamsJson = "{\"name\":\"A\"}", Success = true, Timestamp = DateTime.Now };
+            var next = new McpCallEntry { Index = 2, ToolName = "get_current_view_info", ParamsJson = "{\"name\":\"B\"}", Success = true, Timestamp = DateTime.Now.AddSeconds(1) };
+            runtime.Entries.Add(first); runtime.Entries.Add(next);
+            var window = new HistoryWindow(runtime, new Dialogs());
+            try
+            {
+                window.Show(); Pump();
+                var shell = (HistoryShellViewModel)window.DataContext;
+                var vm = shell.Activities;
+                var view = Field<ActivityHistoryView>(window, "_activitiesView");
+                var grid = Field<DataGrid>(view, "_grid");
+                grid.SelectedItem = first; Pump();
+                var task = vm.RerunCommand.ExecuteAsync();
+                window.ShowIssues(); Pump();
+                // McpSessionLog evicts the oldest live row at its cap while this tab can be unloaded.
+                runtime.Entries.Remove(first); Pump();
+                Expect(ReferenceEquals(vm.SelectedEntry, next), "hidden eviction selects the remaining row");
+                if (completion == "success") { runtime.Complete(); PumpUntil(task); }
+                else if (completion == "failure") { runtime.Next.SetException(new InvalidOperationException("fixture rerun failure")); PumpUntil(task); }
+                shell.SelectedTab = HistoryTab.Activities; Pump();
+                Expect(Field<TextBlock>(view, "_whatName").Text == next.ToolName,
+                    "WHAT agrees with current selection after hidden eviction / " + completion);
+                Expect(((TextBlock)Field<ContentControl>(view, "_inputContent").Content).Text.Trim() == "name: B",
+                    "INPUT agrees with current selection after hidden eviction / " + completion);
+                if (completion == "pending") { runtime.Complete(); PumpUntil(task); }
+                if (completion == "failure")
+                    Expect(vm.RerunError != null && Field<StackPanel>(view, "_outputContainer").Children.OfType<TextBlock>()
+                        .Any(text => text.Text.Replace("\u200B", "") == vm.RerunError), "reload retains failed rerun output");
+                else Expect(vm.RerunOutput?.OriginalIndex == first.Index && Field<StackPanel>(view, "_outputContainer").Children.Count > 0,
+                    "reload retains successful rerun output attributed to original row");
+                runtime.Next = new TaskCompletionSource<HistoryRerunOutput>();
+                task = vm.RerunCommand.ExecuteAsync();
+                Expect(runtime.Requests == 2 && runtime.LastRequest.ToolName == next.ToolName && runtime.LastRequest.ParamsJson == next.ParamsJson,
+                    "next rerun dispatch agrees with displayed selected input");
+                runtime.Complete(); PumpUntil(task);
+            }
+            finally { window.CloseForShutdown(); Pump(); }
+            bindings.AssertClean();
+            Console.WriteLine("PASS: hidden History selection, displayed input, rerun output and next request / " + completion);
+        }
+    }
+
     private static T Field<T>(object value, string name) => (T)value.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(value);
     private static void Expect(bool condition, string message) { if (!condition) throw new Exception(message); }
     private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
