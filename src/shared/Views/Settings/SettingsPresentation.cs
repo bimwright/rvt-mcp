@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows.Input;
 
 namespace RvtMcp.Plugin.Views.Settings
 {
@@ -9,12 +10,12 @@ namespace RvtMcp.Plugin.Views.Settings
     {
         event EventHandler LanguageChanged;
         SettingsSnapshot Snapshot { get; }
-        string SelectedLanguage { get; }
+        string SelectedLanguage { get; set; }
         string EffectiveLanguage { get; }
         bool IsLanguageWriteDisabled { get; }
-        bool ToastEnabled { get; }
+        bool ToastEnabled { get; set; }
         /// <summary>Wordmark on the activity card. Applied and saved immediately, not staged.</summary>
-        bool ShowBranding { get; }
+        bool ShowBranding { get; set; }
         /// <summary>Corner, drag and offset of the activity card. Applied and saved immediately, not staged.</summary>
         ToastPositionOptions ToastPosition { get; }
         int ToastIdleSeconds { get; set; }
@@ -29,10 +30,20 @@ namespace RvtMcp.Plugin.Views.Settings
         string RevitYear { get; }
         string TransportKind { get; }
         string ConnectionState { get; }
-        bool IsListenerRunning { get; }
+        bool IsListenerRunning { get; set; }
         bool IsClientConnected { get; }
         bool CanCopyPort { get; }
         string PortText { get; }
+        bool ToastRight { get; set; }
+        bool ToastBottom { get; set; }
+        bool ToastDragEnabled { get; set; }
+        ICommand ApplyCommand { get; }
+        ICommand DiscardCommand { get; }
+        ICommand RestartListenerCommand { get; }
+        ICommand CopyPortCommand { get; }
+        ICommand ResetToastPositionCommand { get; }
+        SettingsApplyReport LastApplyReport { get; }
+        string Feedback { get; }
         void SetToastEnabled(bool enabled);
         /// <summary>Show or hide the activity-card wordmark and save the preference across sessions.</summary>
         void SetShowBranding(bool show);

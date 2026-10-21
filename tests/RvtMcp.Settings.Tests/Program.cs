@@ -337,12 +337,16 @@ internal static class Program
     {
         var settings = new FakeSettings();
         var tools = new FakeTools();
+        int? boundSubscriberCount = null;
         for (var i = 0; i < 3; i++)
         {
             settings.Disposed = false;
             var window = new SettingsWindow(settings, tools);
             window.Show();
-            Expect(settings.PropertyChangedSubscribers == 1 && settings.LanguageChangedSubscribers == 1, "one handler per open window");
+            var count = settings.PropertyChangedSubscribers;
+            Expect(count > 0 && settings.LanguageChangedSubscribers == 1
+                && (!boundSubscriberCount.HasValue || count == boundSubscriberCount), "stable binding/observer subscriptions per open window");
+            boundSubscriberCount = count;
             window.Close();
             Expect(settings.PropertyChangedSubscribers == 0 && settings.LanguageChangedSubscribers == 0 && settings.Disposed && tools.Disposed,
                 "close detaches handlers and disposes the presentations");
@@ -422,7 +426,7 @@ internal static class Program
     // TextBlock.Text does not track inlines added before the window is shown.
     private static string Plain(TextBlock text) => string.Concat(text.Inlines.OfType<System.Windows.Documents.Run>().Select(run => run.Text));
 
-    private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+    private static void Click(Button button) => typeof(Button).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(button, null);
 
     private static T Field<T>(object owner, string name) =>
         (T)owner.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(owner);

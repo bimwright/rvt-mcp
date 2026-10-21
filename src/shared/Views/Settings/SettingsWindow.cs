@@ -27,16 +27,14 @@ namespace RvtMcp.Plugin.Views.Settings
         private readonly ISettingsPresentation _viewModel;
         private readonly ISettingsToolsPresentation _toolsViewModel;
         private readonly AboutInfo _aboutInfo;
+        private readonly HashSet<FrameworkElement> _boundControls = new HashSet<FrameworkElement>();
         private readonly TabControl _tabs;
         private readonly Dictionary<SettingsTab, TabItem> _tabItems = new Dictionary<SettingsTab, TabItem>();
         // Re-run on every language change so all localized chrome follows L.Changed.
         private readonly List<Action> _localizedText = new List<Action>();
         // Inline error line under each setting row, keyed by config key.
         private readonly Dictionary<string, TextBlock> _fieldErrors = new Dictionary<string, TextBlock>(StringComparer.Ordinal);
-        private readonly Dictionary<string, string> _applyErrors = new Dictionary<string, string>(StringComparer.Ordinal);
         private bool _closing;
-        private bool _syncingControls;
-        private string _feedback;
         private string _footerError;
         private DispatcherTimer _copiedTimer;
 
@@ -112,6 +110,7 @@ namespace RvtMcp.Plugin.Views.Settings
             Grid.SetRow(footer, 2);
             root.Children.Add(footer);
             Content = root;
+            BindControls();
 
             Loaded += (_, __) => SelectTab(initialTab);
             Closing += OnClosing;
@@ -126,6 +125,58 @@ namespace RvtMcp.Plugin.Views.Settings
             SelectTab(initialTab);
             UpdateLocalizedChrome();
             UpdateDynamicText();
+        }
+
+        private void BindControls()
+        {
+            Bind(_listenerEnabled, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.IsListenerRunning), BindingMode.TwoWay);
+            Bind(_toastEnabled, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.ToastEnabled), BindingMode.TwoWay);
+            Bind(_showBranding, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.ShowBranding), BindingMode.TwoWay);
+            Bind(_cacheSendCodeBodies, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.CacheSendCodeBodies), BindingMode.TwoWay);
+            Bind(_persistSendCodeBodies, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.PersistSendCodeBodies), BindingMode.TwoWay);
+            Bind(_toastDrag, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.ToastDragEnabled), BindingMode.TwoWay);
+            _language.SelectedValuePath = "Tag";
+            _warningPolicy.SelectedValuePath = "Tag";
+            Bind(_language, System.Windows.Controls.Primitives.Selector.SelectedValueProperty, nameof(ISettingsPresentation.SelectedLanguage), BindingMode.TwoWay, new SelectionValueConverter());
+            Bind(_warningPolicy, System.Windows.Controls.Primitives.Selector.SelectedValueProperty, nameof(ISettingsPresentation.WarningPolicy), BindingMode.TwoWay, new SelectionValueConverter());
+            Bind(_toastIdle, System.Windows.Controls.Primitives.Selector.SelectedItemProperty, nameof(ISettingsPresentation.ToastIdleSeconds), BindingMode.TwoWay, new SelectionValueConverter());
+            Bind(_journalHours, System.Windows.Controls.Primitives.Selector.SelectedItemProperty, nameof(ISettingsPresentation.PersistSendCodeBodiesHours), BindingMode.TwoWay, new SelectionValueConverter());
+            Bind(_toastHorizontal, System.Windows.Controls.Primitives.Selector.SelectedIndexProperty, nameof(ISettingsPresentation.ToastRight), BindingMode.TwoWay, new CornerIndexConverter());
+            Bind(_toastVertical, System.Windows.Controls.Primitives.Selector.SelectedIndexProperty, nameof(ISettingsPresentation.ToastBottom), BindingMode.TwoWay, new CornerIndexConverter());
+            Bind(_language, IsEnabledProperty, nameof(ISettingsPresentation.IsLanguageWriteDisabled), BindingMode.OneWay, new InverseBooleanConverter());
+            Bind(_warningPolicy, IsEnabledProperty, nameof(ISettingsPresentation.IsWarningPolicyWriteDisabled), BindingMode.OneWay, new InverseBooleanConverter());
+            foreach (var control in new FrameworkElement[] { _showBranding, _toastHorizontal, _toastVertical, _toastDrag, _toastIdle })
+                Bind(control, IsEnabledProperty, nameof(ISettingsPresentation.ToastEnabled));
+            Bind(_apply, Button.CommandProperty, nameof(ISettingsPresentation.ApplyCommand));
+            Bind(_discard, Button.CommandProperty, nameof(ISettingsPresentation.DiscardCommand));
+            Bind(_restartListener, Button.CommandProperty, nameof(ISettingsPresentation.RestartListenerCommand));
+            Bind(_copyPort, Button.CommandProperty, nameof(ISettingsPresentation.CopyPortCommand));
+            Bind(_toastReset, Button.CommandProperty, nameof(ISettingsPresentation.ResetToastPositionCommand));
+        }
+
+        private void Bind(FrameworkElement target, DependencyProperty property, string path,
+            BindingMode mode = BindingMode.OneWay, IValueConverter converter = null)
+        {
+            _boundControls.Add(target);
+            target.SetBinding(property, new Binding(path) { Source = _viewModel, Mode = mode,
+                UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged, Converter = converter });
+        }
+
+        private sealed class SelectionValueConverter : IValueConverter
+        {
+            public object Convert(object value, Type type, object parameter, System.Globalization.CultureInfo culture) => value;
+            public object ConvertBack(object value, Type type, object parameter, System.Globalization.CultureInfo culture) => value ?? Binding.DoNothing;
+        }
+        private sealed class CornerIndexConverter : IValueConverter
+        {
+            public object Convert(object value, Type type, object parameter, System.Globalization.CultureInfo culture) => Equals(value, true) ? 1 : 0;
+            public object ConvertBack(object value, Type type, object parameter, System.Globalization.CultureInfo culture) =>
+                value is int index && (index == 0 || index == 1) ? (object)(index == 1) : Binding.DoNothing;
+        }
+        private sealed class InverseBooleanConverter : IValueConverter
+        {
+            public object Convert(object value, Type type, object parameter, System.Globalization.CultureInfo culture) => !Equals(value, true);
+            public object ConvertBack(object value, Type type, object parameter, System.Globalization.CultureInfo culture) => Binding.DoNothing;
         }
 
         public void SelectTab(SettingsTab tab)
@@ -199,7 +250,6 @@ namespace RvtMcp.Plugin.Views.Settings
                 _restartListener.ToolTip = text;
                 AutomationProperties.SetName(_restartListener, text);
             });
-            _restartListener.Click += (_, __) => _viewModel.RestartListener();
             _listenerEnabled = new CheckBox { Margin = new Thickness(4, 0, 0, 0) };
             _localizedText.Add(() =>
             {
@@ -207,8 +257,6 @@ namespace RvtMcp.Plugin.Views.Settings
                 _listenerEnabled.ToolTip = text;
                 AutomationProperties.SetName(_listenerEnabled, text);
             });
-            _listenerEnabled.Checked += (_, __) => { if (!_syncingControls) _viewModel.SetListenerRunning(true); };
-            _listenerEnabled.Unchecked += (_, __) => { if (!_syncingControls) _viewModel.SetListenerRunning(false); };
             var state = new StackPanel { Orientation = Orientation.Horizontal };
             state.Children.Add(_statePill);
             state.Children.Add(_restartListener);
@@ -231,7 +279,6 @@ namespace RvtMcp.Plugin.Views.Settings
             _language.Items.Add(new ComboBoxItem { Content = InvariantLanguageText.AutoOption, Tag = LocaleResolver.Auto });
             foreach (var locale in LocaleResolver.SupportedLocales)
                 _language.Items.Add(new ComboBoxItem { Content = LocaleResolver.NativeName(locale), Tag = locale });
-            _language.SelectionChanged += OnLanguageSelectionChanged;
             AutomationProperties.SetName(_language, InvariantLanguageText.AutomationName);
             AutomationProperties.SetHelpText(_language, InvariantLanguageText.AutomationHelp);
             var languageLabel = RowLabelText();
@@ -251,23 +298,14 @@ namespace RvtMcp.Plugin.Views.Settings
                 _warningPolicy.Items.Add(option);
             }
             _localizedText.Add(() => AutomationProperties.SetName(_warningPolicy, policyLabel.Text));
-            _warningPolicy.SelectionChanged += (_, __) =>
-            {
-                if (!_syncingControls && _warningPolicy.SelectedItem is ComboBoxItem selected)
-                    _viewModel.WarningPolicy = selected.Tag as string;
-            };
             _warningPolicyCaption = RowCaptionText();
             page.Children.Add(Card(Row(policyLabel, _warningPolicyCaption, _warningPolicy, "warningPolicy")));
 
             page.Children.Add(SectionTitle("settings.general.privacy", "Privacy"));
             var cacheLabel = RowLabel("settings.general.cacheBodies", "Cache send_code bodies");
             _cacheSendCodeBodies = Switch(cacheLabel);
-            _cacheSendCodeBodies.Checked += (_, __) => { if (!_syncingControls) _viewModel.CacheSendCodeBodies = true; };
-            _cacheSendCodeBodies.Unchecked += (_, __) => { if (!_syncingControls) _viewModel.CacheSendCodeBodies = false; };
             var journalLabel = RowLabel("settings.general.keepJournal", "Keep send_code journal");
             _persistSendCodeBodies = Switch(journalLabel);
-            _persistSendCodeBodies.Checked += (_, __) => { if (!_syncingControls) _viewModel.PersistSendCodeBodies = true; };
-            _persistSendCodeBodies.Unchecked += (_, __) => { if (!_syncingControls) _viewModel.PersistSendCodeBodies = false; };
             // The duration sits beside the journal switch it belongs to; its label names/tooltips it.
             _journalHours = new ComboBox { Width = 84, ItemsSource = new[] { 1, 4, 8, 12, 24, 48, 168, 336 },
                 IsReadOnly = true, IsTextSearchEnabled = false, Margin = new Thickness(0, 0, 12, 0) };
@@ -280,10 +318,6 @@ namespace RvtMcp.Plugin.Views.Settings
                 _journalHours.ToolTip = hoursText;
                 AutomationProperties.SetName(_journalHours, hoursText);
             });
-            _journalHours.SelectionChanged += (_, __) =>
-            {
-                if (!_syncingControls && _journalHours.SelectedItem is int value) _viewModel.PersistSendCodeBodiesHours = value;
-            };
             var journalControls = new StackPanel { Orientation = Orientation.Horizontal };
             journalControls.Children.Add(_journalHours);
             journalControls.Children.Add(_persistSendCodeBodies);
@@ -307,32 +341,19 @@ namespace RvtMcp.Plugin.Views.Settings
 
             var enabledLabel = RowLabel("settings.toast.enabled", "Show activity notifications");
             _toastEnabled = Switch(enabledLabel);
-            _toastEnabled.Checked += (_, __) => { if (!_syncingControls) _viewModel.SetToastEnabled(true); };
-            _toastEnabled.Unchecked += (_, __) => { if (!_syncingControls) _viewModel.SetToastEnabled(false); };
             var brandLabel = RowLabel("settings.toast.brand", "Show branding");
             _showBranding = Switch(brandLabel);
-            _showBranding.Checked += (_, __) => { if (!_syncingControls) _viewModel.SetShowBranding(true); };
-            _showBranding.Unchecked += (_, __) => { if (!_syncingControls) _viewModel.SetShowBranding(false); };
             var horizontalLabel = RowLabel("settings.toast.horizontal", "Horizontal alignment");
             _toastHorizontal = PositionChoice(horizontalLabel, "settings.toast.left", "Left", "settings.toast.right", "Right");
-            _toastHorizontal.SelectionChanged += (_, __) => { if (!_syncingControls) OnToastCornerChanged(); };
             var verticalLabel = RowLabel("settings.toast.vertical", "Vertical alignment");
             _toastVertical = PositionChoice(verticalLabel, "settings.toast.top", "Top", "settings.toast.bottom", "Bottom");
-            _toastVertical.SelectionChanged += (_, __) => { if (!_syncingControls) OnToastCornerChanged(); };
             var dragLabel = RowLabel("settings.toast.drag", "Allow dragging the card");
             _toastDrag = Switch(dragLabel);
-            _toastDrag.Checked += (_, __) => { if (!_syncingControls) _viewModel.SetToastPosition(_viewModel.ToastPosition.WithDrag(true)); };
-            _toastDrag.Unchecked += (_, __) => { if (!_syncingControls) _viewModel.SetToastPosition(_viewModel.ToastPosition.WithDrag(false)); };
             _toastReset = new Button { MinWidth = 120, Padding = new Thickness(10, 3, 10, 3) };
             LocalizedButton(_toastReset, "settings.toast.reset", "Reset position");
-            _toastReset.Click += (_, __) => _viewModel.SetToastPosition(_viewModel.ToastPosition.WithOffset(null, null));
             var idleLabel = RowLabel("settings.toast.idle", "Idle duration");
             _toastIdle = new ComboBox { Width = 120, ItemsSource = ToastIdleOptions, ItemStringFormat = "{0} s" };
             NameFromLabel(_toastIdle, idleLabel);
-            _toastIdle.SelectionChanged += (_, __) =>
-            {
-                if (!_syncingControls && _toastIdle.SelectedItem is int value) _viewModel.ToastIdleSeconds = value;
-            };
             page.Children.Add(Card(
                 Row(enabledLabel, RowCaption("settings.toast.enabled.help", "Takes effect immediately."), _toastEnabled, "enableToast"),
                 Row(brandLabel, RowCaption("settings.toast.brand.help", "Appears when you point at the activity card. Applies immediately and is remembered after Revit restarts."), _showBranding, "showBranding"),
@@ -365,12 +386,6 @@ namespace RvtMcp.Plugin.Views.Settings
                 second.Content = SettingsText.Text(secondKey, secondFallback);
             });
             return choice;
-        }
-
-        private void OnToastCornerChanged()
-        {
-            _viewModel.SetToastPosition(_viewModel.ToastPosition.WithCorner(
-                _toastHorizontal.SelectedIndex == 1, _toastVertical.SelectedIndex == 1));
         }
 
         private UIElement BuildTools()
@@ -597,18 +612,10 @@ namespace RvtMcp.Plugin.Views.Settings
             grid.Children.Add(status);
             _discard = new Button { Margin = new Thickness(12, 0, 8, 0) };
             LocalizedButton(_discard, "settings.discard", "Discard changes");
-            _discard.Click += (_, __) =>
-            {
-                _viewModel.Cancel();
-                _applyErrors.Clear();
-                _feedback = null;
-                UpdateDynamicText();
-            };
             Grid.SetColumn(_discard, 1);
             grid.Children.Add(_discard);
             _apply = new Button { Style = (Style)FindResource("Primary"), MinWidth = 88 };
             LocalizedButton(_apply, "settings.apply", "Apply");
-            _apply.Click += OnApply;
             Grid.SetColumn(_apply, 2);
             grid.Children.Add(_apply);
             return new Border
@@ -714,20 +721,6 @@ namespace RvtMcp.Plugin.Views.Settings
 
         // ── State → view ──────────────────────────────────────────────────
 
-        private void SetSelectedLanguage()
-        {
-            var selected = _language.Items.OfType<ComboBoxItem>().FirstOrDefault(item => string.Equals(item.Tag as string, _viewModel.SelectedLanguage, StringComparison.Ordinal));
-            _language.SelectedItem = selected ?? _language.Items[0];
-        }
-
-        private void OnLanguageSelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (_syncingControls) return;
-            var selected = _language.SelectedItem as ComboBoxItem;
-            if (selected != null) _viewModel.SetLanguage(selected.Tag as string);
-            UpdateDynamicText();
-        }
-
         private sealed class JournalHoursConverter : IValueConverter
         {
             internal static string Label(int hours) => hours >= 48 && hours % 24 == 0 ? (hours / 24) + "d" : hours + "h";
@@ -737,7 +730,6 @@ namespace RvtMcp.Plugin.Views.Settings
 
         private void OnCopyPort(object sender, RoutedEventArgs e)
         {
-            _viewModel.CopyPort();
             _copyPort.Content = SettingsText.Text("settings.footer.copied", "Copied");
             _copiedTimer?.Stop();
             _copiedTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
@@ -749,15 +741,6 @@ namespace RvtMcp.Plugin.Views.Settings
             _copiedTimer.Start();
         }
 
-        private void OnApply(object sender, RoutedEventArgs e)
-        {
-            var report = _viewModel.Apply();
-            _applyErrors.Clear();
-            foreach (var error in report.FieldErrors) _applyErrors[error.Key] = error.Value;
-            _feedback = report.Succeeded ? SettingsText.Text("settings.footer.applied", "Applied") : null;
-            UpdateDynamicText();
-        }
-
         private void UpdateDynamicText()
         {
             if (!Dispatcher.CheckAccess())
@@ -766,47 +749,17 @@ namespace RvtMcp.Plugin.Views.Settings
                 return;
             }
             UpdateConnection();
-            _syncingControls = true;
-            try
-            {
-                SetSelectedLanguage();
-                _language.IsEnabled = !_viewModel.IsLanguageWriteDisabled;
-                _language.ToolTip = _viewModel.IsLanguageWriteDisabled
-                    ? InvariantLanguageText.OverrideToolTip
-                    : InvariantLanguageText.SelectionToolTip;
-                _languageCaption.Text = InvariantLanguageText.CurrentlyUsingPrefix + LocaleResolver.NativeName(_viewModel.EffectiveLanguage)
-                    + " · " + InvariantLanguageText.SourcePrefix + (_viewModel.Snapshot?.LocaleSource ?? InvariantLanguageText.AutoOption);
-                _listenerEnabled.IsChecked = _viewModel.IsListenerRunning;
-                _toastEnabled.IsChecked = _viewModel.ToastEnabled;
-                _showBranding.IsChecked = _viewModel.ShowBranding;
-                _showBranding.IsEnabled = _viewModel.ToastEnabled;
-                var position = _viewModel.ToastPosition ?? new ToastPositionOptions();
-                _toastHorizontal.SelectedIndex = position.Right ? 1 : 0;
-                _toastVertical.SelectedIndex = position.Bottom ? 1 : 0;
-                _toastDrag.IsChecked = position.DragEnabled;
-                _toastHorizontal.IsEnabled = _toastVertical.IsEnabled = _toastDrag.IsEnabled = _viewModel.ToastEnabled;
-                _toastReset.IsEnabled = _viewModel.ToastEnabled && position.HasOffset;
-                _toastIdle.SelectedItem = _viewModel.ToastIdleSeconds;
-                _toastIdle.IsEnabled = _viewModel.ToastEnabled;
-                _warningPolicy.SelectedItem = _warningPolicy.Items.OfType<ComboBoxItem>().FirstOrDefault(item => Equals(item.Tag, _viewModel.WarningPolicy));
-                _warningPolicy.IsEnabled = !_viewModel.IsWarningPolicyWriteDisabled;
-                _warningPolicyCaption.Text = SettingsText.Text("security.warningPolicy.help",
-                    "Applies from the next MCP call. Accept mode acknowledges warnings and records them; errors, corruption and incomplete capture still roll back. It does not retry or repair earlier operations. Explicit client env/CLI choices can override this default.")
-                    + (_viewModel.IsWarningPolicyWriteDisabled ? "\n" + SettingsText.Text("security.warningPolicy.environmentOverride",
-                        "BIMWRIGHT_WARNING_POLICY overrides the saved setting in this Revit process.") : "");
-                AutomationProperties.SetHelpText(_warningPolicy, _warningPolicyCaption.Text);
-                _cacheSendCodeBodies.IsChecked = _viewModel.CacheSendCodeBodies;
-                _persistSendCodeBodies.IsChecked = _viewModel.PersistSendCodeBodies;
-                _journalHours.SelectedItem = _viewModel.PersistSendCodeBodiesHours;
-                // Presets use their formatted item template, including immediately after selection.
-                // Legacy custom values use a read-only text display without adding another preset.
-                _journalHours.IsEditable = _journalHours.SelectedItem == null;
-                if (_journalHours.IsEditable) _journalHours.Text = JournalHoursConverter.Label(_viewModel.PersistSendCodeBodiesHours);
-            }
-            finally
-            {
-                _syncingControls = false;
-            }
+            _languageCaption.Text = InvariantLanguageText.CurrentlyUsingPrefix + LocaleResolver.NativeName(_viewModel.EffectiveLanguage)
+                + " · " + InvariantLanguageText.SourcePrefix + (_viewModel.Snapshot?.LocaleSource ?? InvariantLanguageText.AutoOption);
+            _language.ToolTip = _viewModel.IsLanguageWriteDisabled ? InvariantLanguageText.OverrideToolTip : InvariantLanguageText.SelectionToolTip;
+            _warningPolicyCaption.Text = SettingsText.Text("security.warningPolicy.help",
+                "Rollback is the default. Accept and log applies only to supported warnings with complete capture and durable recording.")
+                + (_viewModel.IsWarningPolicyWriteDisabled ? " " + SettingsText.Text("security.warningPolicy.environmentOverride",
+                    "BIMWRIGHT_WARNING_POLICY overrides the saved setting in this Revit process.") : "");
+            AutomationProperties.SetHelpText(_warningPolicy, _warningPolicyCaption.Text);
+            // Legacy values remain display-only; they never add a selectable preset or change the model.
+            _journalHours.IsEditable = !_journalHours.Items.Contains(_viewModel.PersistSendCodeBodiesHours);
+            if (_journalHours.IsEditable) _journalHours.Text = JournalHoursConverter.Label(_viewModel.PersistSendCodeBodiesHours);
             UpdateErrors();
             UpdateFooter();
             UpdateToolsText();
@@ -821,14 +774,12 @@ namespace RvtMcp.Plugin.Views.Settings
             else
                 SetStatePill(SettingsStyles.NeutralFill, SettingsStyles.NeutralDot, SettingsStyles.Secondary);
             _stateText.Text = _viewModel.ConnectionState;
-            _restartListener.IsEnabled = _viewModel.IsListenerRunning;
             _transportText.Inlines.Clear();
             _transportText.Inlines.Add(new Run(SettingsText.Text("settings.general.transport", "Transport type") + ": "));
             _transportText.Inlines.Add(new Run(_viewModel.TransportKind) { FontWeight = FontWeights.SemiBold });
             _transportText.Inlines.Add(new Run("   |   ") { Foreground = SettingsStyles.NeutralDot });
             _transportText.Inlines.Add(new Run(SettingsText.Text("settings.general.port", "Port") + ": "));
             _transportText.Inlines.Add(new Run(_viewModel.PortText) { FontWeight = FontWeights.SemiBold });
-            _copyPort.IsEnabled = _viewModel.CanCopyPort;
             _copyPort.ToolTip = _viewModel.CanCopyPort ? null : SettingsText.Text("settings.footer.portUnavailable", "Port is not available");
         }
 
@@ -843,7 +794,8 @@ namespace RvtMcp.Plugin.Views.Settings
         /// anything without a row falls back to the footer.</summary>
         private void UpdateErrors()
         {
-            var messages = new Dictionary<string, string>(_applyErrors, StringComparer.Ordinal);
+            var messages = _viewModel.LastApplyReport == null ? new Dictionary<string, string>(StringComparer.Ordinal)
+                : new Dictionary<string, string>(_viewModel.LastApplyReport.FieldErrors, StringComparer.Ordinal);
             var warning = _viewModel.ImmediateWarning;
             var warningKey = _viewModel.ImmediateWarningKey ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(warning) && !messages.ContainsKey(warningKey))
@@ -861,9 +813,6 @@ namespace RvtMcp.Plugin.Views.Settings
         private void UpdateFooter()
         {
             var dirty = _viewModel.IsDirty;
-            if (dirty) _feedback = null;
-            _apply.IsEnabled = dirty;
-            _discard.IsEnabled = dirty;
             _footerDot.Visibility = dirty ? Visibility.Visible : Visibility.Collapsed;
             if (!string.IsNullOrWhiteSpace(_footerError))
             {
@@ -872,7 +821,7 @@ namespace RvtMcp.Plugin.Views.Settings
             }
             else
             {
-                _footerText.Text = dirty ? SettingsText.Text("settings.footer.unsaved", "Unsaved changes") : (_feedback ?? string.Empty);
+                _footerText.Text = dirty ? SettingsText.Text("settings.footer.unsaved", "Unsaved changes") : (_viewModel.Feedback ?? string.Empty);
                 _footerText.Foreground = SettingsStyles.Secondary;
             }
         }
@@ -998,6 +947,9 @@ namespace RvtMcp.Plugin.Views.Settings
             _tabs.SelectionChanged -= OnTabsSelectionChanged;
             ToolCatalogStore.Changed -= OnCatalogStoreChanged;
             PreviewKeyDown -= OnPreviewKeyDown;
+            foreach (var control in _boundControls) BindingOperations.ClearAllBindings(control);
+            _boundControls.Clear();
+            DataContext = null;
             _viewModel.Dispose();
             _toolsViewModel.Dispose();
         }

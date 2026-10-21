@@ -144,7 +144,8 @@ internal static class WarningPolicySettingsChecks
         .Single(control => AutomationProperties.GetName(control) == "Warning policy");
     private static void Click(SettingsWindow window, string text)
     {
-        Children<Button>(window).Single(button => Equals(button.Content, text)).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+        typeof(Button).GetMethod("OnClick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .Invoke(Children<Button>(window).Single(button => Equals(button.Content, text)), null);
         Pump();
     }
     private static IEnumerable<T> Children<T>(DependencyObject root) where T : DependencyObject

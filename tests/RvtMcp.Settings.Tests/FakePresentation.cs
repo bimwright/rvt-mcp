@@ -1,4 +1,6 @@
 using System;
+using System.Windows.Input;
+using RvtMcp.Plugin.Presentation;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -16,6 +18,24 @@ internal sealed class FakeSettings : ISettingsPresentation
     public bool IsWarningPolicyWriteDisabled => false;
     public string WarningPolicy { get => _warningPolicy; set { _warningPolicy = value; Changed(); } }
 
+    public FakeSettings()
+    {
+        ApplyCommand = new RelayCommand(() => Apply(), () => IsDirty);
+        DiscardCommand = new RelayCommand(Cancel, () => IsDirty);
+        RestartListenerCommand = new RelayCommand(RestartListener, () => IsListenerRunning);
+        CopyPortCommand = new RelayCommand(CopyPort, () => CanCopyPort);
+        ResetToastPositionCommand = new RelayCommand(() => SetToastPosition(ToastPosition.WithOffset(null, null)), () => ToastEnabled && ToastPosition.HasOffset);
+    }
+    public ICommand ApplyCommand { get; }
+    public ICommand DiscardCommand { get; }
+    public ICommand RestartListenerCommand { get; }
+    public ICommand CopyPortCommand { get; }
+    public ICommand ResetToastPositionCommand { get; }
+    public SettingsApplyReport LastApplyReport { get; private set; }
+    public string Feedback { get; private set; }
+    public bool ToastRight { get => ToastPosition.Right; set => SetToastPosition(ToastPosition.WithCorner(value, ToastBottom)); }
+    public bool ToastBottom { get => ToastPosition.Bottom; set => SetToastPosition(ToastPosition.WithCorner(ToastRight, value)); }
+    public bool ToastDragEnabled { get => ToastPosition.DragEnabled; set => SetToastPosition(ToastPosition.WithDrag(value)); }
     public int SavedIdle = 20;
     public bool SavedCache;
     public bool SavedPersist;
@@ -33,11 +53,14 @@ internal sealed class FakeSettings : ISettingsPresentation
     public int LanguageChangedSubscribers => LanguageChanged?.GetInvocationList().Length ?? 0;
 
     public SettingsSnapshot Snapshot { get; } = new SettingsSnapshot { LocaleSource = "Saved setting", LocaleEffective = "en" };
-    public string SelectedLanguage { get; private set; } = "auto";
+    private string _language = "auto";
+    public string SelectedLanguage { get => _language; set { if (_language != value) { _language = value; Changed(); } } }
     public string EffectiveLanguage => "en";
     public bool IsLanguageWriteDisabled => false;
-    public bool ToastEnabled { get; private set; } = true;
-    public bool ShowBranding { get; private set; }
+    private bool _toast = true;
+    public bool ToastEnabled { get => _toast; set { if (_toast != value) { _toast = value; Changed(); } } }
+    private bool _branding;
+    public bool ShowBranding { get => _branding; set { if (_branding != value) { _branding = value; Changed(); } } }
     public RvtMcp.Plugin.ToastPositionOptions ToastPosition { get; private set; } = new RvtMcp.Plugin.ToastPositionOptions();
     public int ToastIdleSeconds { get => _idle; set { _idle = value; Changed(); } }
     public bool CacheSendCodeBodies { get => _cache; set { _cache = value; Changed(); } }
@@ -48,7 +71,8 @@ internal sealed class FakeSettings : ISettingsPresentation
     public string ImmediateWarningKey { get; private set; }
     public string RevitYear { get; set; } = "2024";
     public string TransportKind { get; set; } = "TCP";
-    public bool IsListenerRunning { get; set; } = true;
+    private bool _running = true;
+    public bool IsListenerRunning { get => _running; set { if (_running != value) { _running = value; if (!value) IsClientConnected = false; Changed(); } } }
     public bool IsClientConnected { get; set; } = true;
     public string ConnectionState => IsClientConnected ? "Connected" : IsListenerRunning ? "Waiting for MCP client" : "Listener stopped";
     public bool CanCopyPort => TransportKind == "TCP" && IsListenerRunning;
@@ -125,12 +149,16 @@ internal sealed class FakeSettings : ISettingsPresentation
         if (_persist != SavedPersist) Commit("persistSendCodeBodies", () => SavedPersist = _persist);
         if (_hours != SavedHours) Commit("persistSendCodeBodiesHours", () => SavedHours = _hours);
         if (_warningPolicy != SavedWarningPolicy) Commit("warningPolicy", () => SavedWarningPolicy = _warningPolicy);
+        LastApplyReport = report;
+        Feedback = report.Succeeded ? "Applied" : null;
         Changed();
         return report;
     }
 
     public void Cancel()
     {
+        LastApplyReport = null;
+        Feedback = null;
         _idle = SavedIdle;
         _cache = SavedCache;
         _persist = SavedPersist;
@@ -149,7 +177,13 @@ internal sealed class FakeSettings : ISettingsPresentation
     public void RaiseConnectionChanged() => Changed();
     public void RaiseLanguageChanged() => LanguageChanged?.Invoke(this, EventArgs.Empty);
 
-    private void Changed() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+    private void Changed()
+    {
+        if (IsDirty) Feedback = null;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+        foreach (var command in new[] { ApplyCommand, DiscardCommand, RestartListenerCommand, CopyPortCommand, ResetToastPositionCommand })
+            (command as RelayCommand)?.RaiseCanExecuteChanged();
+    }
 
     public void Dispose() => Disposed = true;
 }

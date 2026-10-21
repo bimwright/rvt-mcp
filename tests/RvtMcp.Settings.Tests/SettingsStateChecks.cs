@@ -12,6 +12,9 @@ internal static class SettingsStateChecks
         using (var model = new SettingsViewModel(runtime))
         {
             Expect(!model.IsDirty && runtime.Reads == 1 && runtime.Writes == 0, "load only reads");
+            Expect(!model.ApplyCommand.CanExecute(null) && !model.DiscardCommand.CanExecute(null), "clean commands are unavailable");
+            model.ApplyCommand.Execute(null);
+            Expect(runtime.Writes == 0, "disabled command cannot force a save");
             var changes = 0;
             model.PropertyChanged += (s, e) => changes++;
             model.ToastIdleSeconds = 20;
@@ -22,13 +25,15 @@ internal static class SettingsStateChecks
             runtime.ApplyResult.Applied.Add("toastIdleSeconds");
             runtime.ApplyResult.Failed.Add("cache failed");
             runtime.ApplyResult.FieldErrors["cacheSendCodeBodies"] = "cache failed";
-            var report = model.Apply();
+            Expect(model.ApplyCommand.CanExecute(null), "editing enables Apply");
+            model.ApplyCommand.Execute(null);
+            var report = model.LastApplyReport;
             Expect(!report.Succeeded && model.IsDirty && model.CacheSendCodeBodies, "partial save retains failed field");
             Expect(runtime.LastChanges.ToastIdleSeconds == 30 && runtime.LastChanges.CacheSendCodeBodies == true
                 && runtime.LastChanges.PersistSendCodeBodies == null && runtime.LastChanges.WarningPolicy == null, "patch contains only edited fields");
             runtime.ApplyResult = new SettingsApplyReport();
             runtime.ApplyResult.Applied.Add("cacheSendCodeBodies");
-            model.Apply();
+            model.ApplyCommand.Execute(null);
             Expect(runtime.LastChanges.ToastIdleSeconds == null && runtime.LastChanges.CacheSendCodeBodies == true
                 && !model.IsDirty && runtime.Writes == 2, "retry writes failed field once and clears dirty");
             model.ToastIdleSeconds = 60;
@@ -88,6 +93,7 @@ internal static class SettingsStateChecks
         var lateLanguage = observedRuntime.LanguageCallback;
         observed.Dispose();
         observed.Dispose();
+        Expect(!observed.ApplyCommand.CanExecute(null) && !observed.CopyPortCommand.CanExecute(null), "disposed actions are unavailable");
         var afterDispose = notified;
         latePosition?.Invoke(false);
         lateLanguage?.Invoke(null, EventArgs.Empty);

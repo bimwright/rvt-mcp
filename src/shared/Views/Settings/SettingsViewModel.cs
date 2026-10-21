@@ -1,4 +1,5 @@
 using System;
+using System.Windows.Input;
 using RvtMcp.Plugin.Presentation;
 using RvtMcp.Plugin.Presentation.Settings;
 using RvtMcp.Plugin.Localization;
@@ -38,6 +39,12 @@ namespace RvtMcp.Plugin.Views.Settings
         public SettingsViewModel(ISettingsRuntime runtime)
         {
             _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            ApplyCommand = new RelayCommand(() => Apply(), () => !_disposed && IsDirty);
+            DiscardCommand = new RelayCommand(Cancel, () => !_disposed && IsDirty);
+            RestartListenerCommand = new RelayCommand(RestartListener, () => !_disposed && IsListenerRunning);
+            CopyPortCommand = new RelayCommand(CopyPort, () => !_disposed && CanCopyPort);
+            ResetToastPositionCommand = new RelayCommand(() => SetToastPosition(ToastPosition.WithOffset(null, null)),
+                () => !_disposed && ToastEnabled && ToastPosition.HasOffset);
             try { ReloadReadOnly(); }
             catch { _runtime.Dispose(); throw; }
             _runtime.LanguageChanged += OnLanguageChanged;
@@ -48,13 +55,24 @@ namespace RvtMcp.Plugin.Views.Settings
         public event EventHandler LanguageChanged;
 
         public SettingsSnapshot Snapshot { get; private set; }
-        public string SelectedLanguage => _selectedLanguage;
+        public string SelectedLanguage { get => _selectedLanguage; set { if (value != null && value != _selectedLanguage) SetLanguage(value); } }
         public string EffectiveLanguage => _runtime.EffectiveLanguage;
         public bool HasEnvironmentLanguageOverride => _runtime.IsLanguageWriteDisabled;
         public bool IsLanguageWriteDisabled => HasEnvironmentLanguageOverride;
-        public bool ToastEnabled => _toastEnabled;
-        public bool ShowBranding => _showBranding;
+        public bool ToastEnabled { get => _toastEnabled; set { if (value != _toastEnabled) SetToastEnabled(value); } }
+        public bool ShowBranding { get => _showBranding; set { if (value != _showBranding) SetShowBranding(value); } }
         public ToastPositionOptions ToastPosition => _toastPosition;
+        public bool ToastRight { get => ToastPosition.Right; set { if (value != ToastRight) SetToastPosition(ToastPosition.WithCorner(value, ToastBottom)); } }
+        public bool ToastBottom { get => ToastPosition.Bottom; set { if (value != ToastBottom) SetToastPosition(ToastPosition.WithCorner(ToastRight, value)); } }
+        public bool ToastDragEnabled { get => ToastPosition.DragEnabled; set { if (value != ToastDragEnabled) SetToastPosition(ToastPosition.WithDrag(value)); } }
+        public ICommand ApplyCommand { get; }
+        public ICommand DiscardCommand { get; }
+        public ICommand RestartListenerCommand { get; }
+        public ICommand CopyPortCommand { get; }
+        public ICommand ResetToastPositionCommand { get; }
+        public SettingsApplyReport LastApplyReport { get; private set; }
+        public string Feedback { get; private set; }
+
         public int ToastIdleSeconds
         {
             get => _toastIdleSeconds;
@@ -91,7 +109,7 @@ namespace RvtMcp.Plugin.Views.Settings
         public bool IsDirty { get; private set; }
         public string ImmediateWarning { get; private set; }
         public string ImmediateWarningKey { get; private set; }
-        public bool IsListenerRunning => _runtime.IsListenerRunning;
+        public bool IsListenerRunning { get => _runtime.IsListenerRunning; set => SetListenerRunning(value); }
         public bool IsClientConnected => _runtime.IsClientConnected;
         public string RevitYear => Snapshot?.RevitYear ?? "-";
         public string TransportKind => _runtime.TransportKind;
@@ -168,6 +186,11 @@ namespace RvtMcp.Plugin.Views.Settings
             }
             IsDirty = _toastIdleDirty || _persistSendCodeBodiesHoursDirty || _persistSendCodeBodiesDirty || _cacheSendCodeBodiesDirty || _warningPolicyDirty;
             OnPropertyChanged(nameof(IsDirty));
+            LastApplyReport = result;
+            Feedback = result.Succeeded ? SettingsText.Text("settings.footer.applied", "Applied") : null;
+            OnPropertyChanged(nameof(LastApplyReport));
+            OnPropertyChanged(nameof(Feedback));
+            RefreshCommands();
             return result;
         }
 
@@ -177,6 +200,7 @@ namespace RvtMcp.Plugin.Views.Settings
             var persisted = _runtime.SetToastEnabled(enabled);
             SetImmediateResult("enableToast", persisted);
             OnPropertyChanged(nameof(ToastEnabled));
+            RefreshCommands();
             OnPropertyChanged(nameof(ImmediateWarning));
         }
 
@@ -194,7 +218,7 @@ namespace RvtMcp.Plugin.Views.Settings
             _toastPosition = options ?? new ToastPositionOptions();
             var persisted = _runtime.SetToastPosition(_toastPosition);
             SetImmediateResult("toastPosition", persisted);
-            OnPropertyChanged(nameof(ToastPosition));
+            NotifyPosition();
             OnPropertyChanged(nameof(ImmediateWarning));
         }
 
@@ -204,7 +228,7 @@ namespace RvtMcp.Plugin.Views.Settings
             if (_disposed) return;
             _toastPosition = _runtime.ToastPosition ?? _toastPosition;
             SetImmediateResult("toastPosition", saved);
-            OnPropertyChanged(nameof(ToastPosition));
+            NotifyPosition();
             OnPropertyChanged(nameof(ImmediateWarning));
         }
 
@@ -232,6 +256,8 @@ namespace RvtMcp.Plugin.Views.Settings
 
         public void Cancel()
         {
+            LastApplyReport = null;
+            Feedback = null;
             ReloadReadOnly();
         }
 
@@ -273,6 +299,7 @@ namespace RvtMcp.Plugin.Views.Settings
             OnPropertyChanged(nameof(TransportKind));
             OnPropertyChanged(nameof(PortText));
             OnPropertyChanged(nameof(CanCopyPort));
+            RefreshCommands();
         }
 
         public void CopyPort()
@@ -304,6 +331,7 @@ namespace RvtMcp.Plugin.Views.Settings
             if (_disposed) return;
             _toastEnabled = _runtime.ToastEnabled;
             OnPropertyChanged(nameof(ToastEnabled));
+            RefreshCommands();
         }
 
         private void NotifyAll()
@@ -314,6 +342,7 @@ namespace RvtMcp.Plugin.Views.Settings
             OnPropertyChanged(nameof(ConnectionState));
             OnPropertyChanged(nameof(PortText));
             OnPropertyChanged(nameof(CanCopyPort));
+            RefreshCommands();
         }
 
         private void SetStaged<T>(ref T field, T value, ref bool dirty, string name)
@@ -326,8 +355,29 @@ namespace RvtMcp.Plugin.Views.Settings
             else if (name == nameof(CacheSendCodeBodies)) dirty = !Equals(value, _baselineCacheSendCodeBodies);
             else if (name == nameof(WarningPolicy)) dirty = !Equals(value, _baselineWarningPolicy);
             IsDirty = _toastIdleDirty || _persistSendCodeBodiesDirty || _persistSendCodeBodiesHoursDirty || _cacheSendCodeBodiesDirty || _warningPolicyDirty;
+            if (IsDirty) Feedback = null;
             OnPropertyChanged(name);
             OnPropertyChanged(nameof(IsDirty));
+            OnPropertyChanged(nameof(Feedback));
+            RefreshCommands();
+        }
+
+        private void NotifyPosition()
+        {
+            OnPropertyChanged(nameof(ToastPosition));
+            OnPropertyChanged(nameof(ToastRight));
+            OnPropertyChanged(nameof(ToastBottom));
+            OnPropertyChanged(nameof(ToastDragEnabled));
+            RefreshCommands();
+        }
+
+        private void RefreshCommands()
+        {
+            ((RelayCommand)ApplyCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)DiscardCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)RestartListenerCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)CopyPortCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)ResetToastPositionCommand).RaiseCanExecuteChanged();
         }
 
         public void Dispose()
@@ -338,6 +388,7 @@ namespace RvtMcp.Plugin.Views.Settings
             _runtime.ToastEnabledChanged -= OnToastEnabledChanged;
             _runtime.PositionSaved -= OnToastPositionSaved;
             _runtime.Dispose();
+            RefreshCommands();
         }
     }
 }
