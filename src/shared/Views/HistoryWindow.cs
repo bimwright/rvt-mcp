@@ -15,7 +15,6 @@ namespace RvtMcp.Plugin.Views
         private readonly HistoryShellViewModel _vm;
         private readonly ActivityHistoryView _activitiesView;
         private readonly FailureIssuesView _issuesView;
-        private readonly LegacyIssuesState _issuesState;
         private readonly TabControl _tabs;
         private readonly TabItem _activityTab, _issuesTab;
         private readonly TextBlock _shellStatus;
@@ -23,9 +22,13 @@ namespace RvtMcp.Plugin.Views
         private bool _shutdown, _disposed;
 
         public HistoryWindow(IHistoryRuntime runtime, IHistoryDialogs dialogs = null)
+            : this(runtime, dialogs, new FailureIssuesView()) { }
+
+        internal HistoryWindow(IHistoryRuntime runtime, IHistoryDialogs dialogs, FailureIssuesView issuesView)
         {
+            _issuesView = issuesView ?? throw new ArgumentNullException(nameof(issuesView));
             _vm = new HistoryShellViewModel(new ActivityHistoryViewModel(runtime,
-                dialogs ?? new Infrastructure.UI.HistoryDialogs(this)), _issuesState = new LegacyIssuesState());
+                dialogs ?? new Infrastructure.UI.HistoryDialogs(this)), _issuesView.ViewModel);
             DataContext = _vm;
             var area = SystemParameters.WorkArea;
             MinWidth = Math.Min(960, area.Width);
@@ -40,8 +43,6 @@ namespace RvtMcp.Plugin.Views
             Resources.MergedDictionaries.Add(HistoryChrome.TabDictionary());
             ScrollBarFadeBehavior.SetIsEnabled(this, true);
             _activitiesView = new ActivityHistoryView(_vm.Activities);
-            _issuesView = new FailureIssuesView();
-            _issuesView.ShellStatusChanged += OnIssuesStatus;
             _activityTab = new TabItem { Content = _activitiesView };
             _issuesTab = new TabItem { Content = _issuesView };
             _tabs = new TabControl();
@@ -77,11 +78,12 @@ namespace RvtMcp.Plugin.Views
 
         public void ShowIssues()
         {
-            _vm.SelectedTab = HistoryTab.Issues;
-            if (_issuesView.IsLoaded) _issuesView.Refresh();
+            if (_vm.SelectedTab == HistoryTab.Issues)
+            {
+                if (_issuesView.IsLoaded) _issuesView.Refresh();
+            }
+            else _vm.SelectedTab = HistoryTab.Issues;
         }
-        private void OnIssuesStatus(object sender, EventArgs e) => _issuesState.Update(_issuesView.ShellStatusText,
-            ReferenceEquals(_issuesView.ShellStatusBrush, Brushes.Firebrick) ? UiTone.Error : UiTone.Neutral);
         private void OnActivitiesChanged(object sender, PropertyChangedEventArgs e)
         {
             if (!_disposed && e.PropertyName == nameof(ActivityHistoryViewModel.LanguageVersion)) ApplyLocalization();
@@ -116,10 +118,10 @@ namespace RvtMcp.Plugin.Views
             if (_disposed) return;
             _disposed = true;
             IsVisibleChanged -= OnVisibleChanged;
-            _issuesView.ShellStatusChanged -= OnIssuesStatus;
             _vm.PropertyChanged -= OnShellChanged;
             _vm.Activities.PropertyChanged -= OnActivitiesChanged;
             _activitiesView.Dispose();
+            _issuesView.Dispose();
             BindingOperations.ClearAllBindings(_tabs);
             BindingOperations.ClearAllBindings(_shellStatus);
             DataContext = null;
@@ -129,12 +131,6 @@ namespace RvtMcp.Plugin.Views
         {
             var brush = new SolidColorBrush(Color.FromRgb(r, g, b)); brush.Freeze(); return brush;
         }
-        // Temporary bridge while the existing Issues tab moves in I1/I2; removed at HI integration.
-        private sealed class LegacyIssuesState : StatusViewModel
-        {
-            public void Update(string text, UiTone tone) => SetStatus(text, tone);
-            public override void Dispose() { }
-        }
         private sealed class TabIndexConverter : IValueConverter
         {
             public object Convert(object value, Type type, object parameter, System.Globalization.CultureInfo culture) => (int)(HistoryTab)value;
@@ -143,7 +139,7 @@ namespace RvtMcp.Plugin.Views
         }
         private sealed class ToneConverter : IValueConverter
         {
-            public object Convert(object value, Type type, object parameter, System.Globalization.CultureInfo culture) => Equals(value, UiTone.Error) ? Brushes.Firebrick : Brushes.DimGray;
+            public object Convert(object value, Type type, object parameter, System.Globalization.CultureInfo culture) => Equals(value, UiTone.Error) ? Brushes.Firebrick : Equals(value, UiTone.Review) ? FrozenBrush(0x9A, 0x34, 0x12) : Brushes.DimGray;
             public object ConvertBack(object value, Type type, object parameter, System.Globalization.CultureInfo culture) => Binding.DoNothing;
         }
     }

@@ -18,7 +18,7 @@ internal static class FailureModelPickerDiagnostics
         Directory.CreateDirectory(output);
         var assembly = Assembly.LoadFrom(Path.GetFullPath(pluginPath));
         var view = assembly.GetType("RvtMcp.Plugin.Views.FailureIssuesView", true);
-        var rowType = view.GetNestedType("ModelRow", BindingFlags.NonPublic);
+        var rowType = typeof(RvtMcp.Plugin.Presentation.Issues.ModelRow);
         var modelType = assembly.GetType("RvtMcp.Failures.FailureIssueModel", true);
         var contextType = assembly.GetType("RvtMcp.Plugin.Views.FailureIssuesContext", true);
         object Context(string scope)
@@ -90,7 +90,7 @@ internal static class FailureModelPickerDiagnostics
             var text = label + " open=" + picker.IsDropDownOpen + " editorFocus=" + searchBox.IsKeyboardFocused
                 + " selected=" + (picker.SelectedItem == null ? "null" : Get(picker.SelectedItem, "Prefix"))
                 + "\n" + string.Join("\n", containers.Select(item => Get(item.Content, "Prefix")
-                    + ": bold=" + Get(item.Content, "LabelWeight") + " preview=" + Preview(item.Content)
+                    + ": bold=" + Get(item.Content, "IsOpen") + " preview=" + Preview(item.Content)
                     + " nativeHighlight=" + item.IsHighlighted + " focus=" + item.IsKeyboardFocusWithin));
             log.Add(text); status.Text = text; File.WriteAllLines(Path.Combine(output, "trace.txt"), log);
         }
@@ -108,7 +108,7 @@ internal static class FailureModelPickerDiagnostics
         {
             Pump();
             picker.IsDropDownOpen = true; Pump(); Record("opened");
-            Check((FontWeight)Get(rows[2], "LabelWeight") == FontWeights.Normal, "different Revit year must not appear open/bold");
+            Check(!(bool)Get(rows[2], "IsOpen"), "different Revit year must not appear open/bold");
             Key(searchBox, System.Windows.Input.Key.Down); Pump(); Record("down");
             Check(Preview(rows[2]) && !Preview(rows[1]), "Down must move the single highlight to the next row");
             picker.IsDropDownOpen = false; Pump();

@@ -74,9 +74,9 @@ internal static class HistoryRegressionChecks
                 Field<CheckBox>(view, "_verified").IsChecked = true;
                 foreach (var name in Actions)
                     Expect(Field<Button>(view, name).IsEnabled, name + " must allow a reviewed selected issue with context " + (context.ModelScopeKey ?? "none"));
-                Expect(!view.ShellStatusText.Contains(L.T("security.failure.currentModelRequired")), "another active model must not produce an activation-required hint");
+                Expect(!view.ViewModel.StatusText.Contains(L.T("security.failure.currentModelRequired")), "another active model must not produce an activation-required hint");
                 Field<TextBox>(view, "_reason").Text = "Reviewed B";
-                Field<Button>(view, "_rework").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+                typeof(Button).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(Field<Button>(view, "_rework"), null);
                 var saved = FailureControl.LastDecision;
                 Expect(saved != null && saved.ModelScopeKey == "selected-b" && saved.Action == "rework"
                     && saved.VerifiedModel && saved.Reason == "Reviewed B", "click saves the selected issue, not the active model");

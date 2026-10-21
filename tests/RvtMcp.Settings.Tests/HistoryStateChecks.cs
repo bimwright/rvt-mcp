@@ -116,7 +116,7 @@ internal static class HistoryStateChecks
         public bool ConfirmNewSession() => Accept;
         public bool ConfirmRerun(bool redacted) { LastRedacted = redacted; RerunConfirms++; return Accept; }
     }
-    private sealed class Runtime : IHistoryRuntime
+    internal sealed class Runtime : IHistoryRuntime
     {
         public ObservableCollection<McpCallEntry> Entries { get; } = new ObservableCollection<McpCallEntry>();
         public event EventHandler LanguageChanged;

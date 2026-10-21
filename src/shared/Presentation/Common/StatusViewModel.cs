@@ -3,7 +3,7 @@ using System.ComponentModel;
 
 namespace RvtMcp.Plugin.Presentation
 {
-    public enum UiTone { Neutral, Error }
+    public enum UiTone { Neutral, Error, Review }
 
     public interface IHistoryTabState : INotifyPropertyChanged, IDisposable
     {

@@ -19,6 +19,7 @@ namespace RvtMcp.Plugin.Infrastructure.UI
         private readonly Autodesk.Revit.UI.ExternalEvent _externalEvent;
         private readonly Dispatcher _dispatcher;
         private bool _active, _disposed;
+        private int _generation;
 
         public HistoryRuntime(McpSessionLog log, CommandDispatcher commands, McpEventHandler handler,
             Autodesk.Revit.UI.ExternalEvent externalEvent)
@@ -29,11 +30,12 @@ namespace RvtMcp.Plugin.Infrastructure.UI
         public ObservableCollection<McpCallEntry> Entries => _log.Entries;
         public event EventHandler LanguageChanged;
         public int LanguageVersion => L.Version;
-        public void Activate() { if (!_active && !_disposed) { _active = true; L.Changed += OnLanguageChanged; } }
-        public void Deactivate() { if (_active) { _active = false; L.Changed -= OnLanguageChanged; } }
+        public void Activate() { if (!_active && !_disposed) { _active = true; _generation++; L.Changed += OnLanguageChanged; } }
+        public void Deactivate() { if (_active) { _active = false; _generation++; L.Changed -= OnLanguageChanged; } }
         private void OnLanguageChanged(object sender, EventArgs e)
         {
-            Action publish = () => { if (_active && !_disposed) LanguageChanged?.Invoke(this, EventArgs.Empty); };
+            var generation = _generation;
+            Action publish = () => { if (_active && !_disposed && generation == _generation) LanguageChanged?.Invoke(this, EventArgs.Empty); };
             try { if (_dispatcher.CheckAccess()) publish(); else _dispatcher.BeginInvoke(publish); } catch { }
         }
         public void RefreshSummaries() { foreach (var entry in Entries) McpSessionLog.RefreshSummary(entry); }
