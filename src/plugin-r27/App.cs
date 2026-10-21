@@ -115,7 +115,7 @@ namespace RvtMcp.Plugin
             application.ControlledApplication.DocumentSavedAs -= Survey.SurveyHistoryBridge.Invalidate;
             application.Idling -= OnIdling;
             Localization.LocalizationHost.ShutdownPlugin();
-            _historyWindow?.Close();
+            _historyWindow?.CloseForShutdown();
             _bakeInboxWindow?.Close();
             _settingsWindow?.CloseForShutdown();
             _updateNotice?.Shutdown();
@@ -184,6 +184,7 @@ namespace RvtMcp.Plugin
         {
             if (_historyWindow == null || !_historyWindow.IsLoaded)
             {
+                _historyWindow?.Dispose();
                 _historyWindow = new HistoryWindow(SessionLog, _dispatcher, _handler, _externalEvent);
                 var hwnd = _ribbonApplication?.MainWindowHandle ?? IntPtr.Zero;
                 if (hwnd != IntPtr.Zero) new System.Windows.Interop.WindowInteropHelper(_historyWindow).Owner = hwnd;

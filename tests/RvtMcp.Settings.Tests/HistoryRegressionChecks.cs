@@ -275,8 +275,18 @@ internal static class HistoryRegressionChecks
         finally { window.Close(); }
     }
 
-    private static T Field<T>(object value, string field) => (T)value.GetType().GetField(field, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(value);
-    private static object Call(object value, string method, params object[] args) => value.GetType().GetMethod(method, BindingFlags.NonPublic | BindingFlags.Instance).Invoke(value, args);
+    private static T Field<T>(object value, string field)
+    {
+        var info = value.GetType().GetField(field, BindingFlags.NonPublic | BindingFlags.Instance);
+        if (info == null && value is HistoryWindow) return Field<T>(Field<ActivityHistoryView>(value, "_activitiesView"), field);
+        return (T)info.GetValue(value);
+    }
+    private static object Call(object value, string method, params object[] args)
+    {
+        var info = value.GetType().GetMethod(method, BindingFlags.NonPublic | BindingFlags.Instance);
+        if (info == null && value is HistoryWindow) return Call(Field<ActivityHistoryView>(value, "_activitiesView"), method, args);
+        return info.Invoke(value, args);
+    }
     private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
     private static void Expect(bool condition, string message) { if (!condition) throw new Exception(message); }
 }

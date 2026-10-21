@@ -18,6 +18,11 @@ internal static class Program
     {
         try
         {
+            if (args.Length == 1 && args[0] == "--history-state-only")
+            {
+                HistoryStateChecks.Run();
+                return 0;
+            }
             if (args.Length == 1 && args[0] == "--tools-state-only")
             {
                 ToolsStateChecks.Run();
@@ -59,6 +64,7 @@ internal static class Program
             }
             SettingsStateChecks.Run();
             ToolsStateChecks.Run();
+            HistoryStateChecks.Run();
             HistoryRegressionChecks.Run();
             WarningPolicySettingsChecks.Run();
             CheckFailureReset(null);

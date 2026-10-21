@@ -6,6 +6,13 @@
   </PropertyGroup>
   <!-- Production Settings/History views on an STA dispatcher; host and ledger facades stay in memory. -->
   <ItemGroup>
+    <Compile Include="../../src/shared/Presentation/Common/AsyncRelayCommand.cs" Link="Presentation/AsyncRelayCommand.cs" />
+    <Compile Include="../../src/shared/Presentation/Common/StatusViewModel.cs" Link="Presentation/StatusViewModel.cs" />
+    <Compile Include="../../src/shared/Presentation/History/*.cs" Link="Presentation/History/%(Filename)%(Extension)" />
+    <Compile Include="../../src/shared/Infrastructure/UI/HistoryRuntime.cs" Link="HistoryRuntime.cs" />
+    <Compile Include="../../src/shared/Infrastructure/UI/HistoryDialogs.cs" Link="HistoryDialogs.cs" />
+    <Compile Include="../../src/shared/Views/ActivityHistoryView.cs" Link="ActivityHistoryView.cs" />
+    <Compile Include="../../src/shared/Views/HistoryWindow.Host.cs" Link="HistoryWindow.Host.cs" />
     <Compile Include="../../src/shared/Presentation/Settings/IToolsCatalogSource.cs" Link="Presentation/IToolsCatalogSource.cs" />
     <Compile Include="../../src/shared/Views/Settings/ToolsViewModel.cs" Link="Settings/ToolsViewModel.cs" />
     <Compile Include="../../src/shared/Presentation/Common/ObservableObject.cs" Link="Presentation/ObservableObject.cs" />

@@ -18,7 +18,7 @@ namespace RvtMcp.Tests
             var source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", pluginFolder, "App.cs"));
 
             Assert.Contains("new HistoryWindow(", source);
-            Assert.Contains("_historyWindow?.Close()", source);
+            Assert.Contains("_historyWindow?.CloseForShutdown()", source);
             Assert.DoesNotContain("History window is not yet implemented", source);
         }
 
