@@ -122,6 +122,7 @@ internal static class IssuesStateChecks
 
     private static void CheckSharedWindow()
     {
+        using var bindings = new WpfBindingErrors();
         var issues = new Runtime();
         var activities = new HistoryStateChecks.Runtime();
         var view = new FailureIssuesView(issues, new Dialogs());
@@ -157,6 +158,7 @@ internal static class IssuesStateChecks
         finally { window.CloseForShutdown(); pump(); }
         Expect(issues.Disposals == 1 && issues.Subscribers == 0 && activities.Disposals == 1 && activities.Subscribers == 0,
             "terminal shared-window close disposes both runtimes and observations");
+        bindings.AssertClean();
         Console.WriteLine("PASS: shared History/Issues window activation, scope/year, status isolation and terminal cleanup");
     }
 

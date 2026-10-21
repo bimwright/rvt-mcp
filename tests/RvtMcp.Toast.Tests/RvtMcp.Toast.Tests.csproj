@@ -6,6 +6,10 @@
   </PropertyGroup>
   <!-- Real WPF windows on an STA dispatcher, independent of Revit. -->
   <ItemGroup>
+    <Compile Include="../Shared/WpfBindingErrors.cs" Link="WpfBindingErrors.cs" />
+    <Compile Include="../../src/shared/Presentation/Toast/ToastCardViewModel.cs" Link="Presentation/ToastCardViewModel.cs" />
+    <Compile Include="../../src/shared/Presentation/Common/ObservableObject.cs" Link="Presentation/ObservableObject.cs" />
+    <Compile Include="../../src/shared/Presentation/Common/RelayCommand.cs" Link="Presentation/RelayCommand.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastActivityEntry.cs" Link="ToastActivityEntry.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastActivityLog.cs" Link="ToastActivityLog.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastActivityPanel.cs" Link="ToastActivityPanel.cs" />

@@ -6,6 +6,7 @@
   </PropertyGroup>
   <!-- Production Settings/History views on an STA dispatcher; host and ledger facades stay in memory. -->
   <ItemGroup>
+    <Compile Include="../Shared/WpfBindingErrors.cs" Link="WpfBindingErrors.cs" />
     <Compile Include="../../src/shared/Presentation/Issues/*.cs" Link="Presentation/Issues/%(Filename)%(Extension)" />
     <Compile Include="../../src/shared/Infrastructure/UI/IssuesRuntime.cs" Link="IssuesRuntime.cs" />
     <Compile Include="../../src/shared/Infrastructure/UI/IssuesDialogs.cs" Link="IssuesDialogs.cs" />

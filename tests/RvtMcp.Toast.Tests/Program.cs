@@ -16,6 +16,11 @@ internal static class Program
         {
             var en = RvtMcp.Plugin.Localization.EmbeddedCatalog.Load(typeof(Program).Assembly, "en");
             RvtMcp.Plugin.Localization.L.InitializeForTests(RvtMcp.Plugin.Localization.StringTable.Build("en", en, null, null));
+            if (args.Length == 1 && args[0] == "--card-state-only")
+            {
+                ToastCardStateChecks.Run();
+                return 0;
+            }
             if (args.Length == 1 && args[0] == "--hover-regression")
             {
                 HoverRegressionTests.Run();
@@ -43,6 +48,12 @@ internal static class Program
             }
             if (args.Length == 1 && args[0] == "--demo")
                 return ToastPreview.Run();
+            if (args.Length == 1 && args[0] == "--manager")
+            {
+                CheckSingleActivityCard();
+                CheckStatusAndClickLifecycle();
+                return 0;
+            }
             if (args.Length == 1 && args[0] == "--activity")
             {
                 RecentActivityVisualTests.Run();
@@ -54,6 +65,7 @@ internal static class Program
                 TimelineVisualTests.Run(args[1]);
                 return 0;
             }
+            ToastCardStateChecks.Run();
             CheckCompactBody();
             CheckCloseHover();
             CheckCompactLayout();

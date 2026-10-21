@@ -5,6 +5,8 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Data;
+using RvtMcp.Plugin.Presentation.Toast;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -57,7 +59,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly TextBlock _brandShine;
         private readonly Grid _brandRow;
         private readonly Grid _brandCell;
-        private readonly string _instanceIdentity;
+        private readonly ToastCardViewModel _card;
         private readonly Border _detailsRow;
         private readonly ToastActivityPanel _detailsPanel;
         private readonly TranslateTransform _detailsShift = new TranslateTransform(0, -6);
@@ -98,10 +100,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private EventHandler _sourceInitializedHandler;
         private EventHandler _closedHandler;
         private bool _isClosing;
-        private long _cardId;
         private Action<McpToastWindow, long> _activityClosed;
-        private Action<long> _activityDismissed;
-        private Action<long> _activityClicked;
         private Action<long> _activityPointerEntered;
         private Action<long> _activityPointerLeft;
         private bool _hasPointerPosition;
@@ -110,7 +109,6 @@ namespace RvtMcp.Plugin.Views.Toast
         private bool _closedCallbackRaised;
         private bool _handlersDetached;
         private bool _showBranding = true;
-        private ActivitySnapshot _lastSnapshot;
         private DockPanel _dragHeader;
         private bool _dragEnabled;
         private bool _alignRight;
@@ -127,9 +125,9 @@ namespace RvtMcp.Plugin.Views.Toast
         internal Func<Point, Point> ConstrainDrag { get; set; }
         internal Action<Point> DragCompleted { get; set; }
 
-        public McpToastViewModel ViewModel { get; private set; }
+        public McpToastViewModel ViewModel => _card.Payload;
 
-        public long CardId => _cardId;
+        public long CardId => _card.CardId;
 
         /// <summary>
         /// Activity-card constructor. The manager owns timing and lifecycle; this
@@ -147,16 +145,13 @@ namespace RvtMcp.Plugin.Views.Toast
             string instanceIdentity = null)
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
-            ViewModel = ToViewModel(snapshot);
-            _cardId = snapshot.CardId;
+            _card = new ToastCardViewModel(snapshot, string.IsNullOrWhiteSpace(instanceIdentity) ? BrandAssets.ProductName : instanceIdentity, onDismiss, onClick);
+            DataContext = _card;
             _activityClosed = onClosed;
-            _activityDismissed = onDismiss;
-            _activityClicked = onClick;
             _activityPointerEntered = onPointerEntered;
             _activityPointerLeft = onPointerLeft;
             _cursorPosition = cursorPosition ?? ReadCursorPosition;
             _motionEnabled = motionEnabled ?? (() => SystemParameters.ClientAreaAnimation);
-            _instanceIdentity = instanceIdentity;
 
             FontFamily = McpToastTheme.UiFont;
 
@@ -247,7 +242,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _closeHostMouseUpHandler = (_, e) =>
             {
                 e.Handled = true;
-                _activityDismissed?.Invoke(_cardId);
+                _card.DismissCommand.Execute(null);
             };
             closeHost.MouseLeftButtonUp += _closeHostMouseUpHandler;
             DockPanel.SetDock(closeHost, Dock.Right);
@@ -255,7 +250,7 @@ namespace RvtMcp.Plugin.Views.Toast
 
             _titleText = new TextBlock
             {
-                Text = IdentityTitle,
+                Text = _card.IdentityTitle,
                 FontWeight = FontWeights.SemiBold,
                 FontSize = 13,
                 Foreground = McpToastTheme.Text,
@@ -412,8 +407,9 @@ namespace RvtMcp.Plugin.Views.Toast
             content.Children.Add(_brandRow);
             ParkBrandRow();
 
-            ApplyActivitySnapshot(snapshot);
+            RenderCard();
 
+            BindCard();
             _root.Child = content;
             _root.Cursor = Cursors.Hand;
             Content = _root;
@@ -422,7 +418,7 @@ namespace RvtMcp.Plugin.Views.Toast
             {
                 var moved = PointerPositionChanged();
                 if (moved)
-                    _activityPointerEntered?.Invoke(_cardId);
+                    _activityPointerEntered?.Invoke(CardId);
                 _brandPointerOver = true;
                 if (moved)
                 {
@@ -439,7 +435,7 @@ namespace RvtMcp.Plugin.Views.Toast
                     return;
                 // The card opened under a still cursor, so MouseEnter did not count.
                 // This first real movement is the hover: pause idle as well as reveal the wordmark.
-                _activityPointerEntered?.Invoke(_cardId);
+                _activityPointerEntered?.Invoke(CardId);
                 _brandPointerMoved = true;
                 ScheduleBrandReveal();
                 ScheduleDetailsReveal();
@@ -448,7 +444,7 @@ namespace RvtMcp.Plugin.Views.Toast
             {
                 if (_dragPending || !PointerPositionChanged())
                     return;
-                _activityPointerLeft?.Invoke(_cardId);
+                _activityPointerLeft?.Invoke(CardId);
                 _brandPointerOver = false;
                 _brandPointerMoved = false;
                 HideBrand(immediate: false);
@@ -465,7 +461,7 @@ namespace RvtMcp.Plugin.Views.Toast
                     e.Handled = true;
                     return;
                 }
-                _activityClicked?.Invoke(_cardId);
+                _card.ClickCommand.Execute(null);
                 e.Handled = true;
             };
             MouseEnter += _mouseEnterHandler;
@@ -574,7 +570,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _dragStarted = false;
             CancelDetailsRevealTimer();
             CancelDetailsHideTimer();
-            _activityPointerEntered?.Invoke(_cardId);
+            _activityPointerEntered?.Invoke(CardId);
         }
 
         private Vector ScreenDelta(Point screenPoint)
@@ -638,7 +634,7 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private void ReconcileDragPointer()
         {
-            if (!IsMouseOver) _activityPointerLeft?.Invoke(_cardId);
+            if (!IsMouseOver) _activityPointerLeft?.Invoke(CardId);
             else
             {
                 _brandPointerOver = _brandPointerMoved = true;
@@ -650,9 +646,10 @@ namespace RvtMcp.Plugin.Views.Toast
         /// <summary>Reconcile the visible activity card without replaying enter animation.</summary>
         public void Update(ActivitySnapshot snapshot)
         {
-            if (snapshot == null || snapshot.CardId != _cardId)
+            if (_closedCallbackRaised || snapshot == null || snapshot.CardId != CardId)
                 return;
-            ApplyActivitySnapshot(snapshot);
+            _card.Apply(snapshot);
+            RenderCard();
         }
 
         /// <summary>
@@ -684,10 +681,11 @@ namespace RvtMcp.Plugin.Views.Toast
         /// </summary>
         public void RefreshLocalization()
         {
-            if (_closedCallbackRaised || _lastSnapshot == null)
+            if (_closedCallbackRaised)
                 return;
 
-            ApplyActivitySnapshot(_lastSnapshot, preserveSnapshot: true);
+            _card.RefreshLocalization();
+            RenderCard(preserveSnapshot: true);
             _detailsPanel.RefreshLocalization();
         }
 
@@ -740,7 +738,7 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             CancelDetailsHideTimer();
             if (_dragPending || !_brandPointerOver || !_brandPointerMoved || _closedCallbackRaised || _isClosing
-                || _lastSnapshot == null || _lastSnapshot.IsStatus || _lastSnapshot.RecentEntries.Count == 0)
+                || _card.IsStatus || _card.RecentEntries.Count == 0)
                 return;
             if (_detailsRevealed)
             {
@@ -767,15 +765,14 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private void BeginDetailsReveal()
         {
-            var snapshot = _lastSnapshot;
-            if (snapshot == null || snapshot.IsStatus || snapshot.RecentEntries.Count == 0)
+            if (_card.IsStatus || _card.RecentEntries.Count == 0)
                 return;
             var newReading = !_detailsRevealed;
             if (newReading)
             {
                 PrepareExpansion?.Invoke(157);
                 _detailsShift.Y = _growUp ? 6 : -6;
-                _detailsPanel.SetEntries(snapshot.RecentEntries);
+                _detailsPanel.SetEntries(_card.RecentEntries);
             }
             // New results refresh this view separately. A reversal/height retarget must
             // preserve its scroll position; only a genuinely new hover starts at the tail.
@@ -969,12 +966,6 @@ namespace RvtMcp.Plugin.Views.Toast
             _brandRow.Visibility = _showBranding ? Visibility.Hidden : Visibility.Collapsed;
         }
 
-        /// <summary>"rvt-mcp 2027": names the gateway and the Revit year, so cards from several
-        /// MCP gateways or Revit years running side by side are told apart.</summary>
-        private string IdentityTitle => string.IsNullOrWhiteSpace(_instanceIdentity)
-            ? BrandAssets.ProductName
-            : _instanceIdentity;
-
         private void CancelBrandRevealTimer()
         {
             if (_brandRevealTimer == null)
@@ -1099,69 +1090,54 @@ namespace RvtMcp.Plugin.Views.Toast
             BeginAnimation(OpacityProperty, fade);
         }
 
-        private void ApplyActivitySnapshot(ActivitySnapshot snapshot, bool preserveSnapshot = false)
+        private void BindCard()
         {
-            if (!preserveSnapshot)
-                _lastSnapshot = snapshot;
+            Bind(_titleText, TextBlock.TextProperty, nameof(ToastCardViewModel.IdentityTitle));
+            Bind(_titleText, ToolTipProperty, nameof(ToastCardViewModel.IdentityTitle));
+            Bind(_toolText, TextBlock.TextProperty, nameof(ToastCardViewModel.Title));
+            Bind(_toolText, ToolTipProperty, nameof(ToastCardViewModel.ToolTip));
+            Bind(_bodyText, TextBlock.TextProperty, nameof(ToastCardViewModel.Body));
+            Bind(_bodyText, ToolTipProperty, nameof(ToastCardViewModel.Body));
+            Bind(_iconText, TextBlock.TextProperty, nameof(ToastCardViewModel.Icon));
+            Bind(_thumbnailHost, ToolTipProperty, nameof(ToastCardViewModel.OpenImageLabel));
+            Bind(_successLabel, TextBlock.TextProperty, nameof(ToastCardViewModel.SuccessLabel));
+            Bind(_failedLabel, TextBlock.TextProperty, nameof(ToastCardViewModel.FailedLabel));
+            Bind(_captureLabel, TextBlock.TextProperty, nameof(ToastCardViewModel.CaptureLabel));
+            Bind(_counterRow, System.Windows.Automation.AutomationProperties.NameProperty, nameof(ToastCardViewModel.CounterAutomationText));
+            _counterRow.SetBinding(VisibilityProperty, new Binding(nameof(ToastCardViewModel.ShowCounters)) { Source = _card, Converter = new BooleanToVisibilityConverter() });
+            _bodyText.SetBinding(VisibilityProperty, new Binding(nameof(ToastCardViewModel.IsStatus)) { Source = _card, Converter = new BooleanToVisibilityConverter() });
+        }
+        private void Bind(FrameworkElement element, DependencyProperty property, string name) =>
+            element.SetBinding(property, new Binding(name) { Source = _card, Mode = BindingMode.OneWay });
 
-            ViewModel = ToViewModel(snapshot);
-            _root.BorderBrush = McpToastTheme.BuildAccentBrush(new McpToastViewModel { Success = !snapshot.HasFailure });
-            _iconText.Text = snapshot.LatestSuccess ? "\uE73E" : "\uE783";
-            _iconText.Foreground = snapshot.HasFailure ? McpToastTheme.Error : McpToastTheme.Primary;
-
-            _titleText.Text = IdentityTitle;
+        // Custom animated controls consume the same projection; their clocks and reader position belong to the View.
+        private void RenderCard(bool preserveSnapshot = false)
+        {
+            _root.BorderBrush = McpToastTheme.BuildAccentBrush(new McpToastViewModel { Success = !_card.HasFailure });
+            _iconText.Foreground = _card.HasFailure ? McpToastTheme.Error : McpToastTheme.Primary;
             var animate = !preserveSnapshot && IsVisible && _motionEnabled();
-            if (snapshot.IsStatus)
+            if (_card.IsStatus)
             {
-                var status = ResolveStatusText(snapshot);
-                _toolText.Text = status.Title;
-                _counterRow.Visibility = Visibility.Collapsed;
-                _bodyText.Visibility = Visibility.Visible;
-                _bodyText.Text = status.Body;
-                _bodyText.ToolTip = status.Body;
                 HideDetails(immediate: true);
                 ApplyThumbnail(null, animate);
             }
             else
             {
-                _toolText.Text = snapshot.Title ?? string.Empty;
-                _counterRow.Visibility = Visibility.Visible;
-                _bodyText.Visibility = Visibility.Collapsed;
-                _successLabel.Text = LocalizedOrFallback("toast.activity.success", "Success");
-                _failedLabel.Text = LocalizedOrFallback("toast.activity.failed", "Failed");
-                _captureLabel.Text = LocalizedOrFallback("toast.activity.capture", "Capture");
-                _successCount.SetValue(snapshot.Succeeded, McpToastTheme.Primary, animate);
-                _failedCount.SetValue(snapshot.Failed,
-                    snapshot.Failed > 0 ? McpToastTheme.Error : McpToastTheme.TextSecondary, animate);
-                _captureCount.SetValue(snapshot.Images, McpToastTheme.Text, animate);
-                // No auto-popup result tooltip: outcomes require a deliberate hover.
-                _counterRow.ToolTip = null;
+                _successCount.SetValue(_card.Succeeded, McpToastTheme.Primary, animate);
+                _failedCount.SetValue(_card.Failed, _card.Failed > 0 ? McpToastTheme.Error : McpToastTheme.TextSecondary, animate);
+                _captureCount.SetValue(_card.Images, McpToastTheme.Text, animate);
                 if (_detailsRevealed && !_isClosing)
                 {
                     var previousRows = Math.Min(ToastActivityPanel.VisibleEntryCount, _detailsPanel.Entries.Count);
-                    _detailsPanel.UpdateEntries(snapshot.RecentEntries);
+                    _detailsPanel.UpdateEntries(_card.RecentEntries);
                     var currentRows = Math.Min(ToastActivityPanel.VisibleEntryCount, _detailsPanel.Entries.Count);
-                    // The first/second incoming result may grow the viewport. Retarget from
-                    // the current animated height; never expose rows behind an old fixed clip.
-                    if (previousRows != currentRows && !_detailsHiding)
-                        BeginDetailsReveal();
+                    if (previousRows != currentRows && !_detailsHiding) BeginDetailsReveal();
                 }
-                if (_brandPointerOver && _brandPointerMoved)
-                    ScheduleDetailsReveal();
-                System.Windows.Automation.AutomationProperties.SetName(_counterRow,
-                    $"{snapshot.Succeeded} {_successLabel.Text}, {snapshot.Failed} {_failedLabel.Text}, {snapshot.Images} {_captureLabel.Text}");
-                ApplyThumbnail(snapshot.ImagePath, animate);
+                if (_brandPointerOver && _brandPointerMoved) ScheduleDetailsReveal();
+                ApplyThumbnail(_card.ThumbnailPath, animate);
             }
-
-            _titleText.ToolTip = _titleText.Text;
             _titleText.TextWrapping = TextWrapping.NoWrap;
             _titleText.TextTrimming = TextTrimming.CharacterEllipsis;
-            _toolText.ToolTip = snapshot.IsStatus
-                ? _toolText.Text + "\n" + _bodyText.Text
-                : snapshot.RecentEntries.Count > 0
-                    ? snapshot.RecentEntries[snapshot.RecentEntries.Count - 1].TooltipText
-                    : ToastActivityEntry.Compact(snapshot.Title, ToastActivityEntry.TitleLimit)
-                        + "\n" + ToastActivityEntry.Compact(snapshot.Body, ToastActivityEntry.BodyLimit);
         }
 
         /// <summary>
@@ -1239,7 +1215,6 @@ namespace RvtMcp.Plugin.Views.Toast
             _thumbnailImage.BeginAnimation(OpacityProperty, null);
             _thumbnailImage.Opacity = 1;
             _thumbnailImage.Source = bitmap;
-            _thumbnailHost.ToolTip = LocalizedOrFallback("toast.activity.open_image", "Open image");
 
             if (_thumbnailRow.Visibility != Visibility.Visible)
             {
@@ -1388,27 +1363,7 @@ namespace RvtMcp.Plugin.Views.Toast
             {
                 // Best-effort — the card still dismisses.
             }
-            _activityDismissed?.Invoke(_cardId);
-        }
-
-        private static ActivityStatusText ResolveStatusText(ActivitySnapshot snapshot)
-        {
-            if (snapshot?.StatusTextProvider != null)
-            {
-                try
-                {
-                    var localized = snapshot.StatusTextProvider();
-                    if (localized != null)
-                        return new ActivityStatusText(localized.Title ?? string.Empty, localized.Body ?? string.Empty);
-                }
-                catch
-                {
-                    // A status resolver is a localization convenience. Keep the
-                    // already-rendered copy if a reload fails or is interrupted.
-                }
-            }
-
-            return new ActivityStatusText(snapshot?.Title ?? string.Empty, snapshot?.Body ?? string.Empty);
+            _card.DismissCommand.Execute(null);
         }
 
         /// <summary>
@@ -1427,19 +1382,6 @@ namespace RvtMcp.Plugin.Views.Toast
             }
         }
 
-        private static McpToastViewModel ToViewModel(ActivitySnapshot snapshot)
-        {
-            if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
-            return new McpToastViewModel
-            {
-                Title = snapshot.Title,
-                Summary = snapshot.Body,
-                Detail = null,
-                Success = snapshot.LatestSuccess && !snapshot.HasFailure,
-                Kind = ToolActivityKind.Read
-            };
-        }
-
         private void NotifyClosed()
         {
             if (_closedCallbackRaised)
@@ -1447,15 +1389,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _closedCallbackRaised = true;
             var activityClosed = _activityClosed;
             DetachHandlers();
-            activityClosed?.Invoke(this, _cardId);
-        }
-
-        private static string LocalizedOrFallback(string key, string fallback)
-        {
-            var value = L.T(key);
-            return string.IsNullOrWhiteSpace(value) || string.Equals(value, key, StringComparison.Ordinal)
-                ? fallback
-                : value;
+            activityClosed?.Invoke(this, CardId);
         }
 
         private void DetachHandlers()
@@ -1483,7 +1417,10 @@ namespace RvtMcp.Plugin.Views.Toast
             _detailsRow.MouseLeftButtonUp -= _detailsUpHandler;
             HideDetails(immediate: true);
             _detailsPanel.SetEntries(Array.AsReadOnly(new ToastActivityEntry[0]));
-            _lastSnapshot = null;
+            foreach (var element in new FrameworkElement[] { _titleText, _toolText, _bodyText, _iconText, _successLabel, _failedLabel, _captureLabel, _counterRow, _thumbnailHost })
+                BindingOperations.ClearAllBindings(element);
+            DataContext = null;
+            _card.Dispose();
             _thumbnailHost.MouseLeftButtonUp -= _thumbnailUpHandler;
             _thumbnailStateGeneration++;
             _thumbnailSwapGeneration++;
@@ -1517,8 +1454,6 @@ namespace RvtMcp.Plugin.Views.Toast
             _failedCount.StopAnimation();
             _captureCount.StopAnimation();
             _activityClosed = null;
-            _activityDismissed = null;
-            _activityClicked = null;
             _activityPointerEntered = null;
             _activityPointerLeft = null;
         }

@@ -189,7 +189,7 @@ internal static class RecentActivityVisualTests
                 }
                 window.CloseImmediate(); Pump(300);
                 if (row.HasAnimatedProperties || panel.HasAnimatedProperties || shift.HasAnimatedProperties
-                    || Field<ActivitySnapshot>(window, "_lastSnapshot") != null
+                    || Field<ActivitySnapshot>(Field<RvtMcp.Plugin.Presentation.Toast.ToastCardViewModel>(window, "_card"), "_snapshot") != null
                     || Field<DispatcherTimer>(window, "_detailsRevealTimer") != null
                     || Field<DispatcherTimer>(window, "_detailsHideTimer") != null)
                     throw new Exception("Close during a detail animation retained clocks, timers or a snapshot.");
