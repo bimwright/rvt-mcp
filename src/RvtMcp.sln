@@ -40,6 +40,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Commands", "Commands", "{61
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Config", "Config", "{87B1D97A-0F14-5706-B559-2D5E5BCE3781}"
 	ProjectSection(SolutionItems) = preProject
+		shared\Config\PreferenceValues.cs = shared\Config\PreferenceValues.cs
 		shared\Config\RvtMcpConfig.cs = shared\Config\RvtMcpConfig.cs
 		shared\Config\StatusPrivacySection.cs = shared\Config\StatusPrivacySection.cs
 		shared\Config\ToastPositionOptions.cs = shared\Config\ToastPositionOptions.cs
@@ -434,6 +435,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Responses", "Responses", "{
 		shared\Infrastructure\Responses\SafetyResponseMetadata.cs = shared\Infrastructure\Responses\SafetyResponseMetadata.cs
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "UI", "UI", "{B9611281-9EA1-5A89-9CEA-95F407145AD0}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Infrastructure\UI\HistoryDialogs.cs = shared\Infrastructure\UI\HistoryDialogs.cs
+		shared\Infrastructure\UI\HistoryRuntime.cs = shared\Infrastructure\UI\HistoryRuntime.cs
+		shared\Infrastructure\UI\IssuesDialogs.cs = shared\Infrastructure\UI\IssuesDialogs.cs
+		shared\Infrastructure\UI\IssuesRuntime.cs = shared\Infrastructure\UI\IssuesRuntime.cs
+		shared\Infrastructure\UI\SettingsRuntime.cs = shared\Infrastructure\UI\SettingsRuntime.cs
+		shared\Infrastructure\UI\ToolsCatalogSource.cs = shared\Infrastructure\UI\ToolsCatalogSource.cs
+	EndProjectSection
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Lint", "Lint", "{DBF8799D-4B91-536C-AE85-AEBC45F52619}"
 	ProjectSection(SolutionItems) = preProject
 		shared\Lint\FirmProfile.cs = shared\Lint\FirmProfile.cs
@@ -463,6 +474,43 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Logging", "Logging", "{51BE
 		shared\Logging\SendCodeJournalGate.cs = shared\Logging\SendCodeJournalGate.cs
 		shared\Logging\SessionLogHistoryLoader.cs = shared\Logging\SessionLogHistoryLoader.cs
 		shared\Logging\SummaryGenerator.cs = shared\Logging\SummaryGenerator.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Presentation", "Presentation", "{1C2EB267-F3CB-5AE4-9185-CAFABA19C4E5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{D40D0EA1-CC04-58C9-B08C-E15BF216497A}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Presentation\Common\AsyncRelayCommand.cs = shared\Presentation\Common\AsyncRelayCommand.cs
+		shared\Presentation\Common\ObservableObject.cs = shared\Presentation\Common\ObservableObject.cs
+		shared\Presentation\Common\RelayCommand.cs = shared\Presentation\Common\RelayCommand.cs
+		shared\Presentation\Common\StatusViewModel.cs = shared\Presentation\Common\StatusViewModel.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "History", "History", "{09734DCE-E1F4-5EC9-AB87-65B15527703B}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Presentation\History\ActivityHistoryViewModel.cs = shared\Presentation\History\ActivityHistoryViewModel.cs
+		shared\Presentation\History\HistoryShellViewModel.cs = shared\Presentation\History\HistoryShellViewModel.cs
+		shared\Presentation\History\IHistoryRuntime.cs = shared\Presentation\History\IHistoryRuntime.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Issues", "Issues", "{43C3DD12-51C9-5F5F-B421-5917E8535245}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Presentation\Issues\IIssuesRuntime.cs = shared\Presentation\Issues\IIssuesRuntime.cs
+		shared\Presentation\Issues\IssueRows.cs = shared\Presentation\Issues\IssueRows.cs
+		shared\Presentation\Issues\IssuesText.cs = shared\Presentation\Issues\IssuesText.cs
+		shared\Presentation\Issues\IssuesViewModel.Actions.cs = shared\Presentation\Issues\IssuesViewModel.Actions.cs
+		shared\Presentation\Issues\IssuesViewModel.cs = shared\Presentation\Issues\IssuesViewModel.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Settings", "Settings", "{84B9EC89-22DF-5154-8B01-045B49783551}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Presentation\Settings\ISettingsRuntime.cs = shared\Presentation\Settings\ISettingsRuntime.cs
+		shared\Presentation\Settings\IToolsCatalogSource.cs = shared\Presentation\Settings\IToolsCatalogSource.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Toast", "Toast", "{1601B20F-38EA-59F9-A1C9-80A5499C0CCC}"
+	ProjectSection(SolutionItems) = preProject
+		shared\Presentation\Toast\ToastCardViewModel.cs = shared\Presentation\Toast\ToastCardViewModel.cs
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Properties", "Properties", "{FA6A47F9-C5B0-540C-B587-21F30C042C97}"
@@ -523,12 +571,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Update", "Update", "{69B2E4
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Views", "Views", "{9D79F3AE-FA71-57E5-AA2D-04E53C9F7719}"
 	ProjectSection(SolutionItems) = preProject
+		shared\Views\ActivityHistoryView.cs = shared\Views\ActivityHistoryView.cs
 		shared\Views\BakeInboxWindow.cs = shared\Views\BakeInboxWindow.cs
 		shared\Views\BimwrightStyles.cs = shared\Views\BimwrightStyles.cs
 		shared\Views\BrandAssets.cs = shared\Views\BrandAssets.cs
 		shared\Views\FailureIssuesContext.cs = shared\Views\FailureIssuesContext.cs
 		shared\Views\FailureIssuesPresentation.cs = shared\Views\FailureIssuesPresentation.cs
 		shared\Views\FailureIssuesView.cs = shared\Views\FailureIssuesView.cs
+		shared\Views\HistoryWindow.Host.cs = shared\Views\HistoryWindow.Host.cs
 		shared\Views\HistoryWindow.cs = shared\Views\HistoryWindow.cs
 		shared\Views\ScrollBarFadeBehavior.cs = shared\Views\ScrollBarFadeBehavior.cs
 	EndProjectSection
@@ -688,6 +738,7 @@ Global
 		{EDF1EEEA-9C0C-5A15-B67F-6B4894C6976A} = {76B77B0F-AA98-5D84-8D31-890D55FA1216}
 		{BFA93B53-B760-541A-B93A-EC660C48D0B7} = {76B77B0F-AA98-5D84-8D31-890D55FA1216}
 		{1DE762E1-11B7-5F1E-8713-9677E4835193} = {76B77B0F-AA98-5D84-8D31-890D55FA1216}
+		{B9611281-9EA1-5A89-9CEA-95F407145AD0} = {76B77B0F-AA98-5D84-8D31-890D55FA1216}
 		{61504156-D139-5B64-AE8F-346114A8075E} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
 		{87B1D97A-0F14-5706-B559-2D5E5BCE3781} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
 		{1BA0E625-CC68-59BD-8075-2AEBF258D71F} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
@@ -717,6 +768,12 @@ Global
 		{DBF8799D-4B91-536C-AE85-AEBC45F52619} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
 		{34394478-1F8D-5C77-BA9B-FE6B45A373FE} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
 		{51BE4DF1-509B-532D-8240-6AC819876A29} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{1C2EB267-F3CB-5AE4-9185-CAFABA19C4E5} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
+		{D40D0EA1-CC04-58C9-B08C-E15BF216497A} = {1C2EB267-F3CB-5AE4-9185-CAFABA19C4E5}
+		{09734DCE-E1F4-5EC9-AB87-65B15527703B} = {1C2EB267-F3CB-5AE4-9185-CAFABA19C4E5}
+		{43C3DD12-51C9-5F5F-B421-5917E8535245} = {1C2EB267-F3CB-5AE4-9185-CAFABA19C4E5}
+		{84B9EC89-22DF-5154-8B01-045B49783551} = {1C2EB267-F3CB-5AE4-9185-CAFABA19C4E5}
+		{1601B20F-38EA-59F9-A1C9-80A5499C0CCC} = {1C2EB267-F3CB-5AE4-9185-CAFABA19C4E5}
 		{FA6A47F9-C5B0-540C-B587-21F30C042C97} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
 		{E340C0AF-4E4A-5987-9F81-44B9C8394783} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}
 		{F50C56BE-082B-508D-B652-E6885961542F} = {D9236F70-E4F6-575A-A362-AFCE340FB9D2}

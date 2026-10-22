@@ -85,7 +85,7 @@ src/
 └── plugin-r27/            # net10.0-windows7.0, Named Pipe
 ```
 
-`RvtMcp.sln` also presents these C# files under the `Shared source` solution folder. This is a navigation view; each plugin keeps compiling the same recursive source tree. Domain folders under `Handlers/` organize files while preserving the `RvtMcp.Plugin.Handlers` namespace. Infrastructure subfolders preserve the `RvtMcp.Plugin` namespace.
+`RvtMcp.sln` also presents these C# files under the `Shared source` solution folder. This is a navigation view; each plugin keeps compiling the same recursive source tree. Domain folders under `Handlers/` organize files while preserving the `RvtMcp.Plugin.Handlers` namespace. Infrastructure subfolders preserve the `RvtMcp.Plugin` namespace, except `Infrastructure/UI`, whose adapters use `RvtMcp.Plugin.Infrastructure.UI`.
 
 Year-specific API differences live behind `#if REVIT2024_OR_GREATER` / `#if REVIT2027_OR_GREATER` and the `RevitCompat` helper (e.g. `ElementId.IntegerValue` vs `.Value` across the R2026 cut). Each shell defines its own `DefineConstants` in csproj.
 
