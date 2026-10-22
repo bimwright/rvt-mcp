@@ -18,6 +18,11 @@ internal static class Program
     {
         try
         {
+            if (args.Length == 1 && args[0] == "--history-latest-only")
+            {
+                HistoryLatestChecks.Run();
+                return 0;
+            }
             if (args.Length == 1 && args[0] == "--issues-state-only")
             {
                 IssuesStateChecks.Run();
@@ -75,6 +80,7 @@ internal static class Program
             SettingsStateChecks.Run();
             ToolsStateChecks.Run();
             HistoryStateChecks.Run();
+            HistoryLatestChecks.Run();
             HistoryStateChecks.RunHiddenSelectionChecks();
             IssuesStateChecks.Run();
             HistoryRegressionChecks.Run();

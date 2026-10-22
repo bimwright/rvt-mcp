@@ -114,7 +114,7 @@ namespace RvtMcp.Plugin
 
         public static void Log(string toolName, string paramsJson, bool success,
                                 long durationMs, string errorMsg = null,
-                                string code = null, string resultJson = null, bool? enabled = null)
+                                string code = null, string resultJson = null, bool? enabled = null, string callId = null)
         {
             if (!(enabled ?? _enabled)) return;
             try
@@ -130,6 +130,7 @@ namespace RvtMcp.Plugin
                 {
                     timestamp = DateTime.UtcNow.ToString("o"),
                     session_id = _sessionId,
+                    call_id = callId ?? Guid.NewGuid().ToString("N"),
                     tool = toolName,
                     success,
                     duration_ms = durationMs,

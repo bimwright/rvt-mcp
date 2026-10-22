@@ -14,6 +14,7 @@ namespace RvtMcp.Plugin
     public class PendingRequest
     {
         public string Id { get; set; }
+        public string LogId { get; } = Guid.NewGuid().ToString("N");
         public string CommandName { get; set; }
         public string ParamsJson { get; set; }
         public RvtMcpConfig RuntimeOptions { get; set; }
@@ -85,10 +86,11 @@ namespace RvtMcp.Plugin
                         sw.Stop();
                         var unknownError = McpResponsePrivacy.RedactErrorForResponse($"Unknown command: {request.CommandName}");
                         McpLogger.Log(request.CommandName, request.ParamsJson, false,
-                                      sw.ElapsedMilliseconds, unknownError, enabled: runtimeConfig.EnableCallLogOrDefault);
+                                      sw.ElapsedMilliseconds, unknownError, enabled: runtimeConfig.EnableCallLogOrDefault, callId: request.LogId);
                         _sessionLog?.Add(new McpCallEntry
                         {
                             ToolName = request.CommandName,
+                            CallId = request.LogId,
                             ParamsJson = request.ParamsJson,
                             Success = false,
                             DurationMs = sw.ElapsedMilliseconds,
@@ -128,10 +130,11 @@ namespace RvtMcp.Plugin
                         sw.Stop();
                         var validationError = McpResponsePrivacy.RedactErrorForResponse(validation.Error);
                         McpLogger.Log(request.CommandName, request.ParamsJson, false,
-                                      sw.ElapsedMilliseconds, validationError, enabled: runtimeConfig.EnableCallLogOrDefault);
+                                      sw.ElapsedMilliseconds, validationError, enabled: runtimeConfig.EnableCallLogOrDefault, callId: request.LogId);
                         _sessionLog?.Add(new McpCallEntry
                         {
                             ToolName = request.CommandName,
+                            CallId = request.LogId,
                             ParamsJson = request.ParamsJson,
                             Success = false,
                             DurationMs = sw.ElapsedMilliseconds,
@@ -263,13 +266,14 @@ namespace RvtMcp.Plugin
                     var response = preGuard.ToString(Formatting.None);
 
                     McpLogger.Log(request.CommandName, request.ParamsJson, outcome.Success,
-                                  sw.ElapsedMilliseconds, outcome.Error, codeSnippet, resultJson, runtimeConfig.EnableCallLogOrDefault);
+                                  sw.ElapsedMilliseconds, outcome.Error, codeSnippet, resultJson, runtimeConfig.EnableCallLogOrDefault, request.LogId);
 
                     SendCodeJournalGate.OnSendCodeLogged(request.CommandName, request.ParamsJson, codeSnippet, outcome.Success, sw.ElapsedMilliseconds, outcome.Error, resultJson, runtimeConfig);
 
                     _sessionLog?.Add(new McpCallEntry
                     {
                         ToolName = request.CommandName,
+                        CallId = request.LogId,
                         ParamsJson = request.ParamsJson,
                         Success = outcome.Success,
                         DurationMs = sw.ElapsedMilliseconds,
@@ -306,7 +310,7 @@ namespace RvtMcp.Plugin
                     failureScope?.Complete(new CommandResult { Success = false, Error = exError });
                     if (failureScope?.Stopped == true) exError = failureScope.ErrorCode ?? exError;
                     McpLogger.Log(request.CommandName, request.ParamsJson, false,
-                                  sw.ElapsedMilliseconds, exError, enabled: runtimeConfig.EnableCallLogOrDefault);
+                                  sw.ElapsedMilliseconds, exError, enabled: runtimeConfig.EnableCallLogOrDefault, callId: request.LogId);
 
                     string codeSnippetEx = null;
                     if (request.CommandName == "send_code_to_revit")
@@ -319,6 +323,7 @@ namespace RvtMcp.Plugin
                     _sessionLog?.Add(new McpCallEntry
                     {
                         ToolName = request.CommandName,
+                        CallId = request.LogId,
                         ParamsJson = request.ParamsJson,
                         Success = false,
                         DurationMs = sw.ElapsedMilliseconds,

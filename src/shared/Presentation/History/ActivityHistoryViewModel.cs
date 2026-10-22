@@ -16,7 +16,7 @@ namespace RvtMcp.Plugin.Presentation.History
         private readonly Dictionary<string, string> _journalBodies = new Dictionary<string, string>(StringComparer.Ordinal);
         private McpCallEntry _selectedEntry;
         private string _search = "", _filter = "all", _kind = "all";
-        private int? _pastLoaded;
+        private int _sessionGeneration, _rerunGeneration;
         private int _languageVersion;
         private bool _disposed;
 
@@ -25,7 +25,7 @@ namespace RvtMcp.Plugin.Presentation.History
             _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
             _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
             _languageVersion = runtime.LanguageVersion;
-            LoadPastCommand = new RelayCommand(LoadPast, () => !_disposed && !_pastLoaded.HasValue);
+            LoadPastCommand = new RelayCommand(LoadPast, () => !_disposed);
             NewSessionCommand = new RelayCommand(NewSession, () => !_disposed);
             OpenLogsCommand = new RelayCommand(runtime.OpenLogs, () => !_disposed);
             RerunCommand = new AsyncRelayCommand(Rerun, () => !_disposed && CanRerun(SelectedEntry), OnRerunError);
@@ -42,8 +42,7 @@ namespace RvtMcp.Plugin.Presentation.History
         public string ResultFilter { get => _filter; set { if (value != null) SetProperty(ref _filter, value); } }
         public string KindFilter { get => _kind; set { if (value != null) SetProperty(ref _kind, value); } }
         public int LanguageVersion => _languageVersion;
-        public string LoadPastLabel => !_pastLoaded.HasValue ? L.T("history.toolbar.loadPast")
-            : _pastLoaded == 0 ? L.T("history.toolbar.noPastEntries") : L.T("history.toolbar.loadedPast", ("count", _pastLoaded.Value));
+        public string LoadPastLabel => L.T("history.toolbar.loadPast");
         public string RerunLabel => L.T(RerunCommand.IsRunning ? "history.rerun.running" : "history.rerun.button");
         public HistoryRerunOutput RerunOutput { get; private set; }
         public string RerunError { get; private set; }
@@ -90,18 +89,24 @@ namespace RvtMcp.Plugin.Presentation.History
 
         private void LoadPast()
         {
-            _pastLoaded = _runtime.LoadPastSessions();
-            OnPropertyChanged(nameof(LoadPastLabel));
-            LoadPastCommand.RaiseCanExecuteChanged();
+            var count = _runtime.LoadPastSessions();
+            SetStatus(count == 0 ? L.T("history.toolbar.noPastEntries")
+                : L.T("history.toolbar.loadedPast", ("count", count)));
         }
         private void NewSession()
         {
             if (!_dialogs.ConfirmNewSession()) return;
+            _sessionGeneration++;
             _runtime.ClearSession();
             SelectedEntry = null;
+            RerunOutput = null;
+            RerunError = null;
+            SetStatus("");
+            OnPropertyChanged(nameof(SelectedEntry));
         }
         private async Task Rerun()
         {
+            _rerunGeneration = _sessionGeneration;
             var entry = SelectedEntry;
             var request = new HistoryRerunRequest { ToolName = entry.ToolName, ParamsJson = entry.ParamsJson,
                 OriginalIndex = entry.Index, OriginalResultJson = entry.ResultJson };
@@ -117,7 +122,7 @@ namespace RvtMcp.Plugin.Presentation.History
                 if (!_dialogs.ConfirmRerun(redacted)) return;
             }
             var output = await _runtime.Rerun(request);
-            if (_disposed) return;
+            if (_disposed || _rerunGeneration != _sessionGeneration) return;
             RerunOutput = output;
             RerunError = null;
             OnPropertyChanged(nameof(RerunOutput));
@@ -126,7 +131,7 @@ namespace RvtMcp.Plugin.Presentation.History
         }
         private void OnRerunError(Exception error)
         {
-            if (_disposed) return;
+            if (_disposed || _rerunGeneration != _sessionGeneration) return;
             RerunError = L.T("history.rerun.failed", ("message", error.Message));
             OnPropertyChanged(nameof(RerunError));
         }

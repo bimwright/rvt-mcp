@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -86,6 +87,39 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void NewSession_ClearsLiveAndHistoricalRowsAndRestartsLiveNumbering()
+        {
+            var log = new McpSessionLog();
+            log.Add(new McpCallEntry { ToolName = "live" });
+            log.Entries.Add(new McpCallEntry { IsHistorical = true, Index = -1 });
+            log.Clear();
+            Assert.Empty(log.Entries);
+            log.Add(new McpCallEntry { ToolName = "next" });
+            Assert.Equal(1, log.Entries.Single().Index);
+        }
+
+        [Fact]
+        public void RefreshHistory_ReplacesSnapshotAndKeepsOnlyLatest200UniqueExecutions()
+        {
+            var log = new McpSessionLog();
+            var live = new McpCallEntry { CallId = "live", ToolName = "live", Timestamp = DateTime.Now };
+            log.Add(live);
+            var history = Enumerable.Range(1, 250).Select(i => new McpCallEntry { IsHistorical = true,
+                CallId = "old-" + i, Index = -i, Timestamp = DateTime.Now.AddMinutes(-i) }).ToArray();
+            log.RefreshHistory(history.Concat(new[] { new McpCallEntry { CallId = "live", IsHistorical = true } }));
+            Assert.Equal(200, log.Entries.Count);
+            Assert.Contains(live, log.Entries);
+            Assert.Equal(1, live.Index);
+            var selectedHistory = log.Entries.First(e => e.IsHistorical);
+            log.RefreshHistory(history);
+            Assert.Equal(200, log.Entries.Count);
+            Assert.Contains(selectedHistory, log.Entries);
+            Assert.Equal(200, log.Entries.Select(e => e.CallId).Distinct().Count());
+            log.RefreshHistory(Array.Empty<McpCallEntry>());
+            Assert.Same(live, log.Entries.Single());
+        }
+
+        [Fact]
         public void HistoricalRowsArePinnedAndOnlyLiveRowsCountTowardCapAndBadge()
         {
             var log = new McpSessionLog();
@@ -107,7 +141,7 @@ namespace RvtMcp.Tests
 
             log.Clear();
             Assert.Equal(0, log.Count);
-            Assert.Equal(historical, log.Entries.ToArray());
+            Assert.Empty(log.Entries);
             log.Add(new McpCallEntry { ToolName = "probe" });
             Assert.Equal(1, log.Count);
             Assert.Equal(1, log.Entries.Last().Index);

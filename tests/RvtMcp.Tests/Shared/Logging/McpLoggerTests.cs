@@ -11,6 +11,30 @@ namespace RvtMcp.Tests
     public class McpLoggerTests
     {
         [Fact]
+        public void Log_PreservesExecutionIdentityForHistoryDeduplication()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "bimwright-call-id-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                McpLogger.LocalAppDataOverride = root;
+                McpLogger.Initialize(enabled: true);
+                McpLogger.Log("get_current_view_info", "{}", true, 1, callId: "execution-one");
+                var row = JObject.Parse(File.ReadAllText(McpLogger.CurrentLogPath).Trim());
+                Assert.Equal("execution-one", row.Value<string>("call_id"));
+                var loaded = SessionLogHistoryLoader.LoadPastSessions(Path.GetDirectoryName(McpLogger.CurrentLogPath), "other", 0);
+                Assert.Equal("execution-one", Assert.Single(loaded).CallId);
+                Assert.Empty(SessionLogHistoryLoader.LoadPastSessions(Path.GetDirectoryName(McpLogger.CurrentLogPath),
+                    McpLogger.CurrentSessionId, 1, liveEntries: new[] { new McpCallEntry { CallId = "execution-one" } }));
+            }
+            finally
+            {
+                McpLogger.Initialize(false);
+                McpLogger.LocalAppDataOverride = null;
+                Directory.Delete(root, true);
+            }
+        }
+
+        [Fact]
         public void BuildLogSafePayload_RedactsSendCodeParamsAndCode()
         {
             const string codeBody = "return \"SensitiveWallType42\";";

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -23,10 +24,12 @@ namespace RvtMcp.Plugin
         /// head of the current session is loaded back as view-only history.
         /// </summary>
         public static List<McpCallEntry> LoadPastSessions(
-            string logDir, string currentSessionId, int liveSessionCount, int maxEntries = 1500)
+            string logDir, string currentSessionId, int liveSessionCount, int maxEntries = 200,
+            IEnumerable<McpCallEntry> liveEntries = null)
         {
-            var rows = new List<Row>();
-            if (string.IsNullOrEmpty(logDir) || !Directory.Exists(logDir)) return new List<McpCallEntry>();
+            if (maxEntries <= 0 || string.IsNullOrEmpty(logDir) || !Directory.Exists(logDir)) return new List<McpCallEntry>();
+            var liveIds = liveEntries == null ? null : new HashSet<string>(
+                liveEntries.Where(e => !string.IsNullOrEmpty(e.CallId)).Select(e => e.CallId), StringComparer.Ordinal);
 
             // Archive names carry a timestamp (mcp-calls-yyyyMMdd-HHmmss.jsonl) so
             // ordinal sort = chronological order; the live file is always newest.
@@ -37,16 +40,33 @@ namespace RvtMcp.Plugin
             files.Sort(StringComparer.OrdinalIgnoreCase);
             if (File.Exists(current) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) == 0) files.Add(current);
 
-            var retained = new Queue<Row>();
-            var capacity = (int)Math.Min(50000L, Math.Max(1L, (long)maxEntries + Math.Max(0, liveSessionCount)));
+            // Bound memory while selecting by event time, including out-of-order appends.
+            var retained = new SortedSet<Row>(Comparer<Row>.Create((a, b) =>
+            {
+                var byTime = a.Entry.Timestamp.CompareTo(b.Entry.Timestamp);
+                return byTime != 0 ? byTime : a.Sequence.CompareTo(b.Sequence);
+            }));
+            var byId = new Dictionary<string, Row>(StringComparer.Ordinal);
+            var capacity = (int)Math.Min(50000L, (long)maxEntries + (liveIds == null ? Math.Max(0, liveSessionCount) : 0));
+            long sequence = 0;
             foreach (var file in files)
                 foreach (var line in BoundedLogFile.ReadLinesSafe(file))
                 {
                     var row = ParseLine(line);
-                    if (row != null) { retained.Enqueue(row); if (retained.Count > capacity) retained.Dequeue(); }
+                    if (row == null || liveIds?.Contains(row.Entry.CallId) == true) continue;
+                    row.Sequence = sequence++;
+                    if (byId.TryGetValue(row.Entry.CallId, out var duplicate)) retained.Remove(duplicate);
+                    retained.Add(row);
+                    byId[row.Entry.CallId] = row;
+                    if (retained.Count > capacity)
+                    {
+                        var oldest = retained.Min;
+                        retained.Remove(oldest);
+                        byId.Remove(oldest.Entry.CallId);
+                    }
                 }
 
-            rows = new List<Row>(retained);
+            var rows = new List<Row>(retained);
 
             // Hide exactly the live-session rows still in memory — the LAST
             // liveSessionCount of them; file order matches memory order.
@@ -54,7 +74,8 @@ namespace RvtMcp.Plugin
             for (var i = 0; i < rows.Count; i++)
                 if (string.Equals(rows[i].SessionId, currentSessionId, StringComparison.Ordinal))
                     currentIndexes.Add(i);
-            var hide = Math.Min(Math.Max(liveSessionCount, 0), currentIndexes.Count);
+            // Count fallback is retained for callers without live identities (legacy logs).
+            var hide = liveIds == null ? Math.Min(Math.Max(liveSessionCount, 0), currentIndexes.Count) : 0;
             for (var k = 0; k < hide; k++)
                 rows[currentIndexes[currentIndexes.Count - 1 - k]].Hidden = true;
 
@@ -76,6 +97,7 @@ namespace RvtMcp.Plugin
             public McpCallEntry Entry;
             public string SessionId;
             public bool Hidden;
+            public long Sequence;
         }
 
         private static Row ParseLine(string line)
@@ -113,6 +135,8 @@ namespace RvtMcp.Plugin
                     Entry = new McpCallEntry
                     {
                         IsHistorical = true,
+                        // Old files remain loadable without changing or migrating their contents.
+                        CallId = obj.Value<string>("call_id") ?? "legacy:" + BakeRedactor.HashBody(line),
                         SessionTag = ShortSessionTag(sessionId),
                         Timestamp = timestamp,
                         ToolName = tool,

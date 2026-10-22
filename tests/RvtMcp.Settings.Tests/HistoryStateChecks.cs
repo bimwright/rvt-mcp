@@ -55,7 +55,7 @@ internal static class HistoryStateChecks
             runtime.Complete(); PumpUntil(task);
             Expect(!vm.CanRerun(new McpCallEntry { IsHistorical = true }) && !vm.CanRerun(new McpCallEntry { ParamsTruncated = true }), "historical/truncated records are never runnable");
             vm.LoadPastCommand.Execute(null); vm.LoadPastCommand.Execute(null);
-            Expect(runtime.Loads == 1 && !vm.LoadPastCommand.CanExecute(null), "past sessions load only once");
+            Expect(runtime.Loads == 2 && vm.LoadPastCommand.CanExecute(null), "latest history stays refreshable");
             dialogs.Accept = false; vm.NewSessionCommand.Execute(null);
             Expect(runtime.Clears == 0, "new-session cancellation preserves entries");
             dialogs.Accept = true; vm.NewSessionCommand.Execute(null);

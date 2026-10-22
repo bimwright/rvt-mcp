@@ -6,6 +6,14 @@
   </PropertyGroup>
   <!-- Production Settings/History views on an STA dispatcher; host and ledger facades stay in memory. -->
   <ItemGroup>
+    <Compile Include="../../src/shared/Logging/McpSessionLog.cs" Link="Logging/McpSessionLog.cs" />
+    <Compile Include="../../src/shared/Logging/McpLogger.cs" Link="Logging/McpLogger.cs" />
+    <Compile Include="../../src/shared/Logging/SessionLogHistoryLoader.cs" Link="Logging/SessionLogHistoryLoader.cs" />
+    <Compile Include="../../src/shared/Logging/BoundedLogFile.cs" Link="Logging/BoundedLogFile.cs" />
+    <Compile Include="../../src/shared/Security/BakeRedactor.cs" Link="Security/BakeRedactor.cs" />
+    <Compile Include="../../src/shared/Security/SecretMasker.cs" Link="Security/SecretMasker.cs" />
+    <Compile Include="../../src/shared/Security/McpResponsePrivacy.cs" Link="Security/McpResponsePrivacy.cs" />
+    <Compile Include="../../src/shared/Security/ErrorSanitizer.cs" Link="Security/ErrorSanitizer.cs" />
     <Compile Include="../Shared/WpfBindingErrors.cs" Link="WpfBindingErrors.cs" />
     <Compile Include="../../src/shared/Presentation/Issues/*.cs" Link="Presentation/Issues/%(Filename)%(Extension)" />
     <Compile Include="../../src/shared/Infrastructure/UI/IssuesRuntime.cs" Link="IssuesRuntime.cs" />

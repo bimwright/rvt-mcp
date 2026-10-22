@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
@@ -20,6 +21,7 @@ namespace RvtMcp.Plugin.Views
         private readonly ActivityHistoryViewModel _vm;
         private bool _observing;
         private bool _disposed;
+        private bool _rowNumbersQueued;
         private readonly DataGrid _grid;
         private TextBox _searchBox;
         private ComboBox _filterCombo;
@@ -103,6 +105,8 @@ namespace RvtMcp.Plugin.Views
                 Margin = new Thickness(0)
             };
             BimwrightStyles.KeepSelectionHighlight(_grid);
+            _grid.LoadingRow += OnLoadingRow;
+            ((INotifyCollectionChanged)_grid.Items).CollectionChanged += OnGridItemsChanged;
             // Pixel units: HistoryChrome.Wheel steps in pixels; the DataGrid default (Item) would turn one notch into ~31 rows.
             VirtualizingPanel.SetScrollUnit(_grid, ScrollUnit.Pixel);
             _grid.PreviewMouseWheel += (s, e) =>
@@ -121,7 +125,11 @@ namespace RvtMcp.Plugin.Views
             _grid.Columns.Add(new DataGridTextColumn
             {
                 Header = "#",
-                Binding = new Binding("Index"),
+                Binding = new Binding(nameof(DataGridRow.Header))
+                {
+                    RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(DataGridRow), 1)
+                },
+                CanUserSort = false,
                 Width = new DataGridLength(0.5, DataGridLengthUnitType.Star),
                 MinWidth = 40,
                 ElementStyle = centerCell
@@ -780,11 +788,29 @@ namespace RvtMcp.Plugin.Views
             return brush;
         }
 
+        private void OnLoadingRow(object sender, DataGridRowEventArgs e) => e.Row.Header = e.Row.GetIndex() + 1;
+
+        private void OnGridItemsChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (_disposed || _rowNumbersQueued) return;
+            _rowNumbersQueued = true;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                _rowNumbersQueued = false;
+                if (_disposed) return;
+                // LoadingRow handles recycled/new containers; refresh the realized ones after sort/filter.
+                for (var i = 0; i < _grid.Items.Count; i++)
+                    if (_grid.ItemContainerGenerator.ContainerFromIndex(i) is DataGridRow row) row.Header = i + 1;
+            }), System.Windows.Threading.DispatcherPriority.DataBind);
+        }
+
         public void Dispose()
         {
             if (_disposed) return;
             _disposed = true;
             OnUnloaded(this, null);
+            _grid.LoadingRow -= OnLoadingRow;
+            ((INotifyCollectionChanged)_grid.Items).CollectionChanged -= OnGridItemsChanged;
             _viewSource.Filter -= OnFilter;
             _viewSource.Source = null;
             foreach (var control in new FrameworkElement[] { _grid, _searchBox, _filterCombo, _kindCombo, _loadHistoryButton, _rerunButton }) BindingOperations.ClearAllBindings(control);

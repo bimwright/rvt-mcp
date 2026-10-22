@@ -46,13 +46,11 @@ namespace RvtMcp.Plugin.Infrastructure.UI
         {
             var folder = !string.IsNullOrEmpty(McpLogger.CurrentLogPath) ? Path.GetDirectoryName(McpLogger.CurrentLogPath)
                 : Path.Combine(McpLogger.LocalAppDataOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bimwright", "rvt-mcp");
-            var entries = SessionLogHistoryLoader.LoadPastSessions(folder, McpLogger.CurrentSessionId, Entries.Count(e => !e.IsHistorical));
-            for (var i = 0; i < entries.Count; i++)
-            {
-                entries[i].ToolDescription = Description(entries[i].ToolName);
-                Entries.Insert(i, entries[i]);
-            }
-            return entries.Count;
+            var entries = SessionLogHistoryLoader.LoadPastSessions(folder, McpLogger.CurrentSessionId,
+                _log.Count, liveEntries: Entries.Where(e => !e.IsHistorical));
+            foreach (var entry in entries) entry.ToolDescription = Description(entry.ToolName);
+            _log.RefreshHistory(entries);
+            return Entries.Count;
         }
         public void OpenLogs()
         {
@@ -63,24 +61,22 @@ namespace RvtMcp.Plugin.Infrastructure.UI
         public async Task<HistoryRerunOutput> Rerun(HistoryRerunRequest request)
         {
             var sw = Stopwatch.StartNew();
+            var pending = new PendingRequest { Id = Guid.NewGuid().ToString(), CommandName = request.ToolName,
+                ParamsJson = request.ParamsJson, Tcs = new TaskCompletionSource<string>() };
             var result = await Task.Run(async () =>
             {
-                var tcs = new TaskCompletionSource<string>();
-                _handler.Enqueue(new PendingRequest { Id = Guid.NewGuid().ToString(), CommandName = request.ToolName,
-                    ParamsJson = request.ParamsJson, Tcs = tcs });
+                _handler.Enqueue(pending);
                 _externalEvent.Raise();
-                var response = JObject.Parse(await tcs.Task);
+                var response = JObject.Parse(await pending.Tcs.Task);
                 return new CommandResult { Success = response.Value<bool>("success"), Error = response.Value<string>("error"), Data = response["data"]?.ToObject<object>() };
             });
             sw.Stop();
             string json = null;
             try { json = result.Data != null ? Newtonsoft.Json.JsonConvert.SerializeObject(result.Data) : null; } catch { }
             var bounded = json != null && json.Length > 10240 ? json.Substring(0, 10240) : json;
-            _log.Add(new McpCallEntry { ToolName = request.ToolName, ParamsJson = request.ParamsJson,
-                Success = result.Success, DurationMs = sw.ElapsedMilliseconds, ErrorMessage = result.Error,
-                ResultJson = bounded, ToolDescription = Description(request.ToolName),
-                Summary = SummaryGenerator.Generate(request.ToolName, request.ParamsJson, bounded, result.Success, result.Error),
-                RerunOfIndex = request.OriginalIndex });
+            // The native handler already recorded this execution; do not add it twice.
+            var recorded = Entries.FirstOrDefault(e => e.CallId == pending.LogId);
+            if (recorded != null) recorded.RerunOfIndex = request.OriginalIndex;
             // Logging still completes if its originating UI is hidden/disposed; it never retries the request.
             return new HistoryRerunOutput { Entry = new McpCallEntry { ToolName = request.ToolName,
                 Success = result.Success, ResultJson = bounded, ErrorMessage = result.Error, DurationMs = sw.ElapsedMilliseconds },

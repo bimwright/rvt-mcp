@@ -10,6 +10,8 @@ namespace RvtMcp.Plugin
     public class McpCallEntry
     {
         public int Index { get; set; }
+        /// <summary>Per-execution identity shared by memory and the persistent call log.</summary>
+        public string CallId { get; set; }
         public DateTime Timestamp { get; set; }
         public string ToolName { get; set; }
         public bool Success { get; set; }
@@ -52,6 +54,7 @@ namespace RvtMcp.Plugin
         public void Add(McpCallEntry entry)
         {
             ApplyPrivacyPolicy(entry);
+            if (string.IsNullOrEmpty(entry.CallId)) entry.CallId = Guid.NewGuid().ToString("N");
             entry.Index = _nextIndex++;
             if (entry.Timestamp == default)
                 entry.Timestamp = DateTime.Now;
@@ -66,12 +69,27 @@ namespace RvtMcp.Plugin
 
         public void Clear()
         {
-            // "Clear Session" drops live rows only — historical rows loaded from
-            // the file log are not part of this session and stay visible.
-            for (var i = Entries.Count - 1; i >= 0; i--)
-                if (!Entries[i].IsHistorical)
-                    Entries.RemoveAt(i);
+            // UI reset only; the persistent call log is retained for Load Latest.
+            Entries.Clear();
             _nextIndex = 1;
+        }
+
+        public void RefreshHistory(System.Collections.Generic.IEnumerable<McpCallEntry> history, int limit = 200)
+        {
+            // Keep live objects (and their rerun identities) when also present in the file.
+            var existing = Entries.Where(e => !string.IsNullOrEmpty(e.CallId))
+                .GroupBy(e => e.CallId).ToDictionary(g => g.Key, g => g.First());
+            var latest = Entries.Where(e => !e.IsHistorical).Concat(history)
+                .GroupBy(e => e.CallId ?? "memory:" + e.Index.ToString(CultureInfo.InvariantCulture))
+                .Select(g => g.First()).OrderByDescending(e => e.Timestamp).ThenByDescending(e => e.Index)
+                .Take(Math.Max(0, limit))
+                .Select(e => e.IsHistorical && e.CallId != null && existing.TryGetValue(e.CallId, out var old) ? old : e)
+                .ToArray();
+            var keep = new System.Collections.Generic.HashSet<McpCallEntry>(latest);
+            for (var i = Entries.Count - 1; i >= 0; i--)
+                if (!keep.Contains(Entries[i])) Entries.RemoveAt(i);
+            foreach (var entry in latest)
+                if (!Entries.Contains(entry)) Entries.Add(entry);
         }
 
         // Entries is also edited directly by the history loader, so derive the live

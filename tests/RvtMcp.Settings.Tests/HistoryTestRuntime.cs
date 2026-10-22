@@ -12,7 +12,8 @@ namespace Autodesk.Revit.UI
 {
     public sealed class ExternalEvent
     {
-        public void Raise() => throw new NotSupportedException("No Revit dispatch in UI tests.");
+        public Action OnRaise;
+        public void Raise() { if (OnRaise != null) OnRaise(); else throw new NotSupportedException("No Revit dispatch in UI tests."); }
     }
 }
 
@@ -25,11 +26,13 @@ namespace RvtMcp.Plugin
     public sealed class TestCommand { public string Description { get; set; } }
     public sealed class McpEventHandler
     {
-        public void Enqueue(PendingRequest request) => throw new NotSupportedException("No Revit dispatch in UI tests.");
+        public Action<PendingRequest> OnEnqueue;
+        public void Enqueue(PendingRequest request) { if (OnEnqueue != null) OnEnqueue(request); else throw new NotSupportedException("No Revit dispatch in UI tests."); }
     }
     public sealed class PendingRequest
     {
         public string Id, CommandName, ParamsJson;
+        public string LogId { get; } = Guid.NewGuid().ToString("N");
         public TaskCompletionSource<string> Tcs;
     }
     public sealed class CommandResult
@@ -37,43 +40,6 @@ namespace RvtMcp.Plugin
         public bool Success { get; set; }
         public string Error { get; set; }
         public object Data { get; set; }
-    }
-    public sealed class McpSessionLog
-    {
-        public ObservableCollection<McpCallEntry> Entries { get; } = new ObservableCollection<McpCallEntry>();
-        public void Clear() => Entries.Clear();
-        public void Add(McpCallEntry entry) => Entries.Add(entry);
-        internal static void RefreshSummary(McpCallEntry entry) { }
-    }
-    public sealed class McpCallEntry
-    {
-        public int Index { get; set; }
-        public DateTime Timestamp { get; set; }
-        public string ToolName { get; set; }
-        public bool Success { get; set; }
-        public long DurationMs { get; set; }
-        public string ParamsJson { get; set; }
-        public string ErrorMessage { get; set; }
-        public string CodeSnippet { get; set; }
-        public string ResultJson { get; set; }
-        public string Summary { get; set; }
-        public string ToolDescription { get; set; }
-        public int? RerunOfIndex { get; set; }
-        public bool ParamsTruncated { get; set; }
-        public bool IsHistorical { get; set; }
-        public string SessionTag { get; set; }
-        public string TimeLabel => "12:00:00";
-    }
-    public static class McpLogger
-    {
-        public static string CurrentLogPath => null;
-        public static string LocalAppDataOverride => null;
-        public static string CurrentSessionId => "ui-test";
-    }
-    public static class SessionLogHistoryLoader
-    {
-        public static List<McpCallEntry> LoadPastSessions(string folder, string session, int count) =>
-            throw new NotSupportedException("No file history in UI tests.");
     }
     public static class SendCodeJournal
     {

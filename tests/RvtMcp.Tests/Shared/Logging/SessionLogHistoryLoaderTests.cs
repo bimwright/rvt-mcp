@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RvtMcp.Plugin;
@@ -42,6 +43,48 @@ namespace RvtMcp.Tests
                 @params = paramsJson == null ? null : JToken.Parse(paramsJson),
                 result
             }, Formatting.None);
+        }
+
+        [Fact]
+        public void DefaultLimit_KeepsOnlyTheLatest200Commands()
+        {
+            File.WriteAllLines(Path.Combine(_tempDir, "mcp-calls.jsonl"),
+                Enumerable.Range(1, 250).Select(i => Line("old", "tool_" + i)));
+            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "current", 0);
+            Assert.Equal(200, entries.Count);
+            Assert.Equal("tool_51", entries[0].ToolName);
+            Assert.Equal("tool_250", entries[199].ToolName);
+        }
+
+        [Fact]
+        public void LatestSnapshot_SkipsExactLiveIdentitiesWithoutHidingOtherCurrentCalls()
+        {
+            string Call(string id) { var row = JObject.Parse(Line("current", "same_tool")); row["call_id"] = id; return row.ToString(Formatting.None); }
+            File.WriteAllLines(Path.Combine(_tempDir, "mcp-calls.jsonl"), new[] { Call("older"), Call("live"), Call("distinct") });
+            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "current", 3,
+                liveEntries: new[] { new McpCallEntry { CallId = "live" }, new McpCallEntry { CallId = "not-logged" } });
+            Assert.Equal(new[] { "older", "distinct" }, entries.Select(e => e.CallId));
+        }
+
+        [Fact]
+        public void LatestSnapshot_DeduplicatesArchiveOverlapAndRetainsDistinctExecutions()
+        {
+            string Call(string id) { var row = JObject.Parse(Line("past", "same_tool")); row["call_id"] = id; return row.ToString(Formatting.None); }
+            File.WriteAllLines(Path.Combine(_tempDir, "mcp-calls-20261021-000000.jsonl"), new[] { Call("one"), Call("two") });
+            File.WriteAllLines(Path.Combine(_tempDir, "mcp-calls.jsonl"), new[] { Call("two"), Call("three") });
+            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "current", 0, liveEntries: Array.Empty<McpCallEntry>());
+            Assert.Equal(new[] { "one", "two", "three" }, entries.Select(e => e.CallId));
+        }
+
+        [Fact]
+        public void LatestSnapshot_UsesEventTimeForOutOfOrderFileAppends()
+        {
+            File.WriteAllLines(Path.Combine(_tempDir, "mcp-calls.jsonl"), Enumerable.Range(1, 250).Select(i =>
+                Line("past", "tool_" + i, timestamp: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc).AddSeconds(-i).ToString("O"))));
+            var entries = SessionLogHistoryLoader.LoadPastSessions(_tempDir, "current", 0);
+            Assert.Equal(200, entries.Count);
+            Assert.Equal("tool_200", entries.First().ToolName);
+            Assert.Equal("tool_1", entries.Last().ToolName);
         }
 
         [Fact]
@@ -136,9 +179,10 @@ namespace RvtMcp.Tests
             // "not json" is skipped; a line with tool but no session_id is kept
             // (permissive parse) with an unknown session tag.
             Assert.Equal(3, entries.Count);
-            Assert.Equal("create_level", entries[0].ToolName);
-            Assert.Equal("missing_session", entries[1].ToolName);
-            Assert.Equal("?", entries[1].SessionTag);
+            // Unknown timestamps sort before dated commands in the chronological snapshot.
+            Assert.Equal("missing_session", entries[0].ToolName);
+            Assert.Equal("create_level", entries[1].ToolName);
+            Assert.Equal("?", entries[0].SessionTag);
             Assert.Equal("create_grid", entries[2].ToolName);
         }
 
