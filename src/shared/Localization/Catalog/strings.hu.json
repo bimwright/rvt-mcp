@@ -323,6 +323,8 @@
   "failure.filter.all": "Minden állapot",
   "failure.refresh": "Frissítés",
   "failure.reset": "Visszaállítás",
+  "failure.reset.preparing": "Visszaállítás előkészítése…",
+  "failure.reset.running": "Hibabejegyzések biztonsági mentése és visszaállítása…",
   "failure.reset.title": "Hibanapló visszaállítása",
   "failure.reset.confirm": "Biztonsági mentést készít a hibanaplóról, és újat, üreset kezd?\n\n{models:n} modell {issues:n} problémája ({open:n} nyitott) a szabályaival és engedélyeivel együtt eltűnik a Problémák listából. {blocked:n} modellnek vannak megoldatlan ellenőrzési megállapításai.\n\nA jelenlegi bejegyzések ide kerülnek:\n{folder}\n\nMaguk a Revit-modellek nem változnak.\n\nA függő fájlok, köztük az olvashatatlan vagy befejezetlen bejegyzések, az adatbázismentés mellé kerülnek, és nem állnak helyre az új naplóban. A Revit újraindítása nem szükséges.\n\nKockázat: a visszaállítás eltávolítja az aktuális ellenőrzési környezetet a Problémák listából. Nem tisztáz ismeretlen eredményeket, nem von vissza módosításokat és nem ellenőrzi a modelleket. A korábbi problémák nem blokkolják az új MCP-parancsokat.",
   "failure.reset.busy": "A visszaállítás nem érhető el, amíg MCP-művelet fut. Próbálja újra, ha befejeződött.",

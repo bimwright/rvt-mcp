@@ -83,6 +83,7 @@ public class FailureCrossModelDecisionTests
             + method + """
 static FailureLedgerStore Store;
 static object Active=null;
+static bool IsResetting=false;
 const string HostInstanceId="review-host";
 static string _revitUser="reviewer";
 static int Year=2022;

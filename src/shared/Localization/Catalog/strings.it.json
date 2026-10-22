@@ -323,6 +323,8 @@
   "failure.filter.all": "Tutti gli stati",
   "failure.refresh": "Aggiorna",
   "failure.reset": "Reimposta",
+  "failure.reset.preparing": "Preparazione della reimpostazione…",
+  "failure.reset.running": "Backup e reimpostazione dei record degli errori…",
   "failure.reset.title": "Reimposta registri degli errori",
   "failure.reset.confirm": "Eseguire il backup del registro errori e iniziarne uno nuovo vuoto?\n\n{issues:n} problemi ({open:n} aperti) in {models:n} modelli usciranno dall'elenco Problemi, insieme alle relative regole e autorizzazioni. {blocked:n} modelli hanno esiti di revisione irrisolti.\n\nI record attuali vengono copiati in:\n{folder}\n\nI modelli Revit non cambiano.\n\nI file in attesa, anche illeggibili o incompleti, vengono archiviati accanto al backup del database e non saranno recuperati nel nuovo registro. Non è necessario riavviare Revit.\n\nRischio: la reimpostazione rimuove il contesto corrente di revisione da Problemi. Non risolve esiti sconosciuti, non annulla modifiche né verifica i modelli. I problemi precedenti non bloccano nuovi comandi MCP.",
   "failure.reset.busy": "Impossibile reimpostare mentre è in corso un'operazione MCP. Riprovare al termine.",
