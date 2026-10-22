@@ -126,15 +126,23 @@ internal static class Program
                     {
                         var acknowledged = Field<CheckBox>(dialog, "_acknowledged");
                         var reset = Field<Button>(dialog, "_reset");
-                        Expect(acknowledged.IsChecked != true && !reset.IsEnabled && !reset.IsDefault,
-                            "Reset is unavailable before the agent/risk acknowledgment; Enter cannot accept it by default");
+                        Expect(acknowledged.IsChecked == true && reset.IsEnabled && !reset.IsDefault,
+                            "The requested acknowledgment defaults checked; Reset is enabled but never the default key");
+                        var panel = (StackPanel)((ScrollViewer)dialog.Content).Content;
+                        var buttons = panel.Children.OfType<StackPanel>().Single();
+                        var cancel = (Button)buttons.Children[0];
+                        Expect(cancel.IsCancel && ReferenceEquals(buttons.Children[1], reset)
+                            && ReferenceEquals(reset.Style, RvtMcp.Plugin.Views.BimwrightStyles.Dictionary[RvtMcp.Plugin.Views.BimwrightStyles.PrimaryButtonKey])
+                            && cancel.Style != null && cancel.ActualHeight == reset.ActualHeight && cancel.ActualWidth == reset.ActualWidth,
+                            "Dialog uses common Cancel-left / primary-Reset-right styles with equal button sizes");
+                        if (!accept && snapshot != null) { Pump(); Save(dialog, snapshot); }
+                        acknowledged.IsChecked = false;
                         Click(reset); // A routed click must not bypass the acknowledgment either.
                         Expect(dialog.IsVisible && dialog.DialogResult != true, "unacknowledged click cannot reset");
                         acknowledged.IsChecked = true;
                         Expect(reset.IsEnabled, "agent acknowledgment enables Reset");
                         acknowledged.IsChecked = false;
                         Expect(!reset.IsEnabled, "removing acknowledgment disables Reset again");
-                        if (!accept && snapshot != null) { Pump(); Save(dialog, snapshot); }
                         if (accept) { acknowledged.IsChecked = true; Click(reset); }
                         else dialog.Close();
                     }
@@ -146,7 +154,7 @@ internal static class Program
             }
         }
         finally { RvtMcp.Plugin.Localization.L.ResetForTests(); }
-        Console.WriteLine("PASS: Reset requires agent/risk acknowledgment, rejects bypass clicks, cancels safely and accepts after confirmation");
+        Console.WriteLine("PASS: Reset defaults checked as requested, uses shared button patterns, rejects unchecked bypasses and cancels safely");
     }
 
     private static void CheckTabs()
