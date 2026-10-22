@@ -165,6 +165,32 @@ namespace RvtMcp.Tests
             Assert.Equal(1L, Count(backup, "incidents"));
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void SummaryMatchesIndividualReviewGatesIncludingPendingAndMemoryOnlyScopes(bool unreadablePending)
+        {
+            var store = Store();
+            var first = Model(store);
+            var second = Model(store, "physical_b", "path_b");
+            Model(store, "physical_c", "path_c");
+            Incident(store, first.ModelScopeKey, Operation(store, first.ModelScopeKey));
+            Incident(store, second.ModelScopeKey, Operation(store, second.ModelScopeKey), action: "rolled_back");
+            if (unreadablePending)
+            {
+                Directory.CreateDirectory(Path.Combine(_root, "failures", "pending"));
+                File.WriteAllText(Path.Combine(_root, "failures", "pending", "broken.json"), "not-json");
+            }
+            var extra = new[] { first.ModelScopeKey, "memory_only" };
+            var expected = store.GetModels().Where(m => store.GetGate(m.ModelScopeKey).Blocked)
+                .Select(m => m.ModelScopeKey).Union(extra).Count();
+            var summary = store.GetSummary(extra);
+            Assert.Equal(expected, summary.BlockedModelCount);
+            Assert.Equal(2, summary.IssueCount);
+            Assert.Equal(2, summary.OpenIssueCount);
+            Assert.Equal(2, summary.ModelCount);
+        }
+
         [Fact] public void ResetArchivesEveryPendingByteWithoutRecoveryAndContinuesWithoutRestart()
         {
             var store = Store(); var model = Model(store);

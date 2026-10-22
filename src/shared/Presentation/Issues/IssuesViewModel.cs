@@ -21,6 +21,7 @@ namespace RvtMcp.Plugin.Presentation.Issues
         private FailureOperation _operation;
         private string _state = "open", _search = "", _reason = "", _lastScope;
         private bool _verified, _consent, _loading, _disposed, _active, _hasActivated;
+        private bool _resetting;
         private UiTone _bannerTone;
         private int _languageVersion;
         private bool _canRework, _canAccept, _canRule, _canNative, _canRevoke;
@@ -29,20 +30,21 @@ namespace RvtMcp.Plugin.Presentation.Issues
         {
             _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
             _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
-            RefreshCommand = new RelayCommand(Refresh, () => !_disposed);
-            ResetCommand = new RelayCommand(ResetLedger, () => !_disposed);
-            RevokeCommand = new RelayCommand(RevokeRule, () => !_disposed && _canRevoke);
+            RefreshCommand = new RelayCommand(Refresh, () => !_disposed && !_resetting);
+            ResetCommand = new AsyncRelayCommand(ResetLedger, () => !_disposed, ex => ShowFailure(ex.Message));
+            RevokeCommand = new RelayCommand(RevokeRule, () => !_disposed && !_resetting && _canRevoke);
             CopyCommand = new RelayCommand(CopyDetails, () => !_disposed && _incident != null);
             foreach (var action in new[] { "rework", "abandon", "accept_once", "create_rule", "native_grant" })
             {
                 var captured = action;
-                _decisions[action] = new RelayCommand(() => RecordDecision(captured), () => !_disposed && Allowed(captured));
+                _decisions[action] = new RelayCommand(() => RecordDecision(captured), () => !_disposed && !_resetting && Allowed(captured));
             }
             runtime.ContextChanged += OnContextChanged;
             runtime.LanguageChanged += OnLanguageChanged;
         }
         public RelayCommand RefreshCommand { get; }
-        public RelayCommand ResetCommand { get; }
+        public AsyncRelayCommand ResetCommand { get; }
+        public bool IsResetting => _resetting;
         public RelayCommand RevokeCommand { get; }
         public RelayCommand CopyCommand { get; }
         public ICommand DecisionCommand(string action) => _decisions[action];
@@ -67,17 +69,17 @@ namespace RvtMcp.Plugin.Presentation.Issues
         public ModelRow SelectedModel
         {
             get => _selectedModel;
-            set { if (!_loading && SetProperty(ref _selectedModel, value)) LoadPage(); }
+            set { if (!_loading && !_resetting && SetProperty(ref _selectedModel, value)) LoadPage(); }
         }
         public IssueRow SelectedIssue
         {
             get => _selectedIssue;
-            set { if (!_loading && SetProperty(ref _selectedIssue, value)) SelectIssue(value?.Incident); }
+            set { if (!_loading && !_resetting && SetProperty(ref _selectedIssue, value)) SelectIssue(value?.Incident); }
         }
         public RuleRow SelectedRule
         {
             get => _selectedRule;
-            set { if (!_loading && SetProperty(ref _selectedRule, value)) RefreshActions(); }
+            set { if (!_loading && !_resetting && SetProperty(ref _selectedRule, value)) RefreshActions(); }
         }
         public void Activate(bool refresh = true)
         {
@@ -105,7 +107,7 @@ namespace RvtMcp.Plugin.Presentation.Issues
         }
         public void Refresh()
         {
-            if (_disposed) return;
+            if (_disposed || _resetting) return;
             _loading = true;
             try
             {
@@ -155,7 +157,7 @@ namespace RvtMcp.Plugin.Presentation.Issues
 
         private void LoadPage()
         {
-            if (_loading || _disposed) return;
+            if (_loading || _disposed || _resetting) return;
             var model = SelectedModel;
             if (model == null) { ClearRows(); SetBanner(L.T("failure.empty")); SelectIssue(null); return; }
             var key = model.ModelScopeKey + ":" + model.RevitYear;
@@ -274,7 +276,8 @@ namespace RvtMcp.Plugin.Presentation.Issues
             _runtime.ContextChanged -= OnContextChanged; _runtime.LanguageChanged -= OnLanguageChanged;
             _runtime.Dispose();
             foreach (var command in _decisions.Values) command.RaiseCanExecuteChanged();
-            foreach (var command in new[] { RefreshCommand, ResetCommand, RevokeCommand, CopyCommand }) command.RaiseCanExecuteChanged();
+            foreach (var command in new[] { RefreshCommand, RevokeCommand, CopyCommand }) command.RaiseCanExecuteChanged();
+            ResetCommand.RaiseCanExecuteChanged();
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using RvtMcp.Failures;
 using RvtMcp.Plugin.Views;
 
@@ -20,9 +21,9 @@ namespace RvtMcp.Plugin.Presentation.Issues
         FailureGate Gate(string scope);
         FailurePersistenceResult Save(FailureDecision decision);
         bool CanReset { get; }
-        FailureLedgerSummary ResetSummary();
+        Task<FailureLedgerSummary> ResetSummaryAsync();
         string BackupFolder { get; }
-        string Reset();
+        Task<string> ResetAsync();
         string WindowsUser { get; }
     }
 

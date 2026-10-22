@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using RvtMcp.Failures;
 using RvtMcp.Plugin.Localization;
 using RvtMcp.Plugin.Views;
@@ -11,18 +12,36 @@ namespace RvtMcp.Plugin.Presentation.Issues
 {
     internal sealed partial class IssuesViewModel
     {
-        private void ResetLedger()
+        private async Task ResetLedger()
         {
+            var previous = PageStatus;
+            var previousTone = _bannerTone;
             try
             {
                 if (!_runtime.CanReset) { SetBanner(L.T("failure.reset.busy"), UiTone.Error); return; }
-                if (!_dialogs.ConfirmReset(_runtime.ResetSummary(), _runtime.BackupFolder)) return;
-                var backup = _runtime.Reset();
+                SetResetting(true);
+                SetBanner(L.T("failure.reset.preparing"));
+                var summary = await _runtime.ResetSummaryAsync();
+                if (_disposed) return;
+                if (!_runtime.CanReset) throw new InvalidOperationException("FAILURE_RESET_BUSY");
+                if (!_dialogs.ConfirmReset(summary, _runtime.BackupFolder)) { SetBanner(previous, previousTone); return; }
+                if (_disposed) return;
+                SetBanner(L.T("failure.reset.running"));
+                var backup = await _runtime.ResetAsync();
+                if (_disposed) return;
+                SetResetting(false);
                 Refresh();
                 SetBanner(L.T("failure.reset.done", ("path", backup)));
             }
-            catch (InvalidOperationException ex) when (ex.Message == "FAILURE_RESET_BUSY") { SetBanner(L.T("failure.reset.busy"), UiTone.Error); }
-            catch (Exception ex) { SetBanner(L.T("failure.reset.failed", ("error", ex.Message)), UiTone.Error); }
+            catch (InvalidOperationException ex) when (ex.Message == "FAILURE_RESET_BUSY") { if (!_disposed) SetBanner(L.T("failure.reset.busy"), UiTone.Error); }
+            catch (Exception ex) { if (!_disposed) SetBanner(L.T("failure.reset.failed", ("error", ex.Message)), UiTone.Error); }
+            finally { if (!_disposed) SetResetting(false); }
+        }
+        private void SetResetting(bool value)
+        {
+            SetProperty(ref _resetting, value, nameof(IsResetting));
+            RefreshCommand.RaiseCanExecuteChanged(); RevokeCommand.RaiseCanExecuteChanged();
+            foreach (var command in _decisions.Values) command.RaiseCanExecuteChanged();
         }
         private bool Confirm(string action, string warning, string heading, string constraints, string details, string reason) =>
             _dialogs.ConfirmDecision(new IssueDecisionReview { Action = action, Warning = warning, ConstraintsHeading = heading,

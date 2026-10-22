@@ -325,6 +325,8 @@
   "failure.reset": "Redefinir",
   "failure.reset.title": "Redefinir registros de falhas",
   "failure.reset.confirm": "Fazer backup do registro de falhas e começar um novo, vazio?\n\n{issues:n} problemas ({open:n} abertos) em {models:n} modelos sairão da lista de problemas, junto com suas regras e permissões. {blocked:n} modelos têm resultados de revisão pendentes.\n\nOs registros atuais são copiados para:\n{folder}\n\nOs próprios modelos do Revit não mudam.\n\nOs arquivos pendentes, mesmo ilegíveis ou incompletos, são arquivados junto ao backup do banco de dados e não serão recuperados no novo registro. Não é necessário reiniciar o Revit.\n\nRisco: a redefinição remove o contexto atual de revisão de Problemas. Ela não resolve resultados desconhecidos, não desfaz alterações nem verifica modelos. Problemas anteriores não bloqueiam novos comandos MCP.",
+  "failure.reset.preparing": "Preparando redefinição…",
+  "failure.reset.running": "Fazendo backup e redefinindo registros de falhas…",
   "failure.reset.busy": "Não é possível redefinir enquanto uma operação MCP está em execução. Tente novamente quando ela terminar.",
   "failure.reset.agents": "Confirmo que todos os agentes concluíram o trabalho, que nenhum agente ou operação MCP está em execução em qualquer sessão do Revit e que aceito o risco.",
   "failure.reset.done": "Os registros de falhas foram copiados para {path}. O registro agora está vazio.",

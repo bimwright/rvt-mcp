@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Threading;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json;
@@ -44,6 +46,7 @@ namespace RvtMcp.Plugin.Failures
         private static string _storageError;
         private static string _ledgerResetGeneration;
         private static bool _ledgerIdentityRefreshPending;
+        internal static bool IsResetting { get; private set; }
         private static int Year { get { int.TryParse(AuthToken.RevitVersion, out var year); return year; } }
         public static bool IsStopped { get { return Active != null && Active.Stopped; } }
 
@@ -110,6 +113,7 @@ namespace RvtMcp.Plugin.Failures
 
         internal static void RefreshContext(UIApplication app, bool resolveIdentity = true)
         {
+            if (IsResetting) return;
             try
             {
                 PruneClosedDocuments();
@@ -229,6 +233,7 @@ namespace RvtMcp.Plugin.Failures
 
         internal static FailureGate GetUiGate(string modelScopeKey)
         {
+            if (IsResetting) return new FailureGate { Blocked = true, Reason = "FAILURE_RESET_BUSY" };
             try
             {
                 var gate = Store.GetGate(modelScopeKey);
@@ -240,6 +245,7 @@ namespace RvtMcp.Plugin.Failures
 
         internal static FailurePersistenceResult ApplyUiDecision(FailureDecision decision)
         {
+            if (IsResetting) return new FailurePersistenceResult { Persistence = "failed", ErrorCode = "FAILURE_RESET_BUSY" };
             if (decision == null || Store == null || Active != null)
                 return new FailurePersistenceResult { Persistence = "failed", ErrorCode = "REVIT_BUSY" };
             try
@@ -267,9 +273,11 @@ namespace RvtMcp.Plugin.Failures
             catch { return new FailurePersistenceResult { Persistence = "failed", ErrorCode = "FAILURE_DECISION_REJECTED" }; }
         }
 
-        internal static FailureLedgerSummary GetResetSummary()
+        internal static Task<FailureLedgerSummary> GetResetSummaryAsync()
         {
-            return Store.GetSummary(UncertainModels);
+            var store = Store;
+            var uncertain = UncertainModels.ToArray();
+            return Task.Run(() => store.GetSummary(uncertain));
         }
 
         private static void RefreshLedgerResetState()
@@ -285,16 +293,33 @@ namespace RvtMcp.Plugin.Failures
         }
 
         /// <summary>Backs up ledger and pending records. Refused while an MCP operation holds the shared activity lock.</summary>
-        internal static string ResetLedger()
+        internal static async Task<string> ResetLedgerAsync()
         {
-            if (Store == null || Active != null) throw new InvalidOperationException("FAILURE_RESET_BUSY");
-            var backup = Store.Reset(DateTime.Now);
-            RefreshLedgerResetState();
-            return backup;
+            if (Store == null || Active != null || IsResetting) throw new InvalidOperationException("FAILURE_RESET_BUSY");
+            var store = Store;
+            var time = DateTime.Now;
+            var dispatcher = Dispatcher.CurrentDispatcher;
+            IsResetting = true;
+            string backup = null;
+            try
+            {
+                backup = await Task.Run(() => store.Reset(time)).ConfigureAwait(false);
+                return backup;
+            }
+            finally
+            {
+                // Native document caches and UI snapshots stay on their original dispatcher.
+                await dispatcher.InvokeAsync(() =>
+                {
+                    IsResetting = false;
+                    if (backup != null) RefreshLedgerResetState();
+                });
+            }
         }
 
         internal static Scope Begin(UIApplication app, PendingRequest request, string warningPolicy = WarningPolicyModes.Rollback)
         {
+            if (IsResetting) throw new InvalidOperationException("FAILURE_RESET_BUSY");
             if (Active != null) throw new InvalidOperationException("A failure scope is already active.");
             IDisposable activity = null;
             bool activityFailed = false;

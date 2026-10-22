@@ -325,6 +325,8 @@
   "failure.reset": "Réinitialiser",
   "failure.reset.title": "Réinitialiser les enregistrements d'échecs",
   "failure.reset.confirm": "Sauvegarder le registre des échecs et en commencer un nouveau, vide ?\n\n{issues:n} problèmes ({open:n} ouverts) dans {models:n} modèles quitteront la liste des problèmes, avec leurs règles et autorisations. {blocked:n} modèles ont des résultats de vérification non résolus.\n\nLes enregistrements actuels sont copiés dans :\n{folder}\n\nLes modèles Revit eux-mêmes ne changent pas.\n\nLes fichiers en attente, même illisibles ou incomplets, sont archivés à côté de la sauvegarde de la base et ne seront pas récupérés dans le nouveau registre. Aucun redémarrage de Revit n’est nécessaire.\n\nRisque : la réinitialisation retire le contexte actuel de vérification des problèmes. Elle ne résout aucun résultat inconnu, n’annule aucune modification et ne vérifie pas les modèles. Les anciens problèmes ne bloquent pas les nouvelles commandes MCP.",
+  "failure.reset.preparing": "Préparation de la réinitialisation…",
+  "failure.reset.running": "Sauvegarde et réinitialisation des enregistrements d’erreur…",
   "failure.reset.busy": "Réinitialisation impossible pendant qu'une opération MCP est en cours. Réessayez lorsqu'elle sera terminée.",
   "failure.reset.agents": "Je confirme que tous les agents ont terminé, qu’aucun agent ni aucune opération MCP ne s’exécute dans une session Revit et que j’accepte le risque.",
   "failure.reset.done": "Les enregistrements d'échecs ont été sauvegardés dans {path}. Le registre est maintenant vide.",

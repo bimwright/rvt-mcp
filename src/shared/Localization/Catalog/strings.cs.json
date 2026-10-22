@@ -325,6 +325,8 @@
   "failure.reset": "Obnovit výchozí",
   "failure.reset.title": "Obnovit záznamy selhání",
   "failure.reset.confirm": "Zálohovat evidenci selhání a začít s novou prázdnou?\n\n{issues:n} problémů ({open:n} otevřených) v {models:n} modelech zmizí ze seznamu Problémy spolu s jejich pravidly a povoleními. {blocked:n} modelů má nevyřešené nálezy kontroly.\n\nAktuální záznamy se zkopírují do:\n{folder}\n\nSamotné modely Revit se nezmění.\n\nČekající soubory včetně nečitelných či nedokončených záznamů se archivují vedle zálohy databáze a neobnoví se do nového protokolu. Restart Revitu není nutný.\n\nRiziko: Reset odstraní aktuální kontext kontroly ze seznamu problémů. Nevyjasní neznámé výsledky, nevrátí změny ani neověří modely. Předchozí problémy neblokují nové příkazy MCP.",
+  "failure.reset.preparing": "Příprava resetování…",
+  "failure.reset.running": "Zálohování a resetování záznamů chyb…",
   "failure.reset.busy": "Obnovení není dostupné, dokud běží operace MCP. Zkuste to znovu po jejím dokončení.",
   "failure.reset.agents": "Potvrzuji, že všichni agenti dokončili práci, v žádné relaci Revitu neběží agent ani operace MCP a přijímám riziko.",
   "failure.reset.done": "Záznamy selhání byly zálohovány do {path}. Evidence je nyní prázdná.",

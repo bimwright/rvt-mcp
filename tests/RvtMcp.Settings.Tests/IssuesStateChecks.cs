@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using RvtMcp.Plugin.Presentation.History;
@@ -28,6 +29,8 @@ internal static class IssuesStateChecks
         var dialogs = new Dialogs();
         using (var vm = new IssuesViewModel(runtime, dialogs))
         {
+            object resetCommand = vm.ResetCommand;
+            Expect(resetCommand is RvtMcp.Plugin.Presentation.AsyncRelayCommand, "Reset must be asynchronous so ledger IO cannot freeze the UI");
             vm.Activate(); vm.Activate();
             Expect(runtime.Activations == 1 && vm.Incident != null && vm.SelectedModel.RevitYear == 2027, "activate once and load selected scope/year");
             vm.Reason = "Review selected B";
@@ -188,7 +191,7 @@ internal static class IssuesStateChecks
     }
 
     private static void Expect(bool condition, string message) { if (!condition) throw new Exception(message); }
-    private sealed class Dialogs : IIssuesDialogs
+    internal sealed class Dialogs : IIssuesDialogs
     {
         public bool Accept = true;
         public int Confirms, ResetConfirms;
@@ -198,14 +201,16 @@ internal static class IssuesStateChecks
         public bool ConfirmReset(FailureLedgerSummary summary, string folder) { ResetConfirms++; BackupFolder = folder; return Accept; }
         public void Copy(string text) { }
     }
-    private sealed class Runtime : IIssuesRuntime
+    internal sealed class Runtime : IIssuesRuntime
     {
         public event EventHandler ContextChanged;
         public event EventHandler LanguageChanged;
         public EventHandler ContextCallback => ContextChanged;
         public int Subscribers => (ContextChanged?.GetInvocationList().Length ?? 0) + (LanguageChanged?.GetInvocationList().Length ?? 0);
-        public int Activations, Deactivations, Saves, Resets, Disposals, PageQueries;
+        public int Activations, Deactivations, Saves, Resets, Disposals, PageQueries, Summaries;
         public bool SaveSucceeds = true, ResetBusyAtCommit;
+        public TaskCompletionSource<FailureLedgerSummary> SummaryWork;
+        public TaskCompletionSource<string> ResetWork;
         public bool CanReset { get; set; } = true;
         public string BackupFolder => "fixture-backups";
         public string WindowsUser => "fixture-user";
@@ -244,8 +249,8 @@ internal static class IssuesStateChecks
             Saves++; LastDecision = decision;
             return new FailurePersistenceResult { Persistence = SaveSucceeds ? "recorded" : "failed", Durable = SaveSucceeds, ErrorCode = SaveSucceeds ? null : "fixture failure" };
         }
-        public FailureLedgerSummary ResetSummary() => new FailureLedgerSummary { IssueCount = Incidents.Count };
-        public string Reset() { Resets++; if (ResetBusyAtCommit) throw new InvalidOperationException("FAILURE_RESET_BUSY"); Incidents.Clear(); return "fixture-backup.db"; }
+        public Task<FailureLedgerSummary> ResetSummaryAsync() { Summaries++; return SummaryWork?.Task ?? Task.FromResult(new FailureLedgerSummary { IssueCount = Incidents.Count }); }
+        public Task<string> ResetAsync() { Resets++; if (ResetBusyAtCommit) throw new InvalidOperationException("FAILURE_RESET_BUSY"); if (ResetWork != null) return ResetWork.Task; Incidents.Clear(); return Task.FromResult("fixture-backup.db"); }
         public void RaiseContext() => ContextChanged?.Invoke(this, EventArgs.Empty);
         public void Dispose() { Disposals++; }
     }

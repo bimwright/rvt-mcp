@@ -18,6 +18,11 @@ internal static class Program
     {
         try
         {
+            if (args.Length == 1 && args[0] == "--issues-reset-async-only")
+            {
+                IssuesResetAsyncChecks.Run();
+                return 0;
+            }
             if (args.Length == 1 && args[0] == "--history-latest-only")
             {
                 HistoryLatestChecks.Run();
@@ -84,6 +89,7 @@ internal static class Program
             HistoryStateChecks.RunHiddenSelectionChecks();
             IssuesStateChecks.Run();
             HistoryRegressionChecks.Run();
+            IssuesResetAsyncChecks.Run();
             WarningPolicySettingsChecks.Run();
             CheckFailureReset(null);
             CheckTabs();

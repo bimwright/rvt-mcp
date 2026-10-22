@@ -326,15 +326,21 @@ GROUP BY m.scope," + IncidentRevitYear + " ORDER BY 2 COLLATE NOCASE,3 DESC,m.sc
         /// <summary>Counts what a reset would clear. <paramref name="alsoBlocked"/> adds unresolved in-memory review scopes.</summary>
         public FailureLedgerSummary GetSummary(IEnumerable<string> alsoBlocked = null)
         {
-            var summary = new FailureLedgerSummary(); EnsureDatabaseFile();
+            var summary = new FailureLedgerSummary();
+            RefreshResetState();
+            var blocked = new HashSet<string>(alsoBlocked ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
             using (var c = Open(false))
             {
                 summary.IssueCount = Convert.ToInt64(Scalar(c, null, "SELECT COUNT(*) FROM incidents;"));
                 summary.OpenIssueCount = Convert.ToInt64(Scalar(c, null, "SELECT COUNT(*) FROM incidents WHERE state='open';"));
                 summary.ModelCount = Convert.ToInt32(Scalar(c, null, "SELECT COUNT(DISTINCT scope) FROM incidents;"));
+                var scopes = new List<string>();
+                using (var cmd = Command(c, null, "SELECT scope FROM models;"))
+                using (var reader = cmd.ExecuteReader()) while (reader.Read()) scopes.Add(reader.GetString(0));
+                // Reuse the read connection and reset-generation check across all models.
+                foreach (var scope in scopes) if (GetGate(c, scope, null).Blocked) blocked.Add(scope);
             }
-            summary.BlockedModelCount = GetModels().Where(m => GetGate(m.ModelScopeKey).Blocked).Select(m => m.ModelScopeKey)
-                .Union(alsoBlocked ?? Enumerable.Empty<string>(), StringComparer.Ordinal).Count();
+            summary.BlockedModelCount = blocked.Count;
             return summary;
         }
 
@@ -362,7 +368,9 @@ GROUP BY m.scope," + IncidentRevitYear + " ORDER BY 2 COLLATE NOCASE,3 DESC,m.sc
                         using (var source = Open(true)) Execute(source, null, "VACUUM INTO $p;", "$p", backup);
                         if (Directory.Exists(PendingPath)) { Directory.Move(PendingPath, backup + ".pending"); movedPending = true; }
                         var tables = new List<string>();
-                        using (var cmd = Command(c, tx, "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name!='reset_state';"))
+                        // Our schema creates parents before dependents. Clearing dependents first
+                        // avoids repeated foreign-key scans over populated child tables.
+                        using (var cmd = Command(c, tx, "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name!='reset_state' ORDER BY rowid DESC;"))
                         using (var r = cmd.ExecuteReader()) while (r.Read()) tables.Add(r.GetString(0));
                         Execute(c, tx, "PRAGMA defer_foreign_keys=ON;");
                         foreach (var table in tables) Execute(c, tx, "DELETE FROM \"" + table + "\";");
@@ -563,11 +571,15 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
         {
             FailureCapture.RequireKey(scope, "model scope key");
             RefreshResetState();
+            using (var c = Open(false)) return GetGate(c, scope, excludingOperationId);
+        }
+
+        private FailureGate GetGate(SqliteConnection c, string scope, string excludingOperationId)
+        {
+            FailureCapture.RequireKey(scope, "model scope key");
             var gate = new FailureGate();
             lock (_sync) if (_uncertainScopes.Contains(scope)) { gate.Blocked = true; gate.Reason = "FAILURE_STORAGE_FAILED"; }
             if (PendingFor(scope)) { gate.Blocked = true; gate.Reason = "FAILURE_STORAGE_FAILED"; }
-            EnsureDatabaseFile();
-            using (var c = Open(false))
             {
                 var model = ReadModel(c, null, scope); gate.Revision = model?.Revision ?? 0;
                 foreach (var candidate in ConflictingScopes(c, null, scope))

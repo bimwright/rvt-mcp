@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Windows.Threading;
 using RvtMcp.Failures;
 using RvtMcp.Plugin.Failures;
@@ -50,10 +51,10 @@ namespace RvtMcp.Plugin.Infrastructure.UI
         public ICollection<string> OpenScopes() => FailureControl.CopyOpenModelScopes();
         public FailureGate Gate(string scope) => FailureControl.GetUiGate(scope);
         public FailurePersistenceResult Save(FailureDecision decision) => FailureControl.ApplyUiDecision(decision);
-        public bool CanReset => FailureControl.Store != null && FailureControl.Active == null;
-        public FailureLedgerSummary ResetSummary() => FailureControl.GetResetSummary();
+        public bool CanReset => FailureControl.Store != null && FailureControl.Active == null && !FailureControl.IsResetting;
+        public Task<FailureLedgerSummary> ResetSummaryAsync() => FailureControl.GetResetSummaryAsync();
         public string BackupFolder => FailureControl.Store.BackupFolder;
-        public string Reset() => FailureControl.ResetLedger();
+        public Task<string> ResetAsync() => FailureControl.ResetLedgerAsync();
         public string WindowsUser => Environment.UserName;
         public void Dispose() { if (_disposed) return; Deactivate(); _disposed = true; }
     }

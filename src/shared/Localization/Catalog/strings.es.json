@@ -325,6 +325,8 @@
   "failure.reset": "Restablecer",
   "failure.reset.title": "Restablecer registros de fallos",
   "failure.reset.confirm": "¿Hacer una copia de seguridad del registro de fallos y empezar uno nuevo vacío?\n\n{issues:n} incidencias ({open:n} abiertas) en {models:n} modelos saldrán de la lista de incidencias, junto con sus reglas y permisos. {blocked:n} modelos tienen resultados pendientes de revisión.\n\nLos registros actuales se copian en:\n{folder}\n\nLos modelos de Revit no cambian.\n\nLos archivos pendientes, incluidos los ilegibles o incompletos, se archivan junto a la copia de la base de datos y no se recuperarán en el nuevo registro. No es necesario reiniciar Revit.\n\nRiesgo: restablecer elimina el contexto actual de revisión de Incidencias. No resuelve resultados desconocidos, no deshace cambios ni verifica modelos. Las incidencias anteriores no bloquean nuevos comandos MCP.",
+  "failure.reset.preparing": "Preparando restablecimiento…",
+  "failure.reset.running": "Creando copia y restableciendo registros de fallos…",
   "failure.reset.busy": "No se puede restablecer mientras se ejecuta una operación MCP. Inténtelo de nuevo cuando termine.",
   "failure.reset.agents": "Confirmo que todos los agentes han terminado, que no hay ningún agente ni operación MCP en ejecución en ninguna sesión de Revit y que acepto el riesgo.",
   "failure.reset.done": "Los registros de fallos se copiaron en {path}. El registro ahora está vacío.",

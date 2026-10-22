@@ -385,6 +385,7 @@ namespace RvtMcp.Plugin.Views
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             if (_disposed) return;
+            IsEnabled = !_vm.IsResetting;
             if (!_observing) { _observing = true; _vm.PropertyChanged += OnViewModelChanged; }
             ApplyLocalization();
             if (IsVisible) _vm.Activate();
@@ -402,6 +403,7 @@ namespace RvtMcp.Plugin.Views
         private void OnViewModelChanged(object sender, PropertyChangedEventArgs e)
         {
             if (_disposed) return;
+            if (e.PropertyName == nameof(IssuesViewModel.IsResetting)) IsEnabled = !_vm.IsResetting;
             if (e.PropertyName == nameof(IssuesViewModel.Incident)) RenderDetails();
             else if (e.PropertyName == nameof(IssuesViewModel.Rules)) ShowRules(_vm.Rules.Count > 0);
             else if (e.PropertyName == nameof(IssuesViewModel.ActionStateVersion)) RenderActions();

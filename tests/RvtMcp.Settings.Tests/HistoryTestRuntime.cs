@@ -59,6 +59,7 @@ namespace RvtMcp.Plugin.Failures
         internal static FailureIssuesContext SelectedContext;
         internal static FailureLedgerStore Store = new FailureLedgerStore();
         internal static object Active => null;
+        internal static bool IsResetting => false;
         internal static FailureDecision LastDecision;
         internal static event EventHandler UiContextChanged;
         internal static FailureIssuesContext GetUiContext() => Context;
@@ -71,8 +72,8 @@ namespace RvtMcp.Plugin.Failures
             LastDecision = decision;
             return new FailurePersistenceResult { Persistence = "recorded", Durable = true };
         }
-        internal static FailureLedgerSummary GetResetSummary() => new FailureLedgerSummary();
-        internal static string ResetLedger() => throw new NotSupportedException("No ledger reset in UI tests.");
+        internal static Task<FailureLedgerSummary> GetResetSummaryAsync() => Task.FromResult(new FailureLedgerSummary());
+        internal static Task<string> ResetLedgerAsync() => throw new NotSupportedException("No ledger reset in UI tests.");
         internal static void SetContext(FailureIssuesContext context)
         {
             Context = context;

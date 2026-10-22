@@ -325,6 +325,8 @@
   "failure.reset": "Zurücksetzen",
   "failure.reset.title": "Fehlerprotokoll zurücksetzen",
   "failure.reset.confirm": "Fehlerprotokoll sichern und mit einem neuen, leeren beginnen?\n\n{issues:n} Probleme ({open:n} offen) in {models:n} Modellen verschwinden aus der Problemliste, zusammen mit ihren Regeln und Freigaben. {blocked:n} Modelle haben offene Prüfbefunde.\n\nDie aktuellen Einträge werden kopiert nach:\n{folder}\n\nDie Revit-Modelle selbst ändern sich nicht.\n\nAusstehende Dateien, auch unlesbare oder unvollständige Einträge, werden neben der Datenbanksicherung archiviert und nicht in das neue Protokoll übernommen. Revit muss nicht neu gestartet werden.\n\nRisiko: Zurücksetzen entfernt den aktuellen Prüfkontext aus Issues. Es klärt keine unbekannten Ergebnisse, macht keine Modelländerungen rückgängig und prüft keine Modelle. Frühere Probleme blockieren keine neuen MCP-Befehle.",
+  "failure.reset.preparing": "Zurücksetzen wird vorbereitet…",
+  "failure.reset.running": "Fehleraufzeichnungen werden gesichert und zurückgesetzt…",
   "failure.reset.busy": "Zurücksetzen ist nicht möglich, solange ein MCP-Vorgang läuft. Versuchen Sie es nach dessen Abschluss erneut.",
   "failure.reset.agents": "Ich bestätige, dass alle Agenten fertig sind, in keiner Revit-Sitzung ein Agent oder MCP-Vorgang läuft und ich das Risiko akzeptiere.",
   "failure.reset.done": "Die Fehlereinträge wurden nach {path} gesichert. Das Protokoll ist jetzt leer.",

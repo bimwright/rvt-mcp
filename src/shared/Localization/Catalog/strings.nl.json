@@ -325,6 +325,8 @@
   "failure.reset": "Opnieuw instellen",
   "failure.reset.title": "Foutregistraties opnieuw instellen",
   "failure.reset.confirm": "Een back-up van het foutregister maken en met een nieuw, leeg register beginnen?\n\n{issues:n} problemen ({open:n} open) in {models:n} modellen verdwijnen uit de lijst Problemen, samen met hun regels en toestemmingen. {blocked:n} modellen hebben openstaande beoordelingspunten.\n\nDe huidige registraties worden gekopieerd naar:\n{folder}\n\nDe Revit-modellen zelf veranderen niet.\n\nWachtende bestanden, ook onleesbare of onvoltooide registraties, worden naast de databaseback-up gearchiveerd en niet hersteld in het nieuwe register. Revit hoeft niet opnieuw te worden gestart.\n\nRisico: opnieuw instellen verwijdert de huidige beoordelingscontext uit Problemen. Het lost geen onbekende resultaten op, maakt geen modelwijzigingen ongedaan en controleert geen modellen. Eerdere problemen blokkeren geen nieuwe MCP-opdrachten.",
+  "failure.reset.preparing": "Reset voorbereiden…",
+  "failure.reset.running": "Foutregistraties worden geback-upt en gereset…",
   "failure.reset.busy": "Opnieuw instellen is niet mogelijk terwijl een MCP-bewerking loopt. Probeer het opnieuw als die klaar is.",
   "failure.reset.agents": "Ik bevestig dat alle agents klaar zijn, dat in geen enkele Revit-sessie een agent of MCP-bewerking actief is en dat ik het risico accepteer.",
   "failure.reset.done": "De foutregistraties zijn geback-upt naar {path}. Het register is nu leeg.",

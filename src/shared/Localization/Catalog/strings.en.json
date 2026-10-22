@@ -356,6 +356,8 @@
   "failure.reset": "Reset",
   "failure.reset.title": "Reset failure records",
   "failure.reset.confirm": "Back up the failure ledger and start a new empty one?\n\n{issues:n} issues ({open:n} open) in {models:n} models will leave the Issues list, together with their rules and grants. {blocked:n} models have unresolved review findings.\n\nThe current records are copied to:\n{folder}\n\nThe Revit models themselves do not change.\n\nPending files, including unreadable or unfinished records, are archived alongside the database backup and will not be recovered into the new ledger. No Revit restart is required.\n\nRisk: Reset removes the current review context from Issues. It does not resolve unknown outcomes, undo model changes or verify models. Previous Issues do not block new MCP commands.",
+  "failure.reset.preparing": "Preparing reset…",
+  "failure.reset.running": "Backing up and resetting failure records…",
   "failure.reset.busy": "Reset is unavailable while an MCP operation is running. Try again when it finishes.",
   "failure.reset.agents": "I confirm all agents have finished, no agent or MCP operation is running in any Revit session, and I accept the risk.",
   "failure.reset.done": "Failure records were backed up to {path}. The ledger is now empty.",

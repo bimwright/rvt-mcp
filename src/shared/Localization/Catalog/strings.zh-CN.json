@@ -325,6 +325,8 @@
   "failure.reset": "重置",
   "failure.reset.title": "重置故障记录",
   "failure.reset.confirm": "备份故障台账并开始一个新的空台账？\n\n{models:n} 个模型中的 {issues:n} 个问题（{open:n} 个未关闭）及其规则和授权将从问题列表中移除。 {blocked:n} 个模型有未解决的审查事项。\n\n当前记录将复制到：\n{folder}\n\nRevit 模型本身不会改变。\n\n待处理文件（包括无法读取或未完成的记录）会归档到数据库备份旁，不会恢复到新台账中。无需重新启动 Revit。\n\n风险：重置会从问题列表中移除当前审查上下文。它不会解决未知结果、撤销模型更改或验证模型。以前的问题不会阻止新的 MCP 命令。",
+  "failure.reset.preparing": "正在准备重置…",
+  "failure.reset.running": "正在备份并重置故障记录…",
   "failure.reset.busy": "MCP 操作运行期间无法重置。请在其完成后重试。",
   "failure.reset.agents": "我确认所有 Agent 均已完成工作，任何 Revit 会话中都没有 Agent 或 MCP 操作正在运行，并接受此风险。",
   "failure.reset.done": "故障记录已备份到 {path}。台账现在为空。",
