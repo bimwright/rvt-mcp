@@ -36,6 +36,12 @@ namespace RvtMcp.Plugin.Views
         private readonly ContentControl _inputContent;
         private readonly StackPanel _outputContainer;
         private readonly Button _rerunButton;
+        private readonly Button _copyWhat;
+        private readonly Button _copyInput;
+        private readonly Button _copyOutput;
+        private string _whatText;
+        private string _inputText;
+        private string _outputText;
         private Button _loadHistoryButton;
         private McpCallEntry _selectedEntry => _vm.SelectedEntry;
 
@@ -196,19 +202,24 @@ namespace RvtMcp.Plugin.Views
             var sectionHeader = FrozenBrush(0xF7, 0xF8, 0xFA);
             var sectionRule = FrozenBrush(0xE0, 0xE0, 0xE0);
             var sectionLabel = FrozenBrush(0x64, 0x74, 0x8B);
-            Border SectionCard(TextBlock label, UIElement sectionBody, Thickness margin)
+            Border SectionCard(TextBlock label, Button copy, UIElement sectionBody, Thickness margin)
             {
                 label.FontWeight = FontWeights.SemiBold;
                 label.FontSize = 11;
                 label.Foreground = sectionLabel;
                 label.Margin = new Thickness(0);
+                label.VerticalAlignment = VerticalAlignment.Center;
+                var heading = new DockPanel();
+                DockPanel.SetDock(copy, Dock.Right);
+                heading.Children.Add(copy);
+                heading.Children.Add(label);
                 var header = new Border
                 {
                     Background = sectionHeader,
                     BorderBrush = sectionRule,
                     BorderThickness = new Thickness(0, 0, 0, 1),
                     Padding = new Thickness(8, 4, 8, 4),
-                    Child = label
+                    Child = heading
                 };
                 var content = new Border { Padding = new Thickness(8, 6, 8, 8), Child = sectionBody };
                 var stack = new StackPanel();
@@ -238,16 +249,19 @@ namespace RvtMcp.Plugin.Views
             whatBody.Children.Add(_whatDesc);
             whatBody.Children.Add(_warningLabel);
             _whatSection = new TextBlock();
-            sections.Children.Add(SectionCard(_whatSection, whatBody, new Thickness(0, 0, 0, 8)));
+            _copyWhat = CreateCopyButton(() => _whatText);
+            sections.Children.Add(SectionCard(_whatSection, _copyWhat, whatBody, new Thickness(0, 0, 0, 8)));
 
             _inputContent = new ContentControl();
             _inputSection = new TextBlock();
-            _inputCard = SectionCard(_inputSection, _inputContent, new Thickness(0, 0, 0, 8));
+            _copyInput = CreateCopyButton(() => _inputText);
+            _inputCard = SectionCard(_inputSection, _copyInput, _inputContent, new Thickness(0, 0, 0, 8));
             sections.Children.Add(_inputCard);
 
             _outputContainer = new StackPanel();
             _outputSection = new TextBlock();
-            _outputCard = SectionCard(_outputSection, _outputContainer, new Thickness(0));
+            _copyOutput = CreateCopyButton(() => _outputText);
+            _outputCard = SectionCard(_outputSection, _copyOutput, _outputContainer, new Thickness(0));
             sections.Children.Add(_outputCard);
             _rerunButton = new Button
             {
@@ -311,6 +325,9 @@ namespace RvtMcp.Plugin.Views
             _whatSection.Text = L.T("history.section.what");
             _inputSection.Text = L.T("history.section.input");
             _outputSection.Text = L.T("history.section.output");
+            LocalizeCopyButton(_copyWhat, _whatSection.Text);
+            LocalizeCopyButton(_copyInput, _inputSection.Text);
+            LocalizeCopyButton(_copyOutput, _outputSection.Text);
             // Regenerating 1000 summaries parses JSON + runs regex — only worth it
             // when the table actually changed, and PreserveSummary entries are skipped.
             if (localeChanged)
@@ -383,9 +400,54 @@ namespace RvtMcp.Plugin.Views
 
         private void OnFilter(object sender, FilterEventArgs e) => e.Accepted = _vm.Matches(e.Item as McpCallEntry);
 
+        private Button CreateCopyButton(Func<string> text)
+        {
+            var button = new Button
+            {
+                Content = "\uE8C8", Style = (Style)FindResource(BimwrightStyles.IconButtonKey),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            button.Click += (s, e) =>
+            {
+                var value = text();
+                if (string.IsNullOrEmpty(value)) return;
+                try
+                {
+                    Clipboard.SetText(value);
+                    HistoryChrome.Guide(button, L.T("settings.footer.copied"));
+                }
+                catch (System.Runtime.InteropServices.ExternalException ex)
+                {
+                    HistoryChrome.Guide(button, ex.Message);
+                }
+            };
+            return button;
+        }
+
+        private static void LocalizeCopyButton(Button button, string section)
+        {
+            var label = L.T("failure.copy") + " — " + section;
+            System.Windows.Automation.AutomationProperties.SetName(button, label);
+            HistoryChrome.Guide(button, label);
+        }
+
+        private void UpdateCopyButtons()
+        {
+            _copyWhat.IsEnabled = !string.IsNullOrEmpty(_whatText);
+            _copyInput.IsEnabled = !string.IsNullOrEmpty(_inputText);
+            _copyOutput.IsEnabled = !string.IsNullOrEmpty(_outputText);
+        }
+
         private void ShowEntry(McpCallEntry entry)
         {
             _detailShowsRerun = false;
+            _whatText = entry == null ? null : entry.ToolName +
+                (string.IsNullOrEmpty(entry.ToolDescription) ? "" : Environment.NewLine + entry.ToolDescription);
+            _inputText = entry == null ? null :
+                entry.ToolName == "send_code_to_revit" && !string.IsNullOrEmpty(entry.CodeSnippet)
+                    ? entry.CodeSnippet : entry.ParamsJson;
+            _outputText = entry == null ? null : entry.Success ? entry.ResultJson : entry.ErrorMessage;
+            UpdateCopyButtons();
             if (entry == null)
             {
                 _whatName.Text = "";
@@ -655,6 +717,8 @@ namespace RvtMcp.Plugin.Views
             _detailShowsRerun = true;
             var output = _vm.RerunOutput;
             if (output == null) return;
+            _outputText = output.Entry.Success ? output.Entry.ResultJson : output.Entry.ErrorMessage;
+            UpdateCopyButtons();
                 // Show re-run result in output panel
                 _outputContainer.Children.Clear();
                 _outputContainer.Children.Add(new TextBlock
@@ -731,6 +795,8 @@ namespace RvtMcp.Plugin.Views
         private void RenderRerunError()
         {
             _detailShowsRerun = true;
+            _outputText = _vm.RerunError;
+            UpdateCopyButtons();
             _outputContainer.Children.Clear();
             _outputContainer.Children.Add(new TextBlock { Text = SoftWrap(_vm.RerunError), Foreground = Brushes.Red, TextWrapping = TextWrapping.Wrap });
         }
