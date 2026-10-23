@@ -435,10 +435,12 @@ Code, bug reports, reproducible examples and proposals help improve rvt-mcp. Tha
 
 | Contributor | Contribution |
 |-------------|--------------|
-| [@thiagobarretosn-hue](https://github.com/thiagobarretosn-hue) | Reproducible reports on MEP network membership and pipe system handling ([#11](https://github.com/bimwright/rvt-mcp/issues/11), [#12](https://github.com/bimwright/rvt-mcp/issues/12)). |
+| [@thiagobarretosn-hue](https://github.com/thiagobarretosn-hue) | Reproducible reports on MEP network membership, pipe system handling and unbounded log growth ([#11](https://github.com/bimwright/rvt-mcp/issues/11), [#12](https://github.com/bimwright/rvt-mcp/issues/12), [#22](https://github.com/bimwright/rvt-mcp/issues/22)). |
 | [@razmikb](https://github.com/razmikb) | Hosted-family placement and stair/send-code failure reports that led to placement checks, helper-class support and broader failure-handling tests ([#13](https://github.com/bimwright/rvt-mcp/issues/13), [#14](https://github.com/bimwright/rvt-mcp/issues/14)). |
 | [@Thestreetarckitect](https://github.com/Thestreetarckitect) | Family Authoring Tool Suite proposal that helped clarify the roadmap and scope ([#7](https://github.com/bimwright/rvt-mcp/issues/7)). |
 | [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) | Pull request [#15](https://github.com/bimwright/rvt-mcp/pull/15): the fix that lets `send_code` run with no model open, the `revit_switch_target` hint fix, and the `revit_open_model` proposal, shipped in reworked form in v0.8.1. |
+| [@BenniOST](https://github.com/BenniOST) | Detailed review of multi-instance targeting that shaped explicit target confirmation, document checks and rebind rules ([#19](https://github.com/bimwright/rvt-mcp/issues/19)). |
+| [@maxzalizniak](https://github.com/maxzalizniak) | Pull request [#8](https://github.com/bimwright/rvt-mcp/pull/8): diagnosed and fixed the no-op History button on Revit 2025/2026; the fix shipped with co-author credit in [#9](https://github.com/bimwright/rvt-mcp/pull/9), extended to 2027 with a regression test. |
 
 ---
 

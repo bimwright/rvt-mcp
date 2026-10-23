@@ -420,10 +420,12 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 
 | 貢献者 | 内容 |
 |--------|------|
-| [@thiagobarretosn-hue](https://github.com/thiagobarretosn-hue) | MEP ネットワークの構成要素と配管システムの処理に関する、再現例付きの不具合報告（[#11](https://github.com/bimwright/rvt-mcp/issues/11)、[#12](https://github.com/bimwright/rvt-mcp/issues/12)）。 |
+| [@thiagobarretosn-hue](https://github.com/thiagobarretosn-hue) | MEP ネットワークの構成要素、配管システムの処理、ログの無制限な肥大化に関する、再現例付きの不具合報告（[#11](https://github.com/bimwright/rvt-mcp/issues/11)、[#12](https://github.com/bimwright/rvt-mcp/issues/12)、[#22](https://github.com/bimwright/rvt-mcp/issues/22)）。 |
 | [@razmikb](https://github.com/razmikb) | ホスト付きファミリの配置と階段/send-code の不具合報告。配置検証、ヘルパークラス対応、失敗処理テストの拡充につながりました（[#13](https://github.com/bimwright/rvt-mcp/issues/13)、[#14](https://github.com/bimwright/rvt-mcp/issues/14)）。 |
 | [@Thestreetarckitect](https://github.com/Thestreetarckitect) | ロードマップと対応範囲の明確化につながった Family Authoring Tool Suite の提案（[#7](https://github.com/bimwright/rvt-mcp/issues/7)）。 |
 | [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) | プルリクエスト [#15](https://github.com/bimwright/rvt-mcp/pull/15)：モデル未オープン時にも `send_code` を実行できるようにする修正、`revit_switch_target` のヒント修正、そして `revit_open_model` の提案（手直しのうえ v0.8.1 で公開）。 |
+| [@BenniOST](https://github.com/BenniOST) | 複数インスタンス時のターゲット選択に関する詳細なレビュー。明示的なターゲット確認、ドキュメント検証、再バインド規則の設計につながりました（[#19](https://github.com/bimwright/rvt-mcp/issues/19)）。 |
+| [@maxzalizniak](https://github.com/maxzalizniak) | プルリクエスト [#8](https://github.com/bimwright/rvt-mcp/pull/8)：Revit 2025/2026 で History ボタンが動作しない問題を特定して修正。修正は共同作成者として [#9](https://github.com/bimwright/rvt-mcp/pull/9) に取り込まれ、2027 対応と回帰テストが追加されました。 |
 
 ---
 

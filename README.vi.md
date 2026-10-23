@@ -420,10 +420,12 @@ Mã nguồn, báo lỗi, ví dụ tái hiện và đề xuất giúp cải thi�
 
 | Người đóng góp | Đóng góp |
 |----------------|----------|
-| [@thiagobarretosn-hue](https://github.com/thiagobarretosn-hue) | Báo lỗi kèm ví dụ tái hiện về thành phần mạng MEP và xử lý hệ thống ống ([#11](https://github.com/bimwright/rvt-mcp/issues/11), [#12](https://github.com/bimwright/rvt-mcp/issues/12)). |
+| [@thiagobarretosn-hue](https://github.com/thiagobarretosn-hue) | Báo lỗi kèm ví dụ tái hiện về thành phần mạng MEP, xử lý hệ thống ống và file log tăng không giới hạn ([#11](https://github.com/bimwright/rvt-mcp/issues/11), [#12](https://github.com/bimwright/rvt-mcp/issues/12), [#22](https://github.com/bimwright/rvt-mcp/issues/22)). |
 | [@razmikb](https://github.com/razmikb) | Báo lỗi đặt family có host và xử lý lỗi cầu thang/send-code, giúp bổ sung kiểm tra vị trí, hỗ trợ lớp helper và mở rộng kiểm thử xử lý lỗi ([#13](https://github.com/bimwright/rvt-mcp/issues/13), [#14](https://github.com/bimwright/rvt-mcp/issues/14)). |
 | [@Thestreetarckitect](https://github.com/Thestreetarckitect) | Đề xuất Family Authoring Tool Suite giúp làm rõ lộ trình và phạm vi sản phẩm ([#7](https://github.com/bimwright/rvt-mcp/issues/7)). |
 | [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) | Pull request [#15](https://github.com/bimwright/rvt-mcp/pull/15): bản sửa để `send_code` chạy được khi chưa mở model, sửa gợi ý tham số của `revit_switch_target`, và đề xuất `revit_open_model` (được làm lại rồi phát hành trong v0.8.1). |
+| [@BenniOST](https://github.com/BenniOST) | Review chi tiết về chọn target khi chạy nhiều instance Revit, giúp định hình cơ chế xác nhận target, kiểm tra document và quy tắc rebind ([#19](https://github.com/bimwright/rvt-mcp/issues/19)). |
+| [@maxzalizniak](https://github.com/maxzalizniak) | Pull request [#8](https://github.com/bimwright/rvt-mcp/pull/8): tìm ra và sửa lỗi nút History không hoạt động trên Revit 2025/2026; bản sửa được đưa vào [#9](https://github.com/bimwright/rvt-mcp/pull/9) với tư cách đồng tác giả, mở rộng cho 2027 và thêm regression test. |
 
 ---
 
