@@ -25,6 +25,15 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
+## Unreleased
+
+### Target binding (#19)
+
+- Once a session has a binding, `auto`/year selectors no longer move it to another instance, including after the previous instance exited or stopped its listener. Select the new instance with `pid:`/`id:`; leaving a live confirmed instance still requires `rebind=true`. The first selection in a new session still accepts `auto`/year when exactly one instance matches.
+- Same-process re-selection keeps the confirmed document, including through `verify=false`. Confirming a different document (another project, Edit Family) requires `expectedDocumentId` or `rebind=true`.
+- `TARGET_CHANGED`, `TARGET_LOST`, `TARGET_REBIND_REQUIRED` and `TARGET_UNCONFIRMED` name the exact `pid:<n>` or pending document to confirm. `revit_get_current_target` reports `expected_document_id`, and `DOCUMENT_CHANGED` from verification names the active and expected documents.
+- Server instructions tell subagents not to switch targets.
+
 ## v1.2.1 — 2026-10-20
 
 ### Critical fixes in History → Issues

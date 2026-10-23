@@ -197,8 +197,8 @@ namespace RvtMcp.Server
         internal static string? NextTargetId(IReadOnlyList<TargetCandidate> liveOrdered) =>
             Binding.NextTargetId(liveOrdered);
 
-        internal static SwitchResult Switch(TargetSelector selector, IReadOnlyList<TargetCandidate> liveOrdered, bool rebind = false) =>
-            Binding.Switch(selector, liveOrdered, rebind);
+        internal static SwitchResult Switch(TargetSelector selector, IReadOnlyList<TargetCandidate> liveOrdered, bool rebind = false,
+            string? expectedDocumentId = null) => Binding.Switch(selector, liveOrdered, rebind, expectedDocumentId);
     }
 
     /// <summary>

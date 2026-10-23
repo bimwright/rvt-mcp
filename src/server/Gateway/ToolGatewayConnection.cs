@@ -293,13 +293,13 @@ namespace RvtMcp.Server
         /// the old instance's still-open connection (§6.6, §6.8).
         /// </summary>
         internal static SwitchResult SwitchBinding(TargetSelector selector, IReadOnlyList<Bimwright.Targeting.TargetCandidate> live,
-            out BindingSnapshot before, bool rebind = false)
+            out BindingSnapshot before, bool rebind = false, string expectedDocumentId = null)
         {
             lock (_connectLock)
             {
                 // Verification rollback must use the binding immediately before this switch.
                 before = RevitTargetBinding.Snapshot();
-                var result = RevitTargetBinding.Switch(selector, live, rebind);
+                var result = RevitTargetBinding.Switch(selector, live, rebind, expectedDocumentId);
                 if (result.Ok && RevitTargetBinding.CaptureGeneration() != before.Generation)
                 {
                     var conn = _conn;

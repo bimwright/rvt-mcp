@@ -75,6 +75,7 @@ namespace RvtMcp.Server
                 ["confirmation_required"] = snap.ConfirmationRequired,
                 ["selection_confirmed"] = record?.SelectionConfirmed ?? false,
                 ["confirmed_document_id"] = record?.DocumentId,
+                ["expected_document_id"] = record?.ExpectedDocumentId,
                 ["last_switch"] = snap.LastSwitch != null
                     ? new JObject
                     {
@@ -228,7 +229,7 @@ namespace RvtMcp.Server
                 }
 
                 var live = RevitTargetBinding.Scan().Live;
-                var result = ToolGateway.SwitchBinding(selector, live, out var snapBefore, rebind);
+                var result = ToolGateway.SwitchBinding(selector, live, out var snapBefore, rebind, expectedDocumentId);
                 if (!result.Ok)
                 {
                     var failEnv = TargetEnvelope(result.Failure);
@@ -267,8 +268,9 @@ namespace RvtMcp.Server
                 {
                     var probe = await ToolGateway.SendToRevit("get_current_view_info", requireWriteCapabilities: true);
                     var stamp = probe["_target"] as JObject;
+                    var expectedDocument = result.Current.ExpectedDocumentId;
                     var verified = !ToolGateway.IsFailureOrPending(probe)
-                        && (expectedDocumentId == null || stamp?.Value<string>("document_id") == expectedDocumentId)
+                        && (expectedDocument == null || stamp?.Value<string>("document_id") == expectedDocument)
                         && ToolGateway.ConfirmDocument(result.Current.Generation, stamp);
                     var restored = !verified && ToolGateway.RestoreAfterFailedVerification(snapBefore, result.Current.Generation);
                     var verification = JObject.FromObject(new
@@ -285,8 +287,9 @@ namespace RvtMcp.Server
                     });
                     if (!verified)
                     {
-                        verification["verifyError"] = probe["error"] ?? (expectedDocumentId != null && !string.IsNullOrEmpty(stamp?.Value<string>("document_id")) && stamp.Value<string>("document_id") != expectedDocumentId
-                            ? "DOCUMENT_CHANGED: the active document does not match expectedDocumentId. No model write was sent."
+                        var activeDocument = stamp?.Value<string>("document_id");
+                        verification["verifyError"] = probe["error"] ?? (expectedDocument != null && !string.IsNullOrEmpty(activeDocument) && activeDocument != expectedDocument
+                            ? $"DOCUMENT_CHANGED: the active document {stamp.Value<string>("document_title")} ({activeDocument}) does not match the confirmed or expected document {expectedDocument}. Review it and provide expectedDocumentId or rebind=true to confirm a different document. No model write was sent."
                             : "DOCUMENT_UNCONFIRMED: the selected instance's active document could not be verified. Open the intended model and call revit_switch_target(verify=true) again.");
                         SafetyResponseMetadata.Attach(verification, probe);
                     }

@@ -106,7 +106,54 @@ namespace RvtMcp.Tests
 
             Assert.False(result.Ok);
             Assert.Equal(TargetCode.TargetRebindRequired, result.Failure.Code);
+            Assert.Contains("rebind=true", result.Failure.NextStep);
+            Assert.DoesNotContain("pid:" + PidB, result.Failure.NextStep);
             Assert.Equal(before, RevitTargetBinding.Snapshot());
+        }
+
+        [Theory]
+        [InlineData("auto", false)]
+        [InlineData("auto", true)]
+        [InlineData("2024", false)]
+        [InlineData("2024", true)]
+        public void Lost_target_requires_an_explicit_instance_or_rebind(string selectorText, bool observeLoss)
+        {
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), Live());
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-a");
+            _probe.Set(PidA, ProcessState.Exited, StartA);
+            var onlyB = new[] { Candidate(PidB, 2024, StartB, "Revit B") };
+            if (observeLoss) RevitTargetBinding.Binding.PlanCall(RevitTargetBinding.CaptureGeneration(), onlyB);
+            Assert.True(SelectorParser.TryParse(HostProduct.Revit, selectorText, out var selector, out _, out _));
+            var before = RevitTargetBinding.Snapshot();
+
+            var refused = RevitTargetBinding.Switch(selector, onlyB);
+
+            Assert.False(refused.Ok);
+            Assert.Equal(TargetCode.TargetRebindRequired, refused.Failure.Code);
+            Assert.Contains($"revit_switch_target(version=\"pid:{PidB}\")", refused.Failure.NextStep);
+            Assert.False(refused.Failure.Sent);
+            Assert.Equal(before, RevitTargetBinding.Snapshot());
+            Assert.True(RevitTargetBinding.Switch(selector, onlyB, rebind: true).Ok);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Same_pid_confirmation_cannot_replace_the_previous_document(bool selectTwice)
+        {
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), Live());
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-a");
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), Live());
+            if (selectTwice) RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), Live());
+            var generation = RevitTargetBinding.CaptureGeneration();
+
+            Assert.False(RevitTargetBinding.Binding.ConfirmDocument(generation, "doc-b"));
+            Assert.False(RevitTargetBinding.Binding.CanWrite(generation, true, out var unconfirmed));
+            Assert.Equal(TargetCode.TargetUnconfirmed, unconfirmed.Code);
+            Assert.Contains("doc-a", unconfirmed.NextStep);
+            Assert.Contains("expectedDocumentId", unconfirmed.NextStep);
+            Assert.True(RevitTargetBinding.Binding.ConfirmDocument(generation, "doc-a"));
+            Assert.True(RevitTargetBinding.Binding.CanWrite(RevitTargetBinding.CaptureGeneration(), true, out _));
         }
 
         [Fact]
@@ -283,12 +330,16 @@ namespace RvtMcp.Tests
                 Assert.Equal(TargetCode.TargetChanged, plan.Payload.Code);
                 Assert.False(plan.Payload.Sent);
                 Assert.Equal("revit-2024-" + PidB, plan.Payload.Current.TargetId);
+                Assert.Contains($"revit_switch_target(version=\"pid:{PidB}\")", plan.Payload.NextStep);
                 Assert.True(RevitTargetBinding.Snapshot().ConfirmationRequired);
             }
 
             var result = RevitTargetBinding.Switch(TargetSelector.Auto, onlyB);
 
-            Assert.True(result.Ok);
+            Assert.False(result.Ok);
+            Assert.Equal(TargetCode.TargetRebindRequired, result.Failure.Code);
+            Assert.Equal(PidA, RevitTargetBinding.Snapshot().Record.Pid);
+            Assert.True(RevitTargetBinding.Switch(TargetSelector.Auto, onlyB, rebind: true).Ok);
             var snap = RevitTargetBinding.Snapshot();
             Assert.Equal(PidB, snap.Record.Pid);
             Assert.True(snap.ConfirmationRequired); // Process selected; its document is not verified yet.

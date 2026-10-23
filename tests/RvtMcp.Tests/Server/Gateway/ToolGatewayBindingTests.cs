@@ -329,6 +329,129 @@ namespace RvtMcp.Tests
             Assert.Equal(1, host.Commands.Count(command => command == "create_level"));
         }
 
+        [Theory]
+        [InlineData(false, null, false, false)]
+        [InlineData(true, null, false, false)]
+        [InlineData(false, "doc-b", false, true)]
+        [InlineData(true, "doc-b", false, true)]
+        [InlineData(false, null, true, true)]
+        [InlineData(true, null, true, true)]
+        [InlineData(false, "wrong-doc", false, false)]
+        public async Task Same_pid_document_change_requires_explicit_intent(
+            bool deferVerification, string expectedDocumentId, bool rebind, bool allowed)
+        {
+            using var host = new FakeTcpHost { TargetStamp = new JObject {
+                ["target_id"] = "revit-2024-" + PidA, ["pid"] = PidA,
+                ["host_year"] = 2024, ["document_id"] = "doc-a" } };
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok");
+            async Task<JObject> Switch(bool verify = true, bool replace = false, string expected = null)
+            {
+                var ctx = BeginCall();
+                try { return JObject.Parse(await MetaTools.SwitchTarget("pid:" + PidA, verify, replace, expected)); }
+                finally { TargetCallContext.End(ctx); }
+            }
+            Assert.True((await Switch()).Value<bool>("verified"));
+            host.TargetStamp["document_id"] = "doc-b";
+            host.TargetStamp["is_family_document"] = true;
+            if (deferVerification) Assert.True((await Switch(verify: false)).Value<bool>("ok"));
+
+            var result = await Switch(replace: rebind, expected: expectedDocumentId);
+
+            Assert.Equal(allowed, result.Value<bool>("verified"));
+            Assert.Equal(allowed, result.Value<bool>("ok"));
+            if (allowed)
+            {
+                Assert.Equal("doc-b", RevitTargetBinding.Snapshot().Record.DocumentId);
+                await Send("create_level");
+                Assert.Equal("doc-b", host.Requests.Last().Value<string>("expected_document_id"));
+            }
+            else
+            {
+                Assert.True(result.Value<bool>("restored_previous"));
+                Assert.Contains("DOCUMENT_CHANGED", result.Value<string>("verifyError"));
+                Assert.Contains("(doc-b)", result.Value<string>("verifyError"));
+                Assert.NotEqual("doc-b", RevitTargetBinding.Snapshot().Record.DocumentId);
+                if (deferVerification)
+                {
+                    Assert.Equal("doc-a", result["binding"].Value<string>("expected_document_id"));
+                    Assert.False(RevitTargetBinding.Binding.CanWrite(RevitTargetBinding.CaptureGeneration(), true, out _));
+                    Assert.Equal(TargetCode.TargetUnconfirmed, (await SendExpectingFailure("create_level")).Payload.Code);
+                }
+                else
+                    Assert.StartsWith("DOCUMENT_CHANGED:", (await Send("create_level")).Value<string>("error"));
+                Assert.DoesNotContain(host.Commands, command => command == "create_level");
+            }
+        }
+
+        [Theory]
+        [InlineData("auto", false, false)]
+        [InlineData("2024", false, false)]
+        [InlineData("auto", true, true)]
+        [InlineData("2024", true, true)]
+        [InlineData("pid:434343", false, true)]
+        [InlineData("id:revit-2024-434343", false, true)]
+        public async Task Lost_target_switch_checks_intent_before_verification(string selector, bool rebind, bool allowed)
+        {
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", 49001, null, "old");
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), RevitTargetBinding.Scan().Live);
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-a");
+            _probe.Set(PidA, ProcessState.Exited, StartA);
+            using var host = new FakeTcpHost { TargetStamp = new JObject {
+                ["target_id"] = "revit-2024-" + PidB, ["pid"] = PidB,
+                ["host_year"] = 2024, ["document_id"] = "doc-b" } };
+            _probe.Set(PidB, ProcessState.Running, StartB);
+            WritePerInstanceDescriptor(PidB, 2024, StartB, "tcp", host.Port, null, "tok");
+            RevitTargetBinding.Binding.PlanCall(RevitTargetBinding.CaptureGeneration(), RevitTargetBinding.Scan().Live);
+            var before = RevitTargetBinding.Snapshot();
+            var ctx = BeginCall();
+            JObject result;
+            try { result = JObject.Parse(await MetaTools.SwitchTarget(selector, rebind: rebind)); }
+            finally { TargetCallContext.End(ctx); }
+
+            Assert.Equal(allowed, result.Value<bool>("ok"));
+            if (allowed)
+            {
+                Assert.True(result.Value<bool>("verified"));
+                await Send("create_level");
+                Assert.Equal("doc-b", host.Requests.Last().Value<string>("expected_document_id"));
+            }
+            else
+            {
+                Assert.Equal("TARGET_REBIND_REQUIRED", result["target"].Value<string>("code"));
+                Assert.Equal(before, RevitTargetBinding.Snapshot());
+                Assert.Empty(host.Requests);
+                Assert.Equal(0, host.Connections);
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task Same_pid_reverification_preserves_the_original_document(bool deferVerification)
+        {
+            using var host = new FakeTcpHost { TargetStamp = new JObject {
+                ["target_id"] = "revit-2024-" + PidA, ["pid"] = PidA,
+                ["host_year"] = 2024, ["document_id"] = "doc-a" } };
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok");
+            async Task<JObject> Switch(bool verify = true)
+            {
+                var ctx = BeginCall();
+                try { return JObject.Parse(await MetaTools.SwitchTarget("pid:" + PidA, verify)); }
+                finally { TargetCallContext.End(ctx); }
+            }
+            Assert.True((await Switch()).Value<bool>("verified"));
+            if (deferVerification)
+                for (var i = 0; i < 2; i++) Assert.True((await Switch(false)).Value<bool>("ok"));
+
+            Assert.True((await Switch()).Value<bool>("verified"));
+            Assert.Equal("doc-a", RevitTargetBinding.Snapshot().Record.DocumentId);
+            await Send("create_level");
+            Assert.Equal("doc-a", host.Requests.Last().Value<string>("expected_document_id"));
+        }
+
         [Fact]
         public async Task Failed_switch_verification_restores_previous_binding()
         {
