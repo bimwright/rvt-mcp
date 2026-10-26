@@ -79,14 +79,15 @@ namespace RvtMcp.Plugin
             if (methods == null || methods.Length != 1)
                 return Error(ScriptErrorCodes.EntrypointMismatch, "Expected exactly one public static Run matching the supplied data mode.", "script");
 
-            var invocation = "McpDynamicScript.Run(app" + (input.Data.IsProvided ? ", Data(dataJson)" : "") + ")";
+            var invocation = "global::McpDynamicScript.Run(app" + (input.Data.IsProvided ? ", Data(dataJson)" : "") + ")";
             // Date-like strings stay strings; fraction/exponent numbers read as double, kept finite by ScriptData.
+            // global:: keeps a caller's global using alias from capturing these references.
             var dataReader = !input.Data.IsProvided ? "" :
-                " private static Newtonsoft.Json.Linq.JObject Data(string json) { using (var reader = new Newtonsoft.Json.JsonTextReader(new System.IO.StringReader(json))" +
-                " { DateParseHandling = Newtonsoft.Json.DateParseHandling.None, FloatParseHandling = Newtonsoft.Json.FloatParseHandling.Double })" +
-                " return Newtonsoft.Json.Linq.JObject.Load(reader); }";
+                " private static global::Newtonsoft.Json.Linq.JObject Data(string json) { using (var reader = new global::Newtonsoft.Json.JsonTextReader(new global::System.IO.StringReader(json))" +
+                " { DateParseHandling = global::Newtonsoft.Json.DateParseHandling.None, FloatParseHandling = global::Newtonsoft.Json.FloatParseHandling.Double })" +
+                " return global::Newtonsoft.Json.Linq.JObject.Load(reader); }";
             var shim = "#line hidden\npublic static class " + ScriptCompileResult.EntryType +
-                       " { public static object Invoke(Autodesk.Revit.UI.UIApplication app, string dataJson) { " +
+                       " { public static object Invoke(global::Autodesk.Revit.UI.UIApplication app, string dataJson) { " +
                        (methods[0].ReturnsVoid ? invocation + "; return null;" : "return " + invocation + ";") + " }" + dataReader + " }";
             compilation = compilation.AddSyntaxTrees(CSharpSyntaxTree.ParseText(shim, path: "generated:entry"));
             foreach (var tree in trees) compilation = SendCodeDocumentRewriter.Apply(compilation, tree);

@@ -12,10 +12,21 @@ namespace RvtMcp.Plugin
         internal static string BuildEnhanced(string code, bool hasData, bool taskContract)
         {
             var root = CSharpSyntaxTree.ParseText(code).GetCompilationUnitRoot();
+            // #define/#undef must precede every token, so the caller's go above the generated imports.
+            // Blanking them in place keeps the line numbers that #line mapping relies on.
+            var symbolsEnd = root.GetFirstToken(includeZeroWidth: true).LeadingTrivia
+                .Where(t => t.IsKind(SyntaxKind.DefineDirectiveTrivia) || t.IsKind(SyntaxKind.UndefDirectiveTrivia))
+                .Select(t => t.FullSpan.End).DefaultIfEmpty(0).Max();
+            var symbols = symbolsEnd == 0 ? "" : "\n#line 1 \"script\"\n" + code.Substring(0, symbolsEnd) + "\n#line hidden\n";
+            if (symbolsEnd != 0)
+                root = CSharpSyntaxTree.ParseText(new string(code.Substring(0, symbolsEnd).Where(c => c == '\r' || c == '\n').ToArray())
+                    + code.Substring(symbolsEnd)).GetCompilationUnitRoot();
             var statements = root.Members.OfType<GlobalStatementSyntax>().ToArray();
             var fullSource = statements.Length == 0 && root.Members.Count != 0;
             var imports = new List<string>();
             imports.AddRange(root.Externs.Select(Mapped));
+            // Generated imports follow the caller's: global usings must precede ordinary ones.
+            imports.AddRange(root.Usings.Select(Mapped));
             if (!fullSource)
                 foreach (var name in new[] { "System", "System.Linq", "System.Collections.Generic", "Autodesk.Revit.DB", "Autodesk.Revit.UI" })
                     if (!root.Usings.Any(u => u.Alias == null && u.StaticKeyword.IsKind(SyntaxKind.None) && u.Name.ToString() == name))
@@ -24,15 +35,15 @@ namespace RvtMcp.Plugin
                 imports.Add("using Newtonsoft.Json.Linq;\n");
             if (taskContract && !root.Usings.Any(u => u.Name.ToString() == "RvtMcp.Plugin" && u.Alias == null))
                 imports.Add("using RvtMcp.Plugin;\n");
-            imports.AddRange(root.Usings.Select(Mapped));
             imports.AddRange(root.AttributeLists.Select(Mapped));
             var ending = root.EndOfFileToken.LeadingTrivia.ToFullString();
             if (fullSource)
-                return "#line hidden\n" + string.Concat(imports) + string.Concat(root.Members.Select(Mapped)) + ending;
-            return "#line hidden\n" + string.Concat(imports) + @"
+                return "#line hidden\n" + symbols + string.Concat(imports) + string.Concat(root.Members.Select(Mapped)) + ending;
+            // global:: keeps caller aliases such as "using Autodesk = ..." from capturing generated references.
+            return "#line hidden\n" + symbols + string.Concat(imports) + @"
 #line hidden
 public class McpDynamicScript {
- public static object Run(Autodesk.Revit.UI.UIApplication app" + (hasData ? ", Newtonsoft.Json.Linq.JObject data" : "") + @") {
+ public static object Run(global::Autodesk.Revit.UI.UIApplication app" + (hasData ? ", global::Newtonsoft.Json.Linq.JObject data" : "") + @") {
   var uidoc = app.ActiveUIDocument;
   var doc = uidoc?.Document;
 " + string.Concat(statements.Select(Mapped)) + @"

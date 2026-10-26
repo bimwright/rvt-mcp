@@ -167,6 +167,35 @@ public class McpDynamicScript {
             var module = new ScriptModuleRevision("helper", "public static class Helper {\n public static int Value => missing;\n}");
             var result = Compile(new ScriptInput("return Helper.Value;", modules: new[] { "helper" }, compileOnly: true), module);
             Assert.Contains(result.Diagnostics, d => d.Source == "module:helper" && d.Line == 2 && d.DiagnosticId == "CS0103");
+            var defined = Compile(new ScriptInput("#define X\n\npublic class McpDynamicScript { public static object Run(Autodesk.Revit.UI.UIApplication app) => missing; }",
+                resultContract: ScriptModes.TaskV1, compileOnly: true));
+            Assert.Contains(defined.Diagnostics, d => d.Source == "script" && d.Line == 3 && d.DiagnosticId == "CS0103");
+        }
+
+        [Theory]
+        [InlineData("global using System;\nreturn 7;")]
+        [InlineData("using Autodesk = System;\nreturn 7;")]
+        [InlineData("global using Autodesk = System;\nreturn 7;")]
+        public void Caller_global_usings_and_aliases_compile_with_every_enhanced_option(string code)
+        {
+            Assert.Equal(7, Run(Compile(new ScriptInput(code, usageContext: ScriptModes.Test))));
+            Assert.True(Compile(new ScriptInput(code, compileOnly: true)).Success);
+            var data = new ScriptInput(code, ScriptData.FromJson("{}"));
+            Assert.Equal(7, Run(Compile(data), data.Data.Json));
+            var task = new ScriptInput(code.Replace("return 7;", "return McpTaskResult.Pass(7);"), resultContract: ScriptModes.TaskV1);
+            Assert.Equal(7, Assert.IsType<McpTaskResult>(Run(Compile(task))).Value);
+        }
+
+        [Theory]
+        [InlineData("global using Autodesk.Revit.UI;\n", 9)]
+        [InlineData("#define SEVEN\n", 7)]
+        [InlineData("#define SEVEN\nusing Autodesk.Revit.UI;\n", 7)]
+        public void Full_source_keeps_global_usings_and_symbol_definitions_ahead_of_the_task_import(string prologue, int expected)
+        {
+            var code = prologue + "public class McpDynamicScript { public static object Run(Autodesk.Revit.UI.UIApplication app) {\n" +
+                       "#if SEVEN\nreturn McpTaskResult.Pass(7);\n#else\nreturn McpTaskResult.Pass(9);\n#endif\n} }";
+            var task = Assert.IsType<McpTaskResult>(Run(Compile(new ScriptInput(code, resultContract: ScriptModes.TaskV1))));
+            Assert.Equal(expected, task.Value);
         }
 
         [Fact]
