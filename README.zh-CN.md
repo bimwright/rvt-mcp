@@ -90,7 +90,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 ## Tools
 
-下表数量与 **v1.2.0 发布版**一致；后续开发版本的工具目录可能不同。
+下表数量与**当前源码**一致，其中包含 3 个 `send_code` 模块工具；**v1.2.1 发布版**在每种模式下都少 3 个工具。
 
 | 模式 | Tools | 说明 |
 |------|------:|------|

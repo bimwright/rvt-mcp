@@ -88,7 +88,7 @@ Community videos of rvt-mcp at work. Install steps shown in a video can be older
 
 ## Tools
 
-Counts below match the **v1.2.0 release**; later development builds can expose a different catalog.
+Counts below match the **current source**, which adds the three `send_code` module tools. The **v1.2.1 release** has three fewer tools in each mode.
 
 | Mode | Tools | Notes |
 |------|------:|-------|

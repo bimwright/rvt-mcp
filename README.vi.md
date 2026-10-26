@@ -91,7 +91,7 @@ Video cộng đồng giới thiệu rvt-mcp. Cách cài trong video có thể c�
 
 ## Tools
 
-Các số dưới đây khớp **bản phát hành v1.2.0**; những bản phát triển sau đó có thể có catalog khác.
+Các số dưới đây khớp **source hiện tại**, đã thêm 3 tool module của `send_code`. **Bản phát hành v1.2.1** có ít hơn 3 tool ở mỗi chế độ.
 
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
