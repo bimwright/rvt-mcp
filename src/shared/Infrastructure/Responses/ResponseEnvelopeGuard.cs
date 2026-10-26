@@ -37,6 +37,14 @@ namespace RvtMcp.Plugin
             if (spill.Spilled || spill.Data != response["data"])
             {
                 response["data"] = spill.Data == null ? JValue.CreateNull() : JToken.FromObject(spill.Data);
+                var spillError = ResponseSizePolicyCatalog.GetOperationError(command, response["data"] as JObject);
+                if (response["_script"] != null && response["data"] is JObject spillData && spillData.Value<bool?>("spill_succeeded") == false)
+                    spillError = spillData.Value<string>("error") ?? "Script output could not be persisted; do not repeat the operation.";
+                if (spillError != null)
+                {
+                    response["success"] = false;
+                    response["error"] = McpResponsePrivacy.RedactErrorForResponse(spillError);
+                }
                 payload = response.ToString(Formatting.None);
             }
 
@@ -55,9 +63,15 @@ namespace RvtMcp.Plugin
                     response.Remove("data");
                     response["success"] = false;
                     response["error"] = envelope.Value<bool>("success") ? size.RejectError : envelope["error"];
-                    if (response["error"]?.Type == JTokenType.String && response.Value<string>("error").Length > 512)
+                    if (response["error"]?.Type == JTokenType.String && (response.Value<string>("error")?.Length ?? 0) > 512)
                         response["error"] = response.Value<string>("error").Substring(0, 512);
                     SafetyResponseMetadata.Attach(response, envelope, compact: true);
+                    if (response["_task"] != null && response["error"]?.Type == JTokenType.String)
+                    {
+                        var error = response.Value<string>("error") ?? "";
+                        while (Encoding.UTF8.GetByteCount(error) > 128) error = error.Substring(0, error.Length - 1);
+                        response["error"] = error;
+                    }
                     return response;
                 }
 

@@ -6,6 +6,13 @@
   </PropertyGroup>
   <!-- Production Settings/History views on an STA dispatcher; host and ledger facades stay in memory. -->
   <ItemGroup>
+    <Compile Include="../../src/shared/Infrastructure/Scripting/ScriptContracts.cs" Link="Scripting/ScriptContracts.cs" />
+    <Compile Include="../../src/shared/Infrastructure/Scripting/ScriptIdentity.cs" Link="Scripting/ScriptIdentity.cs" />
+    <Compile Include="../../src/shared/Infrastructure/Scripting/ScriptJson.cs" Link="Scripting/ScriptJson.cs" />
+    <Compile Include="../../src/shared/Infrastructure/Scripting/ScriptModuleRevision.cs" Link="Scripting/ScriptModuleRevision.cs" />
+    <Compile Include="../../src/shared/Infrastructure/Scripting/ScriptWireRequest.cs" Link="Scripting/ScriptWireRequest.cs" />
+    <Compile Include="../../src/shared/Infrastructure/Scripting/ScriptTelemetry.cs" Link="Scripting/ScriptTelemetry.cs" />
+    <Compile Include="../../src/shared/Infrastructure/Scripting/ScriptPresentation.cs" Link="Scripting/ScriptPresentation.cs" />
     <Compile Include="../../src/shared/Logging/McpSessionLog.cs" Link="Logging/McpSessionLog.cs" />
     <Compile Include="../../src/shared/Logging/McpLogger.cs" Link="Logging/McpLogger.cs" />
     <Compile Include="../../src/shared/Logging/SessionLogHistoryLoader.cs" Link="Logging/SessionLogHistoryLoader.cs" />

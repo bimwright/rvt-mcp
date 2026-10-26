@@ -49,7 +49,8 @@ namespace RvtMcp.Tests
         [Theory]
         [InlineData("send_code_to_revit")]
         [InlineData("run_baked_tool")]
-        public void Arbitrary_code_commands_auto_spill_only_above_enforcement_budget(string command)
+        [InlineData("list_code_modules")]
+        public void Arbitrary_output_and_module_list_auto_spill_only_above_enforcement_budget(string command)
         {
             var large = ResponseSpillPolicy.Evaluate(
                 command,

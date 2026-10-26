@@ -1,0 +1,140 @@
+[
+  {
+    "id": "empty",
+    "input": "{}",
+    "canonical": "{}",
+    "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  {
+    "id": "ordered",
+    "input": "{\"b\":2,\"a\":1}",
+    "canonical": "{\"a\":1e0,\"b\":2e0}",
+    "sha256": "3fc8740aca49dfb85ff73b061896191326ca8bc24d3cfb4d8b1baecea8786058"
+  },
+  {
+    "id": "reordered",
+    "input": "{ \"a\":1.0, \"b\":2e0 }",
+    "canonical": "{\"a\":1e0,\"b\":2e0}",
+    "sha256": "3fc8740aca49dfb85ff73b061896191326ca8bc24d3cfb4d8b1baecea8786058"
+  },
+  {
+    "id": "one-integer",
+    "input": "{\"n\":1}",
+    "canonical": "{\"n\":1e0}",
+    "sha256": "1499d8ce7727c52f249d9b8cd88eae2162f228881be4d8e91720e482848b5153"
+  },
+  {
+    "id": "one-decimal",
+    "input": "{\"n\":1.0}",
+    "canonical": "{\"n\":1e0}",
+    "sha256": "1499d8ce7727c52f249d9b8cd88eae2162f228881be4d8e91720e482848b5153"
+  },
+  {
+    "id": "one-exponent",
+    "input": "{\"n\":1e0}",
+    "canonical": "{\"n\":1e0}",
+    "sha256": "1499d8ce7727c52f249d9b8cd88eae2162f228881be4d8e91720e482848b5153"
+  },
+  {
+    "id": "zero-negative",
+    "input": "{\"n\":-0.00e-999999999999999999999999}",
+    "canonical": "{\"n\":0}",
+    "sha256": "f3013f933b9fb80ab6d995e7ad9da36f683837ba1d81e950c943d40111eac2f0"
+  },
+  {
+    "id": "zero",
+    "input": "{\"n\":0}",
+    "canonical": "{\"n\":0}",
+    "sha256": "f3013f933b9fb80ab6d995e7ad9da36f683837ba1d81e950c943d40111eac2f0"
+  },
+  {
+    "id": "exact-large-integer",
+    "input": "{\"n\":9007199254740993}",
+    "canonical": "{\"n\":9007199254740993e0}",
+    "sha256": "f3b4dab0b722b964c91f92dd26fdb9de11d1e6a81c7773d48410fa6dd715443c"
+  },
+  {
+    "id": "adjacent-large-integer",
+    "input": "{\"n\":9007199254740992}",
+    "canonical": "{\"n\":9007199254740992e0}",
+    "sha256": "c921643d1945910b211961a5d42e4916dd4b73286e3b90877c274a84563cef11"
+  },
+  {
+    "id": "exact-fraction",
+    "input": "{\"n\":123456789012345678901234567890.00000000000000000012300}",
+    "canonical": "{\"n\":123456789012345678901234567890000000000000000000123e-21}",
+    "sha256": "db0023f0ba9b781124524afae8f08b0b530202ae08d4aa43554cb598c379b77a"
+  },
+  {
+    "id": "huge-exponent",
+    "input": "{\"n\":12300e+123456789012345678901234567890}",
+    "canonical": "{\"n\":123e123456789012345678901234567892}",
+    "sha256": "971561db465a607b3eaecea8a6d1bbdf959da0b2ee8d3637690fb88d34f7efca"
+  },
+  {
+    "id": "small-exponent",
+    "input": "{\"n\":-12300e-123456789012345678901234567890}",
+    "canonical": "{\"n\":-123e-123456789012345678901234567888}",
+    "sha256": "bec3fff33a5dc8989fd46b3a47a98c60b04103c50c89d97712d512e603ee4150"
+  },
+  {
+    "id": "array-order",
+    "input": "{\"a\":[1,2]}",
+    "canonical": "{\"a\":[1e0,2e0]}",
+    "sha256": "b2f115ccf1aa646cb89ab5b2d60909fb0b8e8798daf0ff0e6317f41a4da8bfb1"
+  },
+  {
+    "id": "array-reordered",
+    "input": "{\"a\":[2,1]}",
+    "canonical": "{\"a\":[2e0,1e0]}",
+    "sha256": "a48bd564cb5b871044f41c17048a154f64cd370a5e730bc726bf2f5c67f85486"
+  },
+  {
+    "id": "literal-string",
+    "input": "{\"text\":\" 1.0 \",\"date\":\"2026-01-01T00:00:00Z\"}",
+    "canonical": "{\"date\":\"2026-01-01T00:00:00Z\",\"text\":\" 1.0 \"}",
+    "sha256": "bf5e531f61a64cda966960a26a2140d9b97864d81027c035729812225b75dd20"
+  },
+  {
+    "id": "unicode",
+    "input": "{\"text\":\"Việt Nam 😀\",\"line\":\"a\\r\\nb\"}",
+    "canonical": "{\"line\":\"a\\r\\nb\",\"text\":\"Việt Nam 😀\"}",
+    "sha256": "8e04357f6ed73c1e79b44e32017c535b56d56586fd4f10c2a2f5579b7270a785"
+  },
+  {
+    "id": "escaped-unicode",
+    "input": "{\"text\":\"Vi\\u1ec7t Nam \\ud83d\\ude00\",\"line\":\"a\\r\\nb\"}",
+    "canonical": "{\"line\":\"a\\r\\nb\",\"text\":\"Việt Nam 😀\"}",
+    "sha256": "8e04357f6ed73c1e79b44e32017c535b56d56586fd4f10c2a2f5579b7270a785"
+  },
+  {
+    "id": "unicode-not-normalized",
+    "input": "{\"text\":\"e\\u0301\"}",
+    "canonical": "{\"text\":\"é\"}",
+    "sha256": "9b53287cd41955684903378d2b1b4a3ddea9d80d67dcd026319a7c5a9a8a8b42"
+  },
+  {
+    "id": "unicode-composed",
+    "input": "{\"text\":\"é\"}",
+    "canonical": "{\"text\":\"é\"}",
+    "sha256": "42d3cbf59fdccced04e5dff14433fb52d34d58e385e9770ffd896ff517d63b92"
+  },
+  {
+    "id": "ordinal-key-order",
+    "input": "{\"\\ue000\":1,\"\\ud800\\udc00\":2,\"a\":3}",
+    "canonical": "{\"a\":3e0,\"𐀀\":2e0,\"\":1e0}",
+    "sha256": "ce94a7e5bc18659b0fc1744d9c1e6469b5ef5f0fa419aa19409994c747c15cc0"
+  },
+  {
+    "id": "escaped-key",
+    "input": "{\"\\u0061\":1,\"A\":2}",
+    "canonical": "{\"A\":2e0,\"a\":1e0}",
+    "sha256": "b8b18c737c901cc03e6bad5684dbccdc0389a26a9e7113757b02fc2b0f4b8fc6"
+  },
+  {
+    "id": "primitives",
+    "input": "{\"yes\":true,\"no\":false,\"none\":null,\"items\":[{},[],\"x\"]}",
+    "canonical": "{\"items\":[{},[],\"x\"],\"no\":false,\"none\":null,\"yes\":true}",
+    "sha256": "7a3ce79731283b5dbe5b18f7c1deb7dc70fdd24fc49a0359fa4e04f94d462e6b"
+  }
+]

@@ -48,7 +48,8 @@ namespace RvtMcp.Plugin
             }
 
             if ((string.Equals(command, "send_code_to_revit", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(command, "run_baked_tool", StringComparison.OrdinalIgnoreCase))
+                    || string.Equals(command, "run_baked_tool", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(command, "list_code_modules", StringComparison.OrdinalIgnoreCase))
                 && automaticSpill && compactResponseBytes > budgetBytes)
             {
                 return new ResponseSpillDecision

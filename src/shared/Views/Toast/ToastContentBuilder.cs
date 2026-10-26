@@ -28,11 +28,14 @@ namespace RvtMcp.Plugin.Views.Toast
             var content = success
                 ? BuildSuccessContent(toolName, paramsJson, resultJson, kind)
                 : BuildFailureContent(toolName, errorMessage, toolDescription);
+            JObject receipt = null;
+            try { receipt = JObject.Parse(resultJson ?? "{}"); } catch { }
+            var scriptLabel = RvtMcp.Scripting.ScriptPresentation.Label(receipt?["_script"] as JObject, receipt?["_operation"] as JObject, key => L.T(key));
 
             return new McpToastViewModel
             {
                 CommandName = toolName,
-                Title = ToolNameFormatter.Format(toolName),
+                Title = scriptLabel ?? ToolNameFormatter.Format(toolName),
                 CategoryLabel = content.CategoryLabel,
                 Summary = content.Summary,
                 Detail = content.Detail,

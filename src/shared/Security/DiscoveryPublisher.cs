@@ -63,12 +63,19 @@ namespace RvtMcp.Plugin
                     ["port"] = port.HasValue ? new JValue(port.Value) : JValue.CreateNull(),
                     ["pipe_name"] = pipeName == null ? JValue.CreateNull() : new JValue(pipeName),
                     ["auth_token"] = token,
-                    ["capabilities"] = new JArray("tool_catalog", "controlled_failures_v1", "document_target_v1")
+                    ["capabilities"] = ScriptCapabilities()
                 }.ToString(Formatting.Indented);
                 published = Write(FileName, json);
                 if (published) Write("revit-" + _year + ".json", json);
             }, 5000); // Allow both atomic-write retry windows before skipping publication.
             return published;
+        }
+
+        private static JArray ScriptCapabilities()
+        {
+            var capabilities = new JArray("tool_catalog", "controlled_failures_v1", "document_target_v1");
+            if (RvtMcp.Scripting.ScriptProtocol.IsReady) capabilities.Add(RvtMcp.Scripting.ScriptProtocol.Capability);
+            return capabilities;
         }
 
         private bool Write(string name, string json) =>

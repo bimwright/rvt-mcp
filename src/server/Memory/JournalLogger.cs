@@ -25,9 +25,11 @@ namespace RvtMcp.Server.Memory
                 "Bimwright", "rvt-mcp", "journal");
         }
 
-        public void Log(JournalEntry entry)
+        public void Log(JournalEntry entry) => TryLog(entry);
+
+        internal bool TryLog(JournalEntry entry)
         {
-            if (!_enabled) return;
+            if (!_enabled) return true;
             lock (_lock)
             {
                 var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
@@ -42,10 +44,12 @@ namespace RvtMcp.Server.Memory
                     Directory.CreateDirectory(_journalDir);
                     var line = JsonConvert.SerializeObject(entry, Formatting.None);
                     BoundedLogFile.Append(_currentPath, line, "journal");
+                    return true;
                 }
                 catch (Exception ex)
                 {
                     DiagnosticLog.Write("Journal", "Journal write failed: " + ex.Message);
+                    return false;
                 }
             }
         }

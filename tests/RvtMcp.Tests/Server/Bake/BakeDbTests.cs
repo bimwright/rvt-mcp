@@ -22,7 +22,7 @@ namespace RvtMcp.Tests
             db.Migrate();
 
             using var connection = OpenRead(dbPath);
-            Assert.Equal(new[] { "registry", "schema_version", "suggestions", "usage_events" }, TableNames(connection));
+            Assert.Equal(new[] { "code_module_revisions", "code_modules", "registry", "schema_version", "suggestions", "usage_events" }, TableNames(connection));
             Assert.Equal(
                 new[]
                 {
@@ -44,7 +44,7 @@ namespace RvtMcp.Tests
                     "source_code", "usage_count", "version_history_blob"
                 },
                 ColumnNames(connection, "registry"));
-            Assert.Equal(1L, Scalar<long>(connection, "SELECT version FROM schema_version"));
+            Assert.Equal(2L, Scalar<long>(connection, "SELECT version FROM schema_version"));
         }
 
         [Fact]

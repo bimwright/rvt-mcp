@@ -13,6 +13,7 @@ namespace RvtMcp.Plugin
 
         public static readonly ISet<string> ReadOnlyCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
+            "list_code_modules",
             "analyze_usage_patterns",
             "activate_view",
             "ai_element_filter",

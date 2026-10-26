@@ -46,10 +46,12 @@ namespace RvtMcp.Plugin.Failures
         // Set by revit_show_message around its own dialog: that dialog is the agent's message, not a Revit condition.
         internal static bool OwnDialogPending;
 
-        internal static void Initialize(UIControlledApplication application)
+        internal static void Initialize(UIControlledApplication application) => Initialize(application, null);
+
+        internal static void Initialize(UIControlledApplication application, FailureLedgerStore store)
         {
             if (_subscribed) return;
-            Store = new FailureLedgerStore();
+            Store = store ?? new FailureLedgerStore();
             FailureLedgerStore.Diagnostic = App.DebugLog;
             try
             {

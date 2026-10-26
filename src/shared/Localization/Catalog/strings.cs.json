@@ -3,6 +3,13 @@
     "locale": "cs",
     "schema": 1
   },
+  "script.label.compile": "Kontrola kompilace",
+  "script.label.execute": "Spuštění skriptu",
+  "script.label.baked": "Uložený skript",
+  "script.native.partial": "Revit: částečně",
+  "script.native.rolled_back": "Revit: vráceno zpět",
+  "script.native.cancelled": "Revit: zrušeno",
+  "script.history.freshInputs": "Vstupy a identita modulů se neukládají pro opakování. Spusťte znovu přes nástroj MCP s aktuálními daty a výběrem modulů.",
   "ribbon.toggle.text.running": "MCP: ZAP",
   "ribbon.toggle.text.stopped": "MCP: VYP",
   "ribbon.toggle.tooltip": "Spustit/Zastavit MCP Server",

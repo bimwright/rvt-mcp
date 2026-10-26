@@ -3,6 +3,13 @@
     "locale": "ko",
     "schema": 1
   },
+  "script.label.compile": "컴파일 확인",
+  "script.label.execute": "스크립트 실행",
+  "script.label.baked": "저장된 스크립트",
+  "script.native.partial": "Revit: 부분 완료",
+  "script.native.rolled_back": "Revit: 롤백",
+  "script.native.cancelled": "Revit: 취소됨",
+  "script.history.freshInputs": "입력과 모듈 식별 정보는 재실행을 위해 저장되지 않습니다. MCP 도구에서 새 데이터와 모듈을 선택하여 다시 실행하세요.",
   "ribbon.toggle.text.running": "MCP: 켜짐",
   "ribbon.toggle.text.stopped": "MCP: 꺼짐",
   "ribbon.toggle.tooltip": "MCP 서버 시작/중지",

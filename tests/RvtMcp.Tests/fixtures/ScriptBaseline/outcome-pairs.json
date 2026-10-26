@@ -1,0 +1,812 @@
+[
+  {
+    "id": "audit-01",
+    "native_operation": {
+      "operationId": "fixture-operationId-01",
+      "hostInstanceId": "fixture-hostInstanceId-01",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Protected parameter value changed.\", rolled_back = \"RolledBack\", baseline_restored = true, dirty = false };",
+      "return_value": {
+        "passed": false,
+        "error": "Protected parameter value changed.",
+        "rolled_back": "RolledBack",
+        "baseline_restored": true,
+        "dirty": false
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"PARAMETER_VALUE_CHANGED\", \"Protected parameter value changed.\", new { rolled_back = \"RolledBack\", baseline_restored = true, dirty = false });",
+      "error_code": "PARAMETER_VALUE_CHANGED",
+      "message": "Protected parameter value changed.",
+      "details": {
+        "rolled_back": "RolledBack",
+        "baseline_restored": true,
+        "dirty": false
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-02",
+    "native_operation": {
+      "operationId": "fixture-operationId-02",
+      "hostInstanceId": "fixture-hostInstanceId-02",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Protected built-in parameter is missing.\", rolled_back = \"RolledBack\", baseline_restored = true, dirty = false };",
+      "return_value": {
+        "passed": false,
+        "error": "Protected built-in parameter is missing.",
+        "rolled_back": "RolledBack",
+        "baseline_restored": true,
+        "dirty": false
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"PARAMETER_MISSING\", \"Protected built-in parameter is missing.\", new { rolled_back = \"RolledBack\", baseline_restored = true, dirty = false });",
+      "error_code": "PARAMETER_MISSING",
+      "message": "Protected built-in parameter is missing.",
+      "details": {
+        "rolled_back": "RolledBack",
+        "baseline_restored": true,
+        "dirty": false
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-03",
+    "native_operation": {
+      "operationId": "fixture-operationId-03",
+      "hostInstanceId": "fixture-hostInstanceId-03",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Protected project parameter is missing.\", rolled_back = \"RolledBack\", baseline_restored = true, dirty = false };",
+      "return_value": {
+        "passed": false,
+        "error": "Protected project parameter is missing.",
+        "rolled_back": "RolledBack",
+        "baseline_restored": true,
+        "dirty": false
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"PARAMETER_MISSING\", \"Protected project parameter is missing.\", new { rolled_back = \"RolledBack\", baseline_restored = true, dirty = false });",
+      "error_code": "PARAMETER_MISSING",
+      "message": "Protected project parameter is missing.",
+      "details": {
+        "rolled_back": "RolledBack",
+        "baseline_restored": true,
+        "dirty": false
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-04",
+    "native_operation": {
+      "operationId": "fixture-operationId-04",
+      "hostInstanceId": "fixture-hostInstanceId-04",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Protected equipment shape changed.\", rolled_back = \"RolledBack\", baseline_restored = true, dirty = false };",
+      "return_value": {
+        "passed": false,
+        "error": "Protected equipment shape changed.",
+        "rolled_back": "RolledBack",
+        "baseline_restored": true,
+        "dirty": false
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"EQUIPMENT_SHAPE_CHANGED\", \"Protected equipment shape changed.\", new { rolled_back = \"RolledBack\", baseline_restored = true, dirty = false });",
+      "error_code": "EQUIPMENT_SHAPE_CHANGED",
+      "message": "Protected equipment shape changed.",
+      "details": {
+        "rolled_back": "RolledBack",
+        "baseline_restored": true,
+        "dirty": false
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-05",
+    "native_operation": {
+      "operationId": "fixture-operationId-05",
+      "hostInstanceId": "fixture-hostInstanceId-05",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Protected equipment or annotation changed.\", rollback = \"RolledBack\", baseline_restored = true, dirty = false };",
+      "return_value": {
+        "passed": false,
+        "error": "Protected equipment or annotation changed.",
+        "rollback": "RolledBack",
+        "baseline_restored": true,
+        "dirty": false
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"PROTECTED_CONTENT_CHANGED\", \"Protected equipment or annotation changed.\", new { rollback = \"RolledBack\", baseline_restored = true, dirty = false });",
+      "error_code": "PROTECTED_CONTENT_CHANGED",
+      "message": "Protected equipment or annotation changed.",
+      "details": {
+        "rollback": "RolledBack",
+        "baseline_restored": true,
+        "dirty": false
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-06",
+    "native_operation": {
+      "operationId": "fixture-operationId-06",
+      "hostInstanceId": "fixture-hostInstanceId-06",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Protected equipment or annotation changed.\", rollback = \"RolledBack\", baseline_restored = true, dirty = false };",
+      "return_value": {
+        "passed": false,
+        "error": "Protected equipment or annotation changed.",
+        "rollback": "RolledBack",
+        "baseline_restored": true,
+        "dirty": false
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"PROTECTED_CONTENT_CHANGED\", \"Protected equipment or annotation changed.\", new { rollback = \"RolledBack\", baseline_restored = true, dirty = false });",
+      "error_code": "PROTECTED_CONTENT_CHANGED",
+      "message": "Protected equipment or annotation changed.",
+      "details": {
+        "rollback": "RolledBack",
+        "baseline_restored": true,
+        "dirty": false
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-07",
+    "native_operation": {
+      "operationId": "fixture-operationId-07",
+      "hostInstanceId": "fixture-hostInstanceId-07",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Name contains prohibited characters.\\r\\nParameter name: name\", rollback = \"RolledBack\", restored = false, dirty = false };",
+      "return_value": {
+        "passed": false,
+        "error": "Name contains prohibited characters.\r\nParameter name: name",
+        "rollback": "RolledBack",
+        "restored": false,
+        "dirty": false
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"INVALID_NAME\", \"Name contains prohibited characters.\\r\\nParameter name: name\", new { rollback = \"RolledBack\", restored = false, dirty = false });",
+      "error_code": "INVALID_NAME",
+      "message": "Name contains prohibited characters.\r\nParameter name: name",
+      "details": {
+        "rollback": "RolledBack",
+        "restored": false,
+        "dirty": false
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-08",
+    "native_operation": {
+      "operationId": "fixture-operationId-08",
+      "hostInstanceId": "fixture-hostInstanceId-08",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Protected annotation changed.\", rollback = \"RolledBack\" };",
+      "return_value": {
+        "passed": false,
+        "error": "Protected annotation changed.",
+        "rollback": "RolledBack"
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"ANNOTATION_CHANGED\", \"Protected annotation changed.\", new { rollback = \"RolledBack\" });",
+      "error_code": "ANNOTATION_CHANGED",
+      "message": "Protected annotation changed.",
+      "details": {
+        "rollback": "RolledBack"
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-09",
+    "native_operation": {
+      "operationId": "fixture-operationId-09",
+      "hostInstanceId": "fixture-hostInstanceId-09",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Path contains prohibited characters.\", rollback = \"RolledBack\" };",
+      "return_value": {
+        "passed": false,
+        "error": "Path contains prohibited characters.",
+        "rollback": "RolledBack"
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"INVALID_PATH\", \"Path contains prohibited characters.\", new { rollback = \"RolledBack\" });",
+      "error_code": "INVALID_PATH",
+      "message": "Path contains prohibited characters.",
+      "details": {
+        "rollback": "RolledBack"
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-10",
+    "native_operation": {
+      "operationId": "fixture-operationId-10",
+      "hostInstanceId": "fixture-hostInstanceId-10",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Protected annotation changed.\", rollback = \"RolledBack\" };",
+      "return_value": {
+        "passed": false,
+        "error": "Protected annotation changed.",
+        "rollback": "RolledBack"
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"ANNOTATION_CHANGED\", \"Protected annotation changed.\", new { rollback = \"RolledBack\" });",
+      "error_code": "ANNOTATION_CHANGED",
+      "message": "Protected annotation changed.",
+      "details": {
+        "rollback": "RolledBack"
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-11",
+    "native_operation": {
+      "operationId": "fixture-operationId-11",
+      "hostInstanceId": "fixture-hostInstanceId-11",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"The requested parameter is read-only.\", rollback = \"RolledBack\" };",
+      "return_value": {
+        "passed": false,
+        "error": "The requested parameter is read-only.",
+        "rollback": "RolledBack"
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"READ_ONLY_PARAMETER\", \"The requested parameter is read-only.\", new { rollback = \"RolledBack\" });",
+      "error_code": "READ_ONLY_PARAMETER",
+      "message": "The requested parameter is read-only.",
+      "details": {
+        "rollback": "RolledBack"
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-12",
+    "native_operation": {
+      "operationId": "fixture-operationId-12",
+      "hostInstanceId": "fixture-hostInstanceId-12",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Expected pattern count does not match.\", rollback = \"RolledBack\" };",
+      "return_value": {
+        "passed": false,
+        "error": "Expected pattern count does not match.",
+        "rollback": "RolledBack"
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"PATTERN_MISMATCH\", \"Expected pattern count does not match.\", new { rollback = \"RolledBack\" });",
+      "error_code": "PATTERN_MISMATCH",
+      "message": "Expected pattern count does not match.",
+      "details": {
+        "rollback": "RolledBack"
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-13",
+    "native_operation": {
+      "operationId": "fixture-operationId-13",
+      "hostInstanceId": "fixture-hostInstanceId-13",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Expected joint does not match.\", rollback = \"RolledBack\" };",
+      "return_value": {
+        "passed": false,
+        "error": "Expected joint does not match.",
+        "rollback": "RolledBack"
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"JOINT_MISMATCH\", \"Expected joint does not match.\", new { rollback = \"RolledBack\" });",
+      "error_code": "JOINT_MISMATCH",
+      "message": "Expected joint does not match.",
+      "details": {
+        "rollback": "RolledBack"
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-14",
+    "native_operation": {
+      "operationId": "fixture-operationId-14",
+      "hostInstanceId": "fixture-hostInstanceId-14",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Adapter gap exceeds the expected tolerance.\", rollback = \"RolledBack\" };",
+      "return_value": {
+        "passed": false,
+        "error": "Adapter gap exceeds the expected tolerance.",
+        "rollback": "RolledBack"
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"ADAPTER_GAP\", \"Adapter gap exceeds the expected tolerance.\", new { rollback = \"RolledBack\" });",
+      "error_code": "ADAPTER_GAP",
+      "message": "Adapter gap exceeds the expected tolerance.",
+      "details": {
+        "rollback": "RolledBack"
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-15",
+    "native_operation": {
+      "operationId": "fixture-operationId-15",
+      "hostInstanceId": "fixture-hostInstanceId-15",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Referenced object was deleted or its creation was undone.\", rollback = \"RolledBack\" };",
+      "return_value": {
+        "passed": false,
+        "error": "Referenced object was deleted or its creation was undone.",
+        "rollback": "RolledBack"
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"INVALID_OBJECT\", \"Referenced object was deleted or its creation was undone.\", new { rollback = \"RolledBack\" });",
+      "error_code": "INVALID_OBJECT",
+      "message": "Referenced object was deleted or its creation was undone.",
+      "details": {
+        "rollback": "RolledBack"
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-16",
+    "native_operation": {
+      "operationId": "fixture-operationId-16",
+      "hostInstanceId": "fixture-hostInstanceId-16",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"System.Exception: Segment below tolerance.\\r\\n   at McpDynamicScript.Run(UIApplication app)\", rollback = \"RolledBack\" };",
+      "return_value": {
+        "passed": false,
+        "error": "System.Exception: Segment below tolerance.\r\n   at McpDynamicScript.Run(UIApplication app)",
+        "rollback": "RolledBack"
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"SEGMENT_TOO_SHORT\", \"System.Exception: Segment below tolerance.\\r\\n   at McpDynamicScript.Run(UIApplication app)\", new { rollback = \"RolledBack\" });",
+      "error_code": "SEGMENT_TOO_SHORT",
+      "message": "System.Exception: Segment below tolerance.\r\n   at McpDynamicScript.Run(UIApplication app)",
+      "details": {
+        "rollback": "RolledBack"
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  },
+  {
+    "id": "audit-17",
+    "native_operation": {
+      "operationId": "fixture-operationId-17",
+      "hostInstanceId": "fixture-hostInstanceId-17",
+      "execution": "completed",
+      "outcome": "unknown",
+      "mutationApplied": null,
+      "activeModelBefore": "fixture-model",
+      "activeModelAfter": "fixture-model",
+      "activeDocumentChanged": false,
+      "complete": true,
+      "requiresReview": false,
+      "warningPolicy": "rollback",
+      "observationCoverage": "dynamic_code_unverified"
+    },
+    "legacy": {
+      "result_contract": "legacy",
+      "code": "return new { passed = false, error = \"Autodesk.Revit.Exceptions.ArgumentException: Segment endpoints are too close.\\r\\nParameter name: startPoint\\r\\n   at McpDynamicScript.Run(UIApplication app)\", rollback = \"RolledBack\" };",
+      "return_value": {
+        "passed": false,
+        "error": "Autodesk.Revit.Exceptions.ArgumentException: Segment endpoints are too close.\r\nParameter name: startPoint\r\n   at McpDynamicScript.Run(UIApplication app)",
+        "rollback": "RolledBack"
+      },
+      "baseline_success": true,
+      "phase1_expected": {
+        "success": true,
+        "task_status": "not_reported",
+        "task_contract_hint": true
+      }
+    },
+    "task_v1": {
+      "result_contract": "task_v1",
+      "code": "return McpTaskResult.Fail(\"POINTS_TOO_CLOSE\", \"Autodesk.Revit.Exceptions.ArgumentException: Segment endpoints are too close.\\r\\nParameter name: startPoint\\r\\n   at McpDynamicScript.Run(UIApplication app)\", new { rollback = \"RolledBack\" });",
+      "error_code": "POINTS_TOO_CLOSE",
+      "message": "Autodesk.Revit.Exceptions.ArgumentException: Segment endpoints are too close.\r\nParameter name: startPoint\r\n   at McpDynamicScript.Run(UIApplication app)",
+      "details": {
+        "rollback": "RolledBack"
+      },
+      "expected": {
+        "success": false,
+        "task_status": "failed",
+        "native_outcome": "unknown"
+      }
+    }
+  }
+]

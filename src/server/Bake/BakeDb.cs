@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 
 namespace RvtMcp.Server.Bake
 {
-    public sealed class BakeDb : IDisposable
+    public sealed partial class BakeDb : IDisposable
     {
         private readonly string _dbPath;
 
@@ -31,8 +31,18 @@ namespace RvtMcp.Server.Bake
         public void Migrate()
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_dbPath) ?? ".");
-            using var connection = OpenConnection();
-            using var transaction = connection.BeginTransaction();
+            using var connection = OpenModuleConnection(readOnly: false, create: true);
+            ExecutePragma(connection, "PRAGMA journal_mode=WAL;");
+            using var transaction = connection.BeginTransaction(deferred: false);
+            var version = ReadSchemaVersion(connection, transaction);
+            // Current, future (binary rollback) and inconsistent module schemas are left untouched so preset/macro
+            // tables stay usable; CodeModuleStore validates the module schema on every access and refuses there.
+            if (version >= ModuleSchemaVersion || HasModuleTables(connection, transaction))
+            {
+                transaction.Commit();
+                return;
+            }
+            BackupBeforeModuleMigration(connection, transaction);
 
             Execute(connection, transaction, "CREATE TABLE IF NOT EXISTS schema_version(version INTEGER NOT NULL)");
             Execute(connection, transaction, @"
@@ -85,7 +95,8 @@ CREATE TABLE IF NOT EXISTS registry(
 )");
             EnsureColumn(connection, transaction, "registry", "usage_count", "INTEGER NOT NULL DEFAULT 0");
             EnsureColumn(connection, transaction, "registry", "lifecycle_state", "TEXT NOT NULL DEFAULT 'accepted'");
-            Execute(connection, transaction, "INSERT INTO schema_version(version) SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM schema_version)");
+            CreateModuleSchema(connection, transaction);
+            Execute(connection, transaction, "DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(2)");
             transaction.Commit();
         }
 

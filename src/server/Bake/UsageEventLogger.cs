@@ -122,6 +122,23 @@ namespace RvtMcp.Server.Bake
             }
         }
 
+        // Phase 1 audit only. Script suggestions/statistics remain behind P08/G2.
+        public bool RecordScriptCall(JObject envelope)
+        {
+            if (!_config.EnableAdaptiveBakeOrDefault) return true;
+            try
+            {
+                var payload = RvtMcp.Scripting.ScriptTelemetry.LogFields(envelope);
+                payload["observation_status"] = "ineligible";
+                var id = envelope?["_operation"]?.Value<string>("operationId");
+                var entry = NewEvent("script", "send_code_to_revit", "script_audit:" + id, payload,
+                    bodyHash: null, success: envelope?.Value<bool?>("success") == true);
+                lock (_lock) { Append(entry); _previousPreset = null; }
+                return true;
+            }
+            catch (Exception ex) { RecordCaptureFailure(ex); return false; }
+        }
+
         public IReadOnlyList<ClusterCandidate> RefreshCandidates(DateTimeOffset? now = null)
         {
             if (!_config.EnableAdaptiveBakeOrDefault)
@@ -147,6 +164,9 @@ namespace RvtMcp.Server.Bake
 
         private UsageEvent CreateSendCodeEvent(string tool, string paramsJson, bool success)
         {
+            // Enhanced calls are recorded only from the terminal native receipt, not a timeout/pending response.
+            try { if (RvtMcp.Scripting.ScriptWireRequest.HasEnhancedOptions(JObject.Parse(paramsJson ?? "{}"))) return null; }
+            catch { return null; }
             var code = ExtractCodeBody(paramsJson);
             var payload = new JObject
             {

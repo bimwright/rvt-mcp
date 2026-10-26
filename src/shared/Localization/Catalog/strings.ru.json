@@ -3,6 +3,13 @@
     "locale": "ru",
     "schema": 1
   },
+  "script.label.compile": "Проверка компиляции",
+  "script.label.execute": "Выполнение скрипта",
+  "script.label.baked": "Сохранённый скрипт",
+  "script.native.partial": "Revit: частично",
+  "script.native.rolled_back": "Revit: откат",
+  "script.native.cancelled": "Revit: отменено",
+  "script.history.freshInputs": "Входные данные и идентификаторы модулей не сохраняются для повторного запуска. Запустите инструмент MCP с актуальными данными и выбором модулей.",
   "ribbon.toggle.text.running": "MCP: ВКЛ",
   "ribbon.toggle.text.stopped": "MCP: ВЫКЛ",
   "ribbon.toggle.tooltip": "Запуск/остановка MCP Server",

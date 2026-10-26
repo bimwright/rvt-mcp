@@ -115,15 +115,20 @@ namespace RvtMcp.Plugin
         public static void Log(string toolName, string paramsJson, bool success,
                                 long durationMs, string errorMsg = null,
                                 string code = null, string resultJson = null, bool? enabled = null, string callId = null)
+            => TryLog(toolName, paramsJson, success, durationMs, errorMsg, code, resultJson, enabled, callId);
+
+        internal static bool TryLog(string toolName, string paramsJson, bool success,
+                                long durationMs, string errorMsg = null,
+                                string code = null, string resultJson = null, bool? enabled = null, string callId = null, JObject receipt = null)
         {
-            if (!(enabled ?? _enabled)) return;
+            if (!(enabled ?? _enabled)) return true;
             try
             {
                 lock (InitializationLock)
                 {
                     if (_logPath == null) EnsureLogFile();
                 }
-                if (_logPath == null) return;
+                if (_logPath == null) return false;
                 var safePayload = BuildLogSafePayload(toolName, paramsJson, code);
 
                 var entry = new
@@ -139,14 +144,23 @@ namespace RvtMcp.Plugin
                     @params = safePayload.Params,
                     result = BuildLogSafeResult(toolName, resultJson)
                 };
-                var line = JsonConvert.SerializeObject(entry, Formatting.None);
+                var logged = JObject.FromObject(entry);
+                logged.Merge(RvtMcp.Scripting.ScriptTelemetry.LogFields(receipt));
+                if (receipt?["_script"] != null)
+                {
+                    logged["_script"] = RvtMcp.Scripting.ScriptTelemetry.BoundScript(receipt["_script"] as JObject);
+                    logged["_task"] = RvtMcp.Scripting.ScriptTelemetry.BoundTask(receipt["_task"] as JObject, compact: true);
+                    logged["_operation"] = RvtMcp.Scripting.ScriptTelemetry.LogOperation(receipt["_operation"] as JObject);
+                }
+                var line = logged.ToString(Formatting.None);
                 WithFileLock(_logPath, () =>
                 {
                     BoundedLogFile.AppendUnderLock(_logPath, line, "mcp-calls");
                     return true;
                 });
+                return true;
             }
-            catch { }
+            catch { return false; }
         }
 
         internal static McpLogSafePayload BuildLogSafePayload(string toolName, string paramsJson, string code)
@@ -164,11 +178,7 @@ namespace RvtMcp.Plugin
             return new McpLogSafePayload
             {
                 Code = null,
-                Params = new JObject
-                {
-                    ["code_hash"] = BakeRedactor.HashBody(codeBody),
-                    ["code_length"] = codeBody.Length
-                }
+                Params = RvtMcp.Scripting.ScriptTelemetry.SafeArguments(paramsJson, codeBody)
             };
         }
 

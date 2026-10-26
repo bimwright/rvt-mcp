@@ -28,11 +28,16 @@ namespace RvtMcp.Server.Memory
         public void RecordCall(string tool, string paramsJson, bool success,
             long durationMs, string error = null, string resultJson = null, Newtonsoft.Json.Linq.JObject changes = null,
             string rejectedArguments = null)
+            => TryRecordCall(tool, paramsJson, success, durationMs, error, resultJson, changes, rejectedArguments);
+
+        internal bool TryRecordCall(string tool, string paramsJson, bool success,
+            long durationMs, string error = null, string resultJson = null, Newtonsoft.Json.Linq.JObject changes = null,
+            string rejectedArguments = null, Newtonsoft.Json.Linq.JObject metadataReceipt = null)
         {
-            var entry = JournalEntry.Create(tool, paramsJson, success, durationMs, error, resultJson, changes, rejectedArguments);
+            var entry = JournalEntry.CreateWithReceipt(tool, paramsJson, success, durationMs, error, resultJson, changes, rejectedArguments, metadataReceipt);
             lock (_lock) { _entries.Add(entry); }
             _patterns.Record(tool, success);
-            _journal.Log(entry);
+            return _journal.TryLog(entry);
         }
 
         public string GetSummary()

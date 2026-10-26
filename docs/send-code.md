@@ -1,5 +1,92 @@
 # Send-code source forms and failure handling
 
+## JSON inputs, helper modules and explicit task results
+
+Enhanced calls require a selected, authenticated gateway/add-in pair advertising `send_code_v2`.
+Update both components together and restart the selected Revit host and MCP client before using the new surface.
+`SCRIPT_CAPABILITY_REQUIRED` means no enhanced script was sent; inputs are never dropped to retry as code-only.
+Revit Home is supported after explicitly selecting the host. Read-only/send-code policy and pairing guards still apply.
+
+| Argument | Default | Purpose |
+|---|---|---|
+| `code` | required | C# body or complete source |
+| `data` | `null` | JSON object; arrays belong inside it |
+| `modules` | `[]` | Stored helper names and their dependencies |
+| `compile_only` | `false` | Compile/emit without loading or invoking user code |
+| `result_contract` | `"legacy"` | `"task_v1"` requires the add-in's actual `McpTaskResult` type |
+| `usage_context` | `"unknown"` | Declare `"project"` or `"test"`; no inference from source text |
+
+Omitted/null data, no modules and all other defaults preserve the legacy code-only request.
+With data, body scripts receive `JObject data`. Complete source uses exactly
+`public static object Run(UIApplication app, JObject data)` on `public class McpDynamicScript`;
+include `using Autodesk.Revit.UI; using Newtonsoft.Json.Linq;` in complete source.
+Without data, retain `Run(UIApplication app)`. An entry shim parses JSON text inside the generated assembly;
+do not pass add-in-owned JSON objects into dynamically loaded code yourself.
+
+Save a declarations-only helper once with `revit_save_code_module`:
+
+```json
+{
+  "name": "quantity_checks",
+  "code": "public static class QuantityChecks { public static bool Within(double actual, double expected, double tolerance) => System.Math.Abs(actual - expected) <= tolerance; }",
+  "description": "Compare a quantity with an expected value and tolerance",
+  "requires": [],
+  "expected_hash": null
+}
+```
+
+Then call `revit_send_code_to_revit` with a small body and fresh data:
+
+```json
+{
+  "code": "return QuantityChecks.Within((double)data[\"actual\"], (double)data[\"expected\"], (double)data[\"tolerance\"]) ? McpTaskResult.Pass(new { within = true }) : McpTaskResult.Fail(\"OUT_OF_TOLERANCE\", \"Quantity differs from the expected value\");",
+  "data": { "actual": 12.5, "expected": 12.5, "tolerance": 0.01 },
+  "modules": ["quantity_checks"],
+  "result_contract": "task_v1",
+  "usage_context": "test"
+}
+```
+
+`task_v1` body scripts import `RvtMcp.Plugin` automatically. Return `McpTaskResult.Pass(value)` or
+`McpTaskResult.Fail(code, message, details)`; an anonymous object with `passed=true` is not the contract.
+Missing task results produce `TASK_RESULT_REQUIRED`. A task failure after a committed edit does not undo it:
+inspect `_task` and `_operation` separately. Native partial/rollback/cancellation remains a failure even if
+the script returns Pass. Native `unknown` is not proof of verified model behavior. Legacy top-level
+`passed/ok/success=false` adds an advisory hint without changing legacy success semantics.
+
+Set `compile_only=true` to validate the same source/data shape and helper graph without running constructors,
+initializers or methods. Compile success reports `compiled=true`, `executed=false` and
+`_task.status="not_reported"`; it proves compilation for that host/runtime, not successful model work.
+Internal module validation has its own operation/child logical ID linked to the save and is ineligible for learning.
+
+### Module storage, limits and recovery
+
+`revit_list_code_modules` works without Revit: filter by `name_filter`, page with `start_index` and `limit`
+(default 100, maximum 500), and request source only with `include_code=true`. It returns revision hash,
+dependency status, signatures and scoped compile metadata. Large output uses the existing budget/spill path.
+Save/delete mutate local storage and cannot be undone with Revit Undo. They work independently of adaptive bake.
+
+New names require `expected_hash=null`; replacements and `revit_delete_code_module` require the current revision hash.
+Read/list first, review source/dependencies, then submit the exact hash. `MODULE_CONFLICT` leaves storage unchanged;
+read the current record and review the conflict before resubmitting. Dependency changes during compile also refuse the save.
+If `dependency_status` is changed/missing or a pinned operation reports `MODULE_CHANGED`, inspect the graph and revalidate
+against the intended host. Do not replay a model mutation just to refresh metadata. Delete refuses live module dependents;
+there is no force delete. Compile metadata is scoped to a year/runtime; it never verifies every Revit year.
+
+Names match `^[a-z][a-z0-9_]{0,63}$`. Duplicate/self dependencies and cycles are refused. Limits are UTF-8:
+64 KiB per module, 32 resolved modules, 256 KiB total module source, dependency depth 16;
+data is at most 1 MiB raw and 512 KiB compact with JSON depth 64. Duplicate keys, scalar/array roots and invalid modes
+are rejected. The complete escaped wire request, including resolved sources and metadata, must fit 1 MiB.
+Oversized requests fail before dispatch; the gateway does not truncate, split or automatically replay them.
+
+Credential-like module source/description is rejected for persistence; supply sensitive values as fresh runtime data.
+Saved helpers live in the existing local `bake.db` with immutable revisions. Explicit module persistence is independent
+of body-cache/journal opt-ins. Audit retains input hashes/lengths and module identity, not raw data/module bodies;
+source display caching and journaling retain their existing opt-in/TTL policies. History explains why enhanced calls cannot
+be rerun from hash-only records: call the MCP tool with fresh inputs and current module selection instead.
+
+Compiled ToolBaker tools retain their existing list/run/accept behavior; helpers do not create baked tools.
+
 The source-builder and `SafeFailuresPreprocessor` additions below shipped in v0.6.2. v0.6.1 and earlier support a plain body or complete source, but detect complete source using the literal substring `class `, including inside comments/strings. Revit must restart after installing an updated plugin.
 
 ## Discarding documents opened by a script

@@ -6,6 +6,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
+using RvtMcp.Scripting;
+using System.Collections.Generic;
 
 namespace RvtMcp.Plugin.Handlers
 {
@@ -19,6 +21,9 @@ namespace RvtMcp.Plugin.Handlers
         {
             var request = JObject.Parse(paramsJson);
             var code = request.Value<string>("code");
+
+            if (ScriptWireRequest.HasEnhancedOptions(request))
+                return Fail(ScriptErrorCodes.CapabilityRequired + ": Enhanced script requests require a matching gateway envelope.");
 
             if (string.IsNullOrWhiteSpace(code))
                 return Fail("code parameter is required.");
@@ -94,6 +99,72 @@ namespace RvtMcp.Plugin.Handlers
             {
                 return Fail($"Error: {ex.Message}");
             }
+        }
+
+        internal CommandResult ExecuteProtocol(UIApplication app, string parameters, JObject metadata, ScriptExecutionState state)
+        {
+            if (!ScriptProtocol.IsReady)
+            {
+                Failures.FailureControl.NotifyCompileFailed();
+                return Fail(ScriptErrorCodes.CapabilityRequired + ": Script protocol is not enabled in this add-in.");
+            }
+            try
+            {
+                var request = ScriptWireRequest.Parse(parameters);
+                request.ValidateMetadata(metadata);
+                return ExecuteEnhanced(app, request.Input, request.Modules, state);
+            }
+            catch (ScriptContractException ex) { Failures.FailureControl.NotifyCompileFailed(); return Fail(ex.ErrorCode + ": " + ex.Message); }
+            catch (Exception ex) { Failures.FailureControl.NotifyCompileFailed(); return Fail(ScriptErrorCodes.InputInvalid + ": " + ex.Message); }
+        }
+
+        internal CommandResult ExecuteEnhanced(UIApplication app, ScriptInput input, IReadOnlyList<ScriptModuleRevision> modules, ScriptExecutionState state = null)
+        {
+            try
+            {
+                var references = AppDomain.CurrentDomain.GetAssemblies()
+                    .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && File.Exists(a.Location))
+                    .GroupBy(a => a.GetName().Name)
+                    .Select(g => g.Key == "RevitAPIUI" ? typeof(UIApplication).Assembly :
+                        g.Key == "RevitAPI" ? typeof(Autodesk.Revit.DB.Document).Assembly : g.OrderByDescending(a => a.GetName().Version).First())
+                    .Select(a => MetadataReference.CreateFromFile(a.Location)).Cast<MetadataReference>().ToArray();
+                var compiled = SendCodeCompiler.Compile(input, modules, references, () => state?.Compiling());
+                state?.CompileFinished();
+                if (!compiled.Success)
+                {
+                    state?.Failed();
+                    Failures.FailureControl.NotifyCompileFailed();
+                    return new CommandResult { Success = false,
+                        Error = compiled.ErrorCode + ": " + string.Join("\n", compiled.Diagnostics.Select(d =>
+                            McpResponsePrivacy.RedactErrorForResponse(d.Source + ":" + d.Line + ":" + d.Column + " " + d.DiagnosticId + " " + d.Message))),
+                        Data = new { compiled = false, compile_only = input.CompileOnly, executed = false,
+                            diagnostics = compiled.Diagnostics.Select(d => new {
+                                source = McpResponsePrivacy.RedactErrorForResponse(d.Source), line = d.Line, column = d.Column,
+                                diagnostic_id = d.DiagnosticId, message = McpResponsePrivacy.RedactErrorForResponse(d.Message) }).ToArray() } };
+                }
+                if (input.CompileOnly)
+                {
+                    state?.Compiled();
+                    return CommandResult.Ok(new { compiled = true, compile_only = true, executed = false,
+                        diagnostics = Array.Empty<object>(), module_signatures = compiled.ModuleSignatures,
+                        compile_host = ScriptCompileHost.Capture(int.Parse(app.Application.VersionNumber, System.Globalization.CultureInfo.InvariantCulture)) });
+                }
+                var assembly = Assembly.Load(compiled.AssemblyBytes);
+                var method = assembly.GetType(ScriptCompileResult.EntryType).GetMethod("Invoke", BindingFlags.Public | BindingFlags.Static,
+                    null, new[] { typeof(UIApplication), typeof(string) }, null);
+                object output;
+                state?.Invoking();
+                using (McpDocument.Begin(app)) output = method.Invoke(null, new object[] { app, input.Data.Json });
+                output = state == null ? output : state.Complete(output);
+                return CommandResult.Ok(new { executed = true, result = output });
+            }
+            catch (ScriptContractException ex)
+            {
+                if (state?.InvokeStarted != true) Failures.FailureControl.NotifyCompileFailed();
+                state?.Failed(); return Fail(ex.ErrorCode + ": " + ex.Message);
+            }
+            catch (TargetInvocationException ex) { state?.Failed(); return Fail("Runtime error: " + (ex.InnerException?.Message ?? ex.Message)); }
+            catch (Exception ex) { state?.Failed(); return Fail("Error: " + ex.Message); }
         }
 
         private static CommandResult Fail(string error)

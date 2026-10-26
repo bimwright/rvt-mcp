@@ -3,6 +3,13 @@
     "locale": "pl",
     "schema": 1
   },
+  "script.label.compile": "Sprawdzenie kompilacji",
+  "script.label.execute": "Wykonanie skryptu",
+  "script.label.baked": "Zapisany skrypt",
+  "script.native.partial": "Revit: częściowo",
+  "script.native.rolled_back": "Revit: wycofano",
+  "script.native.cancelled": "Revit: anulowano",
+  "script.history.freshInputs": "Dane wejściowe i tożsamość modułów nie są zachowywane do ponownego uruchomienia. Użyj narzędzia MCP z aktualnymi danymi i wyborem modułów.",
   "ribbon.toggle.text.running": "MCP: WŁ.",
   "ribbon.toggle.text.stopped": "MCP: WYŁ.",
   "ribbon.toggle.tooltip": "Uruchom/Zatrzymaj MCP Server",

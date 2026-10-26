@@ -26,6 +26,12 @@ The cross-platform xUnit tests live in this project. The server reference builds
 
 Real WPF positioning/animation tests run separately on Windows via [RvtMcp.Toast.Tests](../RvtMcp.Toast.Tests/README.md).
 
+Script integration checks join raw named-pipe MCP requests, the real gateway over fake TCP, temporary module storage,
+the Roslyn compiler against synthetic Revit API assemblies, task normalization and journal/usage audit. They cover
+compile-only initializer witnesses, explicit task failure, conflict/capability refusals, legacy wire compatibility and
+large module-list source output through a temporary spill writer. Synthetic native outcomes and host stamps are test
+inputs; these checks do not establish Revit transactions, geometry, native runtime compatibility or configured-client acceptance.
+
 ## Golden snapshot — `Golden/tools-list.json`
 
 This file is the canonical capture of every MCP tool exposed by the server: tool name, description hash (SHA-256 — changes when description text changes, but diffs stay small), and input schema (parameter names, types, required flags).

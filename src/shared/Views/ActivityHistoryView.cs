@@ -473,6 +473,11 @@ namespace RvtMcp.Plugin.Views
                 _warningLabel.Foreground = Brushes.Gray;
                 _warningLabel.Visibility = Visibility.Visible;
             }
+            else if (entry.Script != null)
+            {
+                _warningLabel.Text = SoftWrap(L.T("script.history.freshInputs"));
+                _warningLabel.Visibility = Visibility.Visible;
+            }
             else if (entry.ToolName == "send_code_to_revit" && string.IsNullOrEmpty(entry.CodeSnippet))
             {
                 _warningLabel.Text = SoftWrap(_vm.CanRerun(entry)

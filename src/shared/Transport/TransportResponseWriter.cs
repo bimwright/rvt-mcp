@@ -103,6 +103,12 @@ namespace RvtMcp.Plugin
             }
             var id = request.Value<string>("id");
             var command = request.Value<string>("command");
+            if ((request["script_protocol"] != null || request["script"] != null) && !RvtMcp.Scripting.ScriptProtocol.IsReady)
+            {
+                WriteLine(new JObject { ["id"] = id, ["success"] = false,
+                    ["error"] = RvtMcp.Scripting.ScriptErrorCodes.CapabilityRequired + ": Script protocol is not enabled in this add-in." }.ToString(Formatting.None));
+                return;
+            }
             // Already authenticated by the transport. Health never enters the Revit UI queue.
             if (string.Equals(command, "health", StringComparison.Ordinal))
             {

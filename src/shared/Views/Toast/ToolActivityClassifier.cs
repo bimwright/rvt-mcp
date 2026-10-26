@@ -17,6 +17,7 @@ namespace RvtMcp.Plugin.Views.Toast
             "record_change",
             "resolve_history_identity",
             "send_code_to_revit",
+            "save_code_module",
             "run_baked_tool",
             "capture_view_image", "get_material_takeoff", "compute_room_finishes",
             "list_bake_suggestions", "open_model",

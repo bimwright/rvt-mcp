@@ -11,6 +11,7 @@ namespace RvtMcp.Plugin
     {
         public static void Attach(JObject target, JObject source, bool compact = false)
         {
+            if (compact) target.Remove("task_contract_hint");
             var actualTarget = source?["_target"] as JObject ?? (source?["data"] as JObject)?["_target"] as JObject;
             if (actualTarget != null)
             {
@@ -33,6 +34,12 @@ namespace RvtMcp.Plugin
                 var receipt = source?[key] as JObject ?? (source?["data"] as JObject)?[key] as JObject;
                 if (receipt != null) target[key] = Bound(receipt, key == "_failure" ? 16384 : 4096, compact);
             }
+            var script = source?["_script"] as JObject ?? (source?["data"] as JObject)?["_script"] as JObject;
+            var task = source?["_task"] as JObject ?? (source?["data"] as JObject)?["_task"] as JObject;
+            if (script != null) target["_script"] = RvtMcp.Scripting.ScriptTelemetry.BoundScript(script, compact);
+            if (task != null) target["_task"] = RvtMcp.Scripting.ScriptTelemetry.BoundTask(task, compact);
+            if (!compact && source?["task_contract_hint"]?.Type == JTokenType.String)
+                target["task_contract_hint"] = RvtMcp.Scripting.ScriptTelemetry.Safe(source.Value<string>("task_contract_hint"), 256);
             // Dialogs the user handled outside MCP: information only, dropped first when space is short.
             var userDialogs = source?["_userDialogs"] as JObject ?? (source?["data"] as JObject)?["_userDialogs"] as JObject;
             if (userDialogs != null && !compact && Bytes(userDialogs) <= 8192) target["_userDialogs"] = userDialogs.DeepClone();

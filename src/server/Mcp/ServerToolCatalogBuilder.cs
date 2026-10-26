@@ -40,7 +40,9 @@ namespace RvtMcp.Server
             "switch_target",
             "list_bake_suggestions",
             "dismiss_bake_suggestion",
-            "analyze_usage_patterns"
+            "analyze_usage_patterns",
+            "list_code_modules",
+            "delete_code_module"
         };
 
         internal static RvtMcp.ToolCatalog.ToolCatalog Build(HashSet<string> enabled, RvtMcpConfig config)

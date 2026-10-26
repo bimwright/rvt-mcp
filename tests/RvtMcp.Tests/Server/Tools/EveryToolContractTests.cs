@@ -37,6 +37,9 @@ namespace RvtMcp.Tests
             ["revit_health"] = "HealthToolsTests",
             ["revit_switch_target"] = "MetaToolShellTests",
             ["revit_analyze_usage_patterns"] = "MetaToolShellTests",
+            ["revit_list_code_modules"] = "CodeModuleToolsTests",
+            ["revit_save_code_module"] = "CodeModuleToolsTests",
+            ["revit_delete_code_module"] = "CodeModuleToolsTests",
         };
 
         // Tools that parse JSON text or arrays before sending need a minimal valid value for that parameter.

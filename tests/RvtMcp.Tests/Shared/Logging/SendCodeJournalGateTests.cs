@@ -72,5 +72,19 @@ namespace RvtMcp.Tests
             Assert.Single(lines);
             Assert.Contains("var x = 1;", lines[0]);
         }
+
+        [Fact]
+        public void OnSendCodeLogged_WhenPersistenceIsOff_StillPurgesExpiredBodies()
+        {
+            Assert.True(SendCodeJournalGate.OnSendCodeLogged("send_code_to_revit", "{}", "var x = 1;", true, 15, null, "{}"));
+            File.WriteAllText(Path.Combine(_tempDir, "send-code-journal.disabled-at"), DateTimeOffset.UtcNow.AddDays(-8).ToString("o"));
+            // Explicit runtime config, as McpEventHandler passes, so a machine-level persistence env var cannot interfere.
+            var off = new RvtMcpConfig { EnableCallLog = true, PersistSendCodeBodies = false };
+
+            Assert.True(SendCodeJournalGate.OnSendCodeLogged("send_code_to_revit", "{}", "var y = 2;", true, 15, null, "{}", off));
+
+            Assert.False(File.Exists(SendCodeJournal.JournalPath));
+            Assert.False(File.Exists(Path.Combine(_tempDir, "send-code-journal.disabled-at")));
+        }
     }
 }

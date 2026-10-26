@@ -4,6 +4,13 @@
     "schema": 1,
     "note": "Canonical catalog — all shipped locales mirror this key set. Placeholders: {name} = invariant fill, {name:n} = culture-formatted count/measure. Keys are flat, dot-namespaced; security.* keys cannot be overridden."
   },
+  "script.label.compile": "Compile check",
+  "script.label.execute": "Script execute",
+  "script.label.baked": "Baked script",
+  "script.native.partial": "native: partial",
+  "script.native.rolled_back": "native: rolled_back",
+  "script.native.cancelled": "native: cancelled",
+  "script.history.freshInputs": "Inputs and module identity are not cached for replay. Run again through the MCP tool with fresh data and module selection.",
   "ribbon.toggle.text.running": "MCP: ON",
   "ribbon.toggle.text.stopped": "MCP: OFF",
   "ribbon.toggle.tooltip": "Start/Stop MCP Server",

@@ -33,6 +33,9 @@ namespace RvtMcp.Plugin
         public bool IsHistorical { get; set; }
         /// <summary>Short session tag for historical entries (e.g. "0923-1442").</summary>
         public string SessionTag { get; set; }
+        public JObject Script { get; set; }
+        public JObject Task { get; set; }
+        public JObject Operation { get; set; }
         /// <summary>Grid label: historical rows get a date prefix to separate them from live rows.</summary>
         public string TimeLabel => IsHistorical
             ? Timestamp.ToString("MM-dd HH:mm", CultureInfo.InvariantCulture)
@@ -102,6 +105,22 @@ namespace RvtMcp.Plugin
                 return;
 
             var isSendCode = string.Equals(entry.ToolName, "send_code_to_revit", StringComparison.OrdinalIgnoreCase);
+            if (isSendCode && entry.Script == null)
+            {
+                try
+                {
+                    if (RvtMcp.Scripting.ScriptWireRequest.HasEnhancedOptions(JObject.Parse(entry.ParamsJson ?? "{}")))
+                        entry.Script = RvtMcp.Scripting.ScriptTelemetry.Create(null, entry.ParamsJson);
+                }
+                catch { entry.Script = new JObject { ["execution_kind"] = "script" }; }
+            }
+            entry.Script = RvtMcp.Scripting.ScriptTelemetry.BoundScript(entry.Script);
+            entry.Task = RvtMcp.Scripting.ScriptTelemetry.BoundTask(entry.Task);
+            if (entry.Script != null)
+            {
+                entry.Summary = ScriptSummary(entry);
+                entry.PreserveSummary = true;
+            }
             entry.ErrorMessage = McpResponsePrivacy.RedactErrorForResponse(entry.ErrorMessage);
             entry.Summary = BakeRedactor.RedactForBake(entry.Summary);
             entry.ResultJson = BakeRedactor.RedactForBake(entry.ResultJson, redactResultFields: isSendCode);
@@ -124,6 +143,21 @@ namespace RvtMcp.Plugin
 
             if (cacheBodies)
             {
+                // Runtime inputs are never cached as replayable params. P12 must provide a new input/identity flow.
+                if (entry.Script != null)
+                {
+                    // The opt-in still permits a source display copy, but never caches runtime data/module bodies.
+                    try
+                    {
+                        var parameters = JObject.Parse(entry.ParamsJson ?? "{}");
+                        entry.CodeSnippet = parameters["code"]?.Type == JTokenType.String ? parameters.Value<string>("code") : null;
+                    }
+                    catch { entry.CodeSnippet = null; }
+                    entry.ParamsJson = RvtMcp.Scripting.ScriptTelemetry.SafeArguments(entry.ParamsJson, entry.CodeSnippet).ToString(Formatting.None);
+                    if (entry.CodeSnippet != null && entry.CodeSnippet.Length > MaxCodeSnippetLength)
+                        entry.CodeSnippet = entry.CodeSnippet.Substring(0, MaxCodeSnippetLength) + "... (truncated)";
+                    return;
+                }
                 // Re-run entries can omit the display copy. Recover it from the
                 // executed params, never from an older (possibly truncated) snippet.
                 if (string.IsNullOrEmpty(entry.CodeSnippet))
@@ -142,17 +176,13 @@ namespace RvtMcp.Plugin
             }
 
             var code = ExtractCodeBody(entry.ParamsJson, entry.CodeSnippet);
-            var codeHash = BakeRedactor.HashBody(code);
-            entry.ParamsJson = JsonConvert.SerializeObject(new
-            {
-                code_hash = codeHash,
-                code_length = code.Length
-            }, Formatting.None);
+            entry.ParamsJson = RvtMcp.Scripting.ScriptTelemetry.SafeArguments(entry.ParamsJson, code).ToString(Formatting.None);
             entry.CodeSnippet = null;
             // Recompute through the single summary path — the redacted params
             // carry code_hash, so Generate emits the locked security note.
-            entry.Summary = SummaryGenerator.Generate(
-                entry.ToolName, entry.ParamsJson, entry.ResultJson, entry.Success, entry.ErrorMessage);
+            if (entry.Script == null)
+                entry.Summary = SummaryGenerator.Generate(
+                    entry.ToolName, entry.ParamsJson, entry.ResultJson, entry.Success, entry.ErrorMessage);
         }
 
         /// <summary>
@@ -162,12 +192,22 @@ namespace RvtMcp.Plugin
         /// </summary>
         internal static void RefreshSummary(McpCallEntry entry)
         {
+            if (entry?.Script != null)
+            {
+                entry.Summary = BakeRedactor.RedactForBake(ScriptSummary(entry));
+                return;
+            }
             if (entry == null || entry.ParamsTruncated || entry.PreserveSummary)
                 return;
             var summary = SummaryGenerator.Generate(
                 entry.ToolName, entry.ParamsJson, entry.ResultJson, entry.Success, entry.ErrorMessage);
             entry.Summary = BakeRedactor.RedactForBake(summary);
         }
+
+        private static string ScriptSummary(McpCallEntry entry)
+            => RvtMcp.Scripting.ScriptPresentation.Label(entry.Script, entry.Operation, key => Localization.L.T(key)) + ": "
+                + (entry.Success ? entry.Task?.Value<string>("status") ?? Localization.L.T("history.footer.ok")
+                    : entry.ErrorMessage ?? Localization.L.T("history.footer.fail"));
 
         private static string ExtractCodeBody(string paramsJson, string codeSnippet)
         {

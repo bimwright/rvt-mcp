@@ -3,6 +3,13 @@
     "locale": "it",
     "schema": 1
   },
+  "script.label.compile": "Verifica compilazione",
+  "script.label.execute": "Esecuzione script",
+  "script.label.baked": "Script salvato",
+  "script.native.partial": "Revit: parziale",
+  "script.native.rolled_back": "Revit: ripristinato",
+  "script.native.cancelled": "Revit: annullato",
+  "script.history.freshInputs": "Gli input e l’identità dei moduli non vengono conservati per la riesecuzione. Usare lo strumento MCP con nuovi dati e una nuova selezione dei moduli.",
   "ribbon.toggle.text.running": "MCP: ON",
   "ribbon.toggle.text.stopped": "MCP: OFF",
   "ribbon.toggle.tooltip": "Avvia/Arresta MCP Server",

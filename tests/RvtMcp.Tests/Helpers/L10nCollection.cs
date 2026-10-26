@@ -4,8 +4,8 @@ namespace RvtMcp.Tests
 {
     /// <summary>
     /// Tests that touch the static <c>L</c> facade share global state — running them
-    /// in the same xunit collection keeps them sequential relative to each other.
+    /// without other collections also protects UI readers that use the active locale.
     /// </summary>
-    [CollectionDefinition("L10n")]
+    [CollectionDefinition("L10n", DisableParallelization = true)]
     public class L10nCollection { }
 }

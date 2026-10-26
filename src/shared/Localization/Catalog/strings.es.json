@@ -3,6 +3,13 @@
     "locale": "es",
     "schema": 1
   },
+  "script.label.compile": "Comprobación de compilación",
+  "script.label.execute": "Ejecución de script",
+  "script.label.baked": "Script guardado",
+  "script.native.partial": "Revit: parcial",
+  "script.native.rolled_back": "Revit: revertido",
+  "script.native.cancelled": "Revit: cancelado",
+  "script.history.freshInputs": "Los datos de entrada y la identidad de módulos no se guardan para repetir la ejecución. Use la herramienta MCP con datos y selección de módulos actualizados.",
   "ribbon.toggle.text.running": "MCP: ON",
   "ribbon.toggle.text.stopped": "MCP: OFF",
   "ribbon.toggle.tooltip": "Iniciar/Detener MCP Server",

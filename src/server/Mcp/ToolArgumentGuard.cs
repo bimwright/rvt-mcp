@@ -8,6 +8,7 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using RvtMcp.Scripting;
 
 namespace RvtMcp.Server
 {
@@ -37,10 +38,14 @@ namespace RvtMcp.Server
                 return (await next(request, ct), null);
 
             var name = tool.ProtocolTool.Name;
+            var moduleTool = name.StartsWith("revit_", StringComparison.Ordinal) && CodeModuleAudit.IsTool(name.Substring(6));
             var arguments = request.Params?.Arguments;
             var received = arguments?.Keys.ToList() ?? new List<string>();
             var missing = required.Where(key => arguments == null || !arguments.ContainsKey(key)).ToList();
             var unknown = extraAllowed ? new List<string>() : received.Where(key => !properties.ContainsKey(key)).ToList();
+            var enhancedScript = name == "revit_send_code_to_revit" && arguments != null &&
+                SendCodeCore.EnhancedArguments.Any(arguments.ContainsKey);
+            if (enhancedScript) unknown.RemoveAll(key => SendCodeCore.EnhancedArguments.Contains(key, StringComparer.Ordinal));
             var nestedUnder = unknown.Where(key => arguments[key].ValueKind == JsonValueKind.Object
                 && arguments[key].EnumerateObject().Any(p => properties.ContainsKey(p.Name))).ToList();
 
@@ -58,15 +63,51 @@ namespace RvtMcp.Server
                     payload.ToString(Formatting.None));
             }
 
-            var result = await next(request, ct);
+            if (name == "revit_send_code_to_revit" || moduleTool)
+            {
+                try
+                {
+                    SendCodeCore.ValidateOriginalRequest(request.JsonRpcRequest.Params);
+                    if (moduleTool) CodeModuleAudit.ValidateArguments(name.Substring(6), arguments);
+                }
+                catch (Exception ex) when (ex is ScriptContractException || ex is System.Text.Json.JsonException || ex is ArgumentException)
+                {
+                    var keys = new JObject { ["received_keys"] = Names(received), ["rejected"] = true }.ToString(Formatting.None);
+                    return (ScriptResult("Error: " + ScriptErrorCodes.InputInvalid + ": Invalid or duplicate script request properties."), keys);
+                }
+            }
+
+            CallToolResult result;
+            string scriptLog = moduleTool ? CodeModuleAudit.SafeArguments(System.Text.Json.JsonSerializer.Serialize(arguments)) : null;
+            if (enhancedScript)
+            {
+                // Preserve raw JsonElement text before SDK/JObject conversions can discard duplicate keys or round numbers.
+                try
+                {
+                    var input = SendCodeCore.ReadArguments(arguments);
+                    if (input.RequiresCapability) scriptLog = SendCodeCore.SafeLogArguments(input);
+                    result = ScriptResult(await SendCodeCore.SendAsync(input));
+                }
+                catch (ScriptContractException ex)
+                {
+                    scriptLog = new JObject { ["received_keys"] = Names(received), ["rejected"] = true }.ToString(Formatting.None);
+                    result = ScriptResult("Error: " + ex.ErrorCode + ": " + ex.Message);
+                }
+            }
+            else result = await next(request, ct);
             if (unknown.Count > 0)
                 AttachIgnored(result, new JObject
                 {
                     ["unknown"] = Unknown(unknown, properties),
                     ["note"] = Ignored(name, nestedUnder)
                 });
-            return (result, null);
+            return (result, scriptLog);
         }
+
+        private static CallToolResult ScriptResult(string text) => new CallToolResult {
+            Content = new[] { new TextContentBlock { Text = text } },
+            IsError = text.StartsWith("Error:", StringComparison.Ordinal)
+        };
 
         private static CallToolResult Rejection(string tool, Dictionary<string, JsonElement> properties,
             List<string> required, List<string> missing, List<string> unknown, List<string> received, List<string> nestedUnder)

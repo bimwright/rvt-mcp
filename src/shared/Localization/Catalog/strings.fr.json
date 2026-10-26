@@ -3,6 +3,13 @@
     "locale": "fr",
     "schema": 1
   },
+  "script.label.compile": "Vérification de compilation",
+  "script.label.execute": "Exécution du script",
+  "script.label.baked": "Script enregistré",
+  "script.native.partial": "Revit : partiel",
+  "script.native.rolled_back": "Revit : annulé par restauration",
+  "script.native.cancelled": "Revit : annulé",
+  "script.history.freshInputs": "Les entrées et l’identité des modules ne sont pas conservées pour une réexécution. Relancez via l’outil MCP avec de nouvelles données et une nouvelle sélection de modules.",
   "ribbon.toggle.text.running": "MCP : ON",
   "ribbon.toggle.text.stopped": "MCP : OFF",
   "ribbon.toggle.tooltip": "Démarrer/Arrêter le serveur MCP",

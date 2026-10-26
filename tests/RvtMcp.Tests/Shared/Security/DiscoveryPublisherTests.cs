@@ -25,6 +25,7 @@ namespace RvtMcp.Tests
             Assert.Equal(publisher.TargetId, instance.Value<string>("target_id"));
             Assert.Contains((JArray)instance["capabilities"], value => value.Value<string>() == "tool_catalog");
             Assert.Contains((JArray)instance["capabilities"], value => value.Value<string>() == "controlled_failures_v1");
+            Assert.Contains((JArray)instance["capabilities"], value => value.Value<string>() == RvtMcp.Scripting.ScriptProtocol.Capability);
             Assert.True(JToken.DeepEquals(instance, JObject.Parse(File.ReadAllText(Path.Combine(_dir, "revit-2027.json")))));
             Assert.True(RvtMcp.Server.AuthToken.TryParseDiscovery(Path.Combine(_dir, "revit-2027.json"), out var legacy));
             Assert.Equal("test-pipe", legacy.PipeName);

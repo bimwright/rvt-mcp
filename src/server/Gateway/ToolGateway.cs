@@ -6,6 +6,7 @@ using RvtMcp.Plugin; // RvtMcpConfig
 using RvtMcp.Server.Bake;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using RvtMcp.Scripting;
 
 namespace RvtMcp.Server
 {
@@ -35,7 +36,8 @@ namespace RvtMcp.Server
         // Tests assign this to record the wire call without opening a socket.
         internal static Func<string, object, int?, Task<JObject>> SendOverride;
 
-        public static async Task<JObject> SendToRevit(string command, object parameters = null, int? timeoutSeconds = null, bool requireWriteCapabilities = false)
+        public static async Task<JObject> SendToRevit(string command, object parameters = null, int? timeoutSeconds = null, bool requireWriteCapabilities = false,
+            ScriptRuntimeMetadata script = null)
         {
             var config = ServerState.Config ?? new RvtMcpConfig();
             var rejection = ToolReadPolicy.Rejection(command, config.ReadOnlyOrDefault, config.EnableSendCodeOrDefault);
@@ -75,7 +77,7 @@ namespace RvtMcp.Server
             {
                 (conn, effectiveGeneration) = await Task.Run(() => EnsureConnectedFor(pinned, callCtx));
                 (conn, effectiveGeneration, pending) = await WriteRequest(
-                    conn, effectiveGeneration, id, operationId, command, parameters, timeoutSeconds, config, history, callCtx, requireWriteCapabilities);
+                    conn, effectiveGeneration, id, operationId, command, parameters, timeoutSeconds, config, history, callCtx, requireWriteCapabilities, script);
             }
             catch (TargetException ex) when (!ex.Payload.Sent && ex.Operation == null)
             {
@@ -103,12 +105,12 @@ namespace RvtMcp.Server
             catch (ConnectionInterruptedException)
             {
                 var paramsStr = parameters != null ? JsonConvert.SerializeObject(parameters, RequestJsonSettings) : null;
-                UsageLogger?.RecordToolCall(command, paramsStr, false);
+                if (script == null) UsageLogger?.RecordToolCall(command, paramsStr, false);
                 throw new TargetException(binding.Interrupted(effectiveGeneration), pending.Pending("interrupted_unknown")["_operation"] as JObject);
             }
             var response = JObject.Parse(responseLine);
             var paramsJson = parameters != null ? JsonConvert.SerializeObject(parameters, RequestJsonSettings) : null;
-            UsageLogger?.RecordToolCall(command, paramsJson, response.Value<bool>("success"));
+            if (script == null) UsageLogger?.RecordToolCall(command, paramsJson, response.Value<bool>("success"));
             if (pending.HistoryReceipt != null) ChangeCaptureContext.RecordHistory(pending.HistoryReceipt);
             var result = InterpretResponse(response);
             // Finished pending operations are attached by RuntimeToolFilter, to the response the agent receives.
@@ -212,7 +214,7 @@ namespace RvtMcp.Server
             else
             {
                 var error = response.Value<string>("error") ?? "Unknown error from Revit";
-                if (response["_failure"] != null || response["_operation"] != null || response["_target"] != null)
+                if (response["_failure"] != null || response["_operation"] != null || response["_target"] != null || response["_task"] != null || response["_script"] != null)
                 {
                     // A failed request can still have committed partial effects.
                     // Retain its structured readback instead of discarding it.

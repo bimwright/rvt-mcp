@@ -33,6 +33,13 @@
 
   <!-- Shared config (A9) — pulled in as source so server binary has zero extra deps -->
   <ItemGroup>
+    <Compile Include="..\shared\Infrastructure\Scripting\ScriptContracts.cs" Link="Shared\Infrastructure\Scripting\ScriptContracts.cs" />
+    <Compile Include="..\shared\Infrastructure\Scripting\ScriptJson.cs" Link="Shared\Infrastructure\Scripting\ScriptJson.cs" />
+    <Compile Include="..\shared\Infrastructure\Scripting\ScriptModuleRevision.cs" Link="Shared\Infrastructure\Scripting\ScriptModuleRevision.cs" />
+    <Compile Include="..\shared\Infrastructure\Scripting\ScriptIdentity.cs" Link="Shared\Infrastructure\Scripting\ScriptIdentity.cs" />
+    <Compile Include="..\shared\Infrastructure\Scripting\ScriptWireRequest.cs" Link="Shared\Infrastructure\Scripting\ScriptWireRequest.cs" />
+    <Compile Include="..\shared\Infrastructure\Scripting\ScriptTelemetry.cs" Link="Shared\Infrastructure\Scripting\ScriptTelemetry.cs" />
+    <Compile Include="..\shared\Infrastructure\Scripting\ScriptPresentation.cs" Link="Shared\Infrastructure\Scripting\ScriptPresentation.cs" />
     <Compile Include="..\shared\Logging\BoundedLogFile.cs" Link="Shared\Logging\BoundedLogFile.cs" />
     <Compile Include="..\shared\Logging\DiagnosticLog.cs" Link="Shared\Logging\DiagnosticLog.cs" />
     <Compile Include="..\shared\Failures\FailureContracts.cs" Link="Shared\Failures\FailureContracts.cs" />

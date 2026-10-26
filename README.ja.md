@@ -18,7 +18,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-237%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-240%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -95,12 +95,12 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 | モード | Tools | 注記 |
 |--------|------:|------|
-| 新規インストール | **237** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
-| 素の `rvt-mcp.exe` | **50** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **237** | フルカタログ |
-| `all` + adaptive bake | **240** | 提案ライフサイクル 3 ツールを追加 |
+| 新規インストール | **240** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
+| 素の `rvt-mcp.exe` | **53** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **240** | フルカタログ |
+| `all` + adaptive bake | **243** | 提案ライフサイクル 3 ツールを追加 |
 
-件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 50 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。
+件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 53 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。
 
 | Toolset | 範囲 |
 |---------|------|
@@ -137,6 +137,8 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 必須パラメーターが欠けた呼び出しは実行されず、`INVALID_ARGUMENT` と `invalid_arguments`（`missing`、`did_you_mean` 付きの `unknown`、`received`、`expected`）を返します。パラメーター名は大文字と小文字を区別し、ツールによって snake_case と camelCase が混在するため、`did_you_mean` に従ってください。パラメーターでないキーがあっても呼び出しは止まりません。そのキーは無視され、結果の `_ignored_arguments` に一覧されます。変換できない値は従来どおり `An error occurred invoking '<tool>'.` を返し、正確な原因はサーバーの stderr に出力されます。
 
 ### send_code、ToolBaker、リボン、表示言語
+
+`send_code_v2` は JSON の `data`、ヘルパーの `modules`、`compile_only`、`McpTaskResult.Pass/Fail` を使う `result_contract="task_v1"` に対応します。ゲートウェイとアドインの両方で対応が必要です。従来の code-only 通信は維持されます。`revit_save_code_module` でヘルパーを保存し、list/delete は Revit なしで使えます。Read-only または send-code 無効時も list は使えますが、保存・削除・スクリプト実行は無効です。[制限と例](docs/send-code.md#json-inputs-helper-modules-and-explicit-task-results)を参照してください。
 
 - **`revit_send_code_to_revit`**（既定オン）は、合う typed ツールがないときに C# 本体を Revit 内でコンパイルして実行します。`--read-only` または `--disable-send-code` で外れます。[docs/send-code.md](docs/send-code.md) を参照。階段は [docs/stairs-workflow.md](docs/stairs-workflow.md)。
 - **ToolBaker：** `revit_list_baked_tools` / `revit_run_baked_tool` には `--toolsets toolbaker` が必要です。Adaptive bake（`--enable-adaptive-bake`、既定オフ）は繰り返しの呼び出しからツールを提案し、accept するまで何も追加されません。Bake のコンパイルは Revit 内で行われ、Visual Studio は不要です。[docs/bake.md](docs/bake.md)。
@@ -298,6 +300,7 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
       "mcp__rvt-mcp__revit_list_assemblies",
       "mcp__rvt-mcp__revit_list_available_targets",
       "mcp__rvt-mcp__revit_list_baked_tools",
+      "mcp__rvt-mcp__revit_list_code_modules",
       "mcp__rvt-mcp__revit_list_export_settings",
       "mcp__rvt-mcp__revit_list_family_types_in_family",
       "mcp__rvt-mcp__revit_list_groups",

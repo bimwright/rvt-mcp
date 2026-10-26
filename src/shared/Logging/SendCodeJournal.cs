@@ -34,6 +34,11 @@ namespace RvtMcp.Plugin
         }
 
         public static bool TryAppend(
+            RvtMcpConfig config, string sessionId, string rawCode, bool success, long durationMs,
+            string error, string resultJson, DateTimeOffset? now = null)
+            => TryAppendWithReceipt(config, sessionId, rawCode, success, durationMs, error, resultJson, null, now);
+
+        internal static bool TryAppendWithReceipt(
             RvtMcpConfig config,
             string sessionId,
             string rawCode,
@@ -41,20 +46,20 @@ namespace RvtMcp.Plugin
             long durationMs,
             string error,
             string resultJson,
-            DateTimeOffset? now = null)
+            JObject receipt, DateTimeOffset? now = null)
         {
             if (config?.EnableCallLogOrDefault != true) return false;
             try
             {
                 return McpLogger.WithFileLock(JournalPath, () => AppendUnderLock(
-                    config, sessionId, rawCode, success, durationMs, error, resultJson, now));
+                    config, sessionId, rawCode, success, durationMs, error, resultJson, now, receipt));
             }
             catch { return false; } // includes lock timeout; no unlocked fallback
         }
 
         private static bool AppendUnderLock(
             RvtMcpConfig config, string sessionId, string rawCode, bool success,
-            long durationMs, string error, string resultJson, DateTimeOffset? now)
+            long durationMs, string error, string resultJson, DateTimeOffset? now, JObject receipt)
         {
             var utc = now ?? DateTimeOffset.UtcNow;
             var root = RootDir;
@@ -86,7 +91,9 @@ namespace RvtMcp.Plugin
 
             try
             {
-                var line = JsonConvert.SerializeObject(entry, Formatting.None);
+                var logged = JObject.FromObject(entry);
+                logged.Merge(RvtMcp.Scripting.ScriptTelemetry.LogFields(receipt));
+                var line = logged.ToString(Formatting.None);
                 BoundedLogFile.AppendUnderLock(JournalPath, line, "send-code-journal", now: utc);
                 return true;
             }

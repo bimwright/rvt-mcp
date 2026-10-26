@@ -30,6 +30,86 @@ namespace RvtMcp.Tests
     {
         private const string Marker = "BWARGS-MARKER-7f3a";
 
+        [Theory]
+        [InlineData("revit_save_code_module", "{\"name\":\"helper\",\"code\":\"PRIVATE-MODULE-SOURCE\",\"code\":\"class A {}\"}")]
+        [InlineData("revit_save_code_module", "{\"name\":\"helper\",\"code\":\"PRIVATE-MODULE-SOURCE\",\"requires\":[17]}")]
+        [InlineData("revit_save_code_module", "{\"name\":\"helper\",\"code\":17}")]
+        [InlineData("revit_list_code_modules", "{\"include_code\":\"true\"}")]
+        [InlineData("revit_list_code_modules", "{\"limit\":1.5}")]
+        [InlineData("revit_delete_code_module", "{\"name\":\"helper\",\"expected_hash\":null}")]
+        public async Task Module_raw_arguments_reject_duplicates_and_wrong_types_before_storage(string tool, string args)
+        {
+            var previous = CodeModuleTools.StoreFactory; var opens = 0;
+            CodeModuleTools.StoreFactory = () => { opens++; throw new Exception("Must not open storage"); };
+            try
+            {
+                await using var h = await Harness.StartAsync();
+                var result = await h.CallAsync(tool, args);
+                Assert.True(result.IsError); Assert.Contains("SCRIPT_INPUT_INVALID", result.Text);
+                Assert.Equal(0, opens); Assert.Empty(h.Dispatched);
+                Assert.DoesNotContain("PRIVATE-MODULE-SOURCE", h.JournalText());
+            }
+            finally { CodeModuleTools.StoreFactory = previous; }
+        }
+
+        [Fact]
+        public async Task Module_list_returns_explicit_source_to_caller_without_journaling_source_or_contacting_host()
+        {
+            using var fixture = new CodeModuleStoreTests();
+            const string code = "public class PrivateModuleSource831 {}";
+            await fixture.Save("helper", code);
+            var previous = CodeModuleTools.StoreFactory;
+            CodeModuleTools.StoreFactory = () => new RvtMcp.Server.Bake.BakeDb(fixture.DbPath);
+            try
+            {
+                await using var h = await Harness.StartAsync();
+                var result = await h.CallAsync("revit_list_code_modules", "{\"include_code\":true}");
+                Assert.False(result.IsError); Assert.Contains(code, result.Text); Assert.Empty(h.Dispatched);
+                Assert.DoesNotContain(code, h.JournalText()); Assert.Contains("code_omitted", h.JournalText());
+            }
+            finally { CodeModuleTools.StoreFactory = previous; }
+        }
+
+        [Theory]
+        [InlineData("{\"x\":\"PRIVATE-SCRIPT-DATA\",\"x\":2}")]
+        [InlineData("[]")]
+        [InlineData("17")]
+        [InlineData("\"{\\\"x\\\":1}\"")]
+        public async Task Script_raw_mcp_data_is_validated_before_binding_or_dispatch(string data)
+        {
+            await using var h = await Harness.StartAsync();
+            var result = await h.CallAsync("revit_send_code_to_revit", "{\"code\":\"return 7;\",\"data\":" + data + "}");
+            Assert.True(result.IsError);
+            Assert.Contains("SCRIPT_INPUT_INVALID", result.Text);
+            Assert.Empty(h.Dispatched);
+            Assert.DoesNotContain("PRIVATE-SCRIPT-DATA", h.JournalText());
+        }
+
+        [Fact]
+        public async Task Script_raw_mcp_preserves_exact_data_and_does_not_persist_it()
+        {
+            await using var h = await Harness.StartAsync();
+            var result = await h.CallAsync("revit_send_code_to_revit",
+                "{\"code\":\"return 7;\\r\\n\",\"data\":{\"n\":9007199254740993,\"private\":\"PRIVATE-SCRIPT-DATA\"},\"usage_context\":\"test\"}");
+            Assert.False(result.IsError);
+            var call = Assert.Single(h.Dispatched);
+            Assert.Equal("send_code_to_revit", call.Command);
+            Assert.Contains("9007199254740993", call.Args.Value<string>("data_json"));
+            Assert.DoesNotContain("_ignored_arguments", result.Text);
+            Assert.DoesNotContain("PRIVATE-SCRIPT-DATA", h.JournalText());
+        }
+
+        [Fact]
+        public async Task Script_duplicate_argument_names_cannot_be_overwritten_by_sdk_binding()
+        {
+            await using var h = await Harness.StartAsync();
+            var result = await h.CallAsync("revit_send_code_to_revit", "{\"code\":\"return 7;\",\"data\":{\"private\":\"PRIVATE-SCRIPT-DATA\"},\"data\":null}");
+            Assert.True(result.IsError);
+            Assert.Contains("SCRIPT_INPUT_INVALID", result.Text);
+            Assert.Empty(h.Dispatched);
+            Assert.DoesNotContain("PRIVATE-SCRIPT-DATA", h.JournalText());
+        }
+
         [Fact]
         public async Task V1_valid_call_dispatches_unchanged_without_warning()
         {
@@ -332,11 +412,11 @@ namespace RvtMcp.Tests
             }
         }
 
-        private sealed record Dispatch(string Command, JObject Args);
+        internal sealed record Dispatch(string Command, JObject Args);
 
-        private sealed record CallResult(string Raw, bool IsError, string Text, JObject Data);
+        internal sealed record CallResult(string Raw, bool IsError, string Text, JObject Data);
 
-        private sealed class Harness : IAsyncDisposable
+        internal sealed class Harness : IAsyncDisposable
         {
             private readonly string _root = Path.Combine(Path.GetTempPath(), "rvt-bw-args-" + Guid.NewGuid().ToString("N"));
             private readonly CancellationTokenSource _deadline = new(TimeSpan.FromSeconds(20));
@@ -350,25 +430,25 @@ namespace RvtMcp.Tests
 
             public List<Dispatch> Dispatched { get; } = new();
 
-            public static async Task<Harness> StartAsync()
+            public static async Task<Harness> StartAsync(RvtMcpConfig configuration = null, bool useGateway = false)
             {
                 var h = new Harness();
-                await h.InitAsync();
+                await h.InitAsync(configuration, useGateway);
                 return h;
             }
 
-            private async Task InitAsync()
+            private async Task InitAsync(RvtMcpConfig configuration, bool useGateway)
             {
                 _originalConfig = ServerState.Config;
                 _originalSend = ToolGateway.SendOverride;
-                var config = new RvtMcpConfig
+                var config = configuration ?? new RvtMcpConfig
                 {
                     Toolsets = new List<string> { "create", "meta", "lint", "mep" },
                     EnableCallLog = true,
                     EnableChangeHistory = false
                 };
                 ServerState.Config = config;
-                ToolGateway.SendOverride = (command, args, timeout) =>
+                ToolGateway.SendOverride = useGateway ? null : (command, args, timeout) =>
                 {
                     var observed = args == null ? new JObject() : JObject.FromObject(args);
                     lock (Dispatched) Dispatched.Add(new Dispatch(command, observed));

@@ -18,7 +18,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-237%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-240%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -94,12 +94,12 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
-| 全新安装 | **237** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
-| 裸 `rvt-mcp.exe` | **50** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **237** | 完整目录 |
-| `all` + adaptive bake | **240** | 再加 3 个 suggestion 生命周期工具 |
+| 全新安装 | **240** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
+| 裸 `rvt-mcp.exe` | **53** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **240** | 完整目录 |
+| `all` + adaptive bake | **243** | 再加 3 个 suggestion 生命周期工具 |
 
-数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 50 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除。
+数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 53 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除。
 
 | Toolset | 覆盖 |
 |---------|------|
@@ -136,6 +136,8 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 缺少必填参数的调用不会执行，而是返回 `INVALID_ARGUMENT` 及 `invalid_arguments`（`missing`、带 `did_you_mean` 的 `unknown`、`received`、`expected`）。参数名区分大小写，且不同工具分别使用 snake_case 和 camelCase：请按 `did_you_mean` 修正。不属于参数的键不会阻止调用：该键会被忽略，并列在结果的 `_ignored_arguments` 中。无法转换的值仍返回 `An error occurred invoking '<tool>'.`，具体原因见服务器的 stderr。
 
 ### send_code、ToolBaker、ribbon 与界面语言
+
+`send_code_v2` 支持 JSON `data`、可复用辅助模块 `modules`、`compile_only`，以及使用 `McpTaskResult.Pass/Fail` 的 `result_contract="task_v1"`。网关和插件必须同时支持该能力；原有 code-only 通信保持兼容。用 `revit_save_code_module` 保存模块；list/delete 无需运行 Revit。只读或关闭 send-code 时仍可 list，但保存、删除和脚本执行会被禁用。参见[限制与示例](docs/send-code.md#json-inputs-helper-modules-and-explicit-task-results)。
 
 - **`revit_send_code_to_revit`**（默认开启）在没有合适 typed 工具时，于 Revit 内编译并运行 C# 正文；`--read-only` 或 `--disable-send-code` 会移除它。见 [docs/send-code.md](docs/send-code.md)；楼梯见 [docs/stairs-workflow.md](docs/stairs-workflow.md)。
 - **ToolBaker：** `revit_list_baked_tools` / `revit_run_baked_tool` 需要 `--toolsets toolbaker`。Adaptive bake（`--enable-adaptive-bake`，默认关闭）会根据重复调用建议工具；在你 accept 之前不会添加任何东西。Bake 在 Revit 内编译，不需要 Visual Studio。见 [docs/bake.md](docs/bake.md)。
@@ -297,6 +299,7 @@ Annotations 描述每个工具对文档和文件的影响。临时 selection、a
       "mcp__rvt-mcp__revit_list_assemblies",
       "mcp__rvt-mcp__revit_list_available_targets",
       "mcp__rvt-mcp__revit_list_baked_tools",
+      "mcp__rvt-mcp__revit_list_code_modules",
       "mcp__rvt-mcp__revit_list_export_settings",
       "mcp__rvt-mcp__revit_list_family_types_in_family",
       "mcp__rvt-mcp__revit_list_groups",

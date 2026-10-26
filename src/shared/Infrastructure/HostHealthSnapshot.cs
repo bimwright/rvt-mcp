@@ -45,6 +45,7 @@ namespace RvtMcp.Plugin
                 {
                     ["ok"] = _identity != null, ["healthy"] = _identity != null,
                     ["setup_plugin"] = _identity?.DeepClone(),
+                    ["script_protocol"] = RvtMcp.Scripting.ScriptProtocol.Describe(),
                     ["revit_year"] = _identity?["host_year"]?.DeepClone(),
                     ["process_id"] = _identity?["process_id"]?.DeepClone(),
                     ["waiting_for_user"] = waitingForUser,

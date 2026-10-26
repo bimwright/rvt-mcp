@@ -3,6 +3,13 @@
     "locale": "zh-CN",
     "schema": 1
   },
+  "script.label.compile": "编译检查",
+  "script.label.execute": "脚本执行",
+  "script.label.baked": "已保存脚本",
+  "script.native.partial": "Revit：部分完成",
+  "script.native.rolled_back": "Revit：已回滚",
+  "script.native.cancelled": "Revit：已取消",
+  "script.history.freshInputs": "输入数据和模块标识不会缓存用于重放。请通过 MCP 工具提供新数据并重新选择模块后执行。",
   "ribbon.toggle.text.running": "MCP：开",
   "ribbon.toggle.text.stopped": "MCP：关",
   "ribbon.toggle.tooltip": "启动/停止 MCP 服务器",

@@ -1,0 +1,156 @@
+{
+  "generated_by": "ToolsListSnapshotTests",
+  "tool_count": 4,
+  "tools": [
+    {
+      "name": "revit_delete_code_module",
+      "description_hash": "sha256:15febc75aadbea71086d3aa8d1328a4ac70dad2793607dd0905ae255de2d0f0a",
+      "inputSchema": {
+        "properties": {
+          "expected_hash": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "expected_hash"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_list_code_modules",
+      "description_hash": "sha256:feb2f2e67a203561d286bd9b77011d14408c1a9c8bd368826ffb02c0717f03f1",
+      "inputSchema": {
+        "properties": {
+          "include_code": {
+            "default": false,
+            "type": "boolean"
+          },
+          "limit": {
+            "default": 100,
+            "type": "integer"
+          },
+          "name_filter": {
+            "default": "",
+            "type": "string"
+          },
+          "start_index": {
+            "default": 0,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "revit_save_code_module",
+      "description_hash": "sha256:46caa7266d1913fe94b58b4b7bcf3c96627295e80fc3ccbc3edb1c82fd3c7086",
+      "inputSchema": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "type": "string"
+          },
+          "expected_hash": {
+            "default": null,
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "requires": {
+            "default": null,
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "code"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_send_code_to_revit",
+      "description_hash": "sha256:de5fa80d0bdbbe5f8d3c615b940b3095939d0b785e29690866f8c2d49a0cf051",
+      "inputSchema": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "compile_only": {
+            "default": false,
+            "type": "boolean"
+          },
+          "data": {
+            "default": null,
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "modules": {
+            "default": null,
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "result_contract": {
+            "default": "legacy",
+            "enum": [
+              "legacy",
+              "task_v1"
+            ],
+            "type": "string"
+          },
+          "usage_context": {
+            "default": "unknown",
+            "enum": [
+              "project",
+              "test",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      },
+      "annotations": null
+    }
+  ]
+}

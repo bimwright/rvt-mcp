@@ -145,7 +145,13 @@ namespace RvtMcp.Plugin
                         ParamsJson = paramsJson,
                         ErrorMessage = error,
                         ResultJson = resultJson,
-                        Summary = SummaryGenerator.Generate(tool, paramsJson, resultJson, success, error)
+                        Script = RvtMcp.Scripting.ScriptTelemetry.BoundScript(obj["_script"] as JObject),
+                        Task = RvtMcp.Scripting.ScriptTelemetry.BoundTask(obj["_task"] as JObject),
+                        Operation = obj["_operation"] as JObject,
+                        PreserveSummary = obj["_script"] != null,
+                        Summary = obj["_script"] is JObject script
+                            ? RvtMcp.Scripting.ScriptPresentation.Label(script, obj["_operation"] as JObject) + ": " + (success ? obj["_task"]?.Value<string>("status") : error)
+                            : SummaryGenerator.Generate(tool, paramsJson, resultJson, success, error)
                     }
                 };
             }

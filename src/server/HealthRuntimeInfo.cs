@@ -15,6 +15,7 @@ internal static class HealthRuntimeInfo
         ["module_version_id"] = gateway["module_version_id"]?.DeepClone(),
         ["process_id"] = gateway["process_id"]?.DeepClone(),
         ["process_started_utc"] = gateway["process_started_utc"]?.DeepClone(),
+        ["script_protocol"] = RvtMcp.Scripting.ScriptProtocol.Describe(),
     };
 
     internal static void Enrich(JObject health, JObject gateway, bool connected)
@@ -28,6 +29,7 @@ internal static class HealthRuntimeInfo
         var pluginRevision = RevisionOf(pluginInfo);
         health["host_connected"] = connected;
         health["setup_gateway"] = gateway.DeepClone();
+        health["gateway_script_protocol"] = RvtMcp.Scripting.ScriptProtocol.Describe();
         health["mcp"] = new JObject
         {
             ["name"] = "rvt-mcp",

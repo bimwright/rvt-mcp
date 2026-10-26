@@ -28,6 +28,8 @@
     <Compile Include="../../src/shared/Views/FailureIssuesPresentation.cs" Link="Shared/Views/FailureIssuesPresentation.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\SendCodeSourceBuilder.cs" Link="Shared\Infrastructure\SendCodeSourceBuilder.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\SendCodeDocumentRewriter.cs" Link="Shared\Infrastructure\SendCodeDocumentRewriter.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\Scripting\SendCodeCompiler.cs" Link="Shared\Infrastructure\Scripting\SendCodeCompiler.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\Scripting\ScriptCompileHost.cs" Link="Shared\Infrastructure\Scripting\ScriptCompileHost.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\NoDocumentGuidance.cs" Link="Shared\Infrastructure\NoDocumentGuidance.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\RecentFileList.cs" Link="Shared\Infrastructure\RecentFileList.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\McpAddinDiscovery.cs" Link="Shared\Infrastructure\McpAddinDiscovery.cs" />
@@ -63,6 +65,9 @@
     <Compile Include="..\..\src\shared\Config\StatusPrivacySection.cs" Link="Shared\Config\StatusPrivacySection.cs" />
     <Compile Include="..\..\src\shared\Handlers\Runtime\BatchExecutor.cs" Link="Shared\Handlers\Runtime\BatchExecutor.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\Execution\CommandOutcome.cs" Link="Shared\Infrastructure\Execution\CommandOutcome.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\Execution\McpTaskResult.cs" Link="Shared\Infrastructure\Execution\McpTaskResult.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\Execution\ScriptTaskOutcome.cs" Link="Shared\Infrastructure\Execution\ScriptTaskOutcome.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\Execution\ScriptExecutionState.cs" Link="Shared\Infrastructure\Execution\ScriptExecutionState.cs" />
     <Compile Include="..\..\src\shared\ToolBaker\BakedToolRegistry.cs" Link="Shared\ToolBaker\BakedToolRegistry.cs" />
     <Compile Include="..\..\src\shared\ToolBaker\BakedToolParameterDefaults.cs" Link="Shared\ToolBaker\BakedToolParameterDefaults.cs" />
     <Compile Include="..\..\src\shared\ToolBaker\BakedToolRuntimeCache.cs" Link="Shared\ToolBaker\BakedToolRuntimeCache.cs" />

@@ -27,6 +27,12 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
+### Script inputs and helper modules
+
+- Add JSON inputs, reusable helper modules, compile-only validation and opt-in `McpTaskResult` task outcomes to send-code. Enhanced requests require `send_code_v2` on the selected gateway/add-in pair; default calls retain the legacy wire format.
+- Expose save/list/delete module tools with compile-before-save, revision conflict checks, source privacy and read-only filtering. Catalog: `--toolsets all` **240**, adaptive bake **243**, bare defaults **53**.
+- Show localized compile/script/native-outcome labels in History/toast. Enhanced History records require fresh inputs through MCP instead of replaying cached data or module snapshots.
+
 ### Target binding (#19)
 
 - Once a session has a binding, `auto`/year selectors no longer move it to another instance, including after the previous instance exited or stopped its listener. Select the new instance with `pid:`/`id:`; leaving a live confirmed instance still requires `rebind=true`. The first selection in a new session still accepts `auto`/year when exactly one instance matches.

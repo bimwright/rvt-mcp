@@ -1,0 +1,11 @@
+using RvtMcp.Plugin;
+
+public sealed class BaselineLegacyCommand : IRevitCommand
+{
+    public string Name => "baseline_compiled";
+    public string Description => "Synthetic legacy storage witness";
+    public string ParametersSchema => "{\"type\":\"object\"}";
+
+    public CommandResult Execute(Autodesk.Revit.UI.UIApplication app, string paramsJson)
+        => CommandResult.Ok(new { value = 7 });
+}

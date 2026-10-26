@@ -156,6 +156,7 @@ namespace RvtMcp.Plugin
                     Id = request.Value<string>("id"),
                     CommandName = request.Value<string>("command"),
                     ParamsJson = request["params"]?.ToString() ?? "{}",
+                    ScriptMetadata = request["script"] as Newtonsoft.Json.Linq.JObject,
                     RuntimeOptions = request["runtime"]?.ToObject<RvtMcpConfig>(),
                     History = request["history"]?.ToObject<ChangeHistoryRequest>(),
                     FromMcp = true,

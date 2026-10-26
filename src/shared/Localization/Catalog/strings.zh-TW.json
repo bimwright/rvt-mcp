@@ -3,6 +3,13 @@
     "locale": "zh-TW",
     "schema": 1
   },
+  "script.label.compile": "編譯檢查",
+  "script.label.execute": "指令碼執行",
+  "script.label.baked": "已儲存指令碼",
+  "script.native.partial": "Revit：部分完成",
+  "script.native.rolled_back": "Revit：已回復",
+  "script.native.cancelled": "Revit：已取消",
+  "script.history.freshInputs": "輸入資料與模組識別資訊不會快取供重播使用。請透過 MCP 工具提供新資料並重新選取模組後執行。",
   "ribbon.toggle.text.running": "MCP：開",
   "ribbon.toggle.text.stopped": "MCP：關",
   "ribbon.toggle.tooltip": "啟動/停止 MCP 伺服器",

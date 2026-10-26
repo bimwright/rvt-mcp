@@ -1,5 +1,9 @@
 # Adaptive Bake
 
+Reusable send-code helpers are managed separately by `revit_save_code_module`, `revit_list_code_modules`
+and `revit_delete_code_module`. They do not create ToolBaker registry entries or alter the compiled-tool
+accept/run contract. See [JSON inputs and helper modules](send-code.md#json-inputs-helper-modules-and-explicit-task-results).
+
 Adaptive bake turns repeated local Revit workflows into personal tools only after explicit opt-in and acceptance. It is off by default.
 
 ## Enable

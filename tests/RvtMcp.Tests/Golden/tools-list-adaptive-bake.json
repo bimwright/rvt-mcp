@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 240,
+  "tool_count": 243,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -2933,6 +2933,33 @@
       }
     },
     {
+      "name": "revit_delete_code_module",
+      "description_hash": "sha256:15febc75aadbea71086d3aa8d1328a4ac70dad2793607dd0905ae255de2d0f0a",
+      "inputSchema": {
+        "properties": {
+          "expected_hash": {
+            "description": "",
+            "type": "String"
+          },
+          "name": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "name",
+          "expected_hash"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "revit_delete_element",
       "description_hash": "sha256:f8f74c803fb2713c171d09fa89b3e286cef7f45ac2a852a7ccc40490c9be4665",
       "inputSchema": {
@@ -5204,6 +5231,38 @@
       }
     },
     {
+      "name": "revit_list_code_modules",
+      "description_hash": "sha256:feb2f2e67a203561d286bd9b77011d14408c1a9c8bd368826ffb02c0717f03f1",
+      "inputSchema": {
+        "properties": {
+          "include_code": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "limit": {
+            "description": "",
+            "type": "Int32"
+          },
+          "name_filter": {
+            "description": "",
+            "type": "String"
+          },
+          "start_index": {
+            "description": "",
+            "type": "Int32"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
       "name": "revit_list_export_settings",
       "description_hash": "sha256:9197889ee6909e87baddadefc27bc8a1d9af5c413cd40cf7e0b915a2b218bba4",
       "inputSchema": {
@@ -6695,6 +6754,45 @@
       }
     },
     {
+      "name": "revit_save_code_module",
+      "description_hash": "sha256:46caa7266d1913fe94b58b4b7bcf3c96627295e80fc3ccbc3edb1c82fd3c7086",
+      "inputSchema": {
+        "properties": {
+          "code": {
+            "description": "",
+            "type": "String"
+          },
+          "description": {
+            "description": "",
+            "type": "String"
+          },
+          "expected_hash": {
+            "description": "",
+            "type": "String"
+          },
+          "name": {
+            "description": "",
+            "type": "String"
+          },
+          "requires": {
+            "description": "",
+            "type": "String[]"
+          }
+        },
+        "required": [
+          "name",
+          "code"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "revit_save_selection",
       "description_hash": "sha256:480e16b7ed47acb904fe665be725c228ca8e12e8b3254c88377c6c5dd910c0de",
       "inputSchema": {
@@ -6770,10 +6868,30 @@
     },
     {
       "name": "revit_send_code_to_revit",
-      "description_hash": "sha256:babafa272b1fba13276af467129383ee52499890604c5d74d8fddd456a68e621",
+      "description_hash": "sha256:de5fa80d0bdbbe5f8d3c615b940b3095939d0b785e29690866f8c2d49a0cf051",
       "inputSchema": {
         "properties": {
           "code": {
+            "description": "",
+            "type": "String"
+          },
+          "compile_only": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "data": {
+            "description": "",
+            "type": "Dictionary`2"
+          },
+          "modules": {
+            "description": "",
+            "type": "String[]"
+          },
+          "result_contract": {
+            "description": "",
+            "type": "String"
+          },
+          "usage_context": {
             "description": "",
             "type": "String"
           }

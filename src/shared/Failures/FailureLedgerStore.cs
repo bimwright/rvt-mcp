@@ -437,6 +437,8 @@ WHERE s.scope=$s AND o.id!=$i AND o.execution!='completed' AND o.execution!='int
                 foreach (var name in new[] { "success", "error", "_failure", "_operation", "_changes", "_history" })
                     if (safe.FinalResult[name] != null) result[name] = safe.FinalResult[name].DeepClone();
                 RedactResult(result);
+                if (safe.FinalResult["_task"] is JObject task) result["_task"] = RvtMcp.Scripting.ScriptTelemetry.BoundTask(task);
+                if (safe.FinalResult["_script"] is JObject script) result["_script"] = RvtMcp.Scripting.ScriptTelemetry.BoundScript(script);
                 var json = result.ToString(Newtonsoft.Json.Formatting.None);
                 safe.FinalResult = Encoding.UTF8.GetByteCount(json) <= 4096 ? result : CompactFinalResult(result, safe);
             }
@@ -458,6 +460,8 @@ WHERE s.scope=$s AND o.id!=$i AND o.execution!='completed' AND o.execution!='int
             var compact = new JObject { ["complete"] = false, ["operationId"] = op.OperationId, ["outcome"] = op.Outcome };
             if (result["success"] is JValue success) compact["success"] = success.DeepClone();
             if (result["error"] != null) compact["error"] = FailureCapture.SafeText(result["error"].ToString(), 256);
+            if (result["_task"] is JObject task) compact["_task"] = RvtMcp.Scripting.ScriptTelemetry.BoundTask(task, compact: true);
+            if (result["_script"] is JObject script) compact["_script"] = RvtMcp.Scripting.ScriptTelemetry.BoundScript(script);
             foreach (var receiptName in new[] { "_failure", "_operation", "_changes", "_history" })
             {
                 if (!(result[receiptName] is JObject receipt)) continue;

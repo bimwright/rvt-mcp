@@ -97,6 +97,44 @@ namespace RvtMcp.Tests
                 L.T("history.summary.unknown", ("tool", "create_foo")));
         }
 
+        [Theory]
+        [InlineData("compile_only", "Compile check")]
+        [InlineData("module_compile", "Compile check")]
+        [InlineData("script", "Script execute")]
+        [InlineData("baked_script", "Baked script")]
+        public void Script_receipt_summaries_refresh_language_without_replaying_inputs(string kind, string label)
+        {
+            var entry = new McpCallEntry { ToolName = "send_code_to_revit", Success = false, PreserveSummary = true,
+                ParamsJson = "{\"private\":\"runtime-input-not-for-replay\"}", ErrorMessage = "TASK_RESULT_REQUIRED",
+                Script = new Newtonsoft.Json.Linq.JObject { ["execution_kind"] = kind },
+                Operation = new Newtonsoft.Json.Linq.JObject { ["outcome"] = "partial" } };
+            McpSessionLog.RefreshSummary(entry);
+            Assert.Contains(label, entry.Summary); Assert.Contains("native: partial", entry.Summary);
+            Assert.Contains("TASK_RESULT_REQUIRED", entry.Summary);
+            var en = EmbeddedCatalog.Load(typeof(HistoryLocalizationTests).Assembly, "en");
+            var translated = new System.Collections.Generic.Dictionary<string,string>(en) {
+                ["script.label.compile"] = "Biên dịch", ["script.label.execute"] = "Chạy script", ["script.label.baked"] = "Script đã lưu",
+                ["script.native.partial"] = "Revit: một phần" };
+            L.InitializeForTests(StringTable.Build("tt", en, translated, null));
+            McpSessionLog.RefreshSummary(entry);
+            Assert.Contains("Revit: một phần", entry.Summary); Assert.Contains("TASK_RESULT_REQUIRED", entry.Summary);
+            Assert.DoesNotContain("runtime-input-not-for-replay", entry.Summary);
+        }
+
+        [Theory]
+        [InlineData("TASK_FAILED", "rolled_back", "native: rolled_back")]
+        [InlineData("TASK_RESULT_REQUIRED", "partial", "native: partial")]
+        public void Script_toast_retains_failure_and_native_outcome_before_advisory_hints(string error, string native, string label)
+        {
+            var receipt = new Newtonsoft.Json.Linq.JObject { ["executed"] = true,
+                ["_script"] = new Newtonsoft.Json.Linq.JObject { ["execution_kind"] = "script" },
+                ["_operation"] = new Newtonsoft.Json.Linq.JObject { ["outcome"] = native },
+                ["task_contract_hint"] = "advisory must not replace the error" };
+            var toast = RvtMcp.Plugin.Views.Toast.ToastContentBuilder.BuildCompleted("send_code_to_revit", "{}", receipt.ToString(), false, error, 7, "Script");
+            Assert.False(toast.Success); Assert.Contains(label, toast.Title); Assert.Contains(error, toast.Body);
+            Assert.DoesNotContain("advisory must not replace", toast.Body);
+        }
+
         [Fact]
         public void RefreshSummary_recomputes_in_new_language_and_keeps_truncated()
         {

@@ -73,7 +73,7 @@ namespace RvtMcp.Plugin.Presentation.History
         }
         private static bool Contains(string value, string term) => value != null && value.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
 
-        public bool CanRerun(McpCallEntry entry) => entry != null && !entry.IsHistorical && !entry.ParamsTruncated
+        public bool CanRerun(McpCallEntry entry) => entry != null && !entry.IsHistorical && !entry.ParamsTruncated && entry.Script == null
             && (entry.ToolName != "send_code_to_revit" || !string.IsNullOrEmpty(entry.CodeSnippet) || ResolveCode(entry) != null);
         private string ResolveCode(McpCallEntry entry)
         {

@@ -4,7 +4,7 @@ namespace RvtMcp.Plugin
 {
     internal static class SendCodeJournalGate
     {
-        public static void OnSendCodeLogged(
+        public static bool OnSendCodeLogged(
             string commandName,
             string paramsJson,
             string codeSnippet,
@@ -12,26 +12,30 @@ namespace RvtMcp.Plugin
             long durationMs,
             string resultError,
             string resultJson,
-            RvtMcpConfig runtimeConfig = null)
+            RvtMcpConfig runtimeConfig = null, Newtonsoft.Json.Linq.JObject receipt = null)
         {
             if (commandName != "send_code_to_revit")
-                return;
+                return true;
 
             try
             {
                 var cfg = runtimeConfig ?? RvtMcpConfig.LoadReadOnly();
-                SendCodeJournal.TryAppend(
+                if (!cfg.EnableCallLogOrDefault) return true;
+                // Always enter the journal: it purges expired bodies even when persistence is off.
+                var appended = SendCodeJournal.TryAppendWithReceipt(
                     cfg,
                     McpLogger.CurrentSessionId,
                     codeSnippet,
                     success,
                     durationMs,
                     resultError,
-                    resultJson);
+                    resultJson, receipt: receipt);
+                return appended || !cfg.IsPersistSendCodeBodiesActive();
             }
             catch (Exception ex)
             {
                 try { Console.Error.WriteLine("SendCodeJournal failed: " + ex.Message); } catch { }
+                return false;
             }
         }
     }

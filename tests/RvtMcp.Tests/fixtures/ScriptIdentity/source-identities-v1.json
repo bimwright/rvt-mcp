@@ -1,0 +1,69 @@
+{
+  "modules": [
+    {
+      "name": "base_a",
+      "source": "public static class BaseA {}\r\n",
+      "requires": [],
+      "normalized": "public static class BaseA {}\n",
+      "code_sha256": "4fcead8b8873c8fa85ed0dbb6e1dd998b05f085c4bb04e04fbba9c0f93cc9381",
+      "revision_hash": "e1cadaa4a2fd59a640bc7532f309a155e6546f90b1a08211fa54257cf8a2ca06"
+    },
+    {
+      "name": "base_b",
+      "source": "public static class BaseB {}\r",
+      "requires": [],
+      "normalized": "public static class BaseB {}\n",
+      "code_sha256": "41cb62ec8348da70ac2e043170e8b1cae5e9ccd2f012e00ee4c3a18ab17dde7b",
+      "revision_hash": "71ee7ed378e1621592ec6b7f73302bb80e860b81b61043e964c6ac949169aaea"
+    },
+    {
+      "name": "presentation",
+      "source": "public static class Presentation { }  \r\n",
+      "requires": [
+        "base_a",
+        "base_b"
+      ],
+      "normalized": "public static class Presentation { }  \n",
+      "code_sha256": "212329f5210dea4b6f3a9fc225dd8d9c01135109c581bc555eaf1bfdb0cc6848",
+      "revision_hash": "5eb72119b943f099d2ad5e3e57b29985c7516374f6d2aacc5c75f32878d1b2eb"
+    },
+    {
+      "name": "presentation",
+      "source": "public static class Presentation { }  \n",
+      "requires": [
+        "base_b",
+        "base_a"
+      ],
+      "normalized": "public static class Presentation { }  \n",
+      "code_sha256": "212329f5210dea4b6f3a9fc225dd8d9c01135109c581bc555eaf1bfdb0cc6848",
+      "revision_hash": "311a2a874def56cf646334d266597323f26f0606b0af8d26d91f9cdd1663dbb9"
+    }
+  ],
+  "manifest": [
+    {
+      "name": "base_a",
+      "hash": "e1cadaa4a2fd59a640bc7532f309a155e6546f90b1a08211fa54257cf8a2ca06",
+      "requires": []
+    },
+    {
+      "name": "base_b",
+      "hash": "71ee7ed378e1621592ec6b7f73302bb80e860b81b61043e964c6ac949169aaea",
+      "requires": []
+    },
+    {
+      "name": "presentation",
+      "hash": "5eb72119b943f099d2ad5e3e57b29985c7516374f6d2aacc5c75f32878d1b2eb",
+      "requires": [
+        "base_a",
+        "base_b"
+      ]
+    }
+  ],
+  "manifest_hash": "583965aedfdacbfe4c1cfa31cc718c51dd7744f8d429a16a3eb22a6638ce6618",
+  "script": {
+    "code": "return Presentation.Restore(app, data);\r\n",
+    "entrypoint_mode": "app_data",
+    "result_contract": "task_v1",
+    "key": "script_v1:93ebe4300ae3584fcbde4111196a666a4fc298f39236eb9353f1e7d8001601e4"
+  }
+}

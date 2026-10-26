@@ -3,6 +3,13 @@
     "locale": "de",
     "schema": 1
   },
+  "script.label.compile": "Kompilierungsprüfung",
+  "script.label.execute": "Skript ausführen",
+  "script.label.baked": "Gespeichertes Skript",
+  "script.native.partial": "Revit: teilweise",
+  "script.native.rolled_back": "Revit: zurückgerollt",
+  "script.native.cancelled": "Revit: abgebrochen",
+  "script.history.freshInputs": "Eingaben und Modulidentität werden nicht zur Wiederholung gespeichert. Erneut über das MCP-Tool mit aktuellen Daten und Modulauswahl ausführen.",
   "ribbon.toggle.text.running": "MCP: EIN",
   "ribbon.toggle.text.stopped": "MCP: AUS",
   "ribbon.toggle.tooltip": "MCP Server starten/stoppen",

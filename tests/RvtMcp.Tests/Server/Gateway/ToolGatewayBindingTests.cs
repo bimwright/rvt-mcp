@@ -16,6 +16,7 @@ using RvtMcp.Plugin;
 using RvtMcp.Server;
 using Xunit;
 using ServerAuthToken = RvtMcp.Server.AuthToken;
+using RvtMcp.Scripting;
 
 namespace RvtMcp.Tests
 {
@@ -103,6 +104,7 @@ namespace RvtMcp.Tests
             public volatile bool Disposed;
             /// <summary>Invoked after a rejected handshake is written — lets the test rotate the descriptor.</summary>
             public Action OnRejected;
+            public Func<JObject, JObject> ResponseOverride;
 
             public FakeTcpHost()
             {
@@ -173,7 +175,8 @@ namespace RvtMcp.Tests
                             }
                             lock (Commands) Commands.Add(command);
                             if (CloseOnCommand) return; // close stream → client sees EOF mid-request
-                            writer.WriteLine(new JObject { ["id"] = id, ["success"] = true, ["data"] = new JObject { ["ok"] = true }, ["_target"] = TargetStamp?.DeepClone() }.ToString(Formatting.None));
+                            var response = ResponseOverride?.Invoke(req) ?? new JObject { ["id"] = id, ["success"] = true, ["data"] = new JObject { ["ok"] = true }, ["_target"] = TargetStamp?.DeepClone() };
+                            writer.WriteLine(response.ToString(Formatting.None));
                             if (command == "__park__") StopReading = true; // park before the next read
                         }
                     }
@@ -293,6 +296,307 @@ namespace RvtMcp.Tests
         }
 
         // ---- §6.4 connect outcomes ----
+
+        private void AdvertiseScriptProtocol(int pid = PidA)
+        {
+            var path = Path.Combine(_dir, $"revit-2024-{pid}.json");
+            var descriptor = JObject.Parse(File.ReadAllText(path));
+            ((JArray)descriptor["capabilities"]).Add(ScriptProtocol.Capability);
+            File.WriteAllText(path, descriptor.ToString(Formatting.None));
+        }
+
+        // This adapter runs the real API-free compiler/task normalization. Native operation facts below
+        // are synthetic; it cannot establish Revit transaction, geometry or loaded-host acceptance.
+        private static JObject IntegratedScriptReply(JObject request, JObject target, string nativeOutcome)
+        {
+            if (request["script"] == null)
+                return new JObject { ["id"] = request["id"].DeepClone(), ["success"] = true,
+                    ["data"] = new JObject { ["executed"] = true, ["result"] = 7 }, ["_target"] = target.DeepClone() };
+            var wire = ScriptWireRequest.Parse(request["params"].ToString()); var meta = (JObject)request["script"];
+            wire.ValidateMetadata(meta);
+            JObject reply;
+            if (wire.Input.CompileOnly)
+            {
+                var metadata = new ScriptRuntimeMetadata(wire.Input.Code) { LogicalCallId = meta.Value<string>("logical_call_id"),
+                    ParentLogicalCallId = meta.Value<string>("parent_logical_call_id"), EntryTool = meta.Value<string>("entry_tool"),
+                    ExecutionKind = meta.Value<string>("execution_kind"), UsageContext = meta.Value<string>("usage_context"),
+                    ModuleManifestHash = meta.Value<string>("module_manifest_hash") };
+                var receipt = CodeModuleToolsTests.Receipt(wire.Input, wire.Modules, metadata);
+                receipt["compile_host"]["process_id"] = target["pid"].DeepClone();
+                reply = new JObject { ["success"] = receipt["success"].DeepClone() };
+                SafetyResponseMetadata.Attach(reply, receipt);
+                foreach (var key in new[] {"success", "_script", "_task", "_operation", "_target"}) receipt.Remove(key);
+                reply["data"] = receipt;
+            }
+            else
+            {
+                var state = new ScriptExecutionState(meta, wire.Parameters().ToString()); state.Compiling();
+                var compiled = SendCodeCompilerTests.Compile(wire.Input, wire.Modules.ToArray());
+                state.Invoking();
+                var returned = SendCodeCompilerTests.Run(compiled, wire.Input.Data.Json);
+                var detail = state.Complete(returned);
+                reply = ScriptOutcomePipelineTests.Envelope(nativeOutcome);
+                if (nativeOutcome == "unknown") reply["_operation"]["mutationApplied"] = null;
+                reply["data"]["result"] = detail == null ? JValue.CreateNull() : JToken.FromObject(detail);
+                state.Apply(reply);
+            }
+            reply["id"] = request["id"].DeepClone(); reply["_target"] = target.DeepClone();
+            reply["_operation"]["operationId"] = request["operation_id"].DeepClone();
+            return reply;
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        public async Task Public_MCP_module_and_script_round_trip_through_TCP_compiler_store_and_audit(bool taskFails, bool home)
+        {
+            using var fixture = new CodeModuleStoreTests();
+            using var host = new FakeTcpHost { TargetStamp = new JObject { ["host_year"] = 2024, ["pid"] = PidA, ["document_id"] = home ? null : "doc-a" } };
+            var native = home ? "unknown" : "committed";
+            host.ResponseOverride = request => IntegratedScriptReply(request, host.TargetStamp, native);
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok"); AdvertiseScriptProtocol();
+            RevitTargetBinding.ResetForTests(_probe, TargetSelector.ForPid(PidA));
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), RevitTargetBinding.Scan().Live);
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), home ? null : "doc-a");
+            var config = new RvtMcpConfig { EnableCallLog = true, EnableChangeHistory = false, EnableAdaptiveBake = true };
+            ServerState.ToolCatalog = ServerToolCatalogBuilder.Build(ToolsetFilter.Resolve(config), config);
+            var moduleFactory = CodeModuleTools.StoreFactory; var scriptFactory = SendCodeCore.StoreFactory; var previousLogger = ToolGateway.UsageLogger;
+            CodeModuleTools.StoreFactory = () => new RvtMcp.Server.Bake.BakeDb(fixture.DbPath);
+            SendCodeCore.StoreFactory = CodeModuleTools.StoreFactory;
+            var paths = new RvtMcp.Server.Bake.BakePaths(_dir);
+            ToolGateway.UsageLogger = new RvtMcp.Server.Bake.UsageEventLogger(paths, config);
+            try
+            {
+                await using var rpc = await ToolArgumentGuardTests.Harness.StartAsync(config, useGateway: true);
+                var marker = Path.Combine(_dir, "initializer-witness.txt");
+                var source = "public static class IntegrationHelper { /*PRIVATE-MODULE-SOURCE*/ static IntegrationHelper() { System.IO.File.WriteAllText(@\"" + marker + "\", \"ran\"); } public static int Length(string s) => s.Length; }";
+                var save = await rpc.CallAsync("revit_save_code_module", new JObject { ["name"] = "helper", ["code"] = source }.ToString(Formatting.None));
+                Assert.False(save.IsError, save.Text); Assert.False(File.Exists(marker)); Assert.Single(host.Requests);
+                var manifest = save.Data["validation"].Value<string>("module_manifest_hash");
+                var list = await rpc.CallAsync("revit_list_code_modules", "{\"include_code\":true,\"limit\":1}");
+                Assert.False(list.IsError); Assert.Equal(source, list.Data["modules"][0].Value<string>("code")); Assert.Single(host.Requests);
+                var conflict = await rpc.CallAsync("revit_save_code_module", "{\"name\":\"helper\",\"code\":\"class Changed {}\"}");
+                Assert.True(conflict.IsError); Assert.Contains(ScriptErrorCodes.ModuleConflict, conflict.Text); Assert.Single(host.Requests);
+                const string privateInput = "PRIVATE-RUNTIME-INPUT-\"; throw new Exception(); // Việt Nam 😀";
+                var code = "var length=IntegrationHelper.Length((string)data[\"text\"]); return " + (taskFails
+                    ? "McpTaskResult.Fail(\"VERIFY_FAILED\", \"Check goal\", new {length, n=(long)data[\"n\"]});"
+                    : "McpTaskResult.Pass(new {length, n=(long)data[\"n\"]});");
+                var run = await rpc.CallAsync("revit_send_code_to_revit", new JObject { ["code"] = code,
+                    ["data"] = new JObject { ["text"] = privateInput, ["n"] = 9007199254740993L },
+                    ["modules"] = new JArray("helper"), ["usage_context"] = "test", ["result_contract"] = "task_v1" }.ToString(Formatting.None));
+                Assert.Equal(taskFails, run.IsError); Assert.True(File.Exists(marker)); Assert.Equal(2, host.Requests.Count);
+                Assert.Equal(taskFails ? "failed" : "passed", run.Data["_task"].Value<string>("status"));
+                Assert.Equal(native, run.Data["_operation"].Value<string>("outcome"));
+                Assert.Equal(manifest, run.Data["_script"].Value<string>("module_manifest_hash"));
+                Assert.Equal(9007199254740993L, run.Data["result"].Value<long>("n"));
+                Assert.Equal(privateInput.Length, run.Data["result"].Value<int>("length"));
+                Assert.Equal(code, host.Requests.Last()["params"].Value<string>("code"));
+                Assert.DoesNotContain("PRIVATE-RUNTIME-INPUT", rpc.JournalText());
+                Assert.DoesNotContain("PRIVATE-MODULE-SOURCE", rpc.JournalText());
+                Assert.Contains("code_omitted", rpc.JournalText());
+                var audit = File.ReadAllLines(paths.UsageJsonl).Select(JObject.Parse).ToArray(); Assert.Equal(2, audit.Length);
+                Assert.All(audit, entry => Assert.Equal("ineligible", JObject.Parse(entry.Value<string>("PayloadJson")).Value<string>("observation_status")));
+                Assert.Empty(ToolGateway.UsageLogger.RefreshCandidates());
+            }
+            finally { CodeModuleTools.StoreFactory = moduleFactory; SendCodeCore.StoreFactory = scriptFactory; ToolGateway.UsageLogger = previousLogger; }
+        }
+
+        [Fact]
+        public async Task Public_MCP_older_host_keeps_default_legacy_and_refuses_enhanced_without_fallback()
+        {
+            using var host = new FakeTcpHost { TargetStamp = new JObject { ["host_year"] = 2024, ["pid"] = PidA, ["document_id"] = "doc-a" } };
+            host.ResponseOverride = request => IntegratedScriptReply(request, host.TargetStamp, "unknown");
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok");
+            RevitTargetBinding.ResetForTests(_probe, TargetSelector.ForPid(PidA));
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), RevitTargetBinding.Scan().Live);
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-a");
+            await using var rpc = await ToolArgumentGuardTests.Harness.StartAsync(useGateway: true);
+            var legacy = await rpc.CallAsync("revit_send_code_to_revit", "{\"code\":\"return 7;\"}");
+            Assert.False(legacy.IsError); Assert.Equal(7, legacy.Data.Value<int>("result"));
+            Assert.Null(Assert.Single(host.Requests)["script"]);
+            var enhanced = await rpc.CallAsync("revit_send_code_to_revit", "{\"code\":\"return data;\",\"data\":{\"n\":7}}");
+            Assert.True(enhanced.IsError); Assert.Contains(ScriptErrorCodes.CapabilityRequired, enhanced.Text);
+            Assert.False(enhanced.Data.Value<bool>("sent")); Assert.False(enhanced.Data.Value<bool>("executed"));
+            Assert.Single(host.Requests);
+        }
+
+        [Theory]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        public async Task Module_save_uses_one_pinned_compile_operation_and_commits_only_with_capability(bool capable, bool home)
+        {
+            using var fixture = new CodeModuleStoreTests();
+            using var host = new FakeTcpHost { TargetStamp = new JObject { ["host_year"] = 2024, ["pid"] = PidA, ["document_id"] = home ? null : "doc-a" } };
+            host.ResponseOverride = request => {
+                var wire = ScriptWireRequest.Parse(request["params"].ToString()); var meta = (JObject)request["script"];
+                var metadata = new ScriptRuntimeMetadata(wire.Input.Code) {
+                    LogicalCallId = meta.Value<string>("logical_call_id"), ParentLogicalCallId = meta.Value<string>("parent_logical_call_id"),
+                    EntryTool = meta.Value<string>("entry_tool"), ExecutionKind = meta.Value<string>("execution_kind"),
+                    UsageContext = meta.Value<string>("usage_context"), ModuleManifestHash = meta.Value<string>("module_manifest_hash") };
+                var receipt = CodeModuleToolsTests.Receipt(wire.Input, wire.Modules, metadata);
+                receipt["compile_host"]["process_id"] = PidA;
+                receipt["_target"] = host.TargetStamp.DeepClone();
+                receipt["_operation"]["operationId"] = request["operation_id"].DeepClone();
+                var response = new JObject { ["id"] = request["id"].DeepClone(), ["success"] = true };
+                SafetyResponseMetadata.Attach(response, receipt);
+                foreach (var key in new[] {"_script", "_task", "_operation", "_target"}) receipt.Remove(key);
+                receipt.Remove("success"); response["data"] = receipt;
+                return response;
+            };
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok");
+            if (capable) AdvertiseScriptProtocol();
+            RevitTargetBinding.ResetForTests(_probe, TargetSelector.ForPid(PidA));
+            RevitTargetBinding.Switch(TargetSelector.ForPid(PidA), RevitTargetBinding.Scan().Live);
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), home ? null : "doc-a");
+            var paths = new RvtMcp.Server.Bake.BakePaths(_dir);
+            var oldLogger = ToolGateway.UsageLogger;
+            ToolGateway.UsageLogger = new RvtMcp.Server.Bake.UsageEventLogger(paths, new RvtMcpConfig {EnableAdaptiveBake = true});
+            var ctx = BeginCall();
+            try
+            {
+                var core = new CodeModuleToolCore(fixture.Store);
+                if (!capable)
+                {
+                    var error = await Assert.ThrowsAsync<ModuleValidationException>(() => core.SaveAsync("helper", "public class Helper {}", "", null, null));
+                    Assert.Contains(ScriptErrorCodes.CapabilityRequired, error.Message);
+                    Assert.Empty(fixture.Store.List()); Assert.Empty(host.Requests); Assert.False(File.Exists(paths.UsageJsonl));
+                    return;
+                }
+                var saved = await core.SaveAsync("helper", "public class Helper {}", "", null, null);
+                Assert.True(saved.Value<bool>("saved")); Assert.Single(fixture.Store.List());
+                var request = Assert.Single(host.Requests);
+                Assert.Equal("send_code_to_revit", request.Value<string>("command"));
+                Assert.True(request["params"].Value<bool>("compile_only")); Assert.Null(request["params"]["data_json"]);
+                Assert.Equal("module_compile", request["script"].Value<string>("execution_kind"));
+                Assert.Equal("revit_save_code_module", request["script"].Value<string>("entry_tool"));
+                Assert.Equal(saved.Value<string>("logical_call_id"), request["script"].Value<string>("parent_logical_call_id"));
+                Assert.NotEqual(request.Value<string>("operation_id"), request["script"].Value<string>("logical_call_id"));
+                var usage = JObject.Parse(Assert.Single(File.ReadAllLines(paths.UsageJsonl)));
+                Assert.Equal("script", usage.Value<string>("Source"));
+                var payload = JObject.Parse(usage.Value<string>("PayloadJson"));
+                Assert.Equal("ineligible", payload.Value<string>("observation_status"));
+                Assert.Equal("module_compile", payload.Value<string>("execution_kind"));
+                Assert.Empty(ToolGateway.UsageLogger.RefreshCandidates());
+            }
+            finally { TargetCallContext.End(ctx); ToolGateway.UsageLogger = oldLogger; }
+        }
+
+        [Fact]
+        public async Task Script_capability_is_required_without_dropping_inputs_to_legacy()
+        {
+            using var host = new FakeTcpHost();
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok");
+            RevitTargetBinding.ResetForTests(_probe, TargetSelector.ForPid(PidA));
+            var ctx = BeginCall();
+            try
+            {
+                var result = await SendCodeCore.SendAsync(new ScriptInput("return 7;", ScriptData.FromJson("{}")));
+                Assert.Contains(ScriptErrorCodes.CapabilityRequired, result);
+                var rejected = JObject.Parse(result);
+                Assert.False(rejected.Value<bool>("sent"));
+                Assert.False(rejected.Value<bool>("executed"));
+                Assert.Equal("not_started", rejected["_operation"].Value<string>("outcome"));
+                Assert.Empty(host.Requests);
+            }
+            finally { TargetCallContext.End(ctx); }
+        }
+
+        [Fact]
+        public async Task Script_wire_keeps_exact_json_owner_metadata_and_one_dispatch()
+        {
+            using var host = new FakeTcpHost();
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok");
+            RevitTargetBinding.ResetForTests(_probe, TargetSelector.ForPid(PidA));
+            AdvertiseScriptProtocol();
+            var ctx = BeginCall();
+            try
+            {
+                var input = new ScriptInput("return 7;\r\n", ScriptData.FromJson("{\"n\":9007199254740993,\"logical_call_id\":\"caller\"}"), usageContext: ScriptModes.Test);
+                await SendCodeCore.SendAsync(input);
+                var request = Assert.Single(host.Requests);
+                Assert.Equal(1, request.Value<int>("script_protocol"));
+                Assert.Equal(input.Data.Json, request["params"].Value<string>("data_json"));
+                Assert.Equal(ScriptIdentity.CodeSha256(input.Code), request["script"].Value<string>("script_code_sha256"));
+                Assert.Equal(input.Data.Hash, request["script"].Value<string>("data_hash"));
+                Assert.NotEqual("caller", request["script"].Value<string>("logical_call_id"));
+                Assert.Equal(1, host.Commands.Count(c => c == "send_code_to_revit"));
+            }
+            finally { TargetCallContext.End(ctx); }
+        }
+
+        [Fact]
+        public async Task Script_wire_budget_includes_json_escaping_and_blocks_before_write()
+        {
+            using var host = new FakeTcpHost();
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok-secret");
+            RevitTargetBinding.ResetForTests(_probe, TargetSelector.ForPid(PidA));
+            AdvertiseScriptProtocol();
+            var ctx = BeginCall();
+            try
+            {
+                var code = "//" + new string('"', ScriptLimits.WireBytes / 2) + "\nreturn 7;";
+                Assert.True(Encoding.UTF8.GetByteCount(code) < ScriptLimits.WireBytes);
+                var result = await SendCodeCore.SendAsync(new ScriptInput(code, ScriptData.FromJson("{}")));
+                Assert.Contains(ScriptErrorCodes.RequestTooLarge, result);
+                Assert.DoesNotContain("tok-secret", result);
+                Assert.Empty(host.Requests);
+            }
+            finally { TargetCallContext.End(ctx); }
+        }
+
+        [Fact]
+        public async Task Script_default_options_preserve_the_legacy_wire_shape()
+        {
+            using var host = new FakeTcpHost();
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", host.Port, null, "tok");
+            RevitTargetBinding.ResetForTests(_probe, TargetSelector.ForPid(PidA));
+            var ctx = BeginCall();
+            try
+            {
+                await SendCodeCore.SendAsync(new ScriptInput("return 7;", ScriptData.FromJson("null"), Array.Empty<string>()));
+                var request = Assert.Single(host.Requests);
+                Assert.Null(request["script"]);
+                Assert.Null(request["script_protocol"]);
+                Assert.Equal(new[] { "code" }, ((JObject)request["params"]).Properties().Select(p => p.Name));
+            }
+            finally { TargetCallContext.End(ctx); }
+        }
+
+        [Fact]
+        public async Task Script_capability_cannot_leak_from_the_previous_target()
+        {
+            using var hostA = new FakeTcpHost();
+            using var hostB = new FakeTcpHost();
+            _probe.Set(PidA, ProcessState.Running, StartA);
+            _probe.Set(PidB, ProcessState.Running, StartB);
+            WritePerInstanceDescriptor(PidA, 2024, StartA, "tcp", hostA.Port, null, "a");
+            WritePerInstanceDescriptor(PidB, 2024, StartB, "tcp", hostB.Port, null, "b");
+            AdvertiseScriptProtocol();
+            RevitTargetBinding.ResetForTests(_probe, TargetSelector.ForPid(PidA));
+            var ctx = BeginCall();
+            try { await SendCodeCore.SendAsync(new ScriptInput("return 7;", ScriptData.FromJson("{}"))); }
+            finally { TargetCallContext.End(ctx); }
+            ToolGateway.SwitchBinding(TargetSelector.ForPid(PidB), RevitTargetBinding.Scan().Live, out _, rebind: true);
+            ctx = BeginCall();
+            try
+            {
+                var result = await SendCodeCore.SendAsync(new ScriptInput("return 7;", ScriptData.FromJson("{}")));
+                Assert.Contains(ScriptErrorCodes.CapabilityRequired, result);
+                Assert.Single(hostA.Requests);
+                Assert.Empty(hostB.Requests);
+            }
+            finally { TargetCallContext.End(ctx); }
+        }
 
         [Fact]
         public async Task Verified_document_is_pinned_on_writes_and_a_read_cannot_replace_it()

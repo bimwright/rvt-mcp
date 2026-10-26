@@ -3,6 +3,13 @@
     "locale": "hu",
     "schema": 1
   },
+  "script.label.compile": "Fordítás ellenőrzése",
+  "script.label.execute": "Szkript futtatása",
+  "script.label.baked": "Mentett szkript",
+  "script.native.partial": "Revit: részleges",
+  "script.native.rolled_back": "Revit: visszavonva",
+  "script.native.cancelled": "Revit: megszakítva",
+  "script.history.freshInputs": "A bemenetek és a modulazonosság nem tárolódnak az újrafuttatáshoz. Futtassa újra az MCP-eszközzel, friss adatokkal és modulválasztással.",
   "ribbon.toggle.text.running": "MCP: BE",
   "ribbon.toggle.text.stopped": "MCP: KI",
   "ribbon.toggle.tooltip": "MCP Server indítása/leállítása",

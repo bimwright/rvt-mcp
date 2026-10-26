@@ -18,7 +18,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-237%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-240%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -95,12 +95,12 @@ Các số dưới đây khớp **bản phát hành v1.2.0**; những bản phát
 
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
-| Fresh install | **237** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **50** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **237** | Full catalog |
-| `all` + adaptive bake | **240** | Thêm 3 tool vòng đời suggestion |
+| Fresh install | **240** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **53** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **240** | Full catalog |
+| `all` + adaptive bake | **243** | Thêm 3 tool vòng đời suggestion |
 
-Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 50 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline.
+Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 53 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline.
 
 | Toolset | Phạm vi |
 |---------|---------|
@@ -137,6 +137,8 @@ Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp
 Lời gọi thiếu tham số bắt buộc sẽ không chạy. Nó trả `INVALID_ARGUMENT` kèm `invalid_arguments` (`missing`, `unknown` có `did_you_mean`, `received`, `expected`). Tên tham số phân biệt hoa thường, và có tool dùng snake_case, có tool dùng camelCase: hãy làm theo `did_you_mean`. Key không phải tham số thì không chặn lời gọi. Key đó bị bỏ qua và được liệt kê trong `_ignored_arguments` của kết quả. Giá trị không chuyển kiểu được vẫn trả `An error occurred invoking '<tool>'.`, nguyên nhân cụ thể nằm trong stderr của server.
 
 ### send_code, ToolBaker, ribbon và ngôn ngữ
+
+`send_code_v2` thêm `data` cho JSON, `modules` cho helper, `compile_only` và `result_contract="task_v1"` với `McpTaskResult.Pass/Fail`. Cần gateway/add-in cùng hỗ trợ capability; code-only giữ wire cũ. Lưu helper bằng `revit_save_code_module`; list/delete không cần Revit. Read-only hoặc tắt send-code vẫn cho list, nhưng chặn save/delete và thực thi script. Xem [giới hạn và ví dụ](docs/send-code.md#json-inputs-helper-modules-and-explicit-task-results).
 
 - **`revit_send_code_to_revit`** (bật mặc định) compile và chạy body C# trong Revit khi không có typed tool phù hợp; `--read-only` hoặc `--disable-send-code` sẽ gỡ nó. Xem [docs/send-code.md](docs/send-code.md), và [docs/stairs-workflow.md](docs/stairs-workflow.md) cho cầu thang.
 - **ToolBaker:** `revit_list_baked_tools` / `revit_run_baked_tool` cần `--toolsets toolbaker`. Adaptive bake (`--enable-adaptive-bake`, mặc định tắt) gợi ý tool từ các lời gọi lặp lại; không có gì được thêm cho tới khi bạn accept. Bake compile ngay trong Revit — không cần Visual Studio. Xem [docs/bake.md](docs/bake.md).
@@ -298,6 +300,7 @@ Annotations mô tả tác động lên document/file của từng tool. Đổi s
       "mcp__rvt-mcp__revit_list_assemblies",
       "mcp__rvt-mcp__revit_list_available_targets",
       "mcp__rvt-mcp__revit_list_baked_tools",
+      "mcp__rvt-mcp__revit_list_code_modules",
       "mcp__rvt-mcp__revit_list_export_settings",
       "mcp__rvt-mcp__revit_list_family_types_in_family",
       "mcp__rvt-mcp__revit_list_groups",

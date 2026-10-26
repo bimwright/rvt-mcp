@@ -55,6 +55,15 @@ namespace RvtMcp.Server
                 .Select(method =>
                 {
                     var tool = McpServerTool.Create(method, (object)null);
+                    if (tool.ProtocolTool.Name == "revit_send_code_to_revit")
+                    {
+                        // Keep optional arrays nullable, but never advertise null module names or unsupported modes.
+                        var schema = System.Text.Json.Nodes.JsonNode.Parse(tool.ProtocolTool.InputSchema.GetRawText());
+                        schema["properties"]["modules"]["items"]["type"] = "string";
+                        schema["properties"]["result_contract"]["enum"] = new System.Text.Json.Nodes.JsonArray("legacy", "task_v1");
+                        schema["properties"]["usage_context"]["enum"] = new System.Text.Json.Nodes.JsonArray("project", "test", "unknown");
+                        tool.ProtocolTool.InputSchema = System.Text.Json.JsonSerializer.SerializeToElement(schema);
+                    }
                     if (tool.ProtocolTool.Name == "revit_health")
                         tool.ProtocolTool.Meta = new System.Text.Json.Nodes.JsonObject
                         {
@@ -68,6 +77,7 @@ namespace RvtMcp.Server
         internal static Type[] ResolveRegisteredToolTypes(HashSet<string> enabled, RvtMcpConfig config)
         {
             var types = new List<Type>();
+            types.AddRange(CodeModuleToolRegistration.Resolve(enabled, config, RvtMcp.Scripting.ScriptProtocol.IsReady));
             if (enabled.Contains("query"))      types.Add(typeof(QueryTools));
             if (enabled.Contains("create"))     types.Add(typeof(CreateTools));
             if (enabled.Contains("modify"))     types.Add(typeof(ModifyTools));

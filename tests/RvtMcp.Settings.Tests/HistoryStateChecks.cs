@@ -54,6 +54,9 @@ internal static class HistoryStateChecks
             Expect(dialogs.LastRedacted && runtime.LastRequest.ParamsJson.Contains("return 2;"), "redacted rerun passes recovered code after confirmation");
             runtime.Complete(); PumpUntil(task);
             Expect(!vm.CanRerun(new McpCallEntry { IsHistorical = true }) && !vm.CanRerun(new McpCallEntry { ParamsTruncated = true }), "historical/truncated records are never runnable");
+            Expect(!vm.CanRerun(new McpCallEntry { ToolName = "send_code_to_revit", CodeSnippet = "return 7;",
+                Script = new Newtonsoft.Json.Linq.JObject { ["mode"] = "execute" } }),
+                "script receipts cannot replay without a new input and gateway identity");
             vm.LoadPastCommand.Execute(null); vm.LoadPastCommand.Execute(null);
             Expect(runtime.Loads == 2 && vm.LoadPastCommand.CanExecute(null), "latest history stays refreshable");
             dialogs.Accept = false; vm.NewSessionCommand.Execute(null);
@@ -81,6 +84,15 @@ internal static class HistoryStateChecks
             Expect(button.IsEnabled && shell.Activities.SelectedEntry != null, "real activity selection enables rerun command");
             var status = Field<TextBlock>(window, "_shellStatus");
             Expect(status.Text == shell.Activities.StatusText, "Activities status reaches shell");
+            var scriptEntry = new McpCallEntry { Index = 3, ToolName = "send_code_to_revit", CodeSnippet = "return data;",
+                ParamsJson = "{\"data_hash\":\"fixture\"}", Success = false, ErrorMessage = "TASK_FAILED",
+                Script = new Newtonsoft.Json.Linq.JObject { ["execution_kind"] = "script" } };
+            windowRuntime.Entries.Add(scriptEntry);
+            var activityGrid = Field<DataGrid>(view, "_grid"); activityGrid.SelectedItem = scriptEntry; Pump();
+            Expect(!button.IsEnabled, "real History disables enhanced rerun even with a source display copy");
+            Expect(Field<TextBlock>(view, "_warningLabel").Text == RvtMcp.Plugin.Localization.L.T("script.history.freshInputs"),
+                "real History explains that fresh inputs and module identity are required");
+            activityGrid.SelectedItem = windowRuntime.Entries[0]; Pump();
             window.ShowIssues(); Pump();
             Expect(shell.SelectedTab == HistoryTab.Issues, "host entry selects Issues tab");
             var issueStatus = status.Text;

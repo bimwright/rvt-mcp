@@ -125,7 +125,7 @@ namespace RvtMcp.Tests
 
             var guard = source.IndexOf("ResponseEnvelopeGuard.Apply(", StringComparison.Ordinal);
             var normalize = source.IndexOf("CommandOutcome.Normalize(", StringComparison.Ordinal);
-            var fileLog = source.IndexOf("McpLogger.Log(request.CommandName, request.ParamsJson, outcome.Success", StringComparison.Ordinal);
+            var fileLog = source.IndexOf("McpLogger.TryLog(request.CommandName, request.ParamsJson, outcome.Success", StringComparison.Ordinal);
             var sessionLog = source.IndexOf("Success = outcome.Success", StringComparison.Ordinal);
 
             Assert.True(guard >= 0 && normalize > guard, "outcome must be judged after the size guard");

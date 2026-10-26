@@ -16,11 +16,24 @@ namespace RvtMcp.Server.Memory
         public string Result { get; set; }
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public JObject Changes { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public JObject Script { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public JObject Task { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public JObject Operation { get; set; }
 
         public static JournalEntry Create(string tool, string paramsJson, bool success,
             long durationMs, string error = null, string resultJson = null, JObject changes = null,
             string rejectedArguments = null)
+            => CreateWithReceipt(tool, paramsJson, success, durationMs, error, resultJson, changes, rejectedArguments);
+
+        internal static JournalEntry CreateWithReceipt(string tool, string paramsJson, bool success,
+            long durationMs, string error = null, string resultJson = null, JObject changes = null,
+            string rejectedArguments = null, JObject metadataReceipt = null)
         {
+            JObject receipt = metadataReceipt;
+            if (receipt == null) { try { receipt = JObject.Parse(resultJson ?? "{}"); } catch { } }
             return new JournalEntry
             {
                 Timestamp = DateTime.UtcNow.ToString("o"),
@@ -32,6 +45,9 @@ namespace RvtMcp.Server.Memory
                 Params = rejectedArguments == null ? RedactParams(tool, paramsJson)
                     : BakeRedactor.RedactForBake(rejectedArguments),
                 Result = RedactResult(tool, resultJson),
+                Script = RvtMcp.Scripting.ScriptTelemetry.BoundScript(receipt?["_script"] as JObject),
+                Task = RvtMcp.Scripting.ScriptTelemetry.BoundTask(receipt?["_task"] as JObject),
+                Operation = receipt?["_operation"] is JObject operation ? SafetyResponseMetadata.Bound(operation, 4096) : null,
                 Changes = changes == null ? null : JObject.Parse(BakeRedactor.RedactForBake(
                     ChangeSummary.ForAgent(changes).ToString(Formatting.None)))
             };
@@ -39,21 +55,19 @@ namespace RvtMcp.Server.Memory
 
         private static string RedactParams(string tool, string paramsJson)
         {
+            if (CodeModuleAudit.IsTool(tool)) return CodeModuleAudit.SafeArguments(paramsJson);
             if (!string.Equals(tool, "send_code_to_revit", StringComparison.OrdinalIgnoreCase))
                 return RedactAndTruncate(paramsJson, 1024);
 
             var code = ExtractCodeBody(paramsJson);
-            return JsonConvert.SerializeObject(new
-            {
-                code_hash = BakeRedactor.HashBody(code),
-                code_length = code.Length
-            });
+            return RvtMcp.Scripting.ScriptTelemetry.SafeArguments(paramsJson, code).ToString(Formatting.None);
         }
 
         private static string RedactResult(string tool, string resultJson)
         {
             if (resultJson == null)
                 return null;
+            if (CodeModuleAudit.IsTool(tool)) resultJson = CodeModuleAudit.SafeResult(resultJson);
 
             var redactResultFields = string.Equals(tool, "send_code_to_revit", StringComparison.OrdinalIgnoreCase);
             return RedactAndTruncate(resultJson, 2048, redactResultFields);

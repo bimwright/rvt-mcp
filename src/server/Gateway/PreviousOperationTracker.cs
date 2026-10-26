@@ -129,6 +129,8 @@ namespace RvtMcp.Server
             JObject final;
             try { final = JObject.Parse(entry.Execution.Result); } catch { final = new JObject(); }
             var summary = new JObject { ["operationId"] = entry.OperationId, ["tool"] = entry.Tool, ["success"] = final["success"]?.DeepClone() };
+            if (final["_task"] is JObject task) summary["_task"] = RvtMcp.Scripting.ScriptTelemetry.BoundTask(task, compact: true);
+            if (final["_script"] is JObject script) summary["_script"] = RvtMcp.Scripting.ScriptTelemetry.BoundScript(script, compact: true);
             if (final["error"]?.Type == JTokenType.String) summary["error"] = Bounded(final.Value<string>("error"), 256);
             if (final["_operation"] is JObject operation)
             {

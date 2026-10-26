@@ -13,6 +13,10 @@ namespace RvtMcp.Server
     internal static class RuntimeToolFilter
     {
         internal static IMcpServerBuilder Register(IMcpServerBuilder mcp, RvtMcpConfig config, SessionContext session)
+            => Register(mcp, config, session, null);
+
+        internal static IMcpServerBuilder Register(IMcpServerBuilder mcp, RvtMcpConfig config, SessionContext session,
+            ResponseSpillWriter writer)
             => mcp.WithRequestFilters(filters => filters.AddCallToolFilter(next => async (request, ct) =>
             {
                 var clock = System.Diagnostics.Stopwatch.StartNew();
@@ -42,7 +46,7 @@ namespace RvtMcp.Server
                             result = TextResult(MetaTools.TargetEnvelope(targetCtx.Payload, targetCtx.Operation), failed: true);
                         return Apply(request.Params, result, config, session, durationMs: clock.ElapsedMilliseconds,
                             changes: capture.Changes, history: capture.History, previousOperations: ToolGateway.PreviousOperations,
-                            loggedArguments: rejectedArguments);
+                            loggedArguments: rejectedArguments, writer: writer);
                     }
                 }
                 finally
@@ -161,7 +165,7 @@ namespace RvtMcp.Server
                         }, result.IsError == true);
                 }
             }
-            if (safety?["_failure"] != null || safety?["_operation"] != null || safety?["_target"] != null)
+            if (safety?["_failure"] != null || safety?["_operation"] != null || safety?["_target"] != null || safety?["_script"] != null || safety?["_task"] != null)
             {
                 JObject preserved;
                 try { preserved = JObject.Parse(result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text ?? "{}"); }
@@ -185,9 +189,19 @@ namespace RvtMcp.Server
             CarryOnceFields(result, safety, previousOperations, limit);
             text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
             if (IsFailure(text, command)) result.IsError = true;
-            session?.RecordCall(command, arguments, result.IsError != true, durationMs,
+            var journalWritten = session?.TryRecordCall(command, arguments, result.IsError != true, durationMs,
                 error: result.IsError == true ? text : null, resultJson: text, changes: changes,
-                rejectedArguments: loggedArguments);
+                rejectedArguments: loggedArguments, metadataReceipt: safety?["_script"] != null ? safety : null);
+            if (journalWritten == false)
+            {
+                JObject final;
+                try { final = JObject.Parse(text ?? "{}"); } catch { final = null; }
+                if (final?["_script"] is JObject script)
+                {
+                    script["telemetry_status"] = "write_failed";
+                    result = McpSafetyResponseCompactor.Fit(final, result.IsError == true, limit);
+                }
+            }
             return result;
         }
 

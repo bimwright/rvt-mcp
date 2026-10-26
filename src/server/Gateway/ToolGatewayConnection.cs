@@ -12,6 +12,7 @@ using Bimwright.Targeting;
 using RvtMcp.Plugin; // RvtMcpConfig, ChangeHistoryRequest
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using RvtMcp.Scripting;
 
 namespace RvtMcp.Server
 {
@@ -41,6 +42,7 @@ namespace RvtMcp.Server
             public int Closed;
             public bool FailureProtocol;
             public bool DocumentGuard;
+            public bool ScriptProtocol;
             /// <summary>
             /// Serializes wire writes on this connection so a blocked writer (plugin
             /// not reading) stalls only this call — never <c>_connectLock</c>, so
@@ -501,6 +503,7 @@ namespace RvtMcp.Server
                 Pid = desc.Pid,
                 FailureProtocol = desc.Capabilities?.Any(c => string.Equals(c, "controlled_failures_v1", StringComparison.OrdinalIgnoreCase)) == true,
                 DocumentGuard = desc.Capabilities?.Any(c => string.Equals(c, "document_target_v1", StringComparison.OrdinalIgnoreCase)) == true,
+                ScriptProtocol = desc.Capabilities?.Any(c => string.Equals(c, RvtMcp.Scripting.ScriptProtocol.Capability, StringComparison.OrdinalIgnoreCase)) == true,
             };
             if (transport is TcpClient tcp)
             {
@@ -593,7 +596,7 @@ namespace RvtMcp.Server
         private static async Task<(Conn Conn, long EffectiveGeneration, GatewayPendingRequest Pending)> WriteRequest(
             Conn conn, long effectiveGeneration, string id, string operationId, string command, object parameters,
             int? timeoutSeconds, RvtMcpConfig config, ChangeHistoryRequest history,
-            TargetCallContext callCtx, bool requireWriteCapabilities)
+            TargetCallContext callCtx, bool requireWriteCapabilities, ScriptRuntimeMetadata script)
         {
             var binding = RevitTargetBinding.Binding;
             for (var attempt = 0; ; attempt++)
@@ -611,9 +614,14 @@ namespace RvtMcp.Server
                     failure_protocol = 1,
                     // Lets the add-in tell an unconfirmed document from a gateway that predates confirmation.
                     document_protocol = 1,
-                    expected_document_id = binding.Snapshot().Record?.DocumentId
+                    expected_document_id = binding.Snapshot().Record?.DocumentId,
+                    script_protocol = script == null ? (int?)null : ScriptLimits.ProtocolVersion,
+                    script
                 }, RequestJsonSettings);
                 var current = false;
+                var scriptReceipt = script == null ? null : ScriptTelemetry.Create(JObject.FromObject(script),
+                    parameters == null ? null : JsonConvert.SerializeObject(parameters, RequestJsonSettings));
+                if (scriptReceipt != null) scriptReceipt["wire_request_bytes"] = ScriptIdentity.Utf8Bytes(request);
                 GatewayPendingRequest pending = null;
                 BeforeWriteForTests?.Invoke();
                 lock (conn.WriteLock)
@@ -627,24 +635,37 @@ namespace RvtMcp.Server
                         {
                             string rejection = null;
                             GatewayPendingRequest blocking = null;
-                            if ((!ToolReadPolicy.IsReadOnly(command) || requireWriteCapabilities) && (!conn.FailureProtocol || !conn.DocumentGuard))
+                            if (script != null)
+                            {
+                                if (!conn.ScriptProtocol)
+                                    rejection = ScriptErrorCodes.CapabilityRequired + ": The pinned Revit add-in does not support script inputs.";
+                                else if (ScriptIdentity.Utf8Bytes(request) > ScriptLimits.WireBytes)
+                                    rejection = ScriptErrorCodes.RequestTooLarge + ": Serialized script request exceeds the wire UTF-8 budget.";
+                            }
+                            if (rejection == null && (!ToolReadPolicy.IsReadOnly(command) || requireWriteCapabilities) && (!conn.FailureProtocol || !conn.DocumentGuard))
                                 rejection = ToolReadPolicy.AddinPairingRequired;
-                            else if (!ToolReadPolicy.IsReadOnly(command)
+                            else if (rejection == null && !ToolReadPolicy.IsReadOnly(command)
                                 // Send-code also supports Home; the add-in checks the actual document at execution.
                                 && !binding.CanWrite(effectiveGeneration, command != "open_model" && command != "send_code_to_revit", out var writeFailure))
                                 throw new TargetException(writeFailure);
-                            else if (command != "health"
+                            else if (rejection == null && command != "health"
                                 && (blocking = _pending.Values.FirstOrDefault(value => value.ConnectionId == conn.Epoch && value.WaitingForUser)) != null)
                                 rejection = "REVIT_BUSY: Revit is waiting for native user input. _operation.blockedBy names the waiting operation and its dialog. Use the local failure or operation queries.";
                             if (rejection != null)
                             {
                                 var notStarted = GatewayPendingRequest.NotStarted(operationId);
                                 if (blocking != null) notStarted["blockedBy"] = blocking.BlockedBy();
-                                pending = new GatewayPendingRequest(operationId, conn.Epoch);
-                                pending.Route(new JObject { ["success"] = false, ["error"] = rejection, ["_operation"] = notStarted });
+                                pending = new GatewayPendingRequest(operationId, conn.Epoch, script: scriptReceipt);
+                                var rejected = new JObject { ["success"] = false, ["error"] = rejection, ["_operation"] = notStarted };
+                                if (script != null) rejected["data"] = new JObject { ["sent"] = false, ["executed"] = false };
+                                pending.Route(rejected);
                                 return (conn, effectiveGeneration, pending);
                             }
-                            pending = new GatewayPendingRequest(operationId, conn.Epoch, history);
+                            pending = new GatewayPendingRequest(operationId, conn.Epoch, history, scriptReceipt,
+                                script == null ? null : final => {
+                                    if (UsageLogger?.RecordScriptCall(final) == false)
+                                        final["_script"]["telemetry_status"] = "write_failed";
+                                });
                             _pending[id] = pending;
                             current = true;
                         }

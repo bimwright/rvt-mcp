@@ -3,6 +3,13 @@
     "locale": "ja",
     "schema": 1
   },
+  "script.label.compile": "コンパイル確認",
+  "script.label.execute": "スクリプト実行",
+  "script.label.baked": "保存済みスクリプト",
+  "script.native.partial": "Revit: 一部完了",
+  "script.native.rolled_back": "Revit: ロールバック",
+  "script.native.cancelled": "Revit: キャンセル",
+  "script.history.freshInputs": "入力データとモジュールの識別情報は再実行用に保存されません。MCP ツールで新しいデータとモジュールを指定して再実行してください。",
   "ribbon.toggle.text.running": "MCP: ON",
   "ribbon.toggle.text.stopped": "MCP: OFF",
   "ribbon.toggle.tooltip": "MCP サーバーを開始/停止",

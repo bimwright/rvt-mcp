@@ -1,0 +1,2 @@
+{"timestamp":"2026-01-01T00:00:00Z","session_id":"fixture-session-0","tool":"send_code_to_revit","success":true,"duration_ms":42,"error":null,"code":null,"params":{"code_hash":"synthetic-code-hash","code_length":42},"result":"{\"executed\": true, \"result\": \"Synthetic legacy result.\"}"}
+{"timestamp":"2026-01-01T00:00:01Z","session_id":"fixture-session-0","tool":"send_code_to_revit","success":false,"duration_ms":42,"error":"Synthetic execution failure.","code":null,"params":{"code_hash":"synthetic-code-hash","code_length":42},"result":null}

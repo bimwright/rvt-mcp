@@ -3,6 +3,13 @@
     "locale": "nl",
     "schema": 1
   },
+  "script.label.compile": "Compilatiecontrole",
+  "script.label.execute": "Script uitvoeren",
+  "script.label.baked": "Opgeslagen script",
+  "script.native.partial": "Revit: gedeeltelijk",
+  "script.native.rolled_back": "Revit: teruggedraaid",
+  "script.native.cancelled": "Revit: geannuleerd",
+  "script.history.freshInputs": "Invoer en module-identiteit worden niet bewaard voor herhaling. Voer opnieuw uit via de MCP-tool met actuele gegevens en moduleselectie.",
   "ribbon.toggle.text.running": "MCP: AAN",
   "ribbon.toggle.text.stopped": "MCP: UIT",
   "ribbon.toggle.tooltip": "MCP-server starten/stoppen",
