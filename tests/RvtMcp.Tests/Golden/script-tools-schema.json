@@ -4,7 +4,7 @@
   "tools": [
     {
       "name": "revit_delete_code_module",
-      "description_hash": "sha256:15febc75aadbea71086d3aa8d1328a4ac70dad2793607dd0905ae255de2d0f0a",
+      "description_hash": "sha256:614c7bf87181dffe6e2497c4fc0f14f77993c8965f4d9fdaade8a21440569254",
       "inputSchema": {
         "properties": {
           "expected_hash": {
@@ -29,7 +29,7 @@
     },
     {
       "name": "revit_list_code_modules",
-      "description_hash": "sha256:feb2f2e67a203561d286bd9b77011d14408c1a9c8bd368826ffb02c0717f03f1",
+      "description_hash": "sha256:107ea691c58efa279453f0897e19ecb7e88cd7729b154c420e75a56d850b8f6c",
       "inputSchema": {
         "properties": {
           "include_code": {
@@ -60,7 +60,7 @@
     },
     {
       "name": "revit_save_code_module",
-      "description_hash": "sha256:46caa7266d1913fe94b58b4b7bcf3c96627295e80fc3ccbc3edb1c82fd3c7086",
+      "description_hash": "sha256:9736419e3126571672091bca3c30b3a694ea165fa270200d0b980c872cb613b8",
       "inputSchema": {
         "properties": {
           "code": {
