@@ -1,9 +1,10 @@
 #Requires -Version 5.1
 # Path-only publication guard; content/secret review remains a separate requirement.
 [CmdletBinding()]
-param([string]$RepoRoot = (Split-Path -Parent $PSScriptRoot))
+param([string]$RepoRoot)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+if (-not $RepoRoot) { $RepoRoot = Split-Path -Parent $PSScriptRoot }
 $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
 if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot '.git'))) { throw 'RepoRoot must be a Git checkout root.' }
 $publicDocs = @(

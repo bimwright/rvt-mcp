@@ -29,6 +29,15 @@ function Expect-Rejection([string]$Repo, [string]$Path) {
     Assert ($message -and $message.Contains($Path)) "Did not reject $Path"
 }
 try {
+    Test 'Default repository root resolves without RepoRoot' {
+        $repo = New-GitFixture
+        $scriptDir = Join-Path $repo 'scripts'
+        New-Item -ItemType Directory -Path $scriptDir | Out-Null
+        $checkerCopy = Join-Path $scriptDir 'check-public-tree.ps1'
+        Copy-Item -LiteralPath $checker -Destination $checkerCopy
+        Add-FixtureFile $repo 'README.md'
+        & $checkerCopy
+    }
     Test 'Source, prompt assets and approved product documentation are allowed' {
         $repo = New-GitFixture
         foreach ($path in @('README.md','docs/install.md','docs/controlled-failures.md','docs/schedules.md','src/server/Program.cs','src/server/Prompts/change.md','tests/RvtMcp.Tests/Golden/response-size-scoped-commands.txt')) { Add-FixtureFile $repo $path }
