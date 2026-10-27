@@ -51,9 +51,8 @@ try {
     Test 'Reviewed architecture assets and synthetic script fixtures are allowed' {
         $repo = New-GitFixture
         foreach ($path in @(
-            'docs/images/rvt-mcp-architecture-simple.png', 'docs/images/rvt-mcp-architecture-simple.prompt.txt',
-            'docs/images/rvt-mcp-architecture.drawio', 'docs/images/rvt-mcp-architecture.png',
-            'docs/images/rvt-mcp-architecture.prompt.txt',
+            'docs/images/rvt-mcp-architecture-simple.png', 'docs/images/rvt-mcp-architecture.drawio',
+            'docs/images/rvt-mcp-architecture.png',
             'tests/RvtMcp.Tests/fixtures/ScriptBaseline/README.txt',
             'tests/RvtMcp.Tests/fixtures/ScriptBaseline/legacy-command.txt',
             'tests/RvtMcp.Tests/fixtures/ScriptIdentity/README.txt'
@@ -68,7 +67,9 @@ try {
         }
     }
     Test 'Unreviewed root notes and docs are rejected' {
-        foreach ($path in @('release-plan.md','docs/handoff.md','docs/raw.json','docs/images/unreviewed.png','tests/RvtMcp.Tests/fixtures/unreviewed.txt')) {
+        foreach ($path in @('release-plan.md','docs/handoff.md','docs/raw.json','docs/images/unreviewed.png',
+            'docs/images/rvt-mcp-architecture-simple.prompt.txt','docs/images/rvt-mcp-architecture.prompt.txt',
+            'tests/RvtMcp.Tests/fixtures/unreviewed.txt')) {
             $repo = New-GitFixture
             Add-FixtureFile $repo $path
             Expect-Rejection $repo $path
