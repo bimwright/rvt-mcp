@@ -15,11 +15,17 @@ $publicDocs = @(
     'docs/mcp-client-wiring.md', 'docs/mcp-config-claude-clients.md',
     'docs/mcp-config-codex.md', 'docs/mcp-config-opencode-kilo.md',
     'docs/placement-and-mep-contracts.md', 'docs/schedules.md', 'docs/send-code.md', 'docs/stairs-workflow.md',
+    'docs/images/rvt-mcp-architecture-simple.png', 'docs/images/rvt-mcp-architecture-simple.prompt.txt',
+    'docs/images/rvt-mcp-architecture.drawio', 'docs/images/rvt-mcp-architecture.png',
+    'docs/images/rvt-mcp-architecture.prompt.txt',
     'src/server/Prompts/change.md', 'src/server/Prompts/drawing_layout.md',
     'src/server/Prompts/getting_started.md', 'src/server/Prompts/model_audit.md',
     'src/server/Prompts/pre_issue_check.md', 'src/server/Prompts/stairs.md',
     'tests/RvtMcp.Tests/README.md', 'tests/RvtMcp.Settings.Tests/README.md',
-    'tests/RvtMcp.Toast.Tests/README.md', 'tests/RvtMcp.Tests/Golden/response-size-scoped-commands.txt'
+    'tests/RvtMcp.Toast.Tests/README.md', 'tests/RvtMcp.Tests/Golden/response-size-scoped-commands.txt',
+    'tests/RvtMcp.Tests/fixtures/ScriptBaseline/README.txt',
+    'tests/RvtMcp.Tests/fixtures/ScriptBaseline/legacy-command.txt',
+    'tests/RvtMcp.Tests/fixtures/ScriptIdentity/README.txt'
 )
 $privatePath = '(^|/)(\.(artifacts[^/]*|worktrees|claude|cursor|kilo|agents|openclaude)|internal-docs|analysis|artifacts|runs|spikes)(/|$)|^docs/(superpowers|design|reviews|research-archive|archive)/|(^|/)codemap\.md$'
 $docExtension = '\.(md|mdx|markdown|rst|txt|canvas|docx?|pdf)$'

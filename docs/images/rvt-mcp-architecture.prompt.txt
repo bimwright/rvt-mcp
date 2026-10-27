@@ -1,0 +1,24 @@
+Generated with built-in imagegen.
+Reference logo: D:/Projects/bimwright/.github/assets/logos/bimwright-logo.png
+
+Use case: infographic-diagram.
+Create a polished, technically accurate architecture diagram for the GitHub README of rvt-mcp, using the supplied BIMwright logo image as a branding input. Recompose the supplied image into a new wide 16:9 documentation graphic. Background must be pure white.
+Input image role: the actual BIMwright brand logo. Preserve its navy hexagonal building/grid emblem and exact BIMwright wordmark, including navy BIM and green wright. Place a modest-sized faithful copy at the TOP LEFT with generous padding, about 17% of canvas width. Do not invent a replacement logo.
+
+STYLE: extremely clean flat geometric block diagram; crisp rounded rectangles, fine outlines, large readable sans-serif type, restrained navy blue and green accents derived from the logo, pale blue and pale green card backgrounds. Editorial software documentation, elegant and precise. No photographic UI, no scenery, no 3D perspective, no decorative network webs. High resolution, landscape approximately 2400 x 1350. Text must remain readable when the image is displayed at 1000px wide.
+
+HEADER: small logo at top left. Large title below with exact text "How rvt-mcp works". Subtitle "From an AI tool call to a Revit model operation".
+
+DIAGRAM: three main sections laid out LEFT TO RIGHT. The first two are separate rounded rectangular cards; the third is a larger enclosing rounded rectangle showing that the plugin is INSIDE Autodesk Revit.
+1. Left card: small simple chat-window icon, section label "CLIENT", title "AI client", example line "Claude · Codex · Cursor", description on two short lines "Chooses a tool" and "Uses the result".
+2. Middle card: small simple gateway/server icon, section label "SERVER", title "rvt-mcp Server", subtitle ".NET 8 gateway", description on two lines "Exposes MCP tools" and "Routes requests".
+3. Right enclosing box: heading "AUTODESK REVIT". INSIDE this box, stack two smaller blocks vertically. Upper inner block: label "PLUGIN", title "rvt-mcp Plugin", subtitle "Revit add-in". Lower inner block: small simple building/model icon, title "Revit API + Model", subtitle "Read or modify the model". Both inner blocks must visibly be contained inside the Autodesk Revit box. The plugin upper block should align horizontally with the other cards' connection lines. Connect upper plugin block DOWN to the model with a navy arrow labeled "ExternalEvent", with small secondary text "Revit UI thread". Alongside it use a separate upward green arrow labeled "Result". Under the lower block put small text "Transactions for model changes".
+
+CONNECTIONS BETWEEN MAIN SECTIONS:
+Between CLIENT and SERVER: two clean, parallel horizontal arrows. The top navy arrow points RIGHT, label "Tool call". The lower green arrow points LEFT, label "Result". At the top of this pair, label the connection "MCP / stdio".
+Between SERVER and the upper PLUGIN inner block: another pair. Top navy arrow points RIGHT, label "Command". Lower green arrow points LEFT, label "Response". At top of this pair label "Local transport". Keep arrowheads visibly directional and arrows touching the intended card boundary, with no ambiguous crossed lines.
+Allocate enough gap between columns for all labels. Ensure the arrows into Revit visibly terminate at the plugin, not at the model.
+
+FOOTER: a thin divider and compact supporting note, exact text: "Server ↔ Plugin: localhost TCP (Revit 2022–2024) or Named Pipe (Revit 2025–2027)".
+Below that add a small understated legend showing a navy right arrow with "Request" and a green left arrow with "Response".
+Avoid any claim that AI client data never leaves the machine. No clouds, no external remote service in this diagram. No tool counts, no release numbers, no code snippets, no extra captions. Render all provided English text precisely, maintain large whitespace and balanced alignment.

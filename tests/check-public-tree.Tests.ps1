@@ -39,6 +39,18 @@ try {
         foreach ($path in @('docs/benchmarks/example.md','docs/benchmarks/example.json','docs/testing/acceptance.md')) { Add-FixtureFile $repo $path }
         & $checker -RepoRoot $repo
     }
+    Test 'Reviewed architecture assets and synthetic script fixtures are allowed' {
+        $repo = New-GitFixture
+        foreach ($path in @(
+            'docs/images/rvt-mcp-architecture-simple.png', 'docs/images/rvt-mcp-architecture-simple.prompt.txt',
+            'docs/images/rvt-mcp-architecture.drawio', 'docs/images/rvt-mcp-architecture.png',
+            'docs/images/rvt-mcp-architecture.prompt.txt',
+            'tests/RvtMcp.Tests/fixtures/ScriptBaseline/README.txt',
+            'tests/RvtMcp.Tests/fixtures/ScriptBaseline/legacy-command.txt',
+            'tests/RvtMcp.Tests/fixtures/ScriptIdentity/README.txt'
+        )) { Add-FixtureFile $repo $path }
+        & $checker -RepoRoot $repo
+    }
     Test 'Private maintainer paths are rejected for any file type' {
         foreach ($path in @('internal-docs/notes.md','analysis/probe.cs','docs/design/plan.md','docs/reviews/result.json','.agents/settings.json','runs/live.jsonl','docs/benchmarks/runs/raw.jsonl')) {
             $repo = New-GitFixture
@@ -47,7 +59,7 @@ try {
         }
     }
     Test 'Unreviewed root notes and docs are rejected' {
-        foreach ($path in @('release-plan.md','docs/handoff.md','docs/raw.json')) {
+        foreach ($path in @('release-plan.md','docs/handoff.md','docs/raw.json','docs/images/unreviewed.png','tests/RvtMcp.Tests/fixtures/unreviewed.txt')) {
             $repo = New-GitFixture
             Add-FixtureFile $repo $path
             Expect-Rejection $repo $path
