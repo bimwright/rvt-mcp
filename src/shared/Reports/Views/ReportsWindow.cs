@@ -5,7 +5,9 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using System.Windows.Shell;
 using RvtMcp.Plugin.Localization;
@@ -41,9 +43,10 @@ namespace RvtMcp.Plugin.Reports.Views
         private readonly IReportsScreen _screen;
         private readonly WindowChrome _chrome;
         private readonly Border _frame, _viewHost, _status;
-        private readonly TextBlock _title, _subtitle, _statusText;
-        private readonly ToggleButton _wideButton, _compactButton;
-        private readonly Button _minimizeButton, _maximizeButton, _closeButton;
+        private readonly TextBlock _title, _subtitle, _statusText, _textSizeTitle, _textSizeValue;
+        private readonly ToggleButton _wideButton, _compactButton, _textSizeButton;
+        private readonly Popup _textSizePopup;
+        private readonly Button _minimizeButton, _maximizeButton, _closeButton, _smallerButton, _largerButton, _resetTextSizeButton;
         private readonly Path _maximizeGlyph;
         private readonly Ellipse _statusDot;
         private ReportsWindowState _state;
@@ -102,8 +105,47 @@ namespace RvtMcp.Plugin.Reports.Views
                 else SystemCommands.MaximizeWindow(this);
             };
             _closeButton.Click += (s, e) => SystemCommands.CloseWindow(this);
+
+            // Text size: "Aa" opens a small card (smaller / value / larger, Reset); Ctrl+= / Ctrl+- / Ctrl+0 and Ctrl+wheel do the same.
+            _textSizeButton = new ToggleButton { Style = (Style)ReportsStyles.Dictionary[ReportsStyles.ModeButtonKey],
+                Content = new TextBlock { Text = "Aa", FontWeight = FontWeights.SemiBold, FontSize = 12 } };
+            WindowChrome.SetIsHitTestVisibleInChrome(_textSizeButton, true);
+            _smallerButton = TextSizeStep("\uE738", () => SetTextScale(ReportsTextScale.Smaller(_state.TextScale)));
+            _largerButton = TextSizeStep("\uE710", () => SetTextScale(ReportsTextScale.Larger(_state.TextScale)));
+            _textSizeValue = new TextBlock { MinWidth = 56, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                FontSize = 13, FontWeight = FontWeights.SemiBold };
+            var stepper = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 8) };
+            stepper.Children.Add(_smallerButton);
+            stepper.Children.Add(_textSizeValue);
+            stepper.Children.Add(_largerButton);
+            _resetTextSizeButton = new Button { Style = (Style)ReportsStyles.Dictionary[BimwrightStyles.ToolbarButtonKey], Margin = new Thickness(0),
+                HorizontalAlignment = HorizontalAlignment.Stretch };
+            _resetTextSizeButton.Click += (s, e) => SetTextScale(ReportsTextScale.Default);
+            _textSizeTitle = new TextBlock { FontWeight = FontWeights.SemiBold };
+            var textSizePanel = new StackPanel();
+            textSizePanel.Children.Add(_textSizeTitle);
+            textSizePanel.Children.Add(stepper);
+            textSizePanel.Children.Add(_resetTextSizeButton);
+            // Same card as the tooltips: white, light border, 6 px corners, soft shadow.
+            var textSizeCard = new Border { Margin = new Thickness(2, 2, 8, 8), Background = ReportsStyles.Surface, BorderBrush = ReportsStyles.BorderBrush,
+                BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(12, 10, 12, 12), Child = textSizePanel,
+                Effect = new DropShadowEffect { Color = Color.FromArgb(0x20, 0, 0, 0), Direction = 270, ShadowDepth = 2, BlurRadius = 10, Opacity = 0.35 } };
+            textSizeCard.KeyDown += (s, e) => { if (e.Key == Key.Escape) _textSizePopup.IsOpen = false; };
+            _textSizePopup = new Popup { PlacementTarget = _textSizeButton, Placement = PlacementMode.Bottom, VerticalOffset = 4, StaysOpen = false,
+                AllowsTransparency = true, PopupAnimation = PopupAnimation.Fade, Child = textSizeCard };
+            _textSizeButton.SetBinding(ToggleButton.IsCheckedProperty, new Binding(nameof(Popup.IsOpen)) { Source = _textSizePopup, Mode = BindingMode.TwoWay });
+            // While the card is open, a click on "Aa" would first close it (outside click) and then open it again.
+            _textSizePopup.Opened += (s, e) => _textSizeButton.IsHitTestVisible = false;
+            _textSizePopup.Closed += (s, e) => _textSizeButton.IsHitTestVisible = true;
+            // The popup sits in the title bar's logical tree, so the card inherits the window font and resources.
+            var textSizeHost = new Grid();
+            textSizeHost.Children.Add(_textSizeButton);
+            textSizeHost.Children.Add(_textSizePopup);
+            var textSize = new Border { BorderBrush = ReportsStyles.BorderBrush, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4),
+                Background = ReportsStyles.Surface, Margin = new Thickness(0, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, Child = textSizeHost };
+
             var bar = new DockPanel { LastChildFill = false };
-            foreach (var right in new FrameworkElement[] { _closeButton, _maximizeButton, _minimizeButton, modes })
+            foreach (var right in new FrameworkElement[] { _closeButton, _maximizeButton, _minimizeButton, textSize, modes })
             {
                 DockPanel.SetDock(right, Dock.Right);
                 bar.Children.Add(right);
@@ -165,6 +207,13 @@ namespace RvtMcp.Plugin.Reports.Views
         internal Ellipse StatusDot => _statusDot;
         internal TextBlock StatusText => _statusText;
         internal Border Frame => _frame;
+        internal ToggleButton TextSizeButton => _textSizeButton;
+        internal Popup TextSizePopup => _textSizePopup;
+        internal TextBlock TextSizeValue => _textSizeValue;
+        internal Button SmallerButton => _smallerButton;
+        internal Button LargerButton => _largerButton;
+        internal Button ResetTextSizeButton => _resetTextSizeButton;
+        internal double ContentScale => (_viewHost.LayoutTransform as ScaleTransform)?.ScaleX ?? 1;
 
         /// <summary>Saves the state and closes for real; plain Close and Alt+F4 only hide the window.</summary>
         public void CloseForShutdown()
@@ -258,7 +307,76 @@ namespace RvtMcp.Plugin.Reports.Views
             Describe(_compactButton, L.T("reports.mode.compact"));
             Describe(_minimizeButton, L.T("reports.window.minimize"));
             Describe(_closeButton, L.T("reports.window.close"));
+            Describe(_textSizeButton, L.T("reports.textSize.tooltip"));
+            Describe(_smallerButton, L.T("reports.textSize.smaller"));
+            Describe(_largerButton, L.T("reports.textSize.larger"));
+            _textSizeTitle.Text = L.T("reports.textSize.title");
+            _resetTextSizeButton.Content = L.T("reports.textSize.reset");
             SyncMaximizeButton();
+            SyncTextScale();
+        }
+
+        private static Button TextSizeStep(string glyph, Action step)
+        {
+            var button = new Button { Style = (Style)ReportsStyles.Dictionary[BimwrightStyles.IconButtonKey], Content = glyph, Margin = new Thickness(0) };
+            button.Click += (s, e) => step();
+            return button;
+        }
+
+        private void SetTextScale(int percent)
+        {
+            if (_disposed || ReportsTextScale.Normalize(percent) == _state.TextScale) return;
+            CaptureState();
+            _state = _state.WithTextScale(percent);
+            SyncTextScale();
+            SaveState();
+        }
+
+        /// <summary>Scales the content area like browser zoom (the title and status bars keep their size) and syncs the card.</summary>
+        private void SyncTextScale()
+        {
+            var percent = _state.TextScale;
+            _viewHost.LayoutTransform = percent == ReportsTextScale.Default ? null : new ScaleTransform(percent / 100.0, percent / 100.0);
+            _textSizeValue.Text = L.T("reports.textSize.value", ("percent", percent));
+            _smallerButton.IsEnabled = percent > ReportsTextScale.Steps[0];
+            _largerButton.IsEnabled = percent < ReportsTextScale.Steps[ReportsTextScale.Steps.Count - 1];
+            _resetTextSizeButton.IsEnabled = percent != ReportsTextScale.Default;
+        }
+
+        protected override void OnPreviewKeyDown(KeyEventArgs e)
+        {
+            base.OnPreviewKeyDown(e);
+            if (!e.Handled && TextSizeKey(e.Key, Keyboard.Modifiers)) e.Handled = true;
+        }
+
+        protected override void OnPreviewMouseWheel(MouseWheelEventArgs e)
+        {
+            base.OnPreviewMouseWheel(e);
+            if (!e.Handled && TextSizeWheel(e.Delta, Keyboard.Modifiers)) e.Handled = true;
+        }
+
+        /// <summary>Ctrl with = or +, - and 0, on the main row or the number pad; Shift is allowed so Ctrl++ works too.</summary>
+        internal bool TextSizeKey(Key key, ModifierKeys modifiers)
+        {
+            if ((modifiers & ~ModifierKeys.Shift) != ModifierKeys.Control) return false;
+            switch (key)
+            {
+                case Key.OemPlus:
+                case Key.Add: SetTextScale(ReportsTextScale.Larger(_state.TextScale)); return true;
+                case Key.OemMinus:
+                case Key.Subtract: SetTextScale(ReportsTextScale.Smaller(_state.TextScale)); return true;
+                case Key.D0:
+                case Key.NumPad0: SetTextScale(ReportsTextScale.Default); return true;
+                default: return false;
+            }
+        }
+
+        /// <summary>Ctrl+wheel changes the text size one step instead of scrolling.</summary>
+        internal bool TextSizeWheel(int delta, ModifierKeys modifiers)
+        {
+            if (modifiers != ModifierKeys.Control || delta == 0) return false;
+            SetTextScale(delta > 0 ? ReportsTextScale.Larger(_state.TextScale) : ReportsTextScale.Smaller(_state.TextScale));
+            return true;
         }
 
         private static void Describe(FrameworkElement element, string text)
@@ -281,6 +399,8 @@ namespace RvtMcp.Plugin.Reports.Views
             _wideButton.IsChecked = _mode == DisplayMode.Wide;
             _compactButton.IsChecked = _mode == DisplayMode.Compact;
             _subtitle.Visibility = _mode == DisplayMode.Compact ? Visibility.Collapsed : Visibility.Visible;
+            // Compact is a side column with a maximum width; maximizing it would only pin a narrow window to a corner.
+            _maximizeButton.Visibility = _mode == DisplayMode.Compact ? Visibility.Collapsed : Visibility.Visible;
         }
 
         private void SyncMaximizeButton()
@@ -347,17 +467,19 @@ namespace RvtMcp.Plugin.Reports.Views
             return bounds;
         }
 
-        /// <summary>Lower the minimums, set the bounds, then raise them, so WPF never clamps the new size to the old minimum.</summary>
+        /// <summary>Loosen the limits, set the bounds, then apply the mode's limits, so WPF never clamps the new size to the old mode's.</summary>
         private void ApplyBounds(ReportsWindowMode mode, ReportsWindowBounds bounds)
         {
             MinWidth = Math.Min(ReportsWindowPlacement.WideMinWidth, ReportsWindowPlacement.CompactMinWidth);
             MinHeight = Math.Min(ReportsWindowPlacement.WideMinHeight, ReportsWindowPlacement.CompactMinHeight);
+            MaxWidth = double.PositiveInfinity;
             Left = bounds.Left;
             Top = bounds.Top;
             Width = bounds.Width;
             Height = bounds.Height;
             MinWidth = ReportsWindowPlacement.MinWidth(mode);
             MinHeight = ReportsWindowPlacement.MinHeight(mode);
+            MaxWidth = ReportsWindowPlacement.MaxWidth(mode);
         }
 
         private void ApplyDefaultSize(ReportsWindowMode mode)
@@ -432,6 +554,12 @@ namespace RvtMcp.Plugin.Reports.Views
         private void OnFrameChanged(object sender, EventArgs e)
         {
             if (_disposed) return;
+            // Caption double-click, Win+Up and snapping to the top edge still maximize without the button.
+            if (_mode == DisplayMode.Compact && WindowState == WindowState.Maximized)
+            {
+                WindowState = WindowState.Normal;
+                return;
+            }
             var inset = WindowState == WindowState.Maximized ? ReportsScreen.MaximizedOverhang(this) : new Thickness(0);
             if (_frame.Margin != inset)
             {

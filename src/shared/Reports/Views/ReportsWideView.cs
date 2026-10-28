@@ -72,35 +72,38 @@ namespace RvtMcp.Plugin.Reports.Views
             };
             ScrollViewer.SetHorizontalScrollBarVisibility(_list, ScrollBarVisibility.Disabled);
             VirtualizingPanel.SetIsVirtualizing(_list, true);
+            // Pixel units: HistoryChrome.Wheel steps in pixels, not rows.
+            VirtualizingPanel.SetScrollUnit(_list, ScrollUnit.Pixel);
+            _list.Padding = new Thickness(0, 0, 0, 6);
             AutomationProperties.SetName(_list, L.T("reports.list.label"));
             _list.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ReportsViewModel.SelectedReport)) { Source = _vm, Mode = BindingMode.TwoWay });
             _empty = EmptyText();
             var listArea = new Grid();
-            listArea.Children.Add(_list);
+            listArea.Children.Add(ReportsScrolling.Smooth(_list, 0.5));
             listArea.Children.Add(_empty);
             var side = new DockPanel { Background = ReportsStyles.Side };
             side.Children.Add(filterBar);
             side.Children.Add(listArea);
             Children.Add(new Border { BorderBrush = ReportsStyles.BorderBrush, BorderThickness = new Thickness(0, 0, 1, 0), Child = side });
 
-            // Right column: header, then body and changes in one scroll region.
-            _summary = new TextBlock { FontSize = 15, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, Foreground = ReportsStyles.Text };
-            _meta = new WrapPanel { Margin = new Thickness(0, 7, 0, 0) };
-            _copy = new Button { Style = (Style)ReportsStyles.Dictionary[BimwrightStyles.ToolbarButtonKey], Content = L.T("reports.copy.button"),
-                Command = _vm.CopyCommand };
+            // Right column: a two-line header (summary with Copy / Delete, then meta), then body and changes in one scroll region.
+            _summary = new TextBlock { FontSize = 14, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis,
+                LineHeight = 19, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, MaxHeight = 38, Foreground = ReportsStyles.Text,
+                VerticalAlignment = VerticalAlignment.Center };
+            _meta = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
+            _copy = ReportsStyles.CopyButton(_vm.CopyCommand);
             _delete = new Button { Command = _vm.DeleteCommand, Margin = new Thickness(3, 2, 0, 2) };
-            var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12, -2, 0, 0) };
             buttons.Children.Add(_copy);
             buttons.Children.Add(_delete);
             DockPanel.SetDock(buttons, Dock.Right);
-            var actions = new DockPanel { Margin = new Thickness(0, 5, 0, 0), LastChildFill = false };
-            actions.Children.Add(buttons);
-            actions.Children.Add(ReportsStyles.SelfReportedChip(L.T("reports.detail.unverified")));
+            var titleRow = new DockPanel();
+            titleRow.Children.Add(buttons);
+            titleRow.Children.Add(_summary);
             var headerStack = new StackPanel();
-            headerStack.Children.Add(_summary);
+            headerStack.Children.Add(titleRow);
             headerStack.Children.Add(_meta);
-            headerStack.Children.Add(actions);
-            var header = new Border { Padding = new Thickness(16, 12, 16, 10), BorderBrush = ReportsStyles.BorderBrush,
+            var header = new Border { Padding = new Thickness(16, 10, 16, 8), BorderBrush = ReportsStyles.BorderBrush,
                 BorderThickness = new Thickness(0, 0, 0, 1), Child = headerStack };
             DockPanel.SetDock(header, Dock.Top);
 
@@ -115,11 +118,13 @@ namespace RvtMcp.Plugin.Reports.Views
             scrolled.Children.Add(_body);
             scrolled.Children.Add(new Border { BorderBrush = ReportsStyles.BorderBrush, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4),
                 Background = ReportsStyles.Side, Margin = new Thickness(0, 12, 0, 0), Child = _changes });
-            _scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            // The bar always keeps its thin overlay track: with Auto, going from a report that fits to one that does not
+            // narrows the content and lays a long body out several times (one 32 KiB select went from 1 to 4 body measures).
+            _scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Visible, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                 Padding = new Thickness(16, 10, 16, 14), Content = scrolled, Focusable = false };
             _detail = new DockPanel();
             _detail.Children.Add(header);
-            _detail.Children.Add(_scroll);
+            _detail.Children.Add(ReportsScrolling.Smooth(_scroll, 0.26));
             _selectHint = new TextBlock { Text = L.T("reports.detail.selectHint"), Margin = new Thickness(16, 24, 16, 16), Foreground = ReportsStyles.TextSecondary,
                 TextWrapping = TextWrapping.Wrap };
             var main = new Grid();
@@ -242,6 +247,9 @@ namespace RvtMcp.Plugin.Reports.Views
             AddMeta(detail.TimeText, false);
             AddMeta(detail.ModelName, false);
             AddMeta(detail.TaskId, true);
+            var selfReported = ReportsStyles.SelfReportedChip(L.T("reports.detail.unverifiedShort"));
+            selfReported.ToolTip = L.T("reports.detail.unverified");
+            _meta.Children.Add(Spaced(selfReported));
             _changesHeader.Children.Add(new TextBlock { Text = L.T("reports.changes.title"), FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center });
             foreach (var badge in ReportChangesView.Badges(detail.Changes)) _changesHeader.Children.Add(badge);

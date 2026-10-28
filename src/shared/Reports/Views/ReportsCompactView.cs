@@ -72,7 +72,7 @@ namespace RvtMcp.Plugin.Reports.Views
             _feed.SetValue(OwnerProperty, this);
             _empty = new TextBlock { Margin = new Thickness(16, 24, 16, 16), Foreground = ReportsStyles.TextSecondary, TextWrapping = TextWrapping.Wrap };
             var feedArea = new Grid { Background = ReportsStyles.Feed };
-            feedArea.Children.Add(_feed);
+            feedArea.Children.Add(ReportsScrolling.Smooth(_feed, 0.5));
             feedArea.Children.Add(_empty);
             Children.Add(feedArea);
 
@@ -338,7 +338,9 @@ namespace RvtMcp.Plugin.Reports.Views
             }
 
             var small = (Style)ReportsStyles.Dictionary[BimwrightStyles.ToolbarButtonKey];
-            _copy = SmallButton(small, L.T("reports.copy.button"), _vm.CopyCommand);
+            _copy = ReportsStyles.CopyButton(_vm.CopyCommand);
+            _copy.Width = _copy.MinWidth = _copy.Height = 24;
+            _copy.FontSize = 12;
             _delete = SmallButton(small, "", _vm.DeleteCommand);
             var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(-3, 6, 0, 0) };
             actions.Children.Add(_copy);

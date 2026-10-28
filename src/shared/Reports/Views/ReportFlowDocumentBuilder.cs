@@ -228,6 +228,8 @@ namespace RvtMcp.Plugin.Reports.Views
                 return;
             }
             var hyperlink = CreateLink(link, link.OpenCommand, L.T("reports.link.otherModel", ("model", link.DimTooltip)));
+            // A local tooltip wins over the style's dim-only one: body links say what they point at, live or dimmed.
+            hyperlink.ToolTip = ReportLinkTooltip.Create(link);
             frame.Target.Add(Styled(hyperlink, frame));
             if (link.ElementCount > 1)
                 frame.Target.Add(Badge(link, link.ElementCount.ToString(CultureInfo.InvariantCulture), ReportsStyles.CountBadgeStyle));

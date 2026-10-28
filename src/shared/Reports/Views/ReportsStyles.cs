@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using RvtMcp.Plugin.Localization;
 using RvtMcp.Plugin.Reports.Presentation;
 using RvtMcp.Plugin.Views;
 
@@ -138,6 +139,16 @@ namespace RvtMcp.Plugin.Reports.Views
             panel.Children.Add(new TextBlock { Text = text, FontSize = 11.5, Foreground = TextSecondary, VerticalAlignment = VerticalAlignment.Center });
             return new Border { BorderBrush = BorderBrush, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10),
                 Padding = new Thickness(6, 1, 8, 1), Child = panel, VerticalAlignment = VerticalAlignment.Center, Tag = "SelfReported" };
+        }
+
+        /// <summary>Copy as History does it: an icon button whose tooltip and accessible name say what it copies.</summary>
+        public static Button CopyButton(ICommand command)
+        {
+            var label = L.T("reports.copy.button");
+            var button = new Button { Style = (Style)Dictionary[BimwrightStyles.IconButtonKey], Content = "", Command = command,
+                ToolTip = label, Margin = new Thickness(3, 2, 0, 2), VerticalAlignment = VerticalAlignment.Center };
+            AutomationProperties.SetName(button, label);
+            return button;
         }
 
         public static SolidColorBrush Brush(uint argb)
@@ -318,18 +329,71 @@ namespace RvtMcp.Plugin.Reports.Views
         <Setter Property=""Template"">
             <Setter.Value>
                 <ControlTemplate TargetType=""{x:Type ListBoxItem}"">
-                    <Border x:Name=""Chrome"" Background=""{TemplateBinding Background}"" BorderBrush=""#FFEDF0F3""
-                            BorderThickness=""0,0,0,1"" Padding=""12,9"">
-                        <ContentPresenter/>
-                    </Border>
+                    <!-- Each row is a light card so neighbouring reports read apart. Hover eases the border towards blue like
+                         a Bimwright button, but lighter and without the press scale; the selected row keeps a stronger ring. -->
+                    <Grid Margin=""8,6,8,0"">
+                        <Border x:Name=""Chrome"" Background=""#FFFFFFFF"" BorderThickness=""1"" CornerRadius=""5"" Padding=""10,8"">
+                            <Border.BorderBrush>
+                                <SolidColorBrush x:Name=""RowBorder"" Color=""#FFE0E0E0""/>
+                            </Border.BorderBrush>
+                            <ContentPresenter/>
+                        </Border>
+                        <!-- Drawn over the animated border, so a hover that ends on the selected row cannot grey its ring -->
+                        <Border x:Name=""SelectedRing"" BorderBrush=""#FF7FB6E0"" BorderThickness=""1"" CornerRadius=""5""
+                                IsHitTestVisible=""False"" Visibility=""Collapsed""/>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property=""IsMouseOver"" Value=""True"">
-                            <Setter TargetName=""Chrome"" Property=""Background"" Value=""#FFF0F4F8""/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <ColorAnimation Storyboard.TargetName=""RowBorder"" Storyboard.TargetProperty=""Color""
+                                                        To=""#FFA8CFEE"" Duration=""0:0:0.2""/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <ColorAnimation Storyboard.TargetName=""RowBorder"" Storyboard.TargetProperty=""Color""
+                                                        To=""#FFE0E0E0"" Duration=""0:0:0.25""/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                            <Setter TargetName=""Chrome"" Property=""Background"" Value=""#FFF7FAFD""/>
                         </Trigger>
                         <Trigger Property=""IsSelected"" Value=""True"">
                             <Setter TargetName=""Chrome"" Property=""Background"" Value=""#FFE6F1FB""/>
+                            <Setter TargetName=""SelectedRing"" Property=""Visibility"" Value=""Visible""/>
                         </Trigger>
                     </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Every tooltip in the window: a Bimwright surface card (white, light border, 6 px corners, soft shadow); long text wraps -->
+    <Style TargetType=""{x:Type ToolTip}"">
+        <Setter Property=""OverridesDefaultStyle"" Value=""True""/>
+        <Setter Property=""FontFamily"" Value=""Segoe UI""/>
+        <Setter Property=""FontSize"" Value=""12""/>
+        <Setter Property=""Foreground"" Value=""#FF1E293B""/>
+        <Setter Property=""Template"">
+            <Setter.Value>
+                <ControlTemplate TargetType=""{x:Type ToolTip}"">
+                    <Border Margin=""2,2,8,8"" MaxWidth=""360"" Background=""#FFFFFFFF"" BorderBrush=""#FFE0E0E0"" BorderThickness=""1""
+                            CornerRadius=""6"" Padding=""10,7"" SnapsToDevicePixels=""True"">
+                        <Border.Effect>
+                            <DropShadowEffect Color=""#20000000"" Direction=""270"" ShadowDepth=""2"" BlurRadius=""10"" Opacity=""0.35""/>
+                        </Border.Effect>
+                        <ContentPresenter>
+                            <ContentPresenter.Resources>
+                                <Style TargetType=""{x:Type TextBlock}"">
+                                    <Setter Property=""TextWrapping"" Value=""Wrap""/>
+                                </Style>
+                            </ContentPresenter.Resources>
+                        </ContentPresenter>
+                    </Border>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

@@ -109,6 +109,25 @@ internal static class ContentChecks
             var request = s.Navigation.Requests.Single();
             Expect(request.Document?.Token == DemoData.TokenA && request.Elements.Select(e => e.Id).SequenceEqual(Enumerable.Range(3101, 6).Select(i => (long)i)),
                 "live click sends document A and its 6 elements");
+            var tip = TipLines(valves);
+            Expect(tip.Count == 8 && tip[0] == L.T("reports.link.tip.elements", ("count", 6)) && tip[1] == "Pipe Accessories · Pipe Accessories 3101 · 3101"
+                && tip[5] == "Pipe Accessories · Pipe Accessories 3105 · 3105" && tip[6] == L.T("reports.link.tip.more", ("count", 1))
+                && tip[7] == L.T("reports.link.tip.select"),
+                "6-element tooltip lists 5 elements with ids, then +1 more and the click hint: " + string.Join(" | ", tip));
+            tip = TipLines(BodyLinks(body).ElementAt(1));
+            Expect(tip.SequenceEqual(new[] { "Mechanical Equipment · Mechanical Equipment 2207", L.T("reports.link.tip.id", ("id", "2207")),
+                    L.T("reports.link.tip.select") }),
+                "one-element tooltip shows its category and id: " + string.Join(" | ", tip));
+            Expect(TipLines(BodyLinks(body).ElementAt(2)).Last() == L.T("reports.link.tip.open"), "a view link's tooltip says a click opens it");
+            var linkTip = (ToolTip)valves.ToolTip;
+            Expect(ReferenceEquals(linkTip.Style, ReportsStyles.Dictionary[typeof(ToolTip)]) && ReferenceEquals(s.Window.TryFindResource(typeof(ToolTip)), linkTip.Style),
+                "link tooltips and the window's other tooltips share the Reports tooltip style");
+            linkTip.IsOpen = true;
+            Pump();
+            var tipCard = Visuals<Border>(linkTip).FirstOrDefault();
+            Expect(tipCard != null && tipCard.CornerRadius == new CornerRadius(6) && ColorOf(tipCard.Background) == Hex(0xFFFFFF),
+                "an open tooltip renders as a white card with 6 px corners");
+            linkTip.IsOpen = false;
             var badges = Elements(body.Document).OfType<InlineUIContainer>().Select(c => ((c.Child as Border)?.Child as TextBlock)?.Text).ToList();
             Expect(badges.Contains("6") && badges.Contains(L.T("reports.link.view")) && badges.Contains(L.T("reports.link.sheet")),
                 "count badge and view / sheet tags: " + string.Join(",", badges));
@@ -122,14 +141,15 @@ internal static class ContentChecks
             var connector = BodyLinks(body).First();
             Expect(Text(connector) == "the inlet connector" && connector.IsEnabled, "dimmed link stays enabled");
             Expect(ColorOf(connector.Foreground) == Hex(0x94A3B8) && connector.Cursor == Cursors.Arrow, "dimmed link is grey with an arrow cursor");
-            Expect((connector.ToolTip as string)?.Contains("Demo-pump.rfa") == true, "dimmed tooltip names the model: " + connector.ToolTip);
+            Expect(TipLines(connector).Last().Contains("Demo-pump.rfa"), "dimmed tooltip names the model: " + string.Join(" | ", TipLines(connector)));
             Click(connector);
             Expect(s.Navigation.Requests.Count == 2, "dimmed click sends nothing");
 
             s.Runtime.SetActive(DemoData.ActivePump);
             Pump();
             Expect(ReferenceEquals(body.Document, doc) && ReferenceEquals(BodyLinks(body).First(), connector), "same FlowDocument after the switch");
-            Expect(ColorOf(connector.Foreground) == Hex(0x007ACC) && connector.ToolTip == null, "the pump link turns live");
+            Expect(ColorOf(connector.Foreground) == Hex(0x007ACC) && TipLines(connector).Last() == L.T("reports.link.tip.select"),
+                "the pump link turns live and its tooltip says a click selects");
             Expect(ColorOf(BodyLinks(body).ElementAt(1).Foreground) == Hex(0x94A3B8), "the DEMO-A link turns dim");
             Click(connector);
             Expect(s.Navigation.Requests.Count == 3 && s.Navigation.Requests[2].Document.Token == DemoData.TokenPump, "the now-live link navigates");
@@ -337,7 +357,12 @@ internal static class ContentChecks
             s.Select(DemoData.LongReport);
             Expect(Near(s.Wide.DetailScroll.VerticalOffset, 0), "detail starts at the top");
             Roll(InnerScroll(s.Wide.Body));
-            Expect(s.Wide.DetailScroll.VerticalOffset > 0, "wide: wheel on the body scrolls the detail (" + s.Wide.DetailScroll.VerticalOffset + ")");
+            // The wheel eases over a few hundred milliseconds, as in History.
+            Expect(WaitFor(() => s.Wide.DetailScroll.VerticalOffset > 0), "wide: wheel on the body scrolls the detail (" + s.Wide.DetailScroll.VerticalOffset + ")");
+            var fades = Visuals<Border>(s.Wide).Where(b => !b.IsHitTestVisible && b.Background is System.Windows.Media.LinearGradientBrush
+                && System.Windows.Media.VisualTreeHelper.GetParent(b) is Grid g && Equals(g.Tag, "SmoothScroll") && g.Children.Contains(s.Wide.DetailScroll)).ToList();
+            Expect(fades.Count == 2 && WaitFor(() => fades.All(f => f.Opacity > 0.9)),
+                "wide: both detail fades show once the detail is scrolled into the middle");
         }
         using (var s = new Scenario(DisplayMode.Compact).Show())
         {
@@ -345,7 +370,7 @@ internal static class ContentChecks
             var feed = InnerScroll(s.Compact.Feed);
             var before = feed.VerticalOffset;
             Roll(InnerScroll(s.Compact.OpenBody.Body));
-            Expect(feed.VerticalOffset > before, $"compact: wheel on the body scrolls the feed ({before} → {feed.VerticalOffset})");
+            Expect(WaitFor(() => feed.VerticalOffset > before), $"compact: wheel on the body scrolls the feed ({before} → {feed.VerticalOffset})");
         }
     }
 
@@ -412,6 +437,10 @@ internal static class ContentChecks
         var top = element.TransformToAncestor(scroll).Transform(new Point(0, 0)).Y;
         return top >= -0.5 && top < scroll.ActualHeight - 10;
     }
+
+    /// <summary>Text lines of a body link's tooltip, in order (the separator is a Border and is skipped).</summary>
+    private static List<string> TipLines(Hyperlink link) =>
+        (((link.ToolTip as ToolTip)?.Content as Panel)?.Children.OfType<TextBlock>().Select(t => t.Text) ?? new string[0]).ToList();
 
     private static void Roll(UIElement target)
     {

@@ -129,11 +129,50 @@ namespace RvtMcp.Tests
             Assert.True(RvtMcpConfig.TrySaveReportsWindow(state, out var error, ConfigPath), error);
 
             var saved = JObject.Parse(File.ReadAllText(ConfigPath));
-            Assert.True(JToken.DeepEquals(JObject.Parse(@"{""mode"":""wide"",""wide"":{""left"":10.0,""top"":20.0,""width"":790.0,""height"":540.0}}"),
+            Assert.True(JToken.DeepEquals(JObject.Parse(@"{""mode"":""wide"",""wide"":{""left"":10.0,""top"":20.0,""width"":790.0,""height"":540.0},""textScale"":100}"),
                 saved["reportsWindow"]), saved["reportsWindow"].ToString());
             saved.Remove("reportsWindow");
             original.Remove("reportsWindow");
             Assert.True(JToken.DeepEquals(original, saved));
+        }
+
+        [Fact]
+        public void Text_scale_steps_clamp_at_both_ends_and_survive_every_state_change()
+        {
+            Assert.Equal(new[] { 90, 100, 110, 125, 150 }, ReportsTextScale.Steps);
+            Assert.Equal(110, ReportsTextScale.Larger(100));
+            Assert.Equal(150, ReportsTextScale.Larger(150));
+            Assert.Equal(90, ReportsTextScale.Smaller(100));
+            Assert.Equal(90, ReportsTextScale.Smaller(90));
+            Assert.Equal(110, ReportsTextScale.Larger(95)); // an off-step value counts as 100
+            Assert.Equal(100, new ReportsWindowState(textScale: 95).TextScale);
+
+            var state = new ReportsWindowState(ReportsWindowMode.Wide, textScale: 125)
+                .WithMode(ReportsWindowMode.Compact).WithBounds(ReportsWindowMode.Compact, new ReportsWindowBounds(1, 2, 390, 610));
+            Assert.Equal(125, state.TextScale);
+            Assert.Equal(150, state.WithTextScale(150).TextScale);
+        }
+
+        [Fact]
+        public void Saved_text_scale_survives_a_fresh_config_load()
+        {
+            Assert.True(RvtMcpConfig.TrySaveReportsWindow(new ReportsWindowState(ReportsWindowMode.Compact, textScale: 125), out var error, ConfigPath), error);
+            Assert.Equal(125, RvtMcpConfig.LoadFromJsonFile(ConfigPath).ReportsWindowOrDefault.TextScale);
+            Assert.Equal(90, Load("{\"reportsWindow\":{\"textScale\":90}}").TextScale);
+        }
+
+        [Theory]
+        [InlineData("95")]
+        [InlineData("-110")]
+        [InlineData("110.0")]
+        [InlineData("\"110\"")]
+        [InlineData("true")]
+        [InlineData("null")]
+        [InlineData("[110]")]
+        [InlineData("99999999999999999999")]
+        public void Text_scale_that_is_not_an_integer_step_means_100(string scale)
+        {
+            Assert.Equal(100, Load("{\"reportsWindow\":{\"mode\":\"compact\",\"textScale\":" + scale + "}}").TextScale);
         }
 
         private ReportsWindowState Load(string json)

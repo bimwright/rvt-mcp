@@ -22,6 +22,8 @@ namespace RvtMcp.Tests.Shared.Reports
             Assert.False(link.IsLive);
             Assert.Equal("Synthetic model", link.DimTooltip);
             Assert.Equal(1, link.ElementCount);
+            Assert.Same(element, Assert.Single(link.Elements));
+            Assert.Equal(9, link.ViewHintId);
             Assert.Equal(ReportLinkTargetKind.Sheet, link.TargetKind);
             link.OpenCommand.Execute(null);
             Assert.Null(nav.LastRequest);

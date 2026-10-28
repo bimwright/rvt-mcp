@@ -30,6 +30,8 @@ namespace RvtMcp.Plugin.Reports.Presentation
         public bool IsLive => _isLive;
         public string DimTooltip => _document?.Title ?? "";
         public int ElementCount => _link.Elements?.Count ?? 0;
+        public IReadOnlyList<ReportElement> Elements => _link.Elements ?? (IReadOnlyList<ReportElement>)new ReportElement[0];
+        public long? ViewHintId => _link.View?.Id;
         public ReportLinkTargetKind TargetKind
         {
             get

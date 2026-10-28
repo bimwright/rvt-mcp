@@ -792,8 +792,9 @@ namespace RvtMcp.Plugin
         }
 
         /// <summary>
-        /// Lenient read of <c>reportsWindow</c>: a mode other than "compact" means wide, and a bounds
-        /// that is not four finite in-range numbers is dropped while the other bounds is kept.
+        /// Lenient read of <c>reportsWindow</c>: a mode other than "compact" means wide, a bounds
+        /// that is not four finite in-range numbers is dropped while the other bounds is kept, and a
+        /// <c>textScale</c> that is not one of the integer steps means 100.
         /// </summary>
         internal static ReportsWindowState ReadReportsWindow(JToken token)
         {
@@ -803,7 +804,15 @@ namespace RvtMcp.Plugin
                 mode != null && mode.Type == JTokenType.String && (string)mode == "compact"
                     ? ReportsWindowMode.Compact : ReportsWindowMode.Wide,
                 ReadReportsWindowBounds(box?["wide"]),
-                ReadReportsWindowBounds(box?["compact"]));
+                ReadReportsWindowBounds(box?["compact"]),
+                ReadTextScale(box?["textScale"]));
+        }
+
+        /// <summary>An integer that fits in int (a huge one parses as BigInteger); anything else means 100.</summary>
+        private static int ReadTextScale(JToken token)
+        {
+            var value = (token as JValue)?.Value;
+            return value is long number && number >= int.MinValue && number <= int.MaxValue ? (int)number : ReportsTextScale.Default;
         }
 
         private static ReportsWindowBounds ReadReportsWindowBounds(JToken token)
@@ -831,6 +840,7 @@ namespace RvtMcp.Plugin
                 var box = new JObject { ["mode"] = state.Mode == ReportsWindowMode.Compact ? "compact" : "wide" };
                 if (state.Wide != null) box["wide"] = Bounds(state.Wide);
                 if (state.Compact != null) box["compact"] = Bounds(state.Compact);
+                box["textScale"] = state.TextScale;
                 root["reportsWindow"] = box;
             }, out error);
         }

@@ -59,6 +59,7 @@ internal static class Program
             Check("15 Keyboard", ReportsChecks.Keyboard),
             Check("16 Performance", ContentChecks.Performance),
             Check("17 Lifecycle", ReportsChecks.Lifecycle),
+            Check("19 Text size", ReportsChecks.TextSize),
         };
         var failed = new List<string>();
         using (var bindingErrors = new WpfBindingErrors())

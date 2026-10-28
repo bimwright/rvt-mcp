@@ -17,6 +17,8 @@
     <Compile Include="../../src/shared/Presentation/Common/RelayCommand.cs" Link="Presentation/RelayCommand.cs" />
     <Compile Include="../../src/shared/Views/BimwrightStyles.cs" Link="Views/BimwrightStyles.cs" />
     <Compile Include="../../src/shared/Views/ScrollBarFadeBehavior.cs" Link="Views/ScrollBarFadeBehavior.cs" />
+    <!-- Reports reuse History's eased wheel scrolling and edge fades. -->
+    <Compile Include="../../src/shared/Views/HistoryChrome.cs" Link="Views/HistoryChrome.cs" />
     <Compile Include="../../src/shared/Localization/L.cs" Link="Localization/L.cs" />
     <Compile Include="../../src/shared/Localization/EmbeddedCatalog.cs" Link="Localization/EmbeddedCatalog.cs" />
     <Compile Include="../../src/shared/Localization/StringTable.cs" Link="Localization/StringTable.cs" />

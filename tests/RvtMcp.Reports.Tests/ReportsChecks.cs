@@ -22,6 +22,8 @@ internal static class ReportsChecks
         {
             var w = s.Window;
             Expect(Bounds(w, 245, 70, 790, 540), "wide default bounds centred on the owner, got " + Describe(w));
+            Expect(w.MinWidth == 720 && w.MinHeight == 460 && double.IsPositiveInfinity(w.MaxWidth) && w.MaximizeButton.Visibility == Visibility.Visible,
+                $"wide limits: min 720×460, no maximum, maximize button shown (got {w.MinWidth}×{w.MinHeight}, max {w.MaxWidth})");
             var view = s.Wide;
             Expect(view != null, "wide view is shown");
             var expected = s.Runtime.Reports.Count(r => r.Documents.Any(d => d.Token == DemoData.TokenA));
@@ -31,7 +33,11 @@ internal static class ReportsChecks
             Expect(view.SummaryText.Text == s.ViewModel.Reports[0].Summary, "header shows the summary");
             Expect(PillText(view) == "Completed", "header shows the outcome pill");
             var chip = Visuals<Border>(view).FirstOrDefault(b => (b.Tag as string) == "SelfReported");
-            Expect(chip != null && Texts(chip).Contains(L.T("reports.detail.unverified")), "header shows the self-reported label");
+            Expect(chip != null && Texts(chip).Contains(L.T("reports.detail.unverifiedShort")) && (chip.ToolTip as string) == L.T("reports.detail.unverified"),
+                "header meta line ends with the short self-reported label; its tooltip says it is not verified");
+            Expect(view.CopyButton.Content as string == "" && (view.CopyButton.ToolTip as string) == L.T("reports.copy.button")
+                && System.Windows.Automation.AutomationProperties.GetName(view.CopyButton) == L.T("reports.copy.button"),
+                "Copy is an icon button with a tooltip and a name");
             Expect(view.Changes.IsExpanded, "actual changes start open");
             Expect(w.TitleText.Text == "Agent reports" && w.SubtitleText.Visibility == Visibility.Visible, "title and subtitle in wide mode");
             Expect(w.WideButton.IsChecked == true && w.CompactButton.IsChecked == false, "wide mode button is pressed");
@@ -130,6 +136,11 @@ internal static class ReportsChecks
             Click(w.CompactButton);
             Expect(w.WindowState == WindowState.Normal && w.CurrentMode == DisplayMode.Compact, "switching while maximized goes back to Normal");
             Expect(Bounds(w, 834, 36, 390, 608), "compact bounds after the switch, got " + Describe(w));
+            Expect(w.MinWidth == 360 && w.MinHeight == 460 && w.MaxWidth == 560 && w.MaximizeButton.Visibility == Visibility.Collapsed,
+                $"compact limits: min 360×460, max width 560, no maximize button (got {w.MinWidth}×{w.MinHeight}, max {w.MaxWidth})");
+            w.WindowState = WindowState.Maximized;
+            Expect(WaitFor(() => w.WindowState == WindowState.Normal) && Bounds(w, 834, 36, 390, 608),
+                "compact refuses a maximize from another route (caption double-click, Win+Up) and keeps its bounds, got " + Describe(w));
             Expect(w.Frame.Margin == new Thickness(0) && w.Frame.BorderThickness.Top == 1, "frame inset removed after restore");
             var last = s.Saved.Last();
             Expect(Same(last.Wide, restore.Left, restore.Top, restore.Width, restore.Height), "wide keeps its RestoreBounds " + restore);
@@ -274,6 +285,61 @@ internal static class ReportsChecks
             Expect(card.IsOpen && ReferenceEquals(s.ViewModel.SelectedReport, s.ViewModel.Reports[1]), "Enter opens the card");
             Key(card.Header, System.Windows.Input.Key.Enter);
             Expect(!card.IsOpen && s.ViewModel.SelectedReport == null, "Enter again closes it");
+        }
+    }
+
+    /// <summary>
+    /// 19. Text size: the "Aa" card steps 90–150 % and resets; Ctrl+Plus/Minus/0 and Ctrl+wheel do the same. Only the
+    /// content area scales; every change is saved, a mode switch keeps it, and a saved size is applied on open.
+    /// </summary>
+    public static void TextSize()
+    {
+        using (var s = new Scenario(DisplayMode.Wide).Show())
+        {
+            var w = s.Window;
+            Expect(w.ContentScale == 1 && w.TextSizeValue.Text == L.T("reports.textSize.value", ("percent", 100)) && !w.ResetTextSizeButton.IsEnabled,
+                "starts at 100 % with Reset disabled");
+            Expect((w.TextSizeButton.ToolTip as string) == L.T("reports.textSize.tooltip"), "Aa names the shortcuts in its tooltip");
+            Click(w.TextSizeButton);
+            Expect(WaitFor(() => w.TextSizePopup.IsOpen), "Aa opens the text size card");
+            Click(w.LargerButton);
+            Expect(Math.Abs(w.ContentScale - 1.1) < 0.001 && s.Saved.Last().TextScale == 110 && w.TextSizeValue.Text == L.T("reports.textSize.value", ("percent", 110)),
+                "Larger: 110 %, applied and saved");
+            Pump();
+            Rect Rendered(FrameworkElement e) => e.TransformToAncestor(w.Frame).TransformBounds(new Rect(0, 0, e.ActualWidth, e.ActualHeight));
+            Expect(Math.Abs(Rendered(s.Wide).Width - s.Wide.ActualWidth * 1.1) < 1 && Math.Abs(Rendered(w.StatusBar).Height - w.StatusBar.ActualHeight) < 0.5,
+                "the content area scales and the status bar does not");
+            Click(w.LargerButton);
+            Click(w.LargerButton);
+            Click(w.LargerButton);
+            Expect(w.State.TextScale == 150 && !w.LargerButton.IsEnabled, "Larger stops at 150 %");
+            Click(w.ResetTextSizeButton);
+            Expect(w.ContentScale == 1 && s.Saved.Last().TextScale == 100 && !w.ResetTextSizeButton.IsEnabled, "Reset goes back to 100 %");
+            w.TextSizePopup.IsOpen = false;
+            Pump();
+
+            Expect(w.TextSizeKey(System.Windows.Input.Key.OemMinus, ModifierKeys.Control) && w.State.TextScale == 90 && !w.SmallerButton.IsEnabled, "Ctrl+Minus: 90 %");
+            var saves = s.Saved.Count;
+            Expect(w.TextSizeKey(System.Windows.Input.Key.Subtract, ModifierKeys.Control) && w.State.TextScale == 90 && s.Saved.Count == saves,
+                "at 90 % Ctrl+Minus changes and saves nothing");
+            Expect(w.TextSizeKey(System.Windows.Input.Key.Add, ModifierKeys.Control | ModifierKeys.Shift) && w.TextSizeKey(System.Windows.Input.Key.OemPlus, ModifierKeys.Control) && w.State.TextScale == 110,
+                "Ctrl+Plus on the number pad and on the main row (Shift allowed)");
+            Expect(w.TextSizeKey(System.Windows.Input.Key.NumPad0, ModifierKeys.Control) && w.State.TextScale == 100, "Ctrl+0 resets");
+            Expect(!w.TextSizeKey(System.Windows.Input.Key.OemPlus, ModifierKeys.None) && !w.TextSizeKey(System.Windows.Input.Key.OemPlus, ModifierKeys.Control | ModifierKeys.Alt)
+                && !w.TextSizeKey(System.Windows.Input.Key.A, ModifierKeys.Control) && w.State.TextScale == 100, "other keys and modifiers do nothing");
+            Expect(w.TextSizeWheel(120, ModifierKeys.Control) && w.State.TextScale == 110 && w.TextSizeWheel(-120, ModifierKeys.Control) && w.State.TextScale == 100,
+                "Ctrl+wheel steps up and down");
+            Expect(!w.TextSizeWheel(120, ModifierKeys.None) && w.State.TextScale == 100, "a plain wheel scrolls and does not zoom");
+
+            w.TextSizeKey(System.Windows.Input.Key.OemPlus, ModifierKeys.Control);
+            Click(w.CompactButton);
+            Expect(Math.Abs(w.ContentScale - 1.1) < 0.001 && s.Saved.Last().TextScale == 110 && s.Saved.Last().Mode == ReportsWindowMode.Compact,
+                "a mode switch keeps the text size");
+        }
+        using (var s = new Scenario(DisplayMode.Wide, new ReportsWindowState(ReportsWindowMode.Wide, textScale: 125)).Show())
+        {
+            Expect(Math.Abs(s.Window.ContentScale - 1.25) < 0.001 && s.Window.TextSizeValue.Text == L.T("reports.textSize.value", ("percent", 125)),
+                "a saved 125 % is applied on open");
         }
     }
 

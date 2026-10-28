@@ -13,10 +13,21 @@ namespace RvtMcp.Tests.Reports
         [Fact]
         public void Sizes_and_minimums_follow_the_plan()
         {
-            Assert.Equal(640, ReportsWindowPlacement.MinWidth(ReportsWindowMode.Wide));
-            Assert.Equal(400, ReportsWindowPlacement.MinHeight(ReportsWindowMode.Wide));
-            Assert.Equal(320, ReportsWindowPlacement.MinWidth(ReportsWindowMode.Compact));
-            Assert.Equal(360, ReportsWindowPlacement.MinHeight(ReportsWindowMode.Compact));
+            Assert.Equal(720, ReportsWindowPlacement.MinWidth(ReportsWindowMode.Wide));
+            Assert.Equal(460, ReportsWindowPlacement.MinHeight(ReportsWindowMode.Wide));
+            Assert.Equal(double.PositiveInfinity, ReportsWindowPlacement.MaxWidth(ReportsWindowMode.Wide));
+            Assert.Equal(360, ReportsWindowPlacement.MinWidth(ReportsWindowMode.Compact));
+            Assert.Equal(460, ReportsWindowPlacement.MinHeight(ReportsWindowMode.Compact));
+            Assert.Equal(560, ReportsWindowPlacement.MaxWidth(ReportsWindowMode.Compact));
+        }
+
+        [Fact]
+        public void Compact_never_restores_wider_than_its_maximum_but_wide_does()
+        {
+            AssertBounds(ReportsWindowPlacement.Restore(ReportsWindowMode.Compact,
+                new ReportsWindowBounds(100, 100, 1100, 700), Owner, Work), 100, 100, 560, 700);
+            AssertBounds(ReportsWindowPlacement.Restore(ReportsWindowMode.Wide,
+                new ReportsWindowBounds(100, 100, 1600, 900), Owner, Work), 100, 100, 1600, 900);
         }
 
         [Fact]
@@ -44,7 +55,7 @@ namespace RvtMcp.Tests.Reports
         public void Small_owner_uses_the_minimum_size()
         {
             var owner = new ToastBounds(200, 200, 600, 300);
-            AssertBounds(ReportsWindowPlacement.Default(ReportsWindowMode.Compact, owner, Work), 394, 170, 390, 360);
+            AssertBounds(ReportsWindowPlacement.Default(ReportsWindowMode.Compact, owner, Work), 394, 120, 390, 460);
             var wide = ReportsWindowPlacement.Default(ReportsWindowMode.Wide, owner, Work);
             Assert.Equal(790, wide.Width);
             Assert.Equal(540, wide.Height);
@@ -76,9 +87,9 @@ namespace RvtMcp.Tests.Reports
                 new ReportsWindowBounds(10, 10, 3000, 2000), Owner, Work), 0, 0, 1920, 1040);
             var tiny = new ToastBounds(0, 0, 600, 300);
             AssertBounds(ReportsWindowPlacement.Restore(ReportsWindowMode.Wide,
-                new ReportsWindowBounds(10, 10, 3000, 2000), Owner, tiny), 0, 0, 640, 400);
+                new ReportsWindowBounds(10, 10, 3000, 2000), Owner, tiny), 0, 0, 720, 460);
             AssertBounds(ReportsWindowPlacement.Restore(ReportsWindowMode.Compact,
-                new ReportsWindowBounds(10, 10, 100, 100), Owner, Work), 10, 10, 320, 360);
+                new ReportsWindowBounds(10, 10, 100, 100), Owner, Work), 10, 10, 360, 460);
         }
 
         [Fact]
