@@ -478,5 +478,7 @@
   "reports.changes.group.deleted": "Smazáno ({count})",
   "reports.changes.element": "Prvek",
   "reports.changes.showMore": "Zobrazit dalších {count}",
-  "toast.report.title": "Agent odeslal zprávu"
+  "toast.report.title": "Agent odeslal zprávu",
+  "ribbon.reports.text": "Zprávy",
+  "ribbon.reports.tooltip": "Zobrazit zprávy agenta s odkazy na prvky v modelu"
 }

@@ -478,5 +478,7 @@
   "reports.changes.group.deleted": "刪除 ({count})",
   "reports.changes.element": "元素",
   "reports.changes.showMore": "再顯示 {count} 項",
-  "toast.report.title": "Agent 已傳送一份報告"
+  "toast.report.title": "Agent 已傳送一份報告",
+  "ribbon.reports.text": "報告",
+  "ribbon.reports.tooltip": "顯示 Agent 報告，可連結到模型中的元素"
 }

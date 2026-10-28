@@ -478,5 +478,7 @@
   "reports.changes.group.deleted": "Удалено ({count})",
   "reports.changes.element": "Элемент",
   "reports.changes.showMore": "Показать ещё {count}",
-  "toast.report.title": "Агент отправил отчёт"
+  "toast.report.title": "Агент отправил отчёт",
+  "ribbon.reports.text": "Отчёты",
+  "ribbon.reports.tooltip": "Показать отчёты агента со ссылками на элементы модели"
 }

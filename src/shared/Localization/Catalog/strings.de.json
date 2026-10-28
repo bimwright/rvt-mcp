@@ -478,5 +478,7 @@
   "reports.changes.group.deleted": "Gelöscht ({count})",
   "reports.changes.element": "Element",
   "reports.changes.showMore": "{count} weitere anzeigen",
-  "toast.report.title": "Der Agent hat einen Bericht gesendet"
+  "toast.report.title": "Der Agent hat einen Bericht gesendet",
+  "ribbon.reports.text": "Berichte",
+  "ribbon.reports.tooltip": "Agent-Berichte mit Links zu Elementen im Modell anzeigen"
 }

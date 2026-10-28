@@ -478,5 +478,7 @@
   "reports.changes.group.deleted": "Verwijderd ({count})",
   "reports.changes.element": "Element",
   "reports.changes.showMore": "Nog {count} weergeven",
-  "toast.report.title": "De agent heeft een rapport verzonden"
+  "toast.report.title": "De agent heeft een rapport verzonden",
+  "ribbon.reports.text": "Rapporten",
+  "ribbon.reports.tooltip": "Agentrapporten tonen met koppelingen naar elementen in het model"
 }

@@ -98,6 +98,7 @@ namespace RvtMcp.Plugin
             _ribbonApplication = application;
             var ribbonResult = RibbonSetup.Create(application, Config, BakedToolRuntimeCache);
             DebugLog("OnStartup: RibbonSetup OK");
+            Reports.Revit.ReportsModule.Initialize(application, Config);
 
             _idlingUpdater = new IdlingUpdater(ribbonResult, ToastNotifier);
             application.Idling += OnIdling;
@@ -118,6 +119,7 @@ namespace RvtMcp.Plugin
             _historyWindow?.CloseForShutdown();
             _bakeInboxWindow?.Close();
             _settingsWindow?.CloseForShutdown();
+            Reports.Revit.ReportsModule.Shutdown();
             _updateNotice?.Shutdown();
 
             try { StopTransport(); } catch (Exception ex) { DebugLog("Shutdown transport cleanup: " + ex.Message); }
@@ -266,6 +268,28 @@ namespace RvtMcp.Plugin
                     System.Windows.Threading.DispatcherPriority.Normal);
         }
 
+        /// <summary>Ribbon command: <paramref name="app"/> lets the module re-read the active document first.</summary>
+        public void ShowOrFocusReportsWindow(UIApplication app = null)
+        {
+            Reports.Revit.ReportsModule.ShowOrFocus(app);
+        }
+
+        /// <summary>Open a report on Revit's UI dispatcher when called by the toast window.</summary>
+        public void ShowReportsFromToast(string reportId)
+        {
+            var dispatcher = _revitDispatcher;
+            if (dispatcher == null)
+            {
+                DebugLog("Toast report click ignored: Revit dispatcher is not captured.");
+                return;
+            }
+
+            if (dispatcher.CheckAccess())
+                Reports.Revit.ReportsModule.ShowReport(reportId);
+            else
+                dispatcher.BeginInvoke(new Action(() => Reports.Revit.ReportsModule.ShowReport(reportId)),
+                    System.Windows.Threading.DispatcherPriority.Normal);
+        }
         public void RefreshBakedRibbonButtons()
         {
             if (Config?.EnableAdaptiveBakeOrDefault == true && _ribbonApplication != null)

@@ -187,6 +187,36 @@ namespace RvtMcp.Plugin
             }
         }
 
+        /// <summary>Agent report: a page with a blue outline and three text lines.</summary>
+        public static BitmapSource CreateReportsIcon(int size)
+        {
+            using (var bmp = new Bitmap(size, size))
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.Clear(Color.Transparent);
+                var stroke = Math.Max(size / 16f, 1f);
+                var page = new RectangleF(size * 0.2f, size * 0.08f, size * 0.6f, size * 0.84f);
+                using (var fill = new SolidBrush(Color.White))
+                using (var pen = new Pen(Color.FromArgb(0, 122, 204), stroke))
+                {
+                    g.FillRectangle(fill, page);
+                    g.DrawRectangle(pen, page.X, page.Y, page.Width, page.Height);
+                }
+                using (var pen = new Pen(Color.FromArgb(60, 60, 60), stroke))
+                {
+                    var left = page.X + page.Width * 0.22f;
+                    var right = page.Right - page.Width * 0.22f;
+                    for (var i = 0; i < 3; i++)
+                    {
+                        var y = page.Y + page.Height * (0.3f + i * 0.2f);
+                        g.DrawLine(pen, left, y, right, y);
+                    }
+                }
+                return BitmapToBitmapSource(bmp);
+            }
+        }
+
         // Pre-generated icons cached for Ribbon use
         public static BitmapSource McpOn32 { get; } = CreateCircleIcon(32, Color.FromArgb(76, 175, 80));
         public static BitmapSource McpOn16 { get; } = CreateCircleIcon(16, Color.FromArgb(76, 175, 80));
@@ -194,6 +224,8 @@ namespace RvtMcp.Plugin
         public static BitmapSource McpOff16 { get; } = CreateCircleIcon(16, Color.FromArgb(244, 67, 54));
         public static BitmapSource History32 { get; } = CreateHistoryIcon(32);
         public static BitmapSource History16 { get; } = CreateHistoryIcon(16);
+        public static BitmapSource Reports32 { get; } = CreateReportsIcon(32);
+        public static BitmapSource Reports16 { get; } = CreateReportsIcon(16);
         public static BitmapSource Info32 { get; } = CreateInfoIcon(32);
         public static BitmapSource Info16 { get; } = CreateInfoIcon(16);
         public static BitmapSource Settings32 { get; } = CreateSettingsIcon(32);

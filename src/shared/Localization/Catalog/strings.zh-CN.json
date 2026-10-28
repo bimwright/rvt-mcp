@@ -478,5 +478,7 @@
   "reports.changes.group.deleted": "删除 ({count})",
   "reports.changes.element": "图元",
   "reports.changes.showMore": "再显示 {count} 项",
-  "toast.report.title": "Agent 发送了一份报告"
+  "toast.report.title": "Agent 发送了一份报告",
+  "ribbon.reports.text": "报告",
+  "ribbon.reports.tooltip": "显示 Agent 报告，可链接到模型中的图元"
 }

@@ -478,5 +478,7 @@
   "reports.changes.group.deleted": "삭제 ({count})",
   "reports.changes.element": "요소",
   "reports.changes.showMore": "{count}개 더 보기",
-  "toast.report.title": "에이전트가 보고서를 보냈습니다"
+  "toast.report.title": "에이전트가 보고서를 보냈습니다",
+  "ribbon.reports.text": "보고서",
+  "ribbon.reports.tooltip": "모델 요소 링크가 포함된 에이전트 보고서 표시"
 }

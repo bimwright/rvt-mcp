@@ -478,5 +478,7 @@
   "reports.changes.group.deleted": "Törölve ({count})",
   "reports.changes.element": "Elem",
   "reports.changes.showMore": "További {count} megjelenítése",
-  "toast.report.title": "Az ügynök jelentést küldött"
+  "toast.report.title": "Az ügynök jelentést küldött",
+  "ribbon.reports.text": "Jelentések",
+  "ribbon.reports.tooltip": "Az ügynökjelentések megjelenítése a modell elemeire mutató hivatkozásokkal"
 }

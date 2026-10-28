@@ -478,5 +478,7 @@
   "reports.changes.group.deleted": "Excluídos ({count})",
   "reports.changes.element": "Elemento",
   "reports.changes.showMore": "Mostrar mais {count}",
-  "toast.report.title": "O agente enviou um relatório"
+  "toast.report.title": "O agente enviou um relatório",
+  "ribbon.reports.text": "Relatórios",
+  "ribbon.reports.tooltip": "Mostrar relatórios do agente com links para elementos do modelo"
 }

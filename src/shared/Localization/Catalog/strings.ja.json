@@ -478,5 +478,7 @@
   "reports.changes.group.deleted": "削除 ({count})",
   "reports.changes.element": "要素",
   "reports.changes.showMore": "さらに {count} 件を表示",
-  "toast.report.title": "エージェントがレポートを送信しました"
+  "toast.report.title": "エージェントがレポートを送信しました",
+  "ribbon.reports.text": "レポート",
+  "ribbon.reports.tooltip": "モデル要素へのリンク付きでエージェントのレポートを表示"
 }

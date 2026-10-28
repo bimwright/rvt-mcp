@@ -148,6 +148,12 @@ namespace RvtMcp.Plugin.Views.Toast
             get { lock (_gate) return _phase == Phase.Pending; }
         }
 
+        /// <summary>Id of the current or last card; a click on the card reports the same id.</summary>
+        public long CurrentCardId
+        {
+            get { lock (_gate) return _cardId; }
+        }
+
         public bool RecordResult(string title, string body, bool success, string imagePath, bool frameUsable,
             long? durationMs = null)
         {

@@ -25,6 +25,7 @@
     <Compile Include="..\..\src\shared\Reports\Binding\**\*.cs" LinkBase="Shared\Reports\Binding" />
     <Compile Include="..\..\src\shared\Reports\Changes\**\*.cs" LinkBase="Shared\Reports\Changes" />
     <Compile Include="..\..\src\shared\Reports\Storage\**\*.cs" LinkBase="Shared\Reports\Storage" />
+    <Compile Include="..\..\src\shared\Reports\Navigation\**\*.cs" LinkBase="Shared\Reports\Navigation" />
     <Compile Include="..\..\src\shared\Reports\Model\**\*.cs" Exclude="..\..\src\shared\Reports\Model\ReportLimits.cs" LinkBase="Shared\Reports\Model" />
     <Compile Include="../../src/shared/Views/Toast/ToastActivityEntry.cs" Link="Shared/Views/Toast/ToastActivityEntry.cs" />
     <Compile Include="../../src/shared/Infrastructure/HostHealthSnapshot.cs" Link="Shared/Infrastructure/HostHealthSnapshot.cs" />
@@ -61,6 +62,7 @@
     <Compile Include="..\..\src\shared\Views\Toast\ActivityAggregator.cs" Link="Shared\Views\Toast\ActivityAggregator.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\ToolNameFormatter.cs" Link="Shared\Views\Toast\ToolNameFormatter.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\ToastContentBuilder.cs" Link="Shared\Views\Toast\ToastContentBuilder.cs" />
+    <Compile Include="..\..\src\shared\Views\Toast\ToastReportRoute.cs" Link="Shared\Views\Toast\ToastReportRoute.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\McpToastViewModel.cs" Link="Shared\Views\Toast\McpToastViewModel.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\ToastThumbnailLoader.cs" Link="Shared\Views\Toast\ToastThumbnailLoader.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\CaptureOutputResolver.cs" Link="Shared\Infrastructure\CaptureOutputResolver.cs" />

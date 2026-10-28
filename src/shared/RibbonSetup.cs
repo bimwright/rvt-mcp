@@ -12,6 +12,7 @@ namespace RvtMcp.Plugin
         public PushButton ToggleButton { get; set; }
         public PushButton HistoryButton { get; set; }
         public PushButton ToastButton { get; set; }
+        public PushButton ReportsButton { get; set; }
         public PushButton BakeInboxButton { get; set; }
         public PushButton SettingsButton { get; set; }
         public PushButton LanguageButton { get; set; }
@@ -66,6 +67,7 @@ namespace RvtMcp.Plugin
             };
 
             var stack = panel.AddStackedItems(toggleData, historyData, toastData);
+            var reportsButton = AddReportsButton(panel, assemblyPath);
             PushButton bakeInboxButton = null;
             if (config?.EnableAdaptiveBakeOrDefault == true)
                 bakeInboxButton = AddBakeInboxButton(panel, assemblyPath);
@@ -85,6 +87,7 @@ namespace RvtMcp.Plugin
                 ToggleButton = stack[0] as PushButton,
                 HistoryButton = stack[1] as PushButton,
                 ToastButton = stack[2] as PushButton,
+                ReportsButton = reportsButton,
                 BakeInboxButton = bakeInboxButton,
                 SettingsButton = settingsButton,
                 LanguageButton = languageButton
@@ -128,6 +131,24 @@ namespace RvtMcp.Plugin
                     CreatedButtons.Add(buttonName);
                 }
             }
+        }
+
+        /// <summary>Large button right after the History stack, in the main panel.</summary>
+        private static PushButton AddReportsButton(RibbonPanel panel, string assemblyPath)
+        {
+            const string buttonName = "ShowReports";
+            if (CreatedButtons.Contains(buttonName)) return null;
+            var data = new PushButtonData(
+                buttonName,
+                L.T("ribbon.reports.text"),
+                assemblyPath,
+                "RvtMcp.Plugin.Commands.ShowReportsCommand")
+            {
+                LargeImage = IconGenerator.Reports32,
+                Image = IconGenerator.Reports16,
+                ToolTip = L.T("ribbon.reports.tooltip")
+            };
+            return AddPushButton(panel, data, buttonName);
         }
 
         private static PushButton AddSettingsButton(RibbonPanel panel, string assemblyPath)
