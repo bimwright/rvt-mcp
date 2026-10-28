@@ -27,6 +27,10 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
+### Agent reports
+
+- Add `revit_report_task_result` for validated, replaceable agent reports without changing the model. Catalog: `--toolsets all` **241**, adaptive bake **244**, bare defaults **54**.
+
 ### Script inputs and helper modules
 
 - Add JSON inputs, reusable helper modules, compile-only validation and opt-in `McpTaskResult` task outcomes to send-code. Enhanced requests require `send_code_v2` on the selected gateway/add-in pair; default calls retain the legacy wire format.

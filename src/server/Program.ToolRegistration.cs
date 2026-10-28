@@ -102,6 +102,7 @@ namespace RvtMcp.Server
                 types.Add(typeof(AdaptiveBakeTools));
             if (IncludeSendCode(enabled, config)) types.Add(typeof(SendCodeTools));
             if (enabled.Contains("meta"))       types.Add(typeof(MetaTools));
+            if (enabled.Contains("meta"))       types.Add(typeof(ReportTools));
             if (enabled.Contains("meta"))       types.Add(typeof(HealthTools));
             if (enabled.Contains("meta"))       types.Add(typeof(ChangeHistoryTools));
             if (enabled.Contains("meta"))       types.Add(typeof(FailureTools));

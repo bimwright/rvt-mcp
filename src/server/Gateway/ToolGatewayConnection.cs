@@ -43,6 +43,7 @@ namespace RvtMcp.Server
             public bool FailureProtocol;
             public bool DocumentGuard;
             public bool ScriptProtocol;
+            public bool AgentReports;
             /// <summary>
             /// Serializes wire writes on this connection so a blocked writer (plugin
             /// not reading) stalls only this call — never <c>_connectLock</c>, so
@@ -504,6 +505,7 @@ namespace RvtMcp.Server
                 FailureProtocol = desc.Capabilities?.Any(c => string.Equals(c, "controlled_failures_v1", StringComparison.OrdinalIgnoreCase)) == true,
                 DocumentGuard = desc.Capabilities?.Any(c => string.Equals(c, "document_target_v1", StringComparison.OrdinalIgnoreCase)) == true,
                 ScriptProtocol = desc.Capabilities?.Any(c => string.Equals(c, RvtMcp.Scripting.ScriptProtocol.Capability, StringComparison.OrdinalIgnoreCase)) == true,
+                AgentReports = desc.Capabilities?.Any(c => string.Equals(c, "agent_reports_v1", StringComparison.OrdinalIgnoreCase)) == true,
             };
             if (transport is TcpClient tcp)
             {
@@ -642,6 +644,8 @@ namespace RvtMcp.Server
                                 else if (ScriptIdentity.Utf8Bytes(request) > ScriptLimits.WireBytes)
                                     rejection = ScriptErrorCodes.RequestTooLarge + ": Serialized script request exceeds the wire UTF-8 budget.";
                             }
+                            if (rejection == null && string.Equals(command, "report_task_result", StringComparison.OrdinalIgnoreCase) && !conn.AgentReports)
+                                rejection = "AGENT_REPORTS_CAPABILITY_REQUIRED: The pinned Revit add-in does not support agent reports. Update the gateway and Revit add-in together from the same rvt-mcp Setup release, restart Revit, and reconnect/restart the MCP client.";
                             if (rejection == null && (!ToolReadPolicy.IsReadOnly(command) || requireWriteCapabilities) && (!conn.FailureProtocol || !conn.DocumentGuard))
                                 rejection = ToolReadPolicy.AddinPairingRequired;
                             else if (rejection == null && !ToolReadPolicy.IsReadOnly(command)

@@ -4003,6 +4003,28 @@
       "result": "Error: golden probe failure"
     }
   },
+  "revit_report_task_result": {
+    "success": {
+      "calls": [
+        {
+          "command": "report_task_result",
+          "params": "{\"task_id\":\"probe\",\"outcome\":\"completed\",\"summary\":\"probe\",\"body\":null}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "report_task_result",
+          "params": "{\"task_id\":\"probe\",\"outcome\":\"completed\",\"summary\":\"probe\",\"body\":null}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
   "revit_run_baked_tool": {
     "success": {
       "calls": [

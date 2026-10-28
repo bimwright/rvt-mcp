@@ -23,7 +23,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - mep: create_duct, analyze_mep_network
 - annotation: tag_elements, create_dimensions
 - graphics: create_view_filter, override_element_graphics
-- export: export_pdf, export_dwg, export_ifc, export_nwc
+- export: export_pdf, export_dwg
 - materials: list_materials
 - geometry: clash_detection, measure_distance_between_elements
 - rooms: list_rooms, compute_room_finishes
@@ -32,7 +32,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - organization: apply_view_template, save_selection
 - workflows: workflow_clash_review, workflow_model_audit
 - structural: create_structural_column, create_rebar_set
-- meta: open_model, send_code_to_revit, batch_execute
+- meta: open_model, send_code_to_revit, batch_execute, report_task_result
 - lint: find_untagged_elements, get_model_warnings_summary
 - toolbaker: list_baked_tools, run_baked_tool";
     }

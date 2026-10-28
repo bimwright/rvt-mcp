@@ -18,7 +18,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-240%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-241%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -91,23 +91,23 @@ Video cộng đồng giới thiệu rvt-mcp. Cách cài trong video có thể c�
 
 ## Tools
 
-Các số dưới đây khớp **source hiện tại**, đã thêm 3 tool module của `send_code`. **Bản phát hành v1.2.1** có ít hơn 3 tool ở mỗi chế độ.
+Các số dưới đây khớp **source hiện tại**, đã thêm 3 tool module của `send_code` và báo cáo agent. **Bản phát hành v1.2.1** có ít hơn 4 tool ở mỗi chế độ.
 
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
-| Fresh install | **240** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **53** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **240** | Full catalog |
-| `all` + adaptive bake | **243** | Thêm 3 tool vòng đời suggestion |
+| Fresh install | **241** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **54** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **241** | Full catalog |
+| `all` + adaptive bake | **244** | Thêm 3 tool vòng đời suggestion |
 
-Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 53 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline.
+Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 54 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline; báo cáo agent được phép vì chỉ ghi dữ liệu báo cáo của người dùng.
 
 | Toolset | Phạm vi |
 |---------|---------|
 | `query` | View, selection, filter, stats, param, quan hệ, workset, group/assembly |
 | `create` | Grid, level, room, element line/point/surface, group |
 | `view` | Tạo view, layout sheet, capture, crop/scale |
-| `meta` | Batch (tối đa 20), multi-Revit target, recent model, project info, purge (MVP), message, send_code |
+| `meta` | Batch (tối đa 20), multi-Revit target, recent model, project info, purge (MVP), message, send_code, báo cáo agent |
 | `lint` | Pattern đặt tên view, firm-profile, tóm tắt warning |
 | `schedule` | List/tạo schedule, field, formula, data |
 | `families` | Load/unload, type, instance, audit, export `.rfa` (phía project) |
@@ -225,7 +225,7 @@ Journal có đúng tám lựa chọn **1h, 4h, 8h, 12h, 24h, 2d, 7d, 14d**; mặ
 
 ## Permissions & auto mode — quyền chạy tự động
 
-Các controls này có từ v1.0.0. Gói v0.8.1 chưa có các switch mới và cách lọc read-only theo từng tool. Phải gọi `send_code` và `run_baked_tool` trực tiếp; `batch_execute` từ chối hai lệnh này.
+Các controls này có từ v1.0.0. Gói v0.8.1 chưa có các switch mới và cách lọc read-only theo từng tool. Phải gọi `send_code`, `run_baked_tool` và `report_task_result` trực tiếp; `batch_execute` từ chối các lệnh này.
 
 Annotations mô tả tác động lên document/file của từng tool. Đổi selection, active view và zoom tạm thời được tính là read-only. `send_code` không có annotations: không đưa vào quyền tự động, và xác nhận từng lượt chạy code. Với Claude Code, chỉ sao chép allow list read-only bên dưới; không cho phép wildcard rộng `mcp__rvt-mcp__*`. List này ứng với `--toolsets all`; toolsets bạn chọn có thể công bố ít tool hơn.
 
@@ -330,6 +330,7 @@ Annotations mô tả tác động lên document/file của từng tool. Đổi s
       "mcp__rvt-mcp__revit_measure_distance_between_elements",
       "mcp__rvt-mcp__revit_project_point_onto_face",
       "mcp__rvt-mcp__revit_raycast_from_point",
+      "mcp__rvt-mcp__revit_report_task_result",
       "mcp__rvt-mcp__revit_select_elements",
       "mcp__rvt-mcp__revit_show_element_in_view",
       "mcp__rvt-mcp__revit_show_message",
