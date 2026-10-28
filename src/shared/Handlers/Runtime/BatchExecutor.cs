@@ -107,6 +107,15 @@ namespace RvtMcp.Plugin.Handlers
                     continue;
                 }
 
+                // Batch changes enter the report buffer only after the batch finishes.
+                if (string.Equals(cmdName, "report_task_result", StringComparison.OrdinalIgnoreCase))
+                {
+                    outcome.Results.Add(new { index = i, ok = false, error = "report_task_result cannot be invoked through batch_execute; call report_task_result directly." });
+                    outcome.AnyFailed = true;
+                    if (!continueOnError) return outcome;
+                    continue;
+                }
+
                 if (string.Equals(cmdName, "open_model", StringComparison.OrdinalIgnoreCase))
                 {
                     outcome.Results.Add(new { index = i, ok = false, error = "open_model cannot be invoked through batch_execute; open and confirm the document before starting a batch." });

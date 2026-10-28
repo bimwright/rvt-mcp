@@ -32,6 +32,15 @@ namespace RvtMcp.Plugin
             return doc != null && doc.IsValidObject && Documents.TryGetValue(doc, out var token) ? token : null;
         }
 
+        internal static Document TryFind(string token)
+        {
+            RemoveInvalidDocuments();
+            if (token == null) return null;
+            foreach (var pair in Documents)
+                if (string.Equals(pair.Value, token, StringComparison.Ordinal)) return pair.Key;
+            return null;
+        }
+
         internal static string GetOrCreateToken(Document doc)
         {
             RemoveInvalidDocuments();
