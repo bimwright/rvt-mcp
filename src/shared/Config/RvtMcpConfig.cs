@@ -153,6 +153,10 @@ namespace RvtMcp.Plugin
         [JsonProperty("toastDragOffset")]
         public JToken ToastDragOffset { get; set; }
 
+        /// <summary>Reports window <c>{ "mode", "wide", "compact" }</c>; each bounds is <c>{ left, top, width, height }</c> in DIPs.</summary>
+        [JsonProperty("reportsWindow")]
+        public JToken ReportsWindow { get; set; }
+
         /// <summary>Idle duration for the single activity toast. Settings accepts 10, 20, 30, or 60 seconds.</summary>
         [JsonProperty("toastIdleSeconds")]
         public int? ToastIdleSeconds { get; set; }
@@ -286,6 +290,9 @@ namespace RvtMcp.Plugin
         public bool ShowBrandingOrDefault         => ShowBranding      ?? DefaultShowBranding;
         public ToastPositionOptions ToastPositionOrDefault => ReadToastPosition(
             ToastHorizontalAlign, ToastVerticalAlign, ToastDragEnabled, ToastDragOffset);
+        // Plugin-only UI preference: kept off the runtime options sent with every request.
+        [JsonIgnore]
+        public ReportsWindowState ReportsWindowOrDefault => ReadReportsWindow(ReportsWindow);
         public int ToastIdleSecondsOrDefault      => NormalizeToastIdleSeconds(ToastIdleSeconds);
         public int PersistSendCodeBodiesHoursOrDefault => NormalizePersistSendCodeBodiesHours(PersistSendCodeBodiesHours);
 
@@ -781,6 +788,50 @@ namespace RvtMcp.Plugin
                     };
                 else
                     root.Remove("toastDragOffset");
+            }, out error);
+        }
+
+        /// <summary>
+        /// Lenient read of <c>reportsWindow</c>: a mode other than "compact" means wide, and a bounds
+        /// that is not four finite in-range numbers is dropped while the other bounds is kept.
+        /// </summary>
+        internal static ReportsWindowState ReadReportsWindow(JToken token)
+        {
+            var box = token as JObject;
+            var mode = box?["mode"];
+            return new ReportsWindowState(
+                mode != null && mode.Type == JTokenType.String && (string)mode == "compact"
+                    ? ReportsWindowMode.Compact : ReportsWindowMode.Wide,
+                ReadReportsWindowBounds(box?["wide"]),
+                ReadReportsWindowBounds(box?["compact"]));
+        }
+
+        private static ReportsWindowBounds ReadReportsWindowBounds(JToken token)
+        {
+            var box = token as JObject;
+            var left = ReadFinite(box?["left"]);
+            var top = ReadFinite(box?["top"]);
+            var width = ReadFinite(box?["width"]);
+            var height = ReadFinite(box?["height"]);
+            if (!left.HasValue || !top.HasValue || !width.HasValue || !height.HasValue) return null;
+            var bounds = new ReportsWindowBounds(left.Value, top.Value, width.Value, height.Value);
+            return bounds.IsValid ? bounds : null;
+        }
+
+        /// <summary>Persist only <c>reportsWindow</c>; every other key is kept.</summary>
+        public static bool TrySaveReportsWindow(ReportsWindowState state, out string error, string configFilePath = null)
+        {
+            if (state == null) state = new ReportsWindowState();
+            JObject Bounds(ReportsWindowBounds b) => new JObject
+            {
+                ["left"] = b.Left, ["top"] = b.Top, ["width"] = b.Width, ["height"] = b.Height
+            };
+            return TryUpdateConfig(configFilePath, root =>
+            {
+                var box = new JObject { ["mode"] = state.Mode == ReportsWindowMode.Compact ? "compact" : "wide" };
+                if (state.Wide != null) box["wide"] = Bounds(state.Wide);
+                if (state.Compact != null) box["compact"] = Bounds(state.Compact);
+                root["reportsWindow"] = box;
             }, out error);
         }
 

@@ -344,5 +344,50 @@ namespace RvtMcp.Tests
             Assert.Equal("output_path is required.", vm.Summary);
             Assert.Contains("raster image", vm.Detail);
         }
+
+        [Theory]
+        [InlineData("completed", "Completed")]
+        [InlineData("failed", "Failed")]
+        [InlineData("cancelled", "Cancelled")]
+        [InlineData("archived", "")]
+        public void Report_task_result_card_shows_the_report_summary_and_outcome(string outcome, string label)
+        {
+            var vm = ToastContentBuilder.BuildCompleted("report_task_result",
+                "{\"task_id\":\"job-1\",\"outcome\":\"" + outcome + "\",\"summary\":\"Moved 6 valves to level 2\",\"body\":\"# Body\"}",
+                "{\"report_id\":\"0123456789abcdef0123456789abcdef\",\"replaced\":false}", true, null, 25, null);
+
+            Assert.Equal("Agent sent a report", vm.Title);
+            Assert.Equal("Moved 6 valves to level 2", vm.Summary);
+            Assert.Equal(label, vm.Detail);
+            Assert.True(vm.Success);
+        }
+
+        [Fact]
+        public void Report_task_result_summary_is_masked_and_truncated()
+        {
+            var vm = ToastContentBuilder.BuildCompleted("report_task_result",
+                "{\"outcome\":\"completed\",\"summary\":\"Used key sk-abcdefghijklmnopqrstuvwxyz for the export\"}", "{}", true, null, 5, null);
+            Assert.DoesNotContain("sk-abcdefghij", vm.Summary);
+            Assert.Contains("[REDACTED]", vm.Summary);
+
+            var longSummary = new string('a', 150);
+            vm = ToastContentBuilder.BuildCompleted("report_task_result",
+                "{\"outcome\":\"completed\",\"summary\":\"" + longSummary + "\"}", "{}", true, null, 5, null);
+            Assert.Equal(120, vm.Summary.Length);
+            Assert.EndsWith("…", vm.Summary);
+        }
+
+        [Fact]
+        public void Failed_report_task_result_keeps_the_generic_failure_card()
+        {
+            var vm = ToastContentBuilder.BuildCompleted("report_task_result",
+                "{\"outcome\":\"completed\",\"summary\":\"Moved 6 valves\"}", null, false, "The add-in does not support agent reports.", 3, null);
+
+            Assert.Equal(ToolNameFormatter.Format("report_task_result"), vm.Title);
+            Assert.Equal("MCP · Failed", vm.CategoryLabel);
+            Assert.Equal("The add-in does not support agent reports.", vm.Summary);
+            Assert.Equal(ToolNameFormatter.Format("report_task_result"), vm.Detail);
+            Assert.False(vm.Success);
+        }
     }
 }

@@ -51,6 +51,7 @@
     <Compile Include="..\shared\Config\RvtMcpConfig.cs" Link="Shared\Config\RvtMcpConfig.cs" />
     <Compile Include="..\shared\Config\PreferenceValues.cs" Link="Shared\Config\PreferenceValues.cs" />
     <Compile Include="..\shared\Config\ToastPositionOptions.cs" Link="Shared\Config\ToastPositionOptions.cs" />
+    <Compile Include="..\shared\Config\ReportsWindowState.cs" Link="Shared\Config\ReportsWindowState.cs" />
     <Compile Include="..\shared\Logging\PersistSendCodeTtl.cs" Link="Shared\Logging\PersistSendCodeTtl.cs" />
     <Compile Include="..\shared\Security\BakeRedactor.cs" Link="Shared\Security\BakeRedactor.cs" />
     <Compile Include="..\shared\Security\SecretMasker.cs" Link="Shared\Security\SecretMasker.cs" />
