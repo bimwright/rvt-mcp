@@ -73,6 +73,7 @@ src/
 │   ├── ToolCatalog/          # Tool catalogue models shared with the server
 │   ├── Update/               # Update check and notices
 │   ├── ToolBaker/            # Self-evolution engine (list_baked_tools, run_baked_tool, adaptive suggestions)
+│   ├── Reports/              # Agent reports: parser, store, change buffer, click navigation, Reports window
 │   └── Views/                # HistoryWindow, History → Issues
 │
 ├── plugin-r22/               # Revit 2022 shell (.NET 4.8, TCP)

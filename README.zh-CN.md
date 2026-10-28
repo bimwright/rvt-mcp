@@ -141,7 +141,8 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 - **`revit_send_code_to_revit`**（默认开启）在没有合适 typed 工具时，于 Revit 内编译并运行 C# 正文；`--read-only` 或 `--disable-send-code` 会移除它。见 [docs/send-code.md](docs/send-code.md)；楼梯见 [docs/stairs-workflow.md](docs/stairs-workflow.md)。
 - **ToolBaker：** `revit_list_baked_tools` / `revit_run_baked_tool` 需要 `--toolsets toolbaker`。Adaptive bake（`--enable-adaptive-bake`，默认关闭）会根据重复调用建议工具；在你 accept 之前不会添加任何东西。Bake 在 Revit 内编译，不需要 Visual Studio。见 [docs/bake.md](docs/bake.md)。
-- **Ribbon：** 启动或停止连接，打开 **History** 搜索并重跑历史调用，切换完成 **Toast**（默认开启）。
+- **Agent 报告：** `revit_report_task_result`（属于 `meta`）让 agent 在任务完成时留下一份报告。Revit 显示 toast，并在 **Reports** 窗口中列出报告，其中包含可选择元素或打开视图的链接，以及 rvt-mcp 记录的变更。它不修改模型，`--read-only` 下也可用。见 [docs/agent-reports.md](docs/agent-reports.md)。
+- **Ribbon：** 启动或停止连接，打开 **History** 搜索并重跑历史调用，打开 **Reports** 阅读 agent 报告，切换完成 **Toast**（默认开启）。
 - **界面语言：** 插件 UI 支持 15 种语言，默认跟随 Revit 的界面语言；可通过 ribbon 滑出面板中的 **Language** 按钮更改，该按钮会打开 **Settings → General → Language**（`BIMWRIGHT_UI_LANGUAGE` 仍然优先）。工具名与 payload 保持英文。见 [docs/localization.md](docs/localization.md)。
 
 ### 为什么有活动 toast
@@ -202,6 +203,7 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 | Budget bytes | `--response-budget-bytes` | `BIMWRIGHT_RESPONSE_BUDGET_BYTES` | `responseBudgetBytes` |
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | spill 文件保留时间（默认 36 小时） | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
+| Agent 报告保留时间（默认 30 天） | — | — | `reportRetentionDays` |
 | LAN 绑定（插件） | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | ToolBaker 表面 | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
@@ -410,6 +412,7 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 | [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md) | 各客户端 MCP 接入步骤 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 进程、传输、DTO 规则 |
 | [docs/send-code.md](docs/send-code.md) | send_code 源码形式与失败处理 |
+| [docs/agent-reports.md](docs/agent-reports.md) | Agent 报告：链接语法、限制、存储 |
 | [docs/bake.md](docs/bake.md) | Adaptive bake 与正文隐私 |
 | [docs/localization.md](docs/localization.md) | 界面语言、覆盖、热重载 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 构建、测试、新增工具 |

@@ -142,7 +142,8 @@ Lời gọi thiếu tham số bắt buộc sẽ không chạy. Nó trả `INVALI
 
 - **`revit_send_code_to_revit`** (bật mặc định) compile và chạy body C# trong Revit khi không có typed tool phù hợp; `--read-only` hoặc `--disable-send-code` sẽ gỡ nó. Xem [docs/send-code.md](docs/send-code.md), và [docs/stairs-workflow.md](docs/stairs-workflow.md) cho cầu thang.
 - **ToolBaker:** `revit_list_baked_tools` / `revit_run_baked_tool` cần `--toolsets toolbaker`. Adaptive bake (`--enable-adaptive-bake`, mặc định tắt) gợi ý tool từ các lời gọi lặp lại; không có gì được thêm cho tới khi bạn accept. Bake compile ngay trong Revit — không cần Visual Studio. Xem [docs/bake.md](docs/bake.md).
-- **Ribbon:** bật/tắt kết nối, mở **History** để tìm và chạy lại các lời gọi trước, và bật/tắt **Toast** hoàn thành (mặc định bật).
+- **Agent reports:** `revit_report_task_result` (trong `meta`) cho agent để lại một báo cáo khi xong việc. Revit hiện toast và liệt kê báo cáo trong cửa sổ **Reports**, kèm link để chọn element hoặc mở view, và các thay đổi rvt-mcp đã ghi nhận. Tool không sửa model và dùng được với `--read-only`. Xem [docs/agent-reports.md](docs/agent-reports.md).
+- **Ribbon:** bật/tắt kết nối, mở **History** để tìm và chạy lại các lời gọi trước, mở **Reports** để đọc báo cáo của agent, và bật/tắt **Toast** hoàn thành (mặc định bật).
 - **Ngôn ngữ giao diện:** UI của add-in có 15 ngôn ngữ và theo ngôn ngữ giao diện của Revit; đổi bằng nút **Language** trong slide-out của ribbon — nút mở **Settings → tab General → nhóm Language** (`BIMWRIGHT_UI_LANGUAGE` vẫn thắng). Tên tool và payload vẫn là tiếng Anh. Xem [docs/localization.md](docs/localization.md).
 
 ### Vì sao có toast thông báo hoạt động?
@@ -203,6 +204,7 @@ Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cụ
 | Budget bytes | `--response-budget-bytes` | `BIMWRIGHT_RESPONSE_BUDGET_BYTES` | `responseBudgetBytes` |
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | Thời gian giữ file spill (mặc định 36 giờ) | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
+| Thời gian giữ báo cáo của agent (mặc định 30 ngày) | — | — | `reportRetentionDays` |
 | LAN bind (plugin) | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | ToolBaker surface | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
@@ -411,6 +413,7 @@ Thêm: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).
 | [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md) | Nối MCP theo từng client |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Process, transport, DTO |
 | [docs/send-code.md](docs/send-code.md) | Dạng source và xử lý lỗi của send_code |
+| [docs/agent-reports.md](docs/agent-reports.md) | Báo cáo của agent: cú pháp link, giới hạn, lưu trữ |
 | [docs/bake.md](docs/bake.md) | Adaptive bake và privacy body |
 | [docs/localization.md](docs/localization.md) | Ngôn ngữ UI, override, hot reload |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Build, test, thêm tool |
