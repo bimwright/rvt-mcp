@@ -55,6 +55,8 @@ namespace RvtMcp.Plugin
         public const bool DefaultPersistSendCodeBodies     = false;
         public const int DefaultToastIdleSeconds           = PreferenceValues.DefaultToastIdleSeconds;
         public const int DefaultPersistSendCodeBodiesHours = PreferenceValues.DefaultJournalHours;
+        public const int DefaultReportRetentionDays        = 30;
+        public const int MaxReportRetentionDays            = 3650;
         public const int DefaultSpillRetentionHours        = 36;
         public const int MaxSpillRetentionHours            = 24 * 365;
 
@@ -101,6 +103,9 @@ namespace RvtMcp.Plugin
 
         [JsonProperty("maxResponseBytes")]
         public int? MaxResponseBytes { get; set; }
+
+        [JsonProperty("reportRetentionDays")]
+        public JToken ReportRetentionDays { get; set; }
 
         /// <summary>
         /// Hours a spill file is kept after it is written (default 36). Read leniently: a missing,
@@ -185,6 +190,18 @@ namespace RvtMcp.Plugin
         public int ResponseStrongWarnBytesOrDefault => PositiveBytes(ResponseStrongWarnBytes, 256 * 1024, "responseStrongWarnBytes");
         public int ResponseBudgetBytesOrDefault => PositiveBytes(ResponseBudgetBytes, 700 * 1024, "responseBudgetBytes");
         public int MaxResponseBytesOrDefault => PositiveBytes(MaxResponseBytes, 1024 * 1024, "maxResponseBytes");
+
+        public int ReportRetentionDaysOrDefault => NormalizeReportRetentionDays(ReportRetentionDays);
+
+        public static int NormalizeReportRetentionDays(JToken value)
+        {
+            if (value == null || (value.Type != JTokenType.Integer && value.Type != JTokenType.String))
+                return DefaultReportRetentionDays;
+            var text = value.Type == JTokenType.String ? value.Value<string>() : value.ToString(Formatting.None);
+            return int.TryParse(text?.Trim(), System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out var days)
+                && days >= 1 && days <= MaxReportRetentionDays ? days : DefaultReportRetentionDays;
+        }
 
         public int SpillRetentionHoursOrDefault => NormalizeSpillRetentionHours(SpillRetentionHours);
 
