@@ -19,6 +19,9 @@
     See `Checklist-Bimwright-v0.1.0.md` P2-001 scope — "Option 2 refined".
   -->
   <ItemGroup>
+    <Compile Include="..\..\src\shared\Presentation\Common\ObservableObject.cs" Link="Shared\Presentation\Common\ObservableObject.cs" />
+    <Compile Include="..\..\src\shared\Presentation\Common\RelayCommand.cs" Link="Shared\Presentation\Common\RelayCommand.cs" />
+    <Compile Include="..\..\src\shared\Reports\Presentation\**\*.cs" LinkBase="Shared\Reports\Presentation" />
     <Compile Include="..\..\src\shared\Reports\Binding\**\*.cs" LinkBase="Shared\Reports\Binding" />
     <Compile Include="..\..\src\shared\Reports\Changes\**\*.cs" LinkBase="Shared\Reports\Changes" />
     <Compile Include="..\..\src\shared\Reports\Storage\**\*.cs" LinkBase="Shared\Reports\Storage" />
