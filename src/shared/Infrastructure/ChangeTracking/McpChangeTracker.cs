@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Events;
 using Newtonsoft.Json.Linq;
+using RvtMcp.Plugin.Reports.Changes;
+using RvtMcp.Plugin.Reports.Model;
 
 namespace RvtMcp.Plugin
 {
@@ -21,9 +23,47 @@ namespace RvtMcp.Plugin
         {
             Survey.SurveyHistoryBridge.DocumentChanged(); // UI edits and Undo invalidate RAM only; they are not persisted.
             var scope = _active;
-            if (scope == null) return;
+            if (scope == null)
+            {
+                try
+                {
+                    if (e.Operation != UndoOperation.TransactionCommitted && e.Operation != UndoOperation.TransactionRolledBack)
+                        ReportChangeBuffer.Shared.MarkIncomplete(DocumentTargetGuard.TryGetToken(e.GetDocument()));
+                }
+                catch (Exception ex) { try { App.DebugLog("Report change invalidation failed: " + ex.Message); } catch { } }
+                return;
+            }
             try { scope.Record(e); }
             catch { scope.Incomplete = true; } // Diagnostics must never interrupt a model transaction.
+        }
+
+        private static JObject ModelIdentity(Document doc)
+        {
+            // A detached session must not write history into the source central's database.
+            if (doc.IsDetached) return null;
+            if (doc.IsModelInCloud)
+            {
+                var cloud = doc.GetCloudModelPath();
+                return ChangeHistoryIdentity.Create(cloud.GetProjectGUID() + "/" + cloud.GetModelGUID(), "cloud", doc.Title);
+            }
+            var path = doc.IsWorkshared
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath()) : doc.PathName;
+            return ChangeHistoryIdentity.Create(path, doc.IsWorkshared ? "central" : "file", doc.Title, path);
+        }
+
+        internal static ReportDocument DescribeForReport(Document doc)
+        {
+            JObject identity = null;
+            try { identity = ModelIdentity(doc); }
+            catch (Exception ex) { try { App.DebugLog("Report model identity failed: " + ex.Message); } catch { } }
+            return new ReportDocument
+            {
+                Token = DocumentTargetGuard.GetOrCreateToken(doc),
+                ModelKey = identity?.Value<string>("key"),
+                Title = doc.Title,
+                IsFamily = doc.IsFamilyDocument,
+                Kind = identity?.Value<string>("kind") ?? (doc.IsDetached ? ReportDocumentKinds.Detached : ReportDocumentKinds.Unsaved)
+            };
         }
 
         public sealed class Scope : IDisposable
@@ -33,9 +73,11 @@ namespace RvtMcp.Plugin
                 public readonly DocumentChangeAccumulator Changes = new DocumentChangeAccumulator();
                 public string Title;
                 public JObject Identity;
+                public ReportDocument Report;
             }
             private readonly Dictionary<Document, CapturedDocument> _documents = new Dictionary<Document, CapturedDocument>();
             private readonly bool _history;
+            private bool _reportIncomplete;
             internal bool Incomplete;
             internal Scope(bool history) { _history = history; }
 
@@ -48,6 +90,12 @@ namespace RvtMcp.Plugin
                     if (_documents.Count >= 8) { Incomplete = true; return; }
                     _documents[doc] = captured = new CapturedDocument
                     { Title = doc.Title, Identity = _history ? Identity(doc) : null };
+                    try { captured.Report = DescribeForReport(doc); }
+                    catch (Exception ex)
+                    {
+                        _reportIncomplete = true;
+                        try { App.DebugLog("Report document capture failed: " + ex.Message); } catch { }
+                    }
                 }
                 var changes = captured.Changes;
                 if (e.Operation != UndoOperation.TransactionCommitted)
@@ -67,7 +115,16 @@ namespace RvtMcp.Plugin
                 {
                     // Deleted elements no longer exist. Do not scan the whole model to guess their category.
                     var element = kind == "deleted" ? null : doc.GetElement(id);
-                    changes.Observe(RevitCompat.GetId(id), kind, element?.Category?.Name, _history ? element?.UniqueId : null);
+                    var elementId = RevitCompat.GetId(id);
+                    var category = element?.Category?.Name;
+                    string uniqueId = null;
+                    if (_history) uniqueId = element?.UniqueId;
+                    else
+                    {
+                        try { uniqueId = element?.UniqueId; }
+                        catch (Exception ex) { _reportIncomplete = true; try { App.DebugLog("Report unique ID capture failed: " + ex.Message); } catch { } }
+                    }
+                    changes.Observe(elementId, kind, category, uniqueId);
                 }
             }
 
@@ -76,20 +133,7 @@ namespace RvtMcp.Plugin
                 if (doc == null) return null;
                 try
                 {
-                    // A detached session must not write history into the source central's database.
-                    if (doc.IsDetached) return null;
-                    JObject identity;
-                    if (doc.IsModelInCloud)
-                    {
-                        var cloud = doc.GetCloudModelPath();
-                        identity = ChangeHistoryIdentity.Create(cloud.GetProjectGUID() + "/" + cloud.GetModelGUID(), "cloud", doc.Title);
-                    }
-                    else
-                    {
-                        var path = doc.IsWorkshared
-                            ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath()) : doc.PathName;
-                        identity = ChangeHistoryIdentity.Create(path, doc.IsWorkshared ? "central" : "file", doc.Title, path);
-                    }
+                    var identity = ModelIdentity(doc);
                     if (identity != null)
                     {
                         identity["physicalKey"] = HistoryFileIdentity.TryGet(identity.Value<string>("path"), App.DebugLog);
@@ -120,6 +164,25 @@ namespace RvtMcp.Plugin
                     HistoryDiagnostics.Report("history_identity", ex, log: App.DebugLog);
                     return null;
                 } // Never assign a title-based identity when the authoritative identity is unavailable.
+            }
+
+            internal CommandChanges ReportSnapshot(bool batchRolledBack)
+            {
+                if (batchRolledBack) return new CommandChanges();
+                var result = new CommandChanges { Incomplete = Incomplete || _reportIncomplete };
+                foreach (var captured in _documents.Values)
+                {
+                    if (captured.Report == null) { result.Incomplete = true; continue; }
+                    var document = new CommandDocumentChanges { Document = captured.Report, Incomplete = captured.Changes.IsIncomplete };
+                    foreach (var element in captured.Changes.ReportElements("added"))
+                        document.Added.Add(new ReportChangedElement { Id = element.Id, UniqueId = element.UniqueId, Category = element.Category });
+                    foreach (var element in captured.Changes.ReportElements("modified"))
+                        document.Modified.Add(new ReportChangedElement { Id = element.Id, UniqueId = element.UniqueId, Category = element.Category });
+                    foreach (var element in captured.Changes.ReportElements("deleted"))
+                        document.Deleted.Add(new ReportChangedElement { Id = element.Id });
+                    result.Documents.Add(document);
+                }
+                return result;
             }
 
             public JObject HistorySnapshot(Document activeDocument, bool batchRolledBack = false)

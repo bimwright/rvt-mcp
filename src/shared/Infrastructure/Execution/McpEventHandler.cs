@@ -200,6 +200,12 @@ namespace RvtMcp.Plugin
                         finally
                         {
                             changes = capture.Snapshot(rolledBack);
+                            try
+                            {
+                                if (request.CommandName != "report_task_result")
+                                    Reports.Changes.ReportChangeBuffer.Shared.Push(capture.ReportSnapshot(rolledBack));
+                            }
+                            catch (Exception ex) { try { App.DebugLog("Report change capture failed: " + ex.Message); } catch { } }
                             try { history = capture.HistorySnapshot(app.ActiveUIDocument?.Document, rolledBack); }
                             catch (Exception ex)
                             {

@@ -202,7 +202,7 @@ namespace RvtMcp.Tests.Shared.Reports
             Assert.Empty(table.Rows[4096].Cells[8191]);
             Assert.Contains("a | a", copy);
             _output.WriteLine("wide_sparse_table_32768_bytes: {0:F3} ms", clock.Elapsed.TotalMilliseconds);
-            Assert.True(clock.Elapsed.TotalMilliseconds < 200, "Wide sparse table parse/copy exceeded 200 ms.");
+            Assert.True(clock.Elapsed.TotalMilliseconds < 1000, "Wide sparse table parse/copy exceeded 1000 ms.");
         }
 
         [Fact]

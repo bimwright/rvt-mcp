@@ -47,6 +47,26 @@ namespace RvtMcp.Plugin
             if (uniqueId != null) _uniqueIds[id] = uniqueId;
         }
 
+        public sealed class ChangedElement
+        {
+            public long Id { get; set; }
+            public string UniqueId { get; set; }
+            public string Category { get; set; }
+        }
+
+        public bool IsIncomplete => _incomplete != null;
+
+        public IEnumerable<ChangedElement> ReportElements(string kind)
+        {
+            if (IsIncomplete) return Array.Empty<ChangedElement>();
+            return _kinds.Where(p => p.Value == kind).OrderBy(p => p.Key).Select(p => new ChangedElement
+            {
+                Id = p.Key,
+                UniqueId = _uniqueIds.TryGetValue(p.Key, out var uniqueId) ? uniqueId : null,
+                Category = _categories.TryGetValue(p.Key, out var category) ? category : null
+            }).ToArray();
+        }
+
         public JArray HistoryElements()
         {
             // Unobservable rollback invalidates the alleged final set, not just the public summary.

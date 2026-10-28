@@ -19,6 +19,7 @@
     See `Checklist-Bimwright-v0.1.0.md` P2-001 scope — "Option 2 refined".
   -->
   <ItemGroup>
+    <Compile Include="..\..\src\shared\Reports\Changes\**\*.cs" LinkBase="Shared\Reports\Changes" />
     <Compile Include="..\..\src\shared\Reports\Storage\**\*.cs" LinkBase="Shared\Reports\Storage" />
     <Compile Include="..\..\src\shared\Reports\Model\**\*.cs" Exclude="..\..\src\shared\Reports\Model\ReportLimits.cs" LinkBase="Shared\Reports\Model" />
     <Compile Include="../../src/shared/Views/Toast/ToastActivityEntry.cs" Link="Shared/Views/Toast/ToastActivityEntry.cs" />

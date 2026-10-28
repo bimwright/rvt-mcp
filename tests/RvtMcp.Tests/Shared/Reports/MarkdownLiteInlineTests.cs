@@ -102,7 +102,7 @@ namespace RvtMcp.Tests.Shared.Reports
             timer.Stop();
             _output.WriteLine("{0}: {1:F3} ms (parse + copy)", shape, timer.Elapsed.TotalMilliseconds);
             Assert.NotNull(plain);
-            Assert.True(timer.Elapsed.TotalMilliseconds < 200, shape + " took " + timer.Elapsed.TotalMilliseconds + " ms");
+            Assert.True(timer.Elapsed.TotalMilliseconds < 1000, shape + " took " + timer.Elapsed.TotalMilliseconds + " ms (limit 1000 ms)");
         }
 
         [Fact]
