@@ -432,7 +432,7 @@
   "reports.empty.noModelReports": "Nessun rapporto per questo modello. Scegli Tutti per vedere gli altri rapporti.",
   "reports.empty.noReports": "Nessun rapporto disponibile.",
   "reports.delete.button": "Elimina",
-  "reports.delete.confirm": "Conferma eliminazione",
+  "reports.delete.confirm": "Confermi?",
   "reports.status.deleted": "Rapporto eliminato.",
   "reports.status.deleteFailed": "Impossibile eliminare il rapporto.",
   "reports.status.loadFailed": "Impossibile caricare i rapporti.",

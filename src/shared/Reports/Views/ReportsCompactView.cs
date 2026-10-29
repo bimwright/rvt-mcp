@@ -284,7 +284,7 @@ namespace RvtMcp.Plugin.Reports.Views
         }
     }
 
-    /// <summary>Open card content: meta, body, changes chip and list, Copy / Delete.</summary>
+    /// <summary>Open card content: meta with Copy / Delete at its right, as in wide mode, then body, changes chip and list.</summary>
     internal sealed class CompactCardBody : StackPanel, IDisposable
     {
         private readonly ReportsViewModel _vm;
@@ -306,7 +306,18 @@ namespace RvtMcp.Plugin.Reports.Views
                 meta.Children.Add(Spaced(new TextBlock { Text = detail.ModelName, FontSize = 11.5, Foreground = ReportsStyles.TextSecondary,
                     VerticalAlignment = VerticalAlignment.Center }));
             meta.Children.Add(Spaced(ReportsStyles.SelfReportedChip(L.T("reports.detail.unverifiedShort"))));
-            Children.Add(meta);
+            _copy = ReportsStyles.CopyButton(_vm.CopyCommand);
+            _copy.Width = _copy.MinWidth = _copy.Height = 24;
+            _copy.FontSize = 12;
+            _delete = ReportsStyles.DeleteButton(_vm.DeleteCommand);
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(8, 0, 0, 0) };
+            actions.Children.Add(_copy);
+            actions.Children.Add(_delete);
+            DockPanel.SetDock(actions, Dock.Right);
+            var top = new DockPanel();
+            top.Children.Add(actions);
+            top.Children.Add(meta);
+            Children.Add(top);
 
             _body = new ReportBodyView { Margin = new Thickness(0, 8, 0, 0) };
             _body.SetDetail(detail);
@@ -336,16 +347,6 @@ namespace RvtMcp.Plugin.Reports.Views
                 if (!string.IsNullOrEmpty(changes.IncompleteText)) Children.Add(Note(changes.IncompleteText, ReportsStyles.WarningText));
                 if (!string.IsNullOrEmpty(changes.TruncatedText)) Children.Add(Note(changes.TruncatedText, ReportsStyles.TextSecondary));
             }
-
-            var small = (Style)ReportsStyles.Dictionary[BimwrightStyles.ToolbarButtonKey];
-            _copy = ReportsStyles.CopyButton(_vm.CopyCommand);
-            _copy.Width = _copy.MinWidth = _copy.Height = 24;
-            _copy.FontSize = 12;
-            _delete = SmallButton(small, "", _vm.DeleteCommand);
-            var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(-3, 6, 0, 0) };
-            actions.Children.Add(_copy);
-            actions.Children.Add(_delete);
-            Children.Add(actions);
             Sync();
         }
 
@@ -368,11 +369,23 @@ namespace RvtMcp.Plugin.Reports.Views
                 if (expanded && _changesHost.Child == null) _changesHost.Child = new ReportChangesView(Detail.Changes);
                 _changesHost.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
             }
-            _delete.Content = _vm.DeleteLabel;
             var pending = _vm.IsDeleteConfirmationPending;
-            var style = (Style)ReportsStyles.Dictionary[pending ? ReportsStyles.DangerButtonKey : BimwrightStyles.ToolbarButtonKey];
-            _delete.Style = style;
-            ApplySmall(_delete);
+            ReportsStyles.SyncDeleteButton(_delete, pending, _vm.DeleteLabel);
+            // Same 24 px square as Copy; the confirm text sizes the button to itself.
+            _delete.Height = 24;
+            if (pending)
+            {
+                _delete.ClearValue(WidthProperty);
+                _delete.ClearValue(MinWidthProperty);
+                _delete.FontSize = 11.5;
+                _delete.Padding = new Thickness(8, 1, 8, 1);
+            }
+            else
+            {
+                _delete.Width = _delete.MinWidth = 24;
+                _delete.FontSize = 12;
+                _delete.ClearValue(Control.PaddingProperty);
+            }
         }
 
         public void Dispose()
@@ -388,20 +401,6 @@ namespace RvtMcp.Plugin.Reports.Views
         {
             Text = text, FontSize = 12, Foreground = foreground, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), Tag = "ChangesNote"
         };
-
-        private static Button SmallButton(Style style, string text, ICommand command)
-        {
-            var button = new Button { Style = style, Content = text, Command = command };
-            ApplySmall(button);
-            return button;
-        }
-
-        private static void ApplySmall(Button button)
-        {
-            button.FontSize = 11.5;
-            button.Height = 24;
-            button.Padding = new Thickness(8, 1, 8, 1);
-        }
 
         private static FrameworkElement Spaced(FrameworkElement element)
         {

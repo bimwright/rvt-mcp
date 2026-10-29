@@ -432,7 +432,7 @@
   "reports.empty.noModelReports": "Brak raportów dla tego modelu. Wybierz Wszystkie, aby zobaczyć pozostałe raporty.",
   "reports.empty.noReports": "Nie ma jeszcze raportów.",
   "reports.delete.button": "Usuń",
-  "reports.delete.confirm": "Potwierdź usunięcie",
+  "reports.delete.confirm": "Potwierdzić?",
   "reports.status.deleted": "Raport usunięto.",
   "reports.status.deleteFailed": "Nie można usunąć raportu.",
   "reports.status.loadFailed": "Nie można wczytać raportów.",

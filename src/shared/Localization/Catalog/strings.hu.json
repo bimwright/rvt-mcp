@@ -432,7 +432,7 @@
   "reports.empty.noModelReports": "Ehhez a modellhez nincs jelentés. A többi jelentéshez válassza az Összes lehetőséget.",
   "reports.empty.noReports": "Még nincs jelentés.",
   "reports.delete.button": "Törlés",
-  "reports.delete.confirm": "Törlés megerősítése",
+  "reports.delete.confirm": "Megerősíti?",
   "reports.status.deleted": "Jelentés törölve.",
   "reports.status.deleteFailed": "A jelentést nem sikerült törölni.",
   "reports.status.loadFailed": "A jelentéseket nem sikerült betölteni.",

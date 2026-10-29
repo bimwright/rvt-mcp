@@ -92,7 +92,7 @@ namespace RvtMcp.Plugin.Reports.Views
                 VerticalAlignment = VerticalAlignment.Center };
             _meta = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
             _copy = ReportsStyles.CopyButton(_vm.CopyCommand);
-            _delete = new Button { Command = _vm.DeleteCommand, Margin = new Thickness(3, 2, 0, 2) };
+            _delete = ReportsStyles.DeleteButton(_vm.DeleteCommand);
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12, -2, 0, 0) };
             buttons.Children.Add(_copy);
             buttons.Children.Add(_delete);
@@ -214,12 +214,7 @@ namespace RvtMcp.Plugin.Reports.Views
             _allFilter.IsChecked = _vm.Filter == ReportFilter.All;
         }
 
-        private void SyncDelete()
-        {
-            _delete.Content = _vm.DeleteLabel;
-            _delete.Style = (Style)ReportsStyles.Dictionary[_vm.IsDeleteConfirmationPending
-                ? ReportsStyles.DangerButtonKey : BimwrightStyles.ToolbarButtonKey];
-        }
+        private void SyncDelete() => ReportsStyles.SyncDeleteButton(_delete, _vm.IsDeleteConfirmationPending, _vm.DeleteLabel);
 
         private void SyncList()
         {

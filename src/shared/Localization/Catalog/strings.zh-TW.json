@@ -432,7 +432,7 @@
   "reports.empty.noModelReports": "此模型沒有報告。選擇「全部」可查看其他報告。",
   "reports.empty.noReports": "尚無報告。",
   "reports.delete.button": "刪除",
-  "reports.delete.confirm": "確認刪除",
+  "reports.delete.confirm": "確認刪除？",
   "reports.status.deleted": "報告已刪除。",
   "reports.status.deleteFailed": "無法刪除報告。",
   "reports.status.loadFailed": "無法載入報告。",

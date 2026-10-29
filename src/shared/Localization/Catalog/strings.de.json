@@ -432,7 +432,7 @@
   "reports.empty.noModelReports": "Keine Berichte für dieses Modell. Wählen Sie Alle, um weitere Berichte anzuzeigen.",
   "reports.empty.noReports": "Noch keine Berichte.",
   "reports.delete.button": "Löschen",
-  "reports.delete.confirm": "Löschen bestätigen",
+  "reports.delete.confirm": "Bestätigen?",
   "reports.status.deleted": "Bericht gelöscht.",
   "reports.status.deleteFailed": "Der Bericht konnte nicht gelöscht werden.",
   "reports.status.loadFailed": "Berichte konnten nicht geladen werden.",

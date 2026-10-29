@@ -241,6 +241,7 @@ namespace RvtMcp.Plugin.Reports.Views
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
+            ReportsScreen.RoundCorners(this);
             var mode = Config(_mode);
             var saved = _state.BoundsFor(mode);
             Place(mode, saved, saved == null ? (ToastBounds?)null : Rect(saved));

@@ -22,7 +22,7 @@ Exit code 0 requires all checks to pass:
 7. Actual changes: badges, notes for no data / no changes / incomplete / truncated, struck-through deleted ids, document titles, compact chip collapsed by default, 200 items per group, then up to 1,000 more per "Show N more" press.
 8. Reload: unchanged data keeps the `FlowDocument` and both scroll offsets; a new report at the top keeps the selection.
 9. `ShowReport` for another model's report: filter goes to All, the report is selected and scrolled into view (compact card open).
-10. Two-step delete with the danger style, copy sends plain text and shows Success.
+10. Delete is an "X" icon; the first click turns it into the red confirm text, as wide as the text, and the second deletes. In compact mode Copy and Delete sit at the top right of the open card. Copy sends plain text and shows Success.
 11. Status line: four tones in the PLAN colours, the hint when empty.
 12. Empty: no active document shows the empty text; All shows the list (both modes).
 13. Language: `fr` then `ja` change title, filter and outcome text; selection, mode and filter stay.

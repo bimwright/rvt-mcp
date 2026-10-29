@@ -432,7 +432,7 @@
   "reports.empty.noModelReports": "Não há relatórios para este modelo. Escolha Todos para ver outros relatórios.",
   "reports.empty.noReports": "Ainda não há relatórios.",
   "reports.delete.button": "Excluir",
-  "reports.delete.confirm": "Confirmar exclusão",
+  "reports.delete.confirm": "Confirmar?",
   "reports.status.deleted": "Relatório excluído.",
   "reports.status.deleteFailed": "Não foi possível excluir o relatório.",
   "reports.status.loadFailed": "Não foi possível carregar os relatórios.",

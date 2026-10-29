@@ -451,7 +451,7 @@
   "reports.empty.noModelReports": "No reports for this model. Choose All to see other reports.",
   "reports.empty.noReports": "No reports yet.",
   "reports.delete.button": "Delete",
-  "reports.delete.confirm": "Confirm delete",
+  "reports.delete.confirm": "Confirm?",
   "reports.status.deleted": "Report deleted.",
   "reports.status.deleteFailed": "Could not delete the report.",
   "reports.status.loadFailed": "Could not load reports.",

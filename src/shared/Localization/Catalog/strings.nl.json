@@ -432,7 +432,7 @@
   "reports.empty.noModelReports": "Geen rapporten voor dit model. Kies Alles om andere rapporten te zien.",
   "reports.empty.noReports": "Nog geen rapporten.",
   "reports.delete.button": "Verwijderen",
-  "reports.delete.confirm": "Verwijderen bevestigen",
+  "reports.delete.confirm": "Bevestigen?",
   "reports.status.deleted": "Rapport verwijderd.",
   "reports.status.deleteFailed": "Het rapport kon niet worden verwijderd.",
   "reports.status.loadFailed": "Rapporten konden niet worden geladen.",

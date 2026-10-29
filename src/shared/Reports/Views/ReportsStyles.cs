@@ -151,6 +151,20 @@ namespace RvtMcp.Plugin.Reports.Views
             return button;
         }
 
+        /// <summary>Delete next to Copy: an "X" icon button; <see cref="SyncDeleteButton"/> sets its two-step state.</summary>
+        public static Button DeleteButton(ICommand command) => new Button
+        {
+            Command = command, ToolTip = L.T("reports.delete.button"), Margin = new Thickness(3, 2, 0, 2), VerticalAlignment = VerticalAlignment.Center
+        };
+
+        /// <summary>The "X" icon, or while the delete waits for its second click, the red confirm text in a button as wide as the text.</summary>
+        public static void SyncDeleteButton(Button button, bool pending, string label)
+        {
+            button.Style = (Style)Dictionary[pending ? DangerButtonKey : BimwrightStyles.IconButtonKey];
+            button.Content = pending ? label : "";
+            AutomationProperties.SetName(button, label);
+        }
+
         public static SolidColorBrush Brush(uint argb)
         {
             var brush = new SolidColorBrush(Color.FromArgb((byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb));

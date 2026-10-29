@@ -432,7 +432,7 @@
   "reports.empty.noModelReports": "このモデルのレポートはありません。「すべて」を選択すると他のレポートを表示できます。",
   "reports.empty.noReports": "レポートはまだありません。",
   "reports.delete.button": "削除",
-  "reports.delete.confirm": "削除を確認",
+  "reports.delete.confirm": "削除しますか？",
   "reports.status.deleted": "レポートを削除しました。",
   "reports.status.deleteFailed": "レポートを削除できませんでした。",
   "reports.status.loadFailed": "レポートを読み込めませんでした。",

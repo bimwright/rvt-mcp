@@ -23,6 +23,7 @@ namespace RvtMcp.Plugin.Reports.Views
     public sealed class ReportsScreen : IReportsScreen
     {
         private const uint MonitorDefaultToNearest = 2;
+        private const int DwmWindowCornerPreference = 33, DwmCornerRoundSmall = 3;
 
         public ToastBounds? GetOwnerBounds(Window window)
         {
@@ -72,6 +73,20 @@ namespace RvtMcp.Plugin.Reports.Views
             var toDip = source.CompositionTarget.TransformFromDevice;
             return new Thickness(Math.Max(0, info.Work.Left - rect.Left) * toDip.M11, Math.Max(0, info.Work.Top - rect.Top) * toDip.M22,
                 Math.Max(0, rect.Right - info.Work.Right) * toDip.M11, Math.Max(0, rect.Bottom - info.Work.Bottom) * toDip.M22);
+        }
+
+        /// <summary>
+        /// Asks Windows 11 for small (4 px) rounded corners; a WindowChrome window without a glass frame stays square otherwise.
+        /// Earlier Windows reject the attribute and keep square corners. A maximized window is never rounded.
+        /// </summary>
+        internal static void RoundCorners(Window window)
+        {
+            var hwnd = window == null ? IntPtr.Zero : new WindowInteropHelper(window).Handle;
+            if (hwnd == IntPtr.Zero) return;
+            var preference = DwmCornerRoundSmall;
+            try { DwmSetWindowAttribute(hwnd, DwmWindowCornerPreference, ref preference, sizeof(int)); }
+            catch (DllNotFoundException) { }
+            catch (EntryPointNotFoundException) { }
         }
 
         private static IntPtr OwnerHandle(Window window)
@@ -130,5 +145,8 @@ namespace RvtMcp.Plugin.Reports.Views
 
         [DllImport("user32.dll")]
         private static extern uint GetDpiForWindow(IntPtr hwnd);
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
     }
 }

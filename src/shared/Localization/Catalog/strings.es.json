@@ -432,7 +432,7 @@
   "reports.empty.noModelReports": "No hay informes para este modelo. Elige Todos para ver otros informes.",
   "reports.empty.noReports": "Aún no hay informes.",
   "reports.delete.button": "Eliminar",
-  "reports.delete.confirm": "Confirmar eliminación",
+  "reports.delete.confirm": "¿Confirmar?",
   "reports.status.deleted": "Informe eliminado.",
   "reports.status.deleteFailed": "No se pudo eliminar el informe.",
   "reports.status.loadFailed": "No se pudieron cargar los informes.",

@@ -432,7 +432,7 @@
   "reports.empty.noModelReports": "Pro tento model nejsou žádné zprávy. Další zprávy zobrazíte volbou Vše.",
   "reports.empty.noReports": "Zatím žádné zprávy.",
   "reports.delete.button": "Smazat",
-  "reports.delete.confirm": "Potvrdit smazání",
+  "reports.delete.confirm": "Potvrdit?",
   "reports.status.deleted": "Zpráva byla smazána.",
   "reports.status.deleteFailed": "Zprávu se nepodařilo smazat.",
   "reports.status.loadFailed": "Zprávy se nepodařilo načíst.",

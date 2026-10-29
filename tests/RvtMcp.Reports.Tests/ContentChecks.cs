@@ -317,15 +317,15 @@ internal static class ContentChecks
         {
             var view = s.Wide;
             s.Select("r04");
-            Expect((view.DeleteButton.Content as string) == L.T("reports.delete.button"), "delete starts as Delete");
+            Expect(IsDeleteIcon(view.DeleteButton), "delete starts as the X icon with a Delete tooltip and name");
             Click(view.DeleteButton);
-            Expect((view.DeleteButton.Content as string) == L.T("reports.delete.confirm")
-                && ReferenceEquals(view.DeleteButton.Style, ReportsStyles.Dictionary[ReportsStyles.DangerButtonKey]), "first click asks to confirm in danger style");
+            Pump();
+            Expect(IsConfirm(view.DeleteButton) && view.DeleteButton.ActualWidth > view.CopyButton.ActualWidth,
+                "first click shows the red confirm text, the button as wide as its text");
             Expect(s.Runtime.Deleted.Count == 0, "nothing deleted yet");
             Click(view.DeleteButton);
             Expect(s.Runtime.Deleted.SequenceEqual(new[] { "r04" }) && s.ViewModel.Reports.All(r => r.ReportId != "r04"), "second click deletes r04");
-            Expect((view.DeleteButton.Content as string) == L.T("reports.delete.button")
-                && ReferenceEquals(view.DeleteButton.Style, ReportsStyles.Dictionary[RvtMcp.Plugin.Views.BimwrightStyles.ToolbarButtonKey]), "button back to normal");
+            Expect(IsDeleteIcon(view.DeleteButton), "button back to the X icon");
             Expect(s.Window.StatusText.Text == L.T("reports.status.deleted"), "deleted status");
 
             s.Select("r01");
@@ -341,9 +341,15 @@ internal static class ContentChecks
         {
             s.Select("r05");
             var body = s.Compact.OpenBody;
+            Rect At(FrameworkElement e) => e.TransformToAncestor(body).TransformBounds(new Rect(0, 0, e.ActualWidth, e.ActualHeight));
+            Expect(IsDeleteIcon(body.DeleteButton) && body.DeleteButton.ActualWidth == 24 && body.CopyButton.ActualWidth == 24,
+                "compact: Delete is the X icon, the same 24 px square as Copy");
+            Expect(At(body.DeleteButton).Bottom <= At(body.Body).Top && Near(At(body.DeleteButton).Right, body.ActualWidth)
+                && At(body.CopyButton).Right <= At(body.DeleteButton).Left, "compact: Copy and Delete sit at the top right, above the body");
             Click(body.DeleteButton);
-            Expect((body.DeleteButton.Content as string) == L.T("reports.delete.confirm")
-                && ReferenceEquals(body.DeleteButton.Style, ReportsStyles.Dictionary[ReportsStyles.DangerButtonKey]), "compact: confirm in danger style");
+            Pump();
+            Expect(IsConfirm(body.DeleteButton) && body.DeleteButton.ActualWidth > 24 && body.DeleteButton.ActualHeight == 24,
+                "compact: confirm text, the button as wide as its text");
             Click(body.DeleteButton);
             Expect(s.Runtime.Deleted.SequenceEqual(new[] { "r05" }) && s.ViewModel.SelectedReport == null, "compact: second click deletes r05");
         }
@@ -422,6 +428,14 @@ internal static class ContentChecks
     }
 
     private static ReportChangesView ChangesView(ReportsWideView view) => (ReportChangesView)((Border)view.Changes.Content).Child;
+
+    private static bool IsDeleteIcon(Button button) =>
+        (button.Content as string) == "" && ReferenceEquals(button.Style, ReportsStyles.Dictionary[RvtMcp.Plugin.Views.BimwrightStyles.IconButtonKey])
+        && (button.ToolTip as string) == L.T("reports.delete.button") && System.Windows.Automation.AutomationProperties.GetName(button) == L.T("reports.delete.button");
+
+    private static bool IsConfirm(Button button) =>
+        (button.Content as string) == L.T("reports.delete.confirm") && ReferenceEquals(button.Style, ReportsStyles.Dictionary[ReportsStyles.DangerButtonKey])
+        && ColorOf(button.Foreground) == ColorOf(ReportsStyles.DangerText) && double.IsNaN(button.Width);
 
     private static int Items(ReportChangesView changes) => changes.Children.OfType<WrapPanel>().Sum(w => w.Children.Count);
 

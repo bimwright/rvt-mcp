@@ -432,7 +432,7 @@
   "reports.empty.noModelReports": "Для этой модели нет отчётов. Выберите «Все», чтобы увидеть другие отчёты.",
   "reports.empty.noReports": "Отчётов пока нет.",
   "reports.delete.button": "Удалить",
-  "reports.delete.confirm": "Подтвердить удаление",
+  "reports.delete.confirm": "Подтвердить?",
   "reports.status.deleted": "Отчёт удалён.",
   "reports.status.deleteFailed": "Не удалось удалить отчёт.",
   "reports.status.loadFailed": "Не удалось загрузить отчёты.",

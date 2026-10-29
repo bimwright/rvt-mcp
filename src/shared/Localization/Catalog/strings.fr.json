@@ -432,7 +432,7 @@
   "reports.empty.noModelReports": "Aucun rapport pour ce modèle. Choisissez Tous pour voir les autres rapports.",
   "reports.empty.noReports": "Aucun rapport pour le moment.",
   "reports.delete.button": "Supprimer",
-  "reports.delete.confirm": "Confirmer la suppression",
+  "reports.delete.confirm": "Confirmer ?",
   "reports.status.deleted": "Rapport supprimé.",
   "reports.status.deleteFailed": "Impossible de supprimer le rapport.",
   "reports.status.loadFailed": "Impossible de charger les rapports.",
