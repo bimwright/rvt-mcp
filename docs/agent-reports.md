@@ -13,9 +13,24 @@ add-in together from the same Setup release.
 
 ## When to call
 
-Call it once per job, after you have verified the whole result, never after each
+Call it once for a job that worked in Revit: one that changed elements, or one that
+found elements the user should check. Call it after you have verified the whole result,
+or when the job failed or was cancelled after changing the model. Do not call it for a
+quick answer in chat, for a job that stopped before changing anything, or after each
 tool. A report is the agent's own account: the window labels it "Self-reported by the
 agent" and shows next to it the changes rvt-mcp actually recorded.
+
+The server reminds the agent, because a client that loads tool descriptions on demand
+may never read this tool's:
+
+- The server instructions say when to report.
+- Until a report is sent, every tool response that changed the model carries `_report`:
+  the first in full, the rest as a short line.
+- The first answer from a check tool in a job (for example `revit_find_untagged_elements`,
+  `revit_clash_detection` or `revit_get_model_warnings_summary`) carries `_report` asking
+  for a report if the check found elements to look at.
+- A sent report starts the next job. `_report` appears only when the connected add-in
+  supports reports and the `meta` toolset is enabled.
 
 - Use one `task_id` per job. Sending the same `task_id` again to the same Revit
   process replaces that report. Use this to fix links the response lists as

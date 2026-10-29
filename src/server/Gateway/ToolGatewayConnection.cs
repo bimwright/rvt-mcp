@@ -77,6 +77,7 @@ namespace RvtMcp.Server
 
         /// <summary>PID of the instance the open connection serves, or null.</summary>
         internal static int? ConnectedPid => _conn is { Alive: true } c ? c.Pid : (int?)null;
+        internal static bool ConnectedSupportsAgentReports => _conn is { Alive: true } c && c.AgentReports;
 
         /// <summary>JIT warm-up for the wire paths: request serialization, pending map,
         /// response parse, plus a private 127.0.0.1 socket pair — no Revit listener is touched.</summary>

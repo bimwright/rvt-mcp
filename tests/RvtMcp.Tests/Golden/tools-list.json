@@ -6603,7 +6603,7 @@
     },
     {
       "name": "revit_report_task_result",
-      "description_hash": "sha256:32fd37f5f0ea8cd64f4a621a2b992399f3c2b44c11ecbe3371f331a4d89e1fd6",
+      "description_hash": "sha256:e3c4a09f01cec496544a3482bddeb8491f2128a73e4e46faf2a2ded9633f8472",
       "inputSchema": {
         "properties": {
           "body": {

@@ -121,6 +121,7 @@ namespace RvtMcp.Server
         }
 
         internal static readonly PreviousOperationTracker PreviousOperations = new PreviousOperationTracker();
+        internal static readonly AgentReportReminder ReportReminder = new AgentReportReminder(() => ConnectedSupportsAgentReports);
 
         /// <summary>
         /// A tool that sends its own call to Revit and answers with a response it builds itself must pass on
