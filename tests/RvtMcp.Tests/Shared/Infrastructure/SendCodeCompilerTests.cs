@@ -26,6 +26,11 @@ namespace RvtMcp.Tests
         private static byte[] CompileApi()
         {
             var source = @"namespace Autodesk.Revit.DB { public class Document {} }
+namespace Autodesk.Revit.DB.Architecture { public class Stairs {} }
+namespace Autodesk.Revit.DB.Electrical { public class CableTray {} }
+namespace Autodesk.Revit.DB.Mechanical { public class Duct {} }
+namespace Autodesk.Revit.DB.Plumbing { public class Pipe {} }
+namespace Autodesk.Revit.DB.Structure { public enum StructuralType { NonStructural, Beam } }
 namespace Autodesk.Revit.UI {
  public class UIApplication { public UIDocument ActiveUIDocument => null; }
  public class UIDocument { public Autodesk.Revit.DB.Document Document => null; }
@@ -185,6 +190,21 @@ public class McpDynamicScript {
             var task = new ScriptInput(code.Replace("return 7;", "return McpTaskResult.Pass(7);"), resultContract: ScriptModes.TaskV1);
             Assert.Equal(7, Assert.IsType<McpTaskResult>(Run(Compile(task))).Value);
         }
+
+        [Theory]
+        [InlineData("return " + DisciplineTypes + " ? 7 : 0;")]
+        [InlineData("using Autodesk.Revit.DB.Plumbing;\nreturn " + DisciplineTypes + " ? 7 : 0;")]
+        public void Body_scripts_can_use_discipline_types_without_their_usings(string code)
+        {
+            Assert.Equal(7, Run(Compile(new ScriptInput(code, usageContext: ScriptModes.Test))));
+            var data = new ScriptInput(code, ScriptData.FromJson("{}"));
+            Assert.Equal(7, Run(Compile(data), data.Data.Json));
+            var task = new ScriptInput(code.Replace("? 7 : 0;", "? McpTaskResult.Pass(7) : McpTaskResult.Pass(0);"), resultContract: ScriptModes.TaskV1);
+            Assert.Equal(7, Assert.IsType<McpTaskResult>(Run(Compile(task))).Value);
+        }
+
+        private const string DisciplineTypes =
+            "new Stairs() != null && new CableTray() != null && new Duct() != null && new Pipe() != null && StructuralType.Beam != StructuralType.NonStructural";
 
         [Theory]
         [InlineData("global using Autodesk.Revit.UI;\n", 9)]

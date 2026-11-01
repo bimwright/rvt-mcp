@@ -108,7 +108,7 @@ open transaction, still apply. Check the returned Boolean; the plugin does not f
 
 ## Source forms
 
-The updated handler accepts a body with `app`, `doc`, and `uidoc`, ending in `return ...;`. Helper type declarations can accompany the body; the compiler wrapper keeps them outside `Run`:
+The updated handler accepts a body with `app`, `doc`, and `uidoc`, ending in `return ...;`. A body imports `System`, `System.Linq`, `System.Collections.Generic`, `Autodesk.Revit.DB`, `Autodesk.Revit.DB.Architecture`, `Autodesk.Revit.DB.Electrical`, `Autodesk.Revit.DB.Mechanical`, `Autodesk.Revit.DB.Plumbing`, `Autodesk.Revit.DB.Structure` and `Autodesk.Revit.UI`; put any other `using` at the top. Helper type declarations can accompany the body; the compiler wrapper keeps them outside `Run`:
 
 ```csharp
 var helper = new ExampleHelper();

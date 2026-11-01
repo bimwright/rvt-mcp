@@ -9,6 +9,16 @@ namespace RvtMcp.Plugin
 {
     public static class SendCodeSourceBuilder
     {
+        // Body scripts get these imports unless the caller already has them. The DB sub-namespaces hold discipline types
+        // (Stairs, Room, CableTray, Duct, Pipe, StructuralType); no public type name in them collides with another default
+        // import or with each other (checked for Revit 2022–2027).
+        private static readonly string[] DefaultImports =
+        {
+            "System", "System.Linq", "System.Collections.Generic", "Autodesk.Revit.DB",
+            "Autodesk.Revit.DB.Architecture", "Autodesk.Revit.DB.Electrical", "Autodesk.Revit.DB.Mechanical",
+            "Autodesk.Revit.DB.Plumbing", "Autodesk.Revit.DB.Structure", "Autodesk.Revit.UI"
+        };
+
         internal static string BuildEnhanced(string code, bool hasData, bool taskContract)
         {
             var root = CSharpSyntaxTree.ParseText(code).GetCompilationUnitRoot();
@@ -28,7 +38,7 @@ namespace RvtMcp.Plugin
             // Generated imports follow the caller's: global usings must precede ordinary ones.
             imports.AddRange(root.Usings.Select(Mapped));
             if (!fullSource)
-                foreach (var name in new[] { "System", "System.Linq", "System.Collections.Generic", "Autodesk.Revit.DB", "Autodesk.Revit.UI" })
+                foreach (var name in DefaultImports)
                     if (!root.Usings.Any(u => u.Alias == null && u.StaticKeyword.IsKind(SyntaxKind.None) && u.Name.ToString() == name))
                         imports.Add("using " + name + ";\n");
             if (hasData && !fullSource && !root.Usings.Any(u => u.Name.ToString() == "Newtonsoft.Json.Linq" && u.Alias == null))
@@ -80,7 +90,7 @@ public class McpDynamicScript
             // Keep helper types outside Run; even a type between statements is valid input.
             var members = root.Members.Where(m => !(m is GlobalStatementSyntax)).Concat(new[] { wrapper });
             root = root.WithMembers(SyntaxFactory.List(members));
-            foreach (var name in new[] { "System", "System.Linq", "System.Collections.Generic", "Autodesk.Revit.DB", "Autodesk.Revit.UI" })
+            foreach (var name in DefaultImports)
             {
                 if (!root.Usings.Any(u => u.Alias == null && u.StaticKeyword.IsKind(SyntaxKind.None) && u.Name.ToString() == name))
                     root = root.AddUsings(SyntaxFactory.UsingDirective(SyntaxFactory.ParseName(name)));

@@ -20,6 +20,11 @@ namespace RvtMcp.Tests
         // These stand-ins test compiler/storage behavior only, never native Revit APIs.
         private const string Api = @"
 namespace Autodesk.Revit.DB { public class Document {} }
+namespace Autodesk.Revit.DB.Architecture { public class Stairs {} }
+namespace Autodesk.Revit.DB.Electrical { public class CableTray {} }
+namespace Autodesk.Revit.DB.Mechanical { public class Duct {} }
+namespace Autodesk.Revit.DB.Plumbing { public class Pipe {} }
+namespace Autodesk.Revit.DB.Structure { public enum StructuralType { NonStructural, Beam } }
 namespace Autodesk.Revit.UI {
     public class UIApplication { public UIDocument ActiveUIDocument => null; }
     public class UIDocument { public Autodesk.Revit.DB.Document Document => null; }

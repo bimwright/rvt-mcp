@@ -26,6 +26,16 @@ namespace RvtMcp.Tests
             Assert.Equal(expected, CompileAndRun(SendCodeSourceBuilder.Build(code)));
         }
 
+        [Theory]
+        [InlineData("return " + DisciplineTypes + ";")]
+        [InlineData("using Autodesk.Revit.DB.Mechanical;\nreturn " + DisciplineTypes + ";")]
+        public void ImportsDisciplineNamespacesForBodiesWithoutDuplicates(string code)
+        {
+            var source = SendCodeSourceBuilder.Build(code);
+            Assert.Equal(true, CompileAndRun(source));
+            Assert.Single(source.Split('\n'), line => line.Trim() == "using Autodesk.Revit.DB.Mechanical;");
+        }
+
         [Fact]
         public void PreservesExplicitEntrypointAndHelperClass()
         {
@@ -51,14 +61,27 @@ public class Helper { public int Value => 14; }";
                 d => d.Id == "CS0103");
         }
 
+        private const string DisciplineTypes =
+            "new Stairs() != null && new CableTray() != null && new Duct() != null && new Pipe() != null && StructuralType.Beam != StructuralType.NonStructural";
+
         // Only stand in for UIApplication/Document; use the real Roslyn compiler and entrypoint.
         private const string OpenDocumentApi = @"namespace Autodesk.Revit.DB { public class Document {} }
+namespace Autodesk.Revit.DB.Architecture { public class Stairs {} }
+namespace Autodesk.Revit.DB.Electrical { public class CableTray {} }
+namespace Autodesk.Revit.DB.Mechanical { public class Duct {} }
+namespace Autodesk.Revit.DB.Plumbing { public class Pipe {} }
+namespace Autodesk.Revit.DB.Structure { public enum StructuralType { NonStructural, Beam } }
 namespace Autodesk.Revit.UI {
  public class UIApplication { public UIDocument ActiveUIDocument { get; } = new UIDocument(); }
  public class UIDocument { public Autodesk.Revit.DB.Document Document { get; } = new Autodesk.Revit.DB.Document(); }
 }";
 
         private const string NoDocumentApi = @"namespace Autodesk.Revit.DB { public class Document {} }
+namespace Autodesk.Revit.DB.Architecture { public class Stairs {} }
+namespace Autodesk.Revit.DB.Electrical { public class CableTray {} }
+namespace Autodesk.Revit.DB.Mechanical { public class Duct {} }
+namespace Autodesk.Revit.DB.Plumbing { public class Pipe {} }
+namespace Autodesk.Revit.DB.Structure { public enum StructuralType { NonStructural, Beam } }
 namespace Autodesk.Revit.UI {
  public class UIApplication { public UIDocument ActiveUIDocument { get; } = null; }
  public class UIDocument { public Autodesk.Revit.DB.Document Document { get; } = new Autodesk.Revit.DB.Document(); }
