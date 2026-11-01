@@ -22,7 +22,9 @@ namespace RvtMcp.Server
         private static IMcpServerBuilder RegisterMcpSurface(
             IMcpServerBuilder mcp, HashSet<string> enabled, RvtMcpConfig config)
         {
-            mcp = RuntimeToolFilter.Register(mcp, config, ToolGateway.Session);
+            // The report reminder points at revit_report_task_result, which only the meta toolset registers.
+            mcp = RuntimeToolFilter.Register(mcp, config, ToolGateway.Session, null,
+                enabled.Contains("meta") ? ToolGateway.ReportReminder : null);
             mcp = PromptRequestLogging.Register(mcp);
             mcp = RegisterToolsets(mcp, enabled, config);
             mcp.WithResources<RevitResources>();
@@ -102,6 +104,7 @@ namespace RvtMcp.Server
                 types.Add(typeof(AdaptiveBakeTools));
             if (IncludeSendCode(enabled, config)) types.Add(typeof(SendCodeTools));
             if (enabled.Contains("meta"))       types.Add(typeof(MetaTools));
+            if (enabled.Contains("meta"))       types.Add(typeof(ReportTools));
             if (enabled.Contains("meta"))       types.Add(typeof(HealthTools));
             if (enabled.Contains("meta"))       types.Add(typeof(ChangeHistoryTools));
             if (enabled.Contains("meta"))       types.Add(typeof(FailureTools));

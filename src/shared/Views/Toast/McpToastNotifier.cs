@@ -14,6 +14,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly McpToastHost _host;
         private readonly ActivityAggregator _activity;
         private readonly Func<bool> _isEnabled;
+        private readonly ToastReportRoute _reportRoute = new ToastReportRoute();
         private IntPtr _ownerHwnd;
 
         public McpToastNotifier(McpToastHost host, Func<bool> isEnabled)
@@ -22,10 +23,15 @@ namespace RvtMcp.Plugin.Views.Toast
             _activity = host.Aggregator;
             _isEnabled = isEnabled ?? throw new ArgumentNullException(nameof(isEnabled));
             _host.SetFrameUsableProvider(IsOwnerFrameUsable);
-            _host.SetActivityClickHandler(_ =>
+            _host.SetActivityClickHandler(cardId =>
             {
-                try { App.Instance?.ShowOrFocusHistoryWindowFromToast(); }
-                catch (Exception ex) { App.DebugLog("Toast history open failed: " + ex.Message); }
+                try
+                {
+                    var reportId = _reportRoute.ReportFor(cardId);
+                    if (reportId != null) App.Instance?.ShowReportsFromToast(reportId);
+                    else App.Instance?.ShowOrFocusHistoryWindowFromToast();
+                }
+                catch (Exception ex) { App.DebugLog("Toast click failed: " + ex.Message); }
             });
         }
 
@@ -82,8 +88,10 @@ namespace RvtMcp.Plugin.Views.Toast
                 durationMs,
                 toolDescription);
 
-            // Keep Revit's normalized outcome and measured duration; clicks still open History.
+            // Keep Revit's normalized outcome and measured duration. A click opens the report only
+            // while it is the card's latest result; every other click opens History.
             Record(vm.Title, vm.Body, vm.Success, vm.ThumbnailPath, vm.DurationMs);
+            _reportRoute.Recorded(_activity.CurrentCardId, ToastReportRoute.ReportIdFrom(toolName, success, resultJson));
         }
 
         /// <summary>One-shot connection confirmation, independent of activity counters.</summary>

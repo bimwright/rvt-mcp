@@ -126,6 +126,7 @@
   "revit_dismiss_bake_suggestion": "Dismiss an adaptive ToolBaker suggestion. action must be snooze_30d, never, or never_with_gap_signal.",
   "revit_open_model": "Open a Revit model, template or family from disk and make it the active document.",
   "revit_show_message": "Show a Revit TaskDialog. Message echo is off by default; opt in with echoMessage and cap it with maxEchoChars.",
+  "revit_report_task_result": "向 Revit 用户报告已验证的任务结果；从同一 Revit 进程重新发送相同 task_id 可替换报告。不更改模型。",
   "revit_list_available_targets": "List every Revit instance currently running with the rvt-mcp plugin loaded.",
   "revit_get_current_target": "Report which Revit instance this MCP server will route the NEXT command to.",
   "revit_switch_target": "Switch active Revit connection to a specific version when multiple Revits are running.",

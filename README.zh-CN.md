@@ -18,7 +18,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-240%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-241%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -90,23 +90,23 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 ## Tools
 
-下表数量与**当前源码**一致，其中包含 3 个 `send_code` 模块工具；**v1.2.1 发布版**在每种模式下都少 3 个工具。
+下表数量与**当前源码**一致，其中包含 3 个 `send_code` 模块工具和 agent 报告；**v1.2.1 发布版**在每种模式下都少 4 个工具。
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
-| 全新安装 | **240** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
-| 裸 `rvt-mcp.exe` | **53** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **240** | 完整目录 |
-| `all` + adaptive bake | **243** | 再加 3 个 suggestion 生命周期工具 |
+| 全新安装 | **241** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
+| 裸 `rvt-mcp.exe` | **54** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **241** | 完整目录 |
+| `all` + adaptive bake | **244** | 再加 3 个 suggestion 生命周期工具 |
 
-数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 53 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除。
+数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 54 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除；agent 报告只写入用户自己的报告数据，因此允许使用。
 
 | Toolset | 覆盖 |
 |---------|------|
 | `query` | 视图、选择、过滤、统计、参数、关系、workset、组/程序集 |
 | `create` | 轴网、标高、房间、线/点/面构件、组 |
 | `view` | 建视图、图纸布局辅助、截图、裁剪/比例 |
-| `meta` | 批处理（最多 20）、多 Revit 目标、最近模型、项目信息、purge（MVP）、消息、send_code |
+| `meta` | 批处理（最多 20）、多 Revit 目标、最近模型、项目信息、purge（MVP）、消息、send_code、agent 报告 |
 | `lint` | 视图命名、firm-profile、警告摘要 |
 | `schedule` | 明细表 list/创建、字段、公式、数据 |
 | `families` | 加载/卸载、类型、实例、审计、导出 `.rfa`（项目侧） |
@@ -141,7 +141,8 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 - **`revit_send_code_to_revit`**（默认开启）在没有合适 typed 工具时，于 Revit 内编译并运行 C# 正文；`--read-only` 或 `--disable-send-code` 会移除它。见 [docs/send-code.md](docs/send-code.md)；楼梯见 [docs/stairs-workflow.md](docs/stairs-workflow.md)。
 - **ToolBaker：** `revit_list_baked_tools` / `revit_run_baked_tool` 需要 `--toolsets toolbaker`。Adaptive bake（`--enable-adaptive-bake`，默认关闭）会根据重复调用建议工具；在你 accept 之前不会添加任何东西。Bake 在 Revit 内编译，不需要 Visual Studio。见 [docs/bake.md](docs/bake.md)。
-- **Ribbon：** 启动或停止连接，打开 **History** 搜索并重跑历史调用，切换完成 **Toast**（默认开启）。
+- **Agent 报告：** `revit_report_task_result`（属于 `meta`）让 agent 在任务完成时留下一份报告。Revit 显示 toast，并在 **Reports** 窗口中列出报告，其中包含可选择元素或打开视图的链接，以及 rvt-mcp 记录的变更。它不修改模型，`--read-only` 下也可用。见 [docs/agent-reports.md](docs/agent-reports.md)。
+- **Ribbon：** 启动或停止连接，打开 **History** 搜索并重跑历史调用，打开 **Reports** 阅读 agent 报告，切换完成 **Toast**（默认开启）。
 - **界面语言：** 插件 UI 支持 15 种语言，默认跟随 Revit 的界面语言；可通过 ribbon 滑出面板中的 **Language** 按钮更改，该按钮会打开 **Settings → General → Language**（`BIMWRIGHT_UI_LANGUAGE` 仍然优先）。工具名与 payload 保持英文。见 [docs/localization.md](docs/localization.md)。
 
 ### 为什么有活动 toast
@@ -202,6 +203,7 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 | Budget bytes | `--response-budget-bytes` | `BIMWRIGHT_RESPONSE_BUDGET_BYTES` | `responseBudgetBytes` |
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | spill 文件保留时间（默认 36 小时） | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
+| Agent 报告保留时间（默认 30 天） | — | — | `reportRetentionDays` |
 | LAN 绑定（插件） | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | ToolBaker 表面 | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
@@ -224,7 +226,7 @@ Journal 恰有八个选项：**1h, 4h, 8h, 12h, 24h, 2d, 7d, 14d**，默认仍�
 
 ## Permissions & auto mode — 自动执行权限
 
-这些 controls 自 v1.0.0 起提供。v0.8.1 包不包含新 switch 和按工具筛选的 read-only 模式。`send_code` 与 `run_baked_tool` 必须直接调用；`batch_execute` 会拒绝它们。
+这些 controls 自 v1.0.0 起提供。v0.8.1 包不包含新 switch 和按工具筛选的 read-only 模式。`send_code`、`run_baked_tool` 和 `report_task_result` 必须直接调用；`batch_execute` 会拒绝它们。
 
 Annotations 描述每个工具对文档和文件的影响。临时 selection、active view 和 zoom 变化算作 read-only。`send_code` 没有 annotations：不要加入自动授权，并逐次确认代码执行。Claude Code 仅使用以下 read-only allow list；不要允许宽泛的 `mcp__rvt-mcp__*` wildcard。此列表对应 `--toolsets all`，所选 toolset 可能公开更少工具。
 
@@ -329,6 +331,7 @@ Annotations 描述每个工具对文档和文件的影响。临时 selection、a
       "mcp__rvt-mcp__revit_measure_distance_between_elements",
       "mcp__rvt-mcp__revit_project_point_onto_face",
       "mcp__rvt-mcp__revit_raycast_from_point",
+      "mcp__rvt-mcp__revit_report_task_result",
       "mcp__rvt-mcp__revit_select_elements",
       "mcp__rvt-mcp__revit_show_element_in_view",
       "mcp__rvt-mcp__revit_show_message",
@@ -409,6 +412,7 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 | [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md) | 各客户端 MCP 接入步骤 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 进程、传输、DTO 规则 |
 | [docs/send-code.md](docs/send-code.md) | send_code 源码形式与失败处理 |
+| [docs/agent-reports.md](docs/agent-reports.md) | Agent 报告：链接语法、限制、存储 |
 | [docs/bake.md](docs/bake.md) | Adaptive bake 与正文隐私 |
 | [docs/localization.md](docs/localization.md) | 界面语言、覆盖、热重载 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 构建、测试、新增工具 |

@@ -14,7 +14,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-240%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-241%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -88,23 +88,23 @@ Community videos of rvt-mcp at work. Install steps shown in a video can be older
 
 ## Tools
 
-Counts below match the **current source**, which adds the three `send_code` module tools. The **v1.2.1 release** has three fewer tools in each mode.
+Counts below match the **current source**, which adds the three `send_code` module tools and agent reports. The **v1.2.1 release** has four fewer tools in each mode.
 
 | Mode | Tools | Notes |
 |------|------:|-------|
-| Fresh install | **240** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **53** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **240** | Full catalog |
-| `all` + adaptive bake | **243** | Adds 3 suggestion-lifecycle tools |
+| Fresh install | **241** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **54** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **241** | Full catalog |
+| `all` + adaptive bake | **244** | Adds 3 suggestion-lifecycle tools |
 
-Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 53-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline.
+Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 54-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline; agent reports are allowed because they only write per-user report data.
 
 | Toolset | What it covers |
 |---------|----------------|
 | `query` | View, selection, filters, stats, parameters, relationships, worksets, groups/assemblies |
 | `create` | Grids, levels, rooms, line/point/surface-based elements, groups |
 | `view` | Create views, sheets layout helpers, capture image, crop/scale |
-| `meta` | Batch execute (max 20), multi-Revit targets, recent models, project info, purge unused (MVP), message, send_code, local failure records and operation status |
+| `meta` | Batch execute (max 20), multi-Revit targets, recent models, project info, purge unused (MVP), message, send_code, agent reports, local failure records and operation status |
 | `lint` | View naming patterns, firm-profile detect, warnings summary |
 | `schedule` | List/create schedules, fields, formulas, data |
 | `families` | Load/unload, types, instances, audit, export `.rfa` (project-side) |
@@ -138,7 +138,8 @@ A call missing a required parameter does not run. It returns `INVALID_ARGUMENT` 
 - **`revit_send_code_to_revit`** (on by default) compiles C# inside Revit when no typed tool fits. Use `data` for JSON inputs, `modules` for reusable helpers, `compile_only` to validate without execution, and `result_contract="task_v1"` with `McpTaskResult.Pass/Fail` for goal checks. Enhanced calls require a gateway/add-in pair supporting `send_code_v2`; old code-only calls keep their existing wire shape. See [docs/send-code.md](docs/send-code.md), and [docs/stairs-workflow.md](docs/stairs-workflow.md) for stairs.
 - **Helper modules:** `revit_save_code_module` validates on the selected Revit host before saving; list/delete work without Revit. `--read-only` or `--disable-send-code` hides save/delete and script execution, while `revit_list_code_modules` stays available under `meta` or `toolbaker`. Module source persists only after an explicit save; it is separate from script body-cache/journal opt-ins.
 - **ToolBaker:** `revit_list_baked_tools` / `revit_run_baked_tool` need `--toolsets toolbaker`. Adaptive bake (`--enable-adaptive-bake`, off by default) suggests tools from repeated calls; nothing is added until you accept one. Bake compiles inside Revit — no Visual Studio needed. See [docs/bake.md](docs/bake.md).
-- **Ribbon:** start or stop the connection, open **History** to search past calls and review **Issues**, and switch completion **Toasts** (on by default).
+- **Agent reports:** `revit_report_task_result` (in `meta`) lets the agent leave one report when a job is finished. Revit shows a toast and lists the report in the **Reports** window, with links that select elements or open views, and the changes rvt-mcp recorded. It does not change the model and works with `--read-only`. See [docs/agent-reports.md](docs/agent-reports.md).
+- **Ribbon:** start or stop the connection, open **History** to search past calls and review **Issues**, open **Reports** to read agent reports, and switch completion **Toasts** (on by default).
 - **UI languages:** the add-in UI comes in 15 languages and follows Revit's UI language; change it with the **Language** button in the ribbon slide-out — it opens **Settings → General → Language** (`BIMWRIGHT_UI_LANGUAGE` still wins). Tool names and payloads stay English. See [docs/localization.md](docs/localization.md).
 
 ### Why activity toasts exist
@@ -199,6 +200,7 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwr
 | Budget bytes | `--response-budget-bytes` | `BIMWRIGHT_RESPONSE_BUDGET_BYTES` | `responseBudgetBytes` |
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | Spill retention (default 36 h) | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
+| Agent report retention (default 30 days) | — | — | `reportRetentionDays` |
 | LAN bind (plugin) | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | Remember MCP On/Off at startup (plugin; default on) | ribbon **MCP: ON / OFF** | `BIMWRIGHT_AUTO_START_TRANSPORT=0/1` | `autoStartTransport` |
 | ToolBaker surface | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
@@ -226,7 +228,7 @@ If another third-party MCP add-in is detected for that Revit version, rvt-mcp st
 
 ## Permissions & auto mode
 
-These controls arrive in v1.0.0. The v0.8.1 package does not include the new switches or per-tool read-only filtering. `send_code` and `run_baked_tool` must be called directly; `batch_execute` rejects them.
+These controls arrive in v1.0.0. The v0.8.1 package does not include the new switches or per-tool read-only filtering. `send_code`, `run_baked_tool` and `report_task_result` must be called directly; `batch_execute` rejects them.
 
 MCP annotations describe each tool's document/file effects. Transient selection, active-view and zoom changes count as read-only. `send_code` has no annotations: keep it out of automatic permissions and confirm each arbitrary-code call. For Claude Code, copy only the read-only allow list below; do not allow the broad `mcp__rvt-mcp__*` wildcard. The list covers `--toolsets all`; your selected toolsets may expose fewer tools.
 
@@ -331,6 +333,7 @@ MCP annotations describe each tool's document/file effects. Transient selection,
       "mcp__rvt-mcp__revit_measure_distance_between_elements",
       "mcp__rvt-mcp__revit_project_point_onto_face",
       "mcp__rvt-mcp__revit_raycast_from_point",
+      "mcp__rvt-mcp__revit_report_task_result",
       "mcp__rvt-mcp__revit_select_elements",
       "mcp__rvt-mcp__revit_show_element_in_view",
       "mcp__rvt-mcp__revit_show_message",
@@ -424,6 +427,7 @@ More: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Processes, transport, DTO rules |
 | [docs/controlled-failures.md](docs/controlled-failures.md) | Warning policy, advisory Issues, native decisions and pending-operation recovery |
 | [docs/send-code.md](docs/send-code.md) | send_code source forms and failure handling |
+| [docs/agent-reports.md](docs/agent-reports.md) | Agent reports: link syntax, limits, storage |
 | [docs/bake.md](docs/bake.md) | Adaptive bake and body privacy |
 | [docs/localization.md](docs/localization.md) | UI languages, overrides, hot reload |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Build, test, add a tool |

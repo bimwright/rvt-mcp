@@ -51,6 +51,7 @@
     <Compile Include="..\shared\Config\RvtMcpConfig.cs" Link="Shared\Config\RvtMcpConfig.cs" />
     <Compile Include="..\shared\Config\PreferenceValues.cs" Link="Shared\Config\PreferenceValues.cs" />
     <Compile Include="..\shared\Config\ToastPositionOptions.cs" Link="Shared\Config\ToastPositionOptions.cs" />
+    <Compile Include="..\shared\Config\ReportsWindowState.cs" Link="Shared\Config\ReportsWindowState.cs" />
     <Compile Include="..\shared\Logging\PersistSendCodeTtl.cs" Link="Shared\Logging\PersistSendCodeTtl.cs" />
     <Compile Include="..\shared\Security\BakeRedactor.cs" Link="Shared\Security\BakeRedactor.cs" />
     <Compile Include="..\shared\Security\SecretMasker.cs" Link="Shared\Security\SecretMasker.cs" />
@@ -59,6 +60,7 @@
     <Compile Include="..\shared\ToolBaker\BakedToolRuntimeSource.cs" Link="Shared\ToolBaker\BakedToolRuntimeSource.cs" />
     <Compile Include="..\shared\Infrastructure\LegacyDataMigration.cs" Link="Shared\Infrastructure\LegacyDataMigration.cs" />
     <Compile Include="..\shared\Infrastructure\ToolReadPolicy.cs" Link="Shared\Infrastructure\ToolReadPolicy.cs" />
+    <Compile Include="..\shared\Reports\Model\ReportLimits.cs" Link="Shared\Reports\Model\ReportLimits.cs" />
     <Compile Include="..\shared\Infrastructure\RuntimeIdentity.cs" Link="Shared\Infrastructure\RuntimeIdentity.cs" />
     <Compile Include="..\shared\Survey\SurveyContract.cs" Link="Shared\Survey\SurveyContract.cs" />
     <Compile Include="..\shared\Survey\SurveySnapshotCache.cs" Link="Shared\Survey\SurveySnapshotCache.cs" />

@@ -18,7 +18,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-240%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-241%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -91,23 +91,23 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 ## Tools
 
-以下のツール数は**現在のソース**に対応し、`send_code` のモジュール用ツール 3 件を含みます。**v1.2.1 リリース**では各モードとも 3 件少なくなります。
+以下のツール数は**現在のソース**に対応し、`send_code` のモジュール用ツール 3 件とエージェント報告を含みます。**v1.2.1 リリース**では各モードとも 4 件少なくなります。
 
 | モード | Tools | 注記 |
 |--------|------:|------|
-| 新規インストール | **240** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
-| 素の `rvt-mcp.exe` | **53** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **240** | フルカタログ |
-| `all` + adaptive bake | **243** | 提案ライフサイクル 3 ツールを追加 |
+| 新規インストール | **241** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
+| 素の `rvt-mcp.exe` | **54** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **241** | フルカタログ |
+| `all` + adaptive bake | **244** | 提案ライフサイクル 3 ツールを追加 |
 
-件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 53 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。
+件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 54 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。エージェント報告はユーザーごとの報告データのみを書くため、許可されます。
 
 | Toolset | 範囲 |
 |---------|------|
 | `query` | ビュー、選択、フィルタ、統計、パラメータ、関係、ワークセット、グループ/アセンブリ |
 | `create` | 通り芯、レベル、部屋、線/点/面要素、グループ |
 | `view` | ビュー作成、シート配置補助、キャプチャ、クロップ/縮尺 |
-| `meta` | バッチ（最大 20）、複数 Revit、最近のモデル、プロジェクト情報、purge（MVP）、メッセージ、send_code |
+| `meta` | バッチ（最大 20）、複数 Revit、最近のモデル、プロジェクト情報、purge（MVP）、メッセージ、send_code、エージェント報告 |
 | `lint` | ビュー命名、firm-profile、警告サマリ |
 | `schedule` | 集計表 list/作成、フィールド、式、データ |
 | `families` | ロード/アンロード、タイプ、インスタンス、監査、`.rfa` エクスポート（プロジェクト側） |
@@ -142,7 +142,8 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 - **`revit_send_code_to_revit`**（既定オン）は、合う typed ツールがないときに C# 本体を Revit 内でコンパイルして実行します。`--read-only` または `--disable-send-code` で外れます。[docs/send-code.md](docs/send-code.md) を参照。階段は [docs/stairs-workflow.md](docs/stairs-workflow.md)。
 - **ToolBaker：** `revit_list_baked_tools` / `revit_run_baked_tool` には `--toolsets toolbaker` が必要です。Adaptive bake（`--enable-adaptive-bake`、既定オフ）は繰り返しの呼び出しからツールを提案し、accept するまで何も追加されません。Bake のコンパイルは Revit 内で行われ、Visual Studio は不要です。[docs/bake.md](docs/bake.md)。
-- **リボン：** 接続の開始/停止、**History** で過去の呼び出しの検索と再実行、完了 **Toast** の切り替え（既定オン）。
+- **エージェントレポート：** `revit_report_task_result`（`meta`）で、エージェントは作業の完了時にレポートを 1 件残せます。Revit はトーストを表示し、**Reports** ウィンドウにレポートを一覧表示します。レポートには要素を選択したりビューを開いたりするリンクと、rvt-mcp が記録した変更が含まれます。モデルは変更せず、`--read-only` でも使えます。[docs/agent-reports.md](docs/agent-reports.md)。
+- **リボン：** 接続の開始/停止、**History** で過去の呼び出しの検索と再実行、**Reports** でエージェントのレポートの閲覧、完了 **Toast** の切り替え（既定オン）。
 - **表示言語：** アドインの UI は 15 言語に対応し、Revit の UI 言語に従います。リボンのスライドアウトにある **Language** ボタンで変更できます。このボタンは **Settings → General → Language** を開きます（`BIMWRIGHT_UI_LANGUAGE` が引き続き優先されます）。ツール名とペイロードは英語のままです。[docs/localization.md](docs/localization.md)。
 
 ### アクティビティトーストがある理由
@@ -203,6 +204,7 @@ v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 
 | Budget bytes | `--response-budget-bytes` | `BIMWRIGHT_RESPONSE_BUDGET_BYTES` | `responseBudgetBytes` |
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | spill ファイルの保持時間（既定 36 時間） | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
+| エージェントレポートの保持期間（既定 30 日） | — | — | `reportRetentionDays` |
 | LAN バインド（プラグイン） | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | ToolBaker 面 | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
@@ -225,7 +227,7 @@ Journal の選択肢は **1h, 4h, 8h, 12h, 24h, 2d, 7d, 14d** の八つ、既定
 
 ## Permissions & auto mode — 自動実行の権限
 
-これらの controls は v1.0.0 から利用できます。v0.8.1 パッケージには新しい switch とツール単位の read-only フィルターはありません。`send_code` と `run_baked_tool` は直接呼び出してください。`batch_execute` はこれらを拒否します。
+これらの controls は v1.0.0 から利用できます。v0.8.1 パッケージには新しい switch とツール単位の read-only フィルターはありません。`send_code`、`run_baked_tool`、`report_task_result` は直接呼び出してください。`batch_execute` はこれらを拒否します。
 
 Annotations は各ツールのドキュメントとファイルへの影響を示します。一時的な選択、アクティブビュー、ズームは read-only に含まれます。`send_code` には annotations がありません。自動許可から外し、コード実行ごとに確認してください。Claude Code では下記の read-only allow list のみを使用し、広い `mcp__rvt-mcp__*` wildcard を許可しないでください。この一覧は `--toolsets all` に対応し、選択した toolset では公開数が減る場合があります。
 
@@ -330,6 +332,7 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
       "mcp__rvt-mcp__revit_measure_distance_between_elements",
       "mcp__rvt-mcp__revit_project_point_onto_face",
       "mcp__rvt-mcp__revit_raycast_from_point",
+      "mcp__rvt-mcp__revit_report_task_result",
       "mcp__rvt-mcp__revit_select_elements",
       "mcp__rvt-mcp__revit_show_element_in_view",
       "mcp__rvt-mcp__revit_show_message",
@@ -410,6 +413,7 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 | [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md) | クライアント別の MCP 接続手順 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | プロセス、転送、DTO 規約 |
 | [docs/send-code.md](docs/send-code.md) | send_code のソース形式と失敗処理 |
+| [docs/agent-reports.md](docs/agent-reports.md) | エージェントレポート：リンク構文、制限、保存 |
 | [docs/bake.md](docs/bake.md) | Adaptive bake と本体プライバシー |
 | [docs/localization.md](docs/localization.md) | UI 言語、オーバーライド、ホットリロード |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | ビルド、テスト、ツール追加 |

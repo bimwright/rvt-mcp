@@ -55,6 +55,8 @@ namespace RvtMcp.Plugin
         public const bool DefaultPersistSendCodeBodies     = false;
         public const int DefaultToastIdleSeconds           = PreferenceValues.DefaultToastIdleSeconds;
         public const int DefaultPersistSendCodeBodiesHours = PreferenceValues.DefaultJournalHours;
+        public const int DefaultReportRetentionDays        = 30;
+        public const int MaxReportRetentionDays            = 3650;
         public const int DefaultSpillRetentionHours        = 36;
         public const int MaxSpillRetentionHours            = 24 * 365;
 
@@ -102,6 +104,9 @@ namespace RvtMcp.Plugin
         [JsonProperty("maxResponseBytes")]
         public int? MaxResponseBytes { get; set; }
 
+        [JsonProperty("reportRetentionDays")]
+        public JToken ReportRetentionDays { get; set; }
+
         /// <summary>
         /// Hours a spill file is kept after it is written (default 36). Read leniently: a missing,
         /// non-numeric or out-of-range value means the default, so a bad edit never loses a spill.
@@ -148,6 +153,10 @@ namespace RvtMcp.Plugin
         [JsonProperty("toastDragOffset")]
         public JToken ToastDragOffset { get; set; }
 
+        /// <summary>Reports window <c>{ "mode", "wide", "compact" }</c>; each bounds is <c>{ left, top, width, height }</c> in DIPs.</summary>
+        [JsonProperty("reportsWindow")]
+        public JToken ReportsWindow { get; set; }
+
         /// <summary>Idle duration for the single activity toast. Settings accepts 10, 20, 30, or 60 seconds.</summary>
         [JsonProperty("toastIdleSeconds")]
         public int? ToastIdleSeconds { get; set; }
@@ -185,6 +194,18 @@ namespace RvtMcp.Plugin
         public int ResponseStrongWarnBytesOrDefault => PositiveBytes(ResponseStrongWarnBytes, 256 * 1024, "responseStrongWarnBytes");
         public int ResponseBudgetBytesOrDefault => PositiveBytes(ResponseBudgetBytes, 700 * 1024, "responseBudgetBytes");
         public int MaxResponseBytesOrDefault => PositiveBytes(MaxResponseBytes, 1024 * 1024, "maxResponseBytes");
+
+        public int ReportRetentionDaysOrDefault => NormalizeReportRetentionDays(ReportRetentionDays);
+
+        public static int NormalizeReportRetentionDays(JToken value)
+        {
+            if (value == null || (value.Type != JTokenType.Integer && value.Type != JTokenType.String))
+                return DefaultReportRetentionDays;
+            var text = value.Type == JTokenType.String ? value.Value<string>() : value.ToString(Formatting.None);
+            return int.TryParse(text?.Trim(), System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out var days)
+                && days >= 1 && days <= MaxReportRetentionDays ? days : DefaultReportRetentionDays;
+        }
 
         public int SpillRetentionHoursOrDefault => NormalizeSpillRetentionHours(SpillRetentionHours);
 
@@ -269,6 +290,9 @@ namespace RvtMcp.Plugin
         public bool ShowBrandingOrDefault         => ShowBranding      ?? DefaultShowBranding;
         public ToastPositionOptions ToastPositionOrDefault => ReadToastPosition(
             ToastHorizontalAlign, ToastVerticalAlign, ToastDragEnabled, ToastDragOffset);
+        // Plugin-only UI preference: kept off the runtime options sent with every request.
+        [JsonIgnore]
+        public ReportsWindowState ReportsWindowOrDefault => ReadReportsWindow(ReportsWindow);
         public int ToastIdleSecondsOrDefault      => NormalizeToastIdleSeconds(ToastIdleSeconds);
         public int PersistSendCodeBodiesHoursOrDefault => NormalizePersistSendCodeBodiesHours(PersistSendCodeBodiesHours);
 
@@ -764,6 +788,60 @@ namespace RvtMcp.Plugin
                     };
                 else
                     root.Remove("toastDragOffset");
+            }, out error);
+        }
+
+        /// <summary>
+        /// Lenient read of <c>reportsWindow</c>: a mode other than "compact" means wide, a bounds
+        /// that is not four finite in-range numbers is dropped while the other bounds is kept, and a
+        /// <c>textScale</c> that is not one of the integer steps means 100.
+        /// </summary>
+        internal static ReportsWindowState ReadReportsWindow(JToken token)
+        {
+            var box = token as JObject;
+            var mode = box?["mode"];
+            return new ReportsWindowState(
+                mode != null && mode.Type == JTokenType.String && (string)mode == "compact"
+                    ? ReportsWindowMode.Compact : ReportsWindowMode.Wide,
+                ReadReportsWindowBounds(box?["wide"]),
+                ReadReportsWindowBounds(box?["compact"]),
+                ReadTextScale(box?["textScale"]));
+        }
+
+        /// <summary>An integer that fits in int (a huge one parses as BigInteger); anything else means 100.</summary>
+        private static int ReadTextScale(JToken token)
+        {
+            var value = (token as JValue)?.Value;
+            return value is long number && number >= int.MinValue && number <= int.MaxValue ? (int)number : ReportsTextScale.Default;
+        }
+
+        private static ReportsWindowBounds ReadReportsWindowBounds(JToken token)
+        {
+            var box = token as JObject;
+            var left = ReadFinite(box?["left"]);
+            var top = ReadFinite(box?["top"]);
+            var width = ReadFinite(box?["width"]);
+            var height = ReadFinite(box?["height"]);
+            if (!left.HasValue || !top.HasValue || !width.HasValue || !height.HasValue) return null;
+            var bounds = new ReportsWindowBounds(left.Value, top.Value, width.Value, height.Value);
+            return bounds.IsValid ? bounds : null;
+        }
+
+        /// <summary>Persist only <c>reportsWindow</c>; every other key is kept.</summary>
+        public static bool TrySaveReportsWindow(ReportsWindowState state, out string error, string configFilePath = null)
+        {
+            if (state == null) state = new ReportsWindowState();
+            JObject Bounds(ReportsWindowBounds b) => new JObject
+            {
+                ["left"] = b.Left, ["top"] = b.Top, ["width"] = b.Width, ["height"] = b.Height
+            };
+            return TryUpdateConfig(configFilePath, root =>
+            {
+                var box = new JObject { ["mode"] = state.Mode == ReportsWindowMode.Compact ? "compact" : "wide" };
+                if (state.Wide != null) box["wide"] = Bounds(state.Wide);
+                if (state.Compact != null) box["compact"] = Bounds(state.Compact);
+                box["textScale"] = state.TextScale;
+                root["reportsWindow"] = box;
             }, out error);
         }
 

@@ -73,7 +73,7 @@ namespace RvtMcp.Plugin
 
         private static JArray ScriptCapabilities()
         {
-            var capabilities = new JArray("tool_catalog", "controlled_failures_v1", "document_target_v1");
+            var capabilities = new JArray("tool_catalog", "controlled_failures_v1", "document_target_v1", "agent_reports_v1");
             if (RvtMcp.Scripting.ScriptProtocol.IsReady) capabilities.Add(RvtMcp.Scripting.ScriptProtocol.Capability);
             return capabilities;
         }

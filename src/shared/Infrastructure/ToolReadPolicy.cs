@@ -106,6 +106,7 @@ namespace RvtMcp.Plugin
             "measure_distance_between_elements",
             "project_point_onto_face",
             "raycast_from_point",
+            "report_task_result",
             "select_elements",
             "show_element_in_view",
             "show_message",

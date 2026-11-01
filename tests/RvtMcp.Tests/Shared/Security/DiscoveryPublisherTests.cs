@@ -33,6 +33,17 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void Publish_advertises_agent_reports_capability()
+        {
+            using var publisher = new DiscoveryPublisher(_dir, "2027", System.Diagnostics.Process.GetCurrentProcess().Id, _start);
+
+            publisher.Publish("pipe", null, "test-pipe", "token");
+            var descriptor = JObject.Parse(File.ReadAllText(Path.Combine(_dir, publisher.FileName)));
+
+            Assert.Contains((JArray)descriptor["capabilities"], value => value.Value<string>() == "agent_reports_v1");
+        }
+
+        [Fact]
         public void Stop_owner_hands_legacy_to_newest_live_peer_and_never_republishes()
         {
             using var older = new DiscoveryPublisher(_dir, "2027", 11, _start, (_, __) => true);

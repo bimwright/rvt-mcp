@@ -13,6 +13,7 @@ namespace RvtMcp.Plugin
         {
             _runtimeCache = runtimeCache;
             Register(new Handlers.ShowMessageHandler());
+            Register(new Handlers.ReportTaskResultHandler());
             Register(new Handlers.GetCurrentViewHandler());
             Register(new Handlers.GetChangeHistoryContextHandler());
             Register(new Handlers.GetSelectedElementsHandler());

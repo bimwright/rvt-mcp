@@ -26,6 +26,7 @@ namespace RvtMcp.Server.Bake
             "run_baked_tool",
             "switch_target",
             "show_message",
+            "report_task_result",
             "batch_execute"
         };
 

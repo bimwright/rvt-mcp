@@ -16,7 +16,7 @@ namespace RvtMcp.Server
             => Register(mcp, config, session, null);
 
         internal static IMcpServerBuilder Register(IMcpServerBuilder mcp, RvtMcpConfig config, SessionContext session,
-            ResponseSpillWriter writer)
+            ResponseSpillWriter writer, AgentReportReminder reportReminder = null)
             => mcp.WithRequestFilters(filters => filters.AddCallToolFilter(next => async (request, ct) =>
             {
                 var clock = System.Diagnostics.Stopwatch.StartNew();
@@ -46,7 +46,7 @@ namespace RvtMcp.Server
                             result = TextResult(MetaTools.TargetEnvelope(targetCtx.Payload, targetCtx.Operation), failed: true);
                         return Apply(request.Params, result, config, session, durationMs: clock.ElapsedMilliseconds,
                             changes: capture.Changes, history: capture.History, previousOperations: ToolGateway.PreviousOperations,
-                            loggedArguments: rejectedArguments, writer: writer);
+                            loggedArguments: rejectedArguments, writer: writer, reportReminder: reportReminder);
                     }
                 }
                 finally
@@ -58,7 +58,7 @@ namespace RvtMcp.Server
         internal static CallToolResult Apply(CallToolRequestParams request, CallToolResult result,
             RvtMcpConfig config, SessionContext session = null, ResponseSpillWriter writer = null, long durationMs = 0,
             JObject changes = null, JObject history = null, PreviousOperationTracker previousOperations = null,
-            string loggedArguments = null)
+            string loggedArguments = null, AgentReportReminder reportReminder = null)
         {
             var name = request?.Name ?? "";
             var command = name.StartsWith("revit_", StringComparison.Ordinal) ? name.Substring(6) : name;
@@ -187,6 +187,7 @@ namespace RvtMcp.Server
                 }
             }
             CarryOnceFields(result, safety, previousOperations, limit);
+            RemindToReport(result, command, changes, reportReminder, limit);
             text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
             if (IsFailure(text, command)) result.IsError = true;
             var journalWritten = session?.TryRecordCall(command, arguments, result.IsError != true, durationMs,
@@ -221,6 +222,26 @@ namespace RvtMcp.Server
             }
             var taken = previousOperations?.Attach(data);
             if (taken?.Count > 0 && !TrySetText(result, block, data, limit)) previousOperations.Return(taken);
+        }
+
+        // Until a report is sent, every response that changed the model asks for one, and a check's first answer asks
+        // when it found something; a sent report starts the next job. A plain-text response, or one with no room left,
+        // leaves the reminder for the next response.
+        private static void RemindToReport(CallToolResult result, string command, JObject changes, AgentReportReminder reminder, int limit)
+        {
+            if (reminder == null) return;
+            if (command == "report_task_result")
+            {
+                if (result.IsError != true) reminder.Reported();
+                return;
+            }
+            var reminderText = reminder.For(command, changes, result.IsError == true);
+            if (reminderText == null) return;
+            var block = result.Content?.OfType<TextContentBlock>().FirstOrDefault();
+            JObject data;
+            try { data = JObject.Parse(block?.Text ?? ""); } catch (JsonException) { return; }
+            data["_report"] = reminderText;
+            if (TrySetText(result, block, data, limit)) reminder.Reminded(reminderText);
         }
 
         private static bool TrySetText(CallToolResult result, TextContentBlock block, JObject data, int limit)

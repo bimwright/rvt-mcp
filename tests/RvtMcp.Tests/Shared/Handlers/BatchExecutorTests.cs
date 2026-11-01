@@ -103,6 +103,25 @@ namespace RvtMcp.Tests
             Assert.Contains("call send_code_to_revit directly", Newtonsoft.Json.JsonConvert.SerializeObject(outcome.Results));
         }
 
+        [Theory]
+        [InlineData(false, "report_task_result")]
+        [InlineData(true, "REPORT_TASK_RESULT")]
+        public void Report_task_result_must_run_outside_batch(bool continueOnError, string command)
+        {
+            var invoked = false;
+            var commands = new JArray(new JObject { ["command"] = command, ["params"] = new JObject() });
+
+            var outcome = BatchExecutor.Run(commands, continueOnError, (name, parameters) =>
+            {
+                invoked = true;
+                return BatchExecutor.InvokeResult.Ok(new { });
+            });
+
+            Assert.False(invoked);
+            Assert.True(outcome.AnyFailed);
+            Assert.Contains("call report_task_result directly", Newtonsoft.Json.JsonConvert.SerializeObject(outcome.Results));
+        }
+
         // Scripted dispatcher: dict of commandName → (params → InvokeResult)
         private static Func<string, string, BatchExecutor.InvokeResult> Dispatch(
             Dictionary<string, Func<string, BatchExecutor.InvokeResult>> scripts) =>

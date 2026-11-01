@@ -19,11 +19,20 @@
     See `Checklist-Bimwright-v0.1.0.md` P2-001 scope — "Option 2 refined".
   -->
   <ItemGroup>
+    <Compile Include="..\..\src\shared\Presentation\Common\ObservableObject.cs" Link="Shared\Presentation\Common\ObservableObject.cs" />
+    <Compile Include="..\..\src\shared\Presentation\Common\RelayCommand.cs" Link="Shared\Presentation\Common\RelayCommand.cs" />
+    <Compile Include="..\..\src\shared\Reports\Presentation\**\*.cs" LinkBase="Shared\Reports\Presentation" />
+    <Compile Include="..\..\src\shared\Reports\Binding\**\*.cs" LinkBase="Shared\Reports\Binding" />
+    <Compile Include="..\..\src\shared\Reports\Changes\**\*.cs" LinkBase="Shared\Reports\Changes" />
+    <Compile Include="..\..\src\shared\Reports\Storage\**\*.cs" LinkBase="Shared\Reports\Storage" />
+    <Compile Include="..\..\src\shared\Reports\Navigation\**\*.cs" LinkBase="Shared\Reports\Navigation" />
+    <Compile Include="..\..\src\shared\Reports\Model\**\*.cs" Exclude="..\..\src\shared\Reports\Model\ReportLimits.cs" LinkBase="Shared\Reports\Model" />
     <Compile Include="../../src/shared/Views/Toast/ToastActivityEntry.cs" Link="Shared/Views/Toast/ToastActivityEntry.cs" />
     <Compile Include="../../src/shared/Infrastructure/HostHealthSnapshot.cs" Link="Shared/Infrastructure/HostHealthSnapshot.cs" />
     <Compile Include="../../src/shared/Handlers/Schedules/ScheduleSortInput.cs" Link="Shared/Handlers/Schedules/ScheduleSortInput.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastActivityLog.cs" Link="Shared/Views/Toast/ToastActivityLog.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastPlacement.cs" Link="Shared/Views/Toast/ToastPlacement.cs" />
+    <Compile Include="../../src/shared/Reports/Views/ReportsWindowPlacement.cs" Link="Shared/Reports/Views/ReportsWindowPlacement.cs" />
     <Compile Include="../../src/shared/Views/FailureIssuesContext.cs" Link="Shared/Views/FailureIssuesContext.cs" />
     <Compile Include="../../src/shared/Views/FailureIssuesPresentation.cs" Link="Shared/Views/FailureIssuesPresentation.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\SendCodeSourceBuilder.cs" Link="Shared\Infrastructure\SendCodeSourceBuilder.cs" />
@@ -53,6 +62,7 @@
     <Compile Include="..\..\src\shared\Views\Toast\ActivityAggregator.cs" Link="Shared\Views\Toast\ActivityAggregator.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\ToolNameFormatter.cs" Link="Shared\Views\Toast\ToolNameFormatter.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\ToastContentBuilder.cs" Link="Shared\Views\Toast\ToastContentBuilder.cs" />
+    <Compile Include="..\..\src\shared\Views\Toast\ToastReportRoute.cs" Link="Shared\Views\Toast\ToastReportRoute.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\McpToastViewModel.cs" Link="Shared\Views\Toast\McpToastViewModel.cs" />
     <Compile Include="..\..\src\shared\Views\Toast\ToastThumbnailLoader.cs" Link="Shared\Views\Toast\ToastThumbnailLoader.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\CaptureOutputResolver.cs" Link="Shared\Infrastructure\CaptureOutputResolver.cs" />

@@ -14,7 +14,7 @@ namespace RvtMcp.Plugin
     {
         private static readonly Dictionary<Document, string> Documents = new Dictionary<Document, string>();
 
-        internal static JObject Capture(UIApplication app)
+        private static void RemoveInvalidDocuments()
         {
             // Removing an invalid Revit Document hashes its dead native wrapper.
             // Rebuild from live keys so closed documents are never hashed again.
@@ -24,10 +24,42 @@ namespace RvtMcp.Plugin
                 Documents.Clear();
                 foreach (var pair in live) Documents.Add(pair.Key, pair.Value);
             }
+        }
+
+        internal static string TryGetToken(Document doc)
+        {
+            RemoveInvalidDocuments();
+            return doc != null && doc.IsValidObject && Documents.TryGetValue(doc, out var token) ? token : null;
+        }
+
+        internal static Document TryFind(string token)
+        {
+            RemoveInvalidDocuments();
+            if (token == null) return null;
+            foreach (var pair in Documents)
+                if (string.Equals(pair.Value, token, StringComparison.Ordinal)) return pair.Key;
+            return null;
+        }
+
+        internal static string GetOrCreateToken(Document doc)
+        {
+            RemoveInvalidDocuments();
+            return GetOrCreateTokenCore(doc);
+        }
+
+        private static string GetOrCreateTokenCore(Document doc)
+        {
+            if (doc == null || !doc.IsValidObject) return null;
+            if (!Documents.TryGetValue(doc, out var token))
+                Documents.Add(doc, token = Guid.NewGuid().ToString("N"));
+            return token;
+        }
+
+        internal static JObject Capture(UIApplication app)
+        {
+            RemoveInvalidDocuments();
             var doc = app.ActiveUIDocument?.Document;
-            string documentId = null;
-            if (doc != null && doc.IsValidObject && !Documents.TryGetValue(doc, out documentId))
-                Documents.Add(doc, documentId = Guid.NewGuid().ToString("N"));
+            var documentId = GetOrCreateTokenCore(doc);
             using (var process = Process.GetCurrentProcess())
                 return new JObject
                 {

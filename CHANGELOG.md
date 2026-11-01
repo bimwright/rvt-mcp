@@ -27,6 +27,11 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
+### Agent reports
+
+- Add `revit_report_task_result` for validated, replaceable agent reports without changing the model. Catalog: `--toolsets all` **241**, adaptive bake **244**, bare defaults **54**.
+- Add a **Reports** ribbon button and window (Wide and Compact modes, adjustable text size). It lists each report with the changes rvt-mcp recorded. Links select elements or open views without transactions or Revit dialogs, and the report toast opens the report. Reports are kept for 30 days (`reportRetentionDays`). See [docs/agent-reports.md](docs/agent-reports.md).
+
 ### Script inputs and helper modules
 
 - Add JSON inputs, reusable helper modules, compile-only validation and opt-in `McpTaskResult` task outcomes to send-code. Enhanced requests require `send_code_v2` on the selected gateway/add-in pair; default calls retain the legacy wire format.

@@ -18,7 +18,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-240%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-241%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -91,23 +91,23 @@ Video cộng đồng giới thiệu rvt-mcp. Cách cài trong video có thể c�
 
 ## Tools
 
-Các số dưới đây khớp **source hiện tại**, đã thêm 3 tool module của `send_code`. **Bản phát hành v1.2.1** có ít hơn 3 tool ở mỗi chế độ.
+Các số dưới đây khớp **source hiện tại**, đã thêm 3 tool module của `send_code` và báo cáo agent. **Bản phát hành v1.2.1** có ít hơn 4 tool ở mỗi chế độ.
 
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
-| Fresh install | **240** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **53** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **240** | Full catalog |
-| `all` + adaptive bake | **243** | Thêm 3 tool vòng đời suggestion |
+| Fresh install | **241** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **54** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **241** | Full catalog |
+| `all` + adaptive bake | **244** | Thêm 3 tool vòng đời suggestion |
 
-Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 53 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline.
+Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 54 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline; báo cáo agent được phép vì chỉ ghi dữ liệu báo cáo của người dùng.
 
 | Toolset | Phạm vi |
 |---------|---------|
 | `query` | View, selection, filter, stats, param, quan hệ, workset, group/assembly |
 | `create` | Grid, level, room, element line/point/surface, group |
 | `view` | Tạo view, layout sheet, capture, crop/scale |
-| `meta` | Batch (tối đa 20), multi-Revit target, recent model, project info, purge (MVP), message, send_code |
+| `meta` | Batch (tối đa 20), multi-Revit target, recent model, project info, purge (MVP), message, send_code, báo cáo agent |
 | `lint` | Pattern đặt tên view, firm-profile, tóm tắt warning |
 | `schedule` | List/tạo schedule, field, formula, data |
 | `families` | Load/unload, type, instance, audit, export `.rfa` (phía project) |
@@ -142,7 +142,8 @@ Lời gọi thiếu tham số bắt buộc sẽ không chạy. Nó trả `INVALI
 
 - **`revit_send_code_to_revit`** (bật mặc định) compile và chạy body C# trong Revit khi không có typed tool phù hợp; `--read-only` hoặc `--disable-send-code` sẽ gỡ nó. Xem [docs/send-code.md](docs/send-code.md), và [docs/stairs-workflow.md](docs/stairs-workflow.md) cho cầu thang.
 - **ToolBaker:** `revit_list_baked_tools` / `revit_run_baked_tool` cần `--toolsets toolbaker`. Adaptive bake (`--enable-adaptive-bake`, mặc định tắt) gợi ý tool từ các lời gọi lặp lại; không có gì được thêm cho tới khi bạn accept. Bake compile ngay trong Revit — không cần Visual Studio. Xem [docs/bake.md](docs/bake.md).
-- **Ribbon:** bật/tắt kết nối, mở **History** để tìm và chạy lại các lời gọi trước, và bật/tắt **Toast** hoàn thành (mặc định bật).
+- **Agent reports:** `revit_report_task_result` (trong `meta`) cho agent để lại một báo cáo khi xong việc. Revit hiện toast và liệt kê báo cáo trong cửa sổ **Reports**, kèm link để chọn element hoặc mở view, và các thay đổi rvt-mcp đã ghi nhận. Tool không sửa model và dùng được với `--read-only`. Xem [docs/agent-reports.md](docs/agent-reports.md).
+- **Ribbon:** bật/tắt kết nối, mở **History** để tìm và chạy lại các lời gọi trước, mở **Reports** để đọc báo cáo của agent, và bật/tắt **Toast** hoàn thành (mặc định bật).
 - **Ngôn ngữ giao diện:** UI của add-in có 15 ngôn ngữ và theo ngôn ngữ giao diện của Revit; đổi bằng nút **Language** trong slide-out của ribbon — nút mở **Settings → tab General → nhóm Language** (`BIMWRIGHT_UI_LANGUAGE` vẫn thắng). Tên tool và payload vẫn là tiếng Anh. Xem [docs/localization.md](docs/localization.md).
 
 ### Vì sao có toast thông báo hoạt động?
@@ -203,6 +204,7 @@ Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cụ
 | Budget bytes | `--response-budget-bytes` | `BIMWRIGHT_RESPONSE_BUDGET_BYTES` | `responseBudgetBytes` |
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | Thời gian giữ file spill (mặc định 36 giờ) | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
+| Thời gian giữ báo cáo của agent (mặc định 30 ngày) | — | — | `reportRetentionDays` |
 | LAN bind (plugin) | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | ToolBaker surface | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
@@ -225,7 +227,7 @@ Journal có đúng tám lựa chọn **1h, 4h, 8h, 12h, 24h, 2d, 7d, 14d**; mặ
 
 ## Permissions & auto mode — quyền chạy tự động
 
-Các controls này có từ v1.0.0. Gói v0.8.1 chưa có các switch mới và cách lọc read-only theo từng tool. Phải gọi `send_code` và `run_baked_tool` trực tiếp; `batch_execute` từ chối hai lệnh này.
+Các controls này có từ v1.0.0. Gói v0.8.1 chưa có các switch mới và cách lọc read-only theo từng tool. Phải gọi `send_code`, `run_baked_tool` và `report_task_result` trực tiếp; `batch_execute` từ chối các lệnh này.
 
 Annotations mô tả tác động lên document/file của từng tool. Đổi selection, active view và zoom tạm thời được tính là read-only. `send_code` không có annotations: không đưa vào quyền tự động, và xác nhận từng lượt chạy code. Với Claude Code, chỉ sao chép allow list read-only bên dưới; không cho phép wildcard rộng `mcp__rvt-mcp__*`. List này ứng với `--toolsets all`; toolsets bạn chọn có thể công bố ít tool hơn.
 
@@ -330,6 +332,7 @@ Annotations mô tả tác động lên document/file của từng tool. Đổi s
       "mcp__rvt-mcp__revit_measure_distance_between_elements",
       "mcp__rvt-mcp__revit_project_point_onto_face",
       "mcp__rvt-mcp__revit_raycast_from_point",
+      "mcp__rvt-mcp__revit_report_task_result",
       "mcp__rvt-mcp__revit_select_elements",
       "mcp__rvt-mcp__revit_show_element_in_view",
       "mcp__rvt-mcp__revit_show_message",
@@ -410,6 +413,7 @@ Thêm: [SECURITY.md](SECURITY.md), [docs/bake.md](docs/bake.md).
 | [docs/mcp-client-wiring.md](docs/mcp-client-wiring.md) | Nối MCP theo từng client |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Process, transport, DTO |
 | [docs/send-code.md](docs/send-code.md) | Dạng source và xử lý lỗi của send_code |
+| [docs/agent-reports.md](docs/agent-reports.md) | Báo cáo của agent: cú pháp link, giới hạn, lưu trữ |
 | [docs/bake.md](docs/bake.md) | Adaptive bake và privacy body |
 | [docs/localization.md](docs/localization.md) | Ngôn ngữ UI, override, hot reload |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Build, test, thêm tool |

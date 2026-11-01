@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <!-- Production Reports window and views on an STA dispatcher; runtime, navigation and screen are in-memory fakes. -->
+  <ItemGroup>
+    <Compile Include="../../src/shared/Reports/Model/**/*.cs" LinkBase="Reports/Model" />
+    <Compile Include="../../src/shared/Reports/Presentation/**/*.cs" LinkBase="Reports/Presentation" />
+    <Compile Include="../../src/shared/Reports/Views/**/*.cs" LinkBase="Reports/Views" />
+    <Compile Include="../../src/shared/Config/ReportsWindowState.cs" Link="Config/ReportsWindowState.cs" />
+    <!-- ToastPlacement.Clamp uses ToastPositionOptions.Finite. -->
+    <Compile Include="../../src/shared/Config/ToastPositionOptions.cs" Link="Config/ToastPositionOptions.cs" />
+    <Compile Include="../../src/shared/Views/Toast/ToastPlacement.cs" Link="Views/ToastPlacement.cs" />
+    <Compile Include="../../src/shared/Presentation/Common/ObservableObject.cs" Link="Presentation/ObservableObject.cs" />
+    <Compile Include="../../src/shared/Presentation/Common/RelayCommand.cs" Link="Presentation/RelayCommand.cs" />
+    <Compile Include="../../src/shared/Views/BimwrightStyles.cs" Link="Views/BimwrightStyles.cs" />
+    <Compile Include="../../src/shared/Views/ScrollBarFadeBehavior.cs" Link="Views/ScrollBarFadeBehavior.cs" />
+    <!-- Reports reuse History's eased wheel scrolling and edge fades. -->
+    <Compile Include="../../src/shared/Views/HistoryChrome.cs" Link="Views/HistoryChrome.cs" />
+    <Compile Include="../../src/shared/Localization/L.cs" Link="Localization/L.cs" />
+    <Compile Include="../../src/shared/Localization/EmbeddedCatalog.cs" Link="Localization/EmbeddedCatalog.cs" />
+    <Compile Include="../../src/shared/Localization/StringTable.cs" Link="Localization/StringTable.cs" />
+    <Compile Include="../../src/shared/Localization/LocaleResolver.cs" Link="Localization/LocaleResolver.cs" />
+    <Compile Include="../Shared/WpfBindingErrors.cs" Link="WpfBindingErrors.cs" />
+    <EmbeddedResource Include="../../src/shared/Localization/Catalog/strings.*.json" WithCulture="false">
+      <LogicalName>RvtMcp.Localization.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+</Project>

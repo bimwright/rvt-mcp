@@ -93,6 +93,11 @@ namespace RvtMcp.Plugin
 
             if (locChanged)
             {
+                if (_ribbon.ReportsButton != null)
+                {
+                    _ribbon.ReportsButton.ItemText = L.T("ribbon.reports.text");
+                    _ribbon.ReportsButton.ToolTip = L.T("ribbon.reports.tooltip");
+                }
                 if (_ribbon.BakeInboxButton != null)
                 {
                     _ribbon.BakeInboxButton.ItemText = L.T("ribbon.bakeInbox.text");

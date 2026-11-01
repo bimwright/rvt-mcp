@@ -12,6 +12,8 @@ namespace RvtMcp.Plugin.Views.Toast
     /// </summary>
     public static class ToastContentBuilder
     {
+        private const string ReportToolName = "report_task_result";
+
         public static McpToastViewModel BuildCompleted(
             string toolName,
             string paramsJson,
@@ -32,10 +34,12 @@ namespace RvtMcp.Plugin.Views.Toast
             try { receipt = JObject.Parse(resultJson ?? "{}"); } catch { }
             var scriptLabel = RvtMcp.Scripting.ScriptPresentation.Label(receipt?["_script"] as JObject, receipt?["_operation"] as JObject, key => L.T(key));
 
+            var title = success && toolName == ReportToolName ? L.T("toast.report.title") : ToolNameFormatter.Format(toolName);
+
             return new McpToastViewModel
             {
                 CommandName = toolName,
-                Title = scriptLabel ?? ToolNameFormatter.Format(toolName),
+                Title = scriptLabel ?? title,
                 CategoryLabel = content.CategoryLabel,
                 Summary = content.Summary,
                 Detail = content.Detail,
@@ -75,6 +79,8 @@ namespace RvtMcp.Plugin.Views.Toast
                     return BuildSurveySuccess(category, result);
                 case "send_code_to_revit":
                     return BuildSendCodeSuccess(category, result);
+                case ReportToolName:
+                    return BuildReportSuccess(category, parms);
                 default:
                     return BuildGenericSuccess(category, toolName, result);
             }
@@ -214,6 +220,21 @@ namespace RvtMcp.Plugin.Views.Toast
             var summary = string.IsNullOrWhiteSpace(text) ? L.T("toast.sendCode.finished")
                 : Truncate(FirstLine(ToastActivityEntry.Redact(text)), 100);
             return new ToastContent(category, summary, L.T("toast.sendCode.detail"));
+        }
+
+        private static ToastContent BuildReportSuccess(string category, JObject parms)
+        {
+            // The store keeps the masked summary, so the card masks it the same way.
+            var summary = Truncate(SecretMasker.Mask(parms?.Value<string>("summary") ?? string.Empty), 120);
+            string detail;
+            switch (parms?.Value<string>("outcome"))
+            {
+                case "completed": detail = L.T("reports.outcome.completed"); break;
+                case "failed": detail = L.T("reports.outcome.failed"); break;
+                case "cancelled": detail = L.T("reports.outcome.cancelled"); break;
+                default: detail = string.Empty; break;
+            }
+            return new ToastContent(category, summary, detail);
         }
 
         private static ToastContent BuildSurveySuccess(string category, JObject result)
