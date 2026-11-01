@@ -21,6 +21,7 @@ namespace RvtMcp.Plugin
         internal ScriptExecutionState ScriptState { get; set; }
         public RvtMcpConfig RuntimeOptions { get; set; }
         public ChangeHistoryRequest History { get; set; }
+        public ReportCallContext ReportContext { get; set; }
         public bool FromMcp { get; set; }
         public string ExpectedDocumentId { get; set; }
         public bool DocumentProtocol { get; set; }
@@ -74,10 +75,15 @@ namespace RvtMcp.Plugin
                 JObject changes = null;
                 JObject history = null;
                 JObject historyMarker = null;
+                JObject reportCapture = null;
                 Failures.FailureControl.Scope failureScope = null;
                 JObject actualTarget = null;
                 try
                 {
+                    if (request.ReportContext != null && (!request.ReportContext.IsValid
+                        || request.ReportContext.CallId != PendingRequestLifecycle.For(request.Tcs).OperationId
+                        || request.History?.IsValid == true && (request.ReportContext.CallId != request.History.Id || request.ReportContext.Session != request.History.Session)))
+                        throw new InvalidOperationException("REPORT_CONTEXT_INVALID: Capture and history identifiers must agree.");
                     if (request.CommandName == "send_code_to_revit" && request.ScriptMetadata != null)
                         request.ScriptState = new ScriptExecutionState(request.ScriptMetadata, request.ParamsJson);
                     actualTarget = DocumentTargetGuard.Capture(app);
@@ -185,6 +191,7 @@ namespace RvtMcp.Plugin
                     failureScope = Failures.FailureControl.Begin(app, request, runtimeConfig.WarningPolicyOrDefault);
                     Failures.FailureControl.ThrowIfStopped();
                     var surveySnapshot = Survey.SurveyHistoryBridge.Before(app, request, runtimeConfig.EnableChangeHistoryOrDefault);
+                    using (ReportExecutionContext.Enter(request.ReportContext))
                     using (var capture = McpChangeTracker.Begin(request.History?.IsValid == true && runtimeConfig.EnableChangeHistoryOrDefault))
                     {
                         bool rolledBack = false;
@@ -203,9 +210,22 @@ namespace RvtMcp.Plugin
                             try
                             {
                                 if (request.CommandName != "report_task_result")
-                                    Reports.Changes.ReportChangeBuffer.Shared.Push(capture.ReportSnapshot(rolledBack));
+                                {
+                                    var context = request.ReportContext == null ? null : new ReportCallContext { CallId = request.ReportContext.CallId,
+                                        Session = request.ReportContext.Session, HistoryRequested = request.History?.IsValid == true && runtimeConfig.EnableChangeHistoryOrDefault };
+                                    var retained = Reports.Changes.ReportChangeBuffer.Shared.Push(capture.ReportSnapshot(rolledBack), context, request.CommandName);
+                                    if (context != null) reportCapture = new JObject { ["call_id"] = context.CallId, ["client_session"] = context.Session,
+                                        ["status"] = retained ? "captured" : "expired" };
+                                }
                             }
-                            catch (Exception ex) { try { App.DebugLog("Report change capture failed: " + ex.Message); } catch { } }
+                            catch (Exception ex)
+                            {
+                                Reports.Changes.ReportChangeBuffer.Shared.MarkCaptureUnavailable(request.ReportContext?.Session);
+                                if (request.ReportContext != null && request.CommandName != "report_task_result")
+                                    reportCapture = new JObject { ["call_id"] = request.ReportContext.CallId,
+                                        ["client_session"] = request.ReportContext.Session, ["status"] = "failed" };
+                                try { App.DebugLog("Report change capture failed: " + ex.Message); } catch { }
+                            }
                             try { history = capture.HistorySnapshot(app.ActiveUIDocument?.Document, rolledBack); }
                             catch (Exception ex)
                             {
@@ -242,6 +262,7 @@ namespace RvtMcp.Plugin
                         ScriptExecutionState.AttachLegacyHint(envelope, returned);
                     }
                     if (changes != null) envelope["changes"] = changes;
+                    if (reportCapture != null) envelope["_report_capture"] = reportCapture;
                     // Reserve the small receipt marker in the response budget before writing the capture.
                     if (history != null || historyMarker != null)
                         envelope["history_transfer"] = historyMarker ?? ChangeHistoryTransfer.PublicationMarker(request.History.Id, history);
@@ -376,6 +397,7 @@ namespace RvtMcp.Plugin
                             ["execution"] = "completed", ["outcome"] = "not_started", ["mutationApplied"] = false, ["complete"] = true
                         };
                     if (changes != null) errorEnvelope["changes"] = changes;
+                    if (reportCapture != null) errorEnvelope["_report_capture"] = reportCapture;
                     if (request.ScriptState != null && errorEnvelope["_operation"] == null && failureScope == null)
                         errorEnvelope["_operation"] = new JObject {
                             ["operationId"] = PendingRequestLifecycle.For(request.Tcs).OperationId,

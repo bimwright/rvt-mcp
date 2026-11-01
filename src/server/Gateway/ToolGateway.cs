@@ -131,13 +131,14 @@ namespace RvtMcp.Server
         internal static void CarryOnce(JObject from, JObject to)
         {
             if (from == null || to == null) return;
+            if (from["_report_capture"] != null) to["_report_capture"] = from["_report_capture"].DeepClone();
             if (from["_userDialogs"] != null && to["_userDialogs"] == null) to["_userDialogs"] = from["_userDialogs"].DeepClone();
         }
 
         /// <summary><see cref="CarryOnce(JObject, JObject)"/> for a tool that answers with JSON text; other text is returned unchanged.</summary>
         internal static string CarryOnce(JObject from, string json)
         {
-            if (from?["_userDialogs"] == null) return json;
+            if (from?["_userDialogs"] == null && from?["_report_capture"] == null) return json;
             JObject to;
             try { to = JObject.Parse(json); } catch (JsonException) { return json; }
             CarryOnce(from, to);
@@ -201,10 +202,13 @@ namespace RvtMcp.Server
                 TargetCallContext.Current.ActualTarget = (JObject)actualTarget.DeepClone();
             var changes = ChangeSummary.ForAgent(response["changes"]);
             ChangeCaptureContext.Record(changes);
+            ChangeCaptureContext.RecordReport(response["_report_capture"] as JObject);
 
             if (response.Value<bool>("success"))
             {
                 var data = response["data"] as JObject ?? new JObject();
+                data.Remove("_report_capture");
+                data.Remove("_report_captures");
                 var responseWarning = response.Value<string>("warning");
                 if (!string.IsNullOrWhiteSpace(responseWarning))
                     data["_response_warning"] = responseWarning;
@@ -215,11 +219,13 @@ namespace RvtMcp.Server
             else
             {
                 var error = response.Value<string>("error") ?? "Unknown error from Revit";
-                if (response["_failure"] != null || response["_operation"] != null || response["_target"] != null || response["_task"] != null || response["_script"] != null)
+                if (response["_failure"] != null || response["_operation"] != null || response["_target"] != null || response["_task"] != null || response["_script"] != null || response["_report_capture"] != null)
                 {
                     // A failed request can still have committed partial effects.
                     // Retain its structured readback instead of discarding it.
                     var data = response["data"] is JObject details ? (JObject)details.DeepClone() : new JObject();
+                    data.Remove("_report_capture");
+                    data.Remove("_report_captures");
                     data["success"] = false;
                     data["error"] = error;
                     if (changes != null) data["_changes"] = changes;

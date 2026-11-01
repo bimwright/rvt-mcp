@@ -45,6 +45,23 @@ namespace RvtMcp.Tests
             Assert.Equal("report_task_result", Assert.Single(wire.Requests).Value<string>("command"));
         }
 
+        [Theory]
+        [InlineData(false)] [InlineData(true)]
+        public async Task Explicit_selection_requires_provenance_capability_and_metadata_is_gateway_owned(bool supported)
+        {
+            using var wire = new ReportTestWire(true, provenance: supported);
+            var result = await wire.Send(new { task_id = "job", outcome = "completed", summary = "Done", call_ids = "[]" });
+            if (!supported)
+            {
+                Assert.StartsWith("AGENT_REPORT_PROVENANCE_REQUIRED:", result.Value<string>("error")); Assert.Empty(wire.Requests);
+            }
+            else
+            {
+                var context = Assert.Single(wire.Requests)["report_context"].ToObject<ReportCallContext>();
+                Assert.True(context.IsValid); Assert.Equal(Assert.Single(wire.Requests).Value<string>("operation_id"), context.CallId);
+            }
+        }
+
         [Fact]
         public async Task Fake_host_diagnostics_are_written_only_to_the_test_directory()
         {
@@ -71,7 +88,7 @@ namespace RvtMcp.Tests
         private TcpClient _client;
         public ConcurrentQueue<JObject> Requests { get; } = new ConcurrentQueue<JObject>();
 
-        public ReportTestWire(bool agentReports, bool readOnly = false, bool confirmDocument = true)
+        public ReportTestWire(bool agentReports, bool readOnly = false, bool confirmDocument = true, bool provenance = false)
         {
             Directory.CreateDirectory(_root);
             _listener.Start();
@@ -79,6 +96,7 @@ namespace RvtMcp.Tests
             new Thread(Serve) { IsBackground = true }.Start();
             var capabilities = new JArray("tool_catalog", "controlled_failures_v1", "document_target_v1");
             if (agentReports) capabilities.Add("agent_reports_v1");
+            if (provenance) capabilities.Add("agent_report_provenance_v1");
             var descriptor = new JObject
             {
                 ["schema_version"] = 3, ["host_app"] = "revit", ["host_year"] = 2024,
@@ -127,10 +145,10 @@ namespace RvtMcp.Tests
             catch (ObjectDisposedException) { }
         }
 
-        public async Task<JObject> Send()
+        public async Task<JObject> Send(object parameters = null)
         {
             var context = TargetCallContext.Begin();
-            try { return await ToolGateway.SendToRevit("report_task_result", new { task_id = "job-1", outcome = "completed", summary = "Done" }); }
+            try { return await ToolGateway.SendToRevit("report_task_result", parameters ?? new { task_id = "job-1", outcome = "completed", summary = "Done" }); }
             finally { TargetCallContext.End(context); }
         }
 

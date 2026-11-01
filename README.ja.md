@@ -18,7 +18,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-241%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-242%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -95,12 +95,12 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 | モード | Tools | 注記 |
 |--------|------:|------|
-| 新規インストール | **241** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
-| 素の `rvt-mcp.exe` | **54** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **241** | フルカタログ |
-| `all` + adaptive bake | **244** | 提案ライフサイクル 3 ツールを追加 |
+| 新規インストール | **242** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
+| 素の `rvt-mcp.exe` | **55** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **242** | フルカタログ |
+| `all` + adaptive bake | **245** | 提案ライフサイクル 3 ツールを追加 |
 
-件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 54 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。エージェント報告はユーザーごとの報告データのみを書くため、許可されます。
+件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 55 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。エージェント報告はユーザーごとの報告データのみを書くため、許可されます。
 
 | Toolset | 範囲 |
 |---------|------|
@@ -156,7 +156,7 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 トーストが伝えるのは **ツール 1 回分の結果** であり、実行中のツールの進捗でも、タスク全体の完了でもありません。連続した結果は 1 枚のカードにまとまります。Revit が最小化されているときやモーダルダイアログで止まっているときは、通知が待たされることがあります。エージェントの作業を確認する代わりにはなりません。
 
-各カードにはゲートウェイ名と Revit の年（例：`rvt-mcp 2022`）、直近のツール、Success · Failed · Capture のカウントが表示されます。キャプチャのプレビューは少なくとも 5 秒間カードに残ります。
+各カードにはゲートウェイ名、Revit の年と通知元の Revit プロセスの PID（例：`rvt-mcp 2022 · PID: 12345`）、直近のツール、Success · Failed · Capture のカウントが表示されます。キャプチャのプレビューは少なくとも 5 秒間カードに残ります。
 
 意図的にホバーすると、最新 3 件の結果と各ローカル完了時刻（`HH:mm:ss`）を示すアクティビティタイムラインが開きます。上にスクロールすると、そのカードの以前の呼び出しを読めます。新しい結果は短いスライドインで末尾に追従します（行が上がり、新しい行がフェードインし、結果のドットが弾みます。視覚効果を減らす設定ではどれも表示されません）。古い呼び出しを読んでいる間は位置が保たれます。タイムライン内をクリックしても閉じずに読み続けられ、カードのそれ以外の部分をクリックすると History が開きます。ブランディングをオフにしても動作します。要約は長さが制限され、機微な情報は伏せられ、メモリ内にのみ保持され、カードを閉じると消去されます。スクリプトのオブジェクトや配列は件数で表示し、不完全な調査は不完全と明示されます。サーバー側のみのツールは、この UI 変更ではトースト対象になりません。
 
@@ -333,6 +333,7 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
       "mcp__rvt-mcp__revit_project_point_onto_face",
       "mcp__rvt-mcp__revit_raycast_from_point",
       "mcp__rvt-mcp__revit_report_task_result",
+      "mcp__rvt-mcp__revit_get_report_history",
       "mcp__rvt-mcp__revit_select_elements",
       "mcp__rvt-mcp__revit_show_element_in_view",
       "mcp__rvt-mcp__revit_show_message",

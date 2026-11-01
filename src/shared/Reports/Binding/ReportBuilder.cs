@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Newtonsoft.Json;
 using RvtMcp.Plugin.Reports.Changes;
 using RvtMcp.Plugin.Reports.Model;
@@ -11,6 +12,7 @@ namespace RvtMcp.Plugin.Reports.Binding
     {
         public AgentReport Report { get; set; }
         public ReportLinkCheck LinkCheck { get; set; }
+        public ReportSaveResult Saved { get; set; }
     }
 
     public sealed class ReportLinkCheck
@@ -47,6 +49,23 @@ namespace RvtMcp.Plugin.Reports.Binding
 
     public static class ReportBuilder
     {
+        public static ReportBuildResult BuildAndSave(string taskId, string outcome, string summary, string body,
+            IReportResolver resolver, ReportSource source, ReportChangeBuffer buffer, ReportStore store, ReportSubmissionScope scope = null)
+        {
+            scope = scope ?? new ReportSubmissionScope { Session = source?.ClientSession };
+            var changes = buffer.TakeForReport(taskId, () => store.LoadForTask(taskId, scope.Session), scope);
+            if (scope.Session != null)
+            {
+                source = source ?? new ReportSource();
+                source.ClientSession = scope.Session;
+                source.CaptureScope = buffer.ScopeFor(taskId, scope.Session, scope.Kind);
+            }
+            var result = Build(taskId, outcome, summary, body, resolver, changes, source);
+            result.Saved = store.Save(result.Report);
+            buffer.ConfirmSaved(taskId, scope.Session);
+            return result;
+        }
+
         public static ReportBuildResult Build(string taskId, string outcome, string summary, string body,
             IReportResolver resolver, ReportChangeSet changes, ReportSource source)
         {
@@ -116,7 +135,8 @@ namespace RvtMcp.Plugin.Reports.Binding
             {
                 foreach (var document in changes.Documents ?? new List<ReportDocument>())
                     AddDocument(report, references, document);
-                report.Changes = new ReportChanges { Complete = changes.Changes.Complete, Truncated = changes.Changes.Truncated };
+                report.Changes = new ReportChanges { Complete = changes.Changes.Complete, Truncated = changes.Changes.Truncated,
+                    Scope = changes.Changes.Scope, Calls = changes.Changes.Calls?.ToList(), CaptureSequence = changes.Changes.CaptureSequence };
                 foreach (var item in changes.Changes.Documents ?? new List<ReportDocumentChanges>())
                 {
                     if (item == null || item.Doc == null || !references.TryGetValue(item.Doc, out var reference)) continue;
@@ -147,7 +167,8 @@ namespace RvtMcp.Plugin.Reports.Binding
                     modified += document.Modified.Count;
                     deleted += document.Deleted.Count;
                 }
-                attached = new { documents = changes.Documents.Count, added, modified, deleted, complete = changes.Complete };
+                attached = new { documents = changes.Documents.Count, added, modified, deleted, complete = changes.Complete,
+                    truncated = changes.Truncated, scope = changes.Scope };
             }
             return new
             {
@@ -155,6 +176,9 @@ namespace RvtMcp.Plugin.Reports.Binding
                 replaced = save.Replaced,
                 links = result.LinkCheck,
                 changes_attached = attached,
+                provenance = new { scope = result.Report.Source?.CaptureScope ?? changes?.Scope ?? "process",
+                    client_session = result.Report.Source?.ClientSession, total_call_references = changes?.Calls?.Count ?? 0,
+                    calls = changes?.Calls?.Take(10).ToList(), calls_truncated = (changes?.Calls?.Count ?? 0) > 10 },
                 toast = toastEnabled ? "shown" : "disabled"
             };
         }

@@ -49,9 +49,13 @@ namespace RvtMcp.Tests.Shared.Reports
             Assert.False(none.HasData);
             Assert.Equal(L.T("reports.changes.noData"), none.NoteText);
             Assert.Equal("", none.ChipText);
+            Assert.Equal("", none.ScopeText);
             var empty = new ChangeSectionViewModel(new ReportChanges { Complete = true }, docs, nav, () => null);
             Assert.True(empty.HasData);
             Assert.Equal(L.T("reports.changes.empty"), empty.NoteText);
+            Assert.Equal(L.T("reports.changes.scopeProcess"), empty.ScopeText);
+            var unknown = new ChangeSectionViewModel(new ReportChanges { Scope = "unknown" }, docs, nav, () => null);
+            Assert.Equal(L.T("reports.changes.scopeUnknown"), unknown.ScopeText);
             var incomplete = new ChangeSectionViewModel(new ReportChanges { Complete = false, Truncated = true }, docs, nav, () => null);
             Assert.Equal(L.T("reports.changes.incomplete"), incomplete.IncompleteText);
             Assert.Equal(L.T("reports.changes.truncated"), incomplete.TruncatedText);
@@ -100,10 +104,12 @@ namespace RvtMcp.Tests.Shared.Reports
     internal sealed class FakeNavigation : INavigationService
     {
         private EventHandler<ReportNavigationResult> _completed;
+        public event EventHandler<ReportNavigationRequest> Started;
+        public int StartedSubscriberCount => Started?.GetInvocationList().Length ?? 0;
         public ReportNavigationRequest LastRequest { get; set; }
         public event EventHandler<ReportNavigationResult> Completed { add { _completed += value; } remove { _completed -= value; } }
         public int SubscriberCount => _completed?.GetInvocationList().Length ?? 0;
-        public void Navigate(ReportNavigationRequest request) { LastRequest = request; }
+        public void Navigate(ReportNavigationRequest request) { LastRequest = request; Started?.Invoke(this, request); }
         public void Complete(ReportNavigationResult result) { _completed?.Invoke(this, result); }
     }
 }

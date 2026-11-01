@@ -23,10 +23,28 @@ namespace RvtMcp.Tests.Shared.Reports
                 ["reports.status.copyFailed"] = "Copy failed", ["reports.status.copied"] = "Copied",
                 ["reports.navigation.selected"] = "Selected {selected} in {view}", ["reports.navigation.selectedSome"] = "Selected {selected}; missing {missing} of {total} in {view}",
                 ["reports.navigation.viewActivated"] = "Opened {view}", ["reports.navigation.elementsGone"] = "Elements gone",
-                ["reports.navigation.noGraphics"] = "No graphics", ["reports.navigation.noViewFound"] = "No view", ["reports.navigation.failed"] = "Navigation failed"
+                ["reports.navigation.noGraphics"] = "No graphics", ["reports.navigation.noViewFound"] = "No view", ["reports.navigation.failed"] = "Navigation failed",
+                ["reports.navigation.pending"] = "Navigating in Revit"
             }, null, null));
         }
         public void Dispose() { L.ResetForTests(); }
+
+        [Fact]
+        public void Navigation_shows_pending_until_completion_and_unsubscribes_on_dispose()
+        {
+            var nav = new FakeNavigation();
+            var vm = new ReportsViewModel(new FakeReportsRuntime(), nav, DisplayMode.Wide);
+            nav.Navigate(new ReportNavigationRequest());
+            Assert.Equal("Navigating in Revit", vm.StatusText);
+            nav.Complete(new ReportNavigationResult { Outcome = ReportNavigationOutcome.ViewActivated, ViewName = "P201" });
+            Assert.Equal("Opened P201", vm.StatusText);
+            nav.Navigate(new ReportNavigationRequest());
+            nav.Complete(new ReportNavigationResult { Outcome = ReportNavigationOutcome.NotMatched });
+            Assert.Equal("", vm.StatusText);
+            vm.Dispose();
+            Assert.Equal(0, nav.StartedSubscriberCount);
+            Assert.Equal(0, nav.SubscriberCount);
+        }
 
         [Fact]
         public async Task Filter_matches_any_document_updates_live_state_and_empty_messages()
@@ -452,7 +470,8 @@ namespace RvtMcp.Tests.Shared.Reports
         public List<string> Deleted { get; } = new List<string>();
         public int SubscriberCount => (_reportsChanged?.GetInvocationList().Length ?? 0) + (_activeChanged?.GetInvocationList().Length ?? 0);
         public IReadOnlyList<AgentReport> LoadReports() { var n = Interlocked.Increment(ref _loadCount); if (LoadError != null) throw LoadError; return Loader != null ? Loader(n) : Reports; }
-        public void DeleteReport(string reportId) { if (DeleteError != null) throw DeleteError; Deleted.Add(reportId); }
+        public Newtonsoft.Json.Linq.JObject LoadHistory(string reportId, int callOffset, int elementOffset) => new Newtonsoft.Json.Linq.JObject { ["status"] = "no_provenance", ["calls"] = new Newtonsoft.Json.Linq.JArray() };
+    public void DeleteReport(string reportId) { if (DeleteError != null) throw DeleteError; Deleted.Add(reportId); }
         public event EventHandler ReportsChanged { add { _reportsChanged += value; } remove { _reportsChanged -= value; } }
         public ActiveDocumentIdentity ActiveDocument { get; set; }
         public event EventHandler ActiveDocumentChanged { add { _activeChanged += value; } remove { _activeChanged -= value; } }
@@ -461,7 +480,11 @@ namespace RvtMcp.Tests.Shared.Reports
         public bool CopyResult { get; set; } = true;
         public string Copied { get; private set; }
         public bool CopyText(string text) { Copied = text; return CopyResult; }
-        public DateTime Now => new DateTime(2026, 10, 28, 12, 0, 0, DateTimeKind.Local);
+        public DateTime Now { get; set; } = new DateTime(2026, 10, 28, 12, 0, 0, DateTimeKind.Local);
+        public TimeZoneInfo LocalTimeZone { get; set; } = TimeZoneInfo.Local;
+        public ReportHostStatus HostStatus { get; set; } = new ReportHostStatus(123, false, null);
+        public event EventHandler HostStatusChanged;
+        public void RaiseHostChanged() => HostStatusChanged?.Invoke(this, EventArgs.Empty);
         public void RaiseReportsChanged() { _reportsChanged?.Invoke(this, EventArgs.Empty); }
         public void RaiseActiveChanged() { _activeChanged?.Invoke(this, EventArgs.Empty); }
     }

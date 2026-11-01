@@ -11,7 +11,7 @@ $publicDocs = @(
     'AGENTS.md', 'ARCHITECTURE.md', 'CHANGELOG.md', 'CLAUDE.md',
     'CODE_OF_CONDUCT.md', 'CONTRIBUTING.md', 'SECURITY.md', 'THIRD_PARTY_NOTICES.md',
     'README.md', 'README.vi.md', 'README.ja.md', 'README.zh-CN.md',
-    'docs/bake.md', 'docs/change-survey.md', 'docs/change-tracking.md', 'docs/controlled-failures.md',
+    'docs/agent-reports.md', 'docs/bake.md', 'docs/change-survey.md', 'docs/change-tracking.md', 'docs/controlled-failures.md',
     'docs/firm-profiles/README.md', 'docs/install.md', 'docs/localization.md',
     'docs/mcp-client-wiring.md', 'docs/mcp-config-claude-clients.md',
     'docs/mcp-config-codex.md', 'docs/mcp-config-opencode-kilo.md',
@@ -22,7 +22,7 @@ $publicDocs = @(
     'src/server/Prompts/getting_started.md', 'src/server/Prompts/model_audit.md',
     'src/server/Prompts/pre_issue_check.md', 'src/server/Prompts/stairs.md',
     'tests/RvtMcp.Tests/README.md', 'tests/RvtMcp.Settings.Tests/README.md',
-    'tests/RvtMcp.Toast.Tests/README.md', 'tests/RvtMcp.Tests/Golden/response-size-scoped-commands.txt',
+    'tests/RvtMcp.Toast.Tests/README.md', 'tests/RvtMcp.Reports.Tests/README.md', 'tests/RvtMcp.Tests/Golden/response-size-scoped-commands.txt',
     'tests/RvtMcp.Tests/fixtures/ScriptBaseline/README.txt',
     'tests/RvtMcp.Tests/fixtures/ScriptBaseline/legacy-command.txt',
     'tests/RvtMcp.Tests/fixtures/ScriptIdentity/README.txt'

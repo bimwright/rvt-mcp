@@ -161,6 +161,7 @@ namespace RvtMcp.Plugin
                     ScriptMetadata = request["script"] as Newtonsoft.Json.Linq.JObject,
                     RuntimeOptions = request["runtime"]?.ToObject<RvtMcpConfig>(),
                     History = request["history"]?.ToObject<ChangeHistoryRequest>(),
+                    ReportContext = request["report_context"]?.ToObject<ReportCallContext>(),
                     FromMcp = true,
                     ExpectedDocumentId = request.Value<string>("expected_document_id"),
                     DocumentProtocol = request.Value<int?>("document_protocol") >= 1,

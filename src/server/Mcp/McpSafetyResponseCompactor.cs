@@ -35,10 +35,20 @@ namespace RvtMcp.Server
                 }
                 if (ids.Count == 0) failure.Remove("incidentIds");
             }
+            if (!Fits() && data["_report_captures"] is JArray captures)
+            {
+                data["_report_captures_truncated"] = true;
+                while (captures.Count > 0 && !Fits()) captures.RemoveAt(captures.Count - 1);
+                if (captures.Count == 0) data.Remove("_report_captures");
+            }
             foreach (var key in new[] { "_changes", "_history" })
             {
                 if (Fits()) return Result();
                 data.Remove(key);
+            }
+            if (!Fits() && data["_report_capture"] != null)
+            {
+                data.Remove("_report_capture"); data["_report_captures_truncated"] = true;
             }
             foreach (var key in new[] { "hostInstanceId", "schemaVersion", "messageCount", "observationCoverage", "modelScopeKey", "requiresReview", "warningPolicy", "summaryTruncated" })
             {

@@ -46,7 +46,7 @@ namespace RvtMcp.Server
                             result = TextResult(MetaTools.TargetEnvelope(targetCtx.Payload, targetCtx.Operation), failed: true);
                         return Apply(request.Params, result, config, session, durationMs: clock.ElapsedMilliseconds,
                             changes: capture.Changes, history: capture.History, previousOperations: ToolGateway.PreviousOperations,
-                            loggedArguments: rejectedArguments, writer: writer, reportReminder: reportReminder);
+                            loggedArguments: rejectedArguments, writer: writer, reportReminder: reportReminder, reportCaptures: capture.ReportCaptures);
                     }
                 }
                 finally
@@ -58,7 +58,7 @@ namespace RvtMcp.Server
         internal static CallToolResult Apply(CallToolRequestParams request, CallToolResult result,
             RvtMcpConfig config, SessionContext session = null, ResponseSpillWriter writer = null, long durationMs = 0,
             JObject changes = null, JObject history = null, PreviousOperationTracker previousOperations = null,
-            string loggedArguments = null, AgentReportReminder reportReminder = null)
+            string loggedArguments = null, AgentReportReminder reportReminder = null, JArray reportCaptures = null)
         {
             var name = request?.Name ?? "";
             var command = name.StartsWith("revit_", StringComparison.Ordinal) ? name.Substring(6) : name;
@@ -76,6 +76,12 @@ namespace RvtMcp.Server
             }
             JObject safety = null;
             try { safety = JObject.Parse(text ?? "{}"); } catch { }
+            if (reportCaptures?.Count > 0)
+            {
+                safety = safety ?? new JObject();
+                safety["_report_captures"] = reportCaptures.DeepClone();
+                safety["_report_capture"] = reportCaptures.Last.DeepClone();
+            }
             var failed = result.IsError == true || IsFailure(text, command);
             if (failed) result.IsError = true;
             var wire = Serialize(result);
@@ -165,7 +171,7 @@ namespace RvtMcp.Server
                         }, result.IsError == true);
                 }
             }
-            if (safety?["_failure"] != null || safety?["_operation"] != null || safety?["_target"] != null || safety?["_script"] != null || safety?["_task"] != null)
+            if (safety?["_failure"] != null || safety?["_operation"] != null || safety?["_target"] != null || safety?["_script"] != null || safety?["_task"] != null || safety?["_report_capture"] != null)
             {
                 JObject preserved;
                 try { preserved = JObject.Parse(result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text ?? "{}"); }

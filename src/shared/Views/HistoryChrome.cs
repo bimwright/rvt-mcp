@@ -126,6 +126,13 @@ namespace RvtMcp.Plugin.Views
 
         internal static void Wheel(ScrollViewer viewer, MouseWheelEventArgs e, double step)
         {
+            if (viewer != null && !e.Handled && !SystemParameters.ClientAreaAnimation)
+            {
+                StopWheel(viewer);
+                viewer.ScrollToVerticalOffset(Math.Max(0, Math.Min(viewer.ScrollableHeight, viewer.VerticalOffset - e.Delta * step)));
+                e.Handled = true;
+                return;
+            }
             if (viewer == null || e == null || viewer.ScrollableHeight <= 0) return;
             e.Handled = true;
             var state = viewer.GetValue(SmoothStateProperty) as WheelState;
@@ -156,6 +163,18 @@ namespace RvtMcp.Plugin.Views
                 if (token == state.Token) state.Wheeling = false;
             };
             viewer.BeginAnimation(SmoothOffsetProperty, animation);
+        }
+
+        /// <summary>Stop an eased wheel movement before focus navigation chooses a new reading position.</summary>
+        internal static void StopWheel(ScrollViewer viewer)
+        {
+            if (!(viewer?.GetValue(SmoothStateProperty) is WheelState state)) return;
+            var offset = viewer.VerticalOffset;
+            state.Token++;
+            state.Wheeling = false;
+            state.Target = offset;
+            viewer.BeginAnimation(SmoothOffsetProperty, null);
+            viewer.SetCurrentValue(SmoothOffsetProperty, offset);
         }
 
         internal static ScrollViewer FindScrollViewer(DependencyObject root)

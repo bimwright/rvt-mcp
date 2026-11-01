@@ -21,6 +21,26 @@ namespace RvtMcp.Tests
         internal static Task<string> Report(string taskId, string outcome, string summary, string body = null)
             => ReportTools.ReportTaskResult(taskId, outcome, summary, body);
 
+        [Theory]
+        [InlineData(null)]
+        [InlineData("not-a-report")]
+        public void Invalid_history_identity_returns_error_text(string id)
+            => Assert.Equal("Error: Invalid report_id.", ReportTools.GetReportHistory(id));
+
+        [Theory]
+        [InlineData(-1, 0, 5, 10)]
+        [InlineData(0, -1, 5, 10)]
+        [InlineData(0, 0, 0, 10)]
+        [InlineData(0, 0, 11, 10)]
+        [InlineData(0, 0, 5, 0)]
+        [InlineData(0, 0, 5, 26)]
+        public void Invalid_history_page_returns_error_text(int callOffset, int elementOffset, int callLimit, int elementLimit)
+            => Assert.StartsWith("Error: Invalid History page;", ReportTools.GetReportHistory(Guid.NewGuid().ToString("N"), callOffset, elementOffset, callLimit, elementLimit));
+
+        [Fact]
+        public void Missing_history_report_returns_error_text()
+            => Assert.Equal("Error: Report is missing or ambiguous.", ReportTools.GetReportHistory(Guid.NewGuid().ToString("N")));
+
         public static IEnumerable<object[]> InvalidReports()
         {
             yield return new object[] { null, "completed", "Done", null, "task_id must contain 1-80 characters." };

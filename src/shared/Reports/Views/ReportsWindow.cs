@@ -43,7 +43,8 @@ namespace RvtMcp.Plugin.Reports.Views
         private readonly IReportsScreen _screen;
         private readonly WindowChrome _chrome;
         private readonly Border _frame, _viewHost, _status;
-        private readonly TextBlock _title, _subtitle, _statusText, _textSizeTitle, _textSizeValue;
+        private readonly DockPanel _caption;
+        private readonly TextBlock _title, _statusText, _textSizeTitle, _textSizeValue;
         private readonly ToggleButton _wideButton, _compactButton, _textSizeButton;
         private readonly Popup _textSizePopup;
         private readonly Button _minimizeButton, _maximizeButton, _closeButton, _smallerButton, _largerButton, _resetTextSizeButton;
@@ -52,7 +53,7 @@ namespace RvtMcp.Plugin.Reports.Views
         private ReportsWindowState _state;
         private DisplayMode _mode;
         private FrameworkElement _view;
-        private bool _placed, _wideChangesExpanded = true, _shutdown, _disposed;
+        private bool _placed, _wideChangesExpanded = true, _shutdown, _disposed, _captionHovered;
 
         public ReportsWindow(ReportsViewModel viewModel, ReportsWindowState state, Action<ReportsWindowState> saveState, IReportsScreen screen = null)
         {
@@ -80,13 +81,12 @@ namespace RvtMcp.Plugin.Reports.Views
             Resources.MergedDictionaries.Add(ReportsStyles.Dictionary);
             ScrollBarFadeBehavior.SetIsEnabled(this, true);
 
-            // Title bar: mark, title, subtitle, mode pair, minimize / maximize / close.
-            var mark = new Border { Width = 14, Height = 14, CornerRadius = new CornerRadius(3), Background = ReportsStyles.Primary,
-                Margin = new Thickness(12, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center,
-                Child = new Border { Width = 6, Height = 6, BorderBrush = Brushes.White, BorderThickness = new Thickness(1.5), CornerRadius = new CornerRadius(1) } };
+            // Hover reveals host details on the same caption row, without reflowing the reading area.
+            Icon = ReportAssets.Report;
+            var mark = new Image { Source = ReportAssets.Report, Width = 18, Height = 18,
+                Margin = new Thickness(10, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
             _title = new TextBlock { FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis };
-            _subtitle = new TextBlock { Text = " · Bimwright", Foreground = ReportsStyles.TextSecondary, VerticalAlignment = VerticalAlignment.Center };
             _wideButton = ModeButton(WideIcon, DisplayMode.Wide);
             _compactButton = ModeButton(CompactIcon, DisplayMode.Compact);
             var modePanel = new StackPanel { Orientation = Orientation.Horizontal };
@@ -132,7 +132,7 @@ namespace RvtMcp.Plugin.Reports.Views
                 Effect = new DropShadowEffect { Color = Color.FromArgb(0x20, 0, 0, 0), Direction = 270, ShadowDepth = 2, BlurRadius = 10, Opacity = 0.35 } };
             textSizeCard.KeyDown += (s, e) => { if (e.Key == Key.Escape) _textSizePopup.IsOpen = false; };
             _textSizePopup = new Popup { PlacementTarget = _textSizeButton, Placement = PlacementMode.Bottom, VerticalOffset = 4, StaysOpen = false,
-                AllowsTransparency = true, PopupAnimation = PopupAnimation.Fade, Child = textSizeCard };
+                AllowsTransparency = true, PopupAnimation = ReportMotion.Enabled ? PopupAnimation.Fade : PopupAnimation.None, Child = textSizeCard };
             _textSizeButton.SetBinding(ToggleButton.IsCheckedProperty, new Binding(nameof(Popup.IsOpen)) { Source = _textSizePopup, Mode = BindingMode.TwoWay });
             // While the card is open, a click on "Aa" would first close it (outside click) and then open it again.
             _textSizePopup.Opened += (s, e) => _textSizeButton.IsHitTestVisible = false;
@@ -144,18 +144,24 @@ namespace RvtMcp.Plugin.Reports.Views
             var textSize = new Border { BorderBrush = ReportsStyles.BorderBrush, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4),
                 Background = ReportsStyles.Surface, Margin = new Thickness(0, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, Child = textSizeHost };
 
-            var bar = new DockPanel { LastChildFill = false };
+            var bar = new DockPanel { Height = CaptionHeight, LastChildFill = true };
             foreach (var right in new FrameworkElement[] { _closeButton, _maximizeButton, _minimizeButton, textSize, modes })
             {
                 DockPanel.SetDock(right, Dock.Right);
                 bar.Children.Add(right);
             }
-            foreach (var left in new FrameworkElement[] { mark, _title, _subtitle })
-            {
-                DockPanel.SetDock(left, Dock.Left);
-                bar.Children.Add(left);
-            }
-            var titleBar = new Border { Height = CaptionHeight, Background = ReportsStyles.Header, BorderBrush = ReportsStyles.BorderBrush,
+            _caption = new DockPanel { Background = Brushes.Transparent };
+            DockPanel.SetDock(mark, Dock.Left);
+            _caption.Children.Add(mark);
+            _caption.Children.Add(_title);
+            // Client hit testing delivers caption hover input while preserving drag/menu handling.
+            WindowChrome.SetIsHitTestVisibleInChrome(_caption, true);
+            _caption.MouseLeftButtonDown += OnCaptionMouseLeftButtonDown;
+            _caption.MouseRightButtonUp += OnCaptionMouseRightButtonUp;
+            _caption.MouseEnter += OnCaptionMouseEnter;
+            _caption.MouseLeave += OnCaptionMouseLeave;
+            bar.Children.Add(_caption);
+            var titleBar = new Border { Background = ReportsStyles.Header, BorderBrush = ReportsStyles.BorderBrush,
                 BorderThickness = new Thickness(0, 0, 0, 1), Child = bar };
 
             // Status line: dot and text, tinted by tone; the hint shows when there is no status.
@@ -185,6 +191,7 @@ namespace RvtMcp.Plugin.Reports.Views
             _vm.PropertyChanged += OnViewModelChanged;
             L.Changed += OnLanguageChanged;
             IsVisibleChanged += OnVisibleChanged;
+            Activated += OnActivated;
             StateChanged += OnFrameChanged;
             SizeChanged += OnFrameChanged;
             ApplyLocalization();
@@ -202,7 +209,8 @@ namespace RvtMcp.Plugin.Reports.Views
         internal Button MaximizeButton => _maximizeButton;
         internal Button CloseButton => _closeButton;
         internal TextBlock TitleText => _title;
-        internal TextBlock SubtitleText => _subtitle;
+        internal FrameworkElement CaptionArea => _caption;
+        internal string HostDetailsText => AutomationProperties.GetHelpText(this);
         internal Border StatusBar => _status;
         internal Ellipse StatusDot => _statusDot;
         internal TextBlock StatusText => _statusText;
@@ -230,8 +238,13 @@ namespace RvtMcp.Plugin.Reports.Views
             _vm.PropertyChanged -= OnViewModelChanged;
             L.Changed -= OnLanguageChanged;
             IsVisibleChanged -= OnVisibleChanged;
+            Activated -= OnActivated;
             StateChanged -= OnFrameChanged;
             SizeChanged -= OnFrameChanged;
+            _caption.MouseLeftButtonDown -= OnCaptionMouseLeftButtonDown;
+            _caption.MouseRightButtonUp -= OnCaptionMouseRightButtonUp;
+            _caption.MouseEnter -= OnCaptionMouseEnter;
+            _caption.MouseLeave -= OnCaptionMouseLeave;
             (_view as IDisposable)?.Dispose();
             _view = null;
             _viewHost.Child = null;
@@ -302,8 +315,7 @@ namespace RvtMcp.Plugin.Reports.Views
 
         private void ApplyLocalization()
         {
-            Title = L.T("reports.window.title");
-            _title.Text = Title;
+            SyncHostTitle();
             Describe(_wideButton, L.T("reports.mode.wide"));
             Describe(_compactButton, L.T("reports.mode.compact"));
             Describe(_minimizeButton, L.T("reports.window.minimize"));
@@ -399,9 +411,69 @@ namespace RvtMcp.Plugin.Reports.Views
         {
             _wideButton.IsChecked = _mode == DisplayMode.Wide;
             _compactButton.IsChecked = _mode == DisplayMode.Compact;
-            _subtitle.Visibility = _mode == DisplayMode.Compact ? Visibility.Collapsed : Visibility.Visible;
+            SyncHostTitle();
             // Compact is a side column with a maximum width; maximizing it would only pin a narrow window to a corner.
             _maximizeButton.Visibility = _mode == DisplayMode.Compact ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private void SyncHostTitle()
+        {
+            var feature = L.T("reports.window.title");
+            var status = _vm.HostStatus;
+            var host = status.Display;
+            Title = BrandAssets.Wordmark + " - " + feature;
+            AutomationProperties.SetName(this, Title);
+            var details = Title + Environment.NewLine + host;
+            AutomationProperties.SetHelpText(this, details);
+            AutomationProperties.SetHelpText(_caption, details);
+            _title.FontSize = _captionHovered ? 10.5 : 12.5;
+            _title.Inlines.Clear();
+            _title.Inlines.Add(new System.Windows.Documents.Run(BrandAssets.WordmarkLeft) { Foreground = ReportAssets.Navy });
+            _title.Inlines.Add(new System.Windows.Documents.Run(BrandAssets.WordmarkRight) { Foreground = ReportAssets.Green });
+            var suffix = " - " + feature;
+            if (_captionHovered)
+            {
+                var connection = status.Endpoint != null ? status.Transport + ": " + status.Endpoint
+                    : L.T(status.Running ? "reports.host.unavailable" : "reports.host.stopped");
+                // Compact prioritizes PID/transport over repeating the feature name.
+                suffix = (_mode == DisplayMode.Wide ? suffix : "") + " - PID " + status.Pid + " - " + connection;
+            }
+            _title.Inlines.Add(new System.Windows.Documents.Run(suffix));
+            AutomationProperties.SetName(_caption, BrandAssets.Wordmark + suffix);
+        }
+
+        private void OnCaptionMouseEnter(object sender, MouseEventArgs e)
+        {
+            if (_disposed) return;
+            _captionHovered = true;
+            SyncHostTitle();
+        }
+
+        private void OnCaptionMouseLeave(object sender, MouseEventArgs e)
+        {
+            if (_disposed) return;
+            _captionHovered = false;
+            SyncHostTitle();
+        }
+
+        private void OnCaptionMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            if (e.ClickCount == 2)
+            {
+                if (_mode == DisplayMode.Wide)
+                {
+                    if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this);
+                    else SystemCommands.MaximizeWindow(this);
+                }
+            }
+            else if (Mouse.LeftButton == MouseButtonState.Pressed) DragMove();
+        }
+
+        private void OnCaptionMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            SystemCommands.ShowSystemMenu(this, PointToScreen(e.GetPosition(this)));
         }
 
         private void SyncMaximizeButton()
@@ -428,6 +500,7 @@ namespace RvtMcp.Plugin.Reports.Views
             if (_disposed) return;
             if (e.PropertyName == nameof(ReportsViewModel.Mode)) SwitchMode(_vm.Mode);
             else if (e.PropertyName == nameof(ReportsViewModel.StatusText) || e.PropertyName == nameof(ReportsViewModel.StatusTone)) SyncStatus();
+            else if (e.PropertyName == nameof(ReportsViewModel.HostStatus)) SyncHostTitle();
         }
 
         /// <summary>
@@ -437,6 +510,9 @@ namespace RvtMcp.Plugin.Reports.Views
         private void SwitchMode(DisplayMode mode)
         {
             if (mode == _mode) return;
+            // Capture before resizing; otherwise the old view reflows at the destination mode's width.
+            (_view as ReportsCompactView)?.CaptureReadingPosition();
+            (_view as ReportsWideView)?.CaptureReadingPosition();
             var oldMode = Config(_mode);
             var newMode = Config(mode);
             if (_placed)
@@ -519,6 +595,11 @@ namespace RvtMcp.Plugin.Reports.Views
 
         private void OnVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
+            if (!_disposed && !IsVisible)
+            {
+                _captionHovered = false;
+                SyncHostTitle();
+            }
             if (_disposed || !IsVisible) return;
             if (_placed && WindowState == WindowState.Normal)
             {
@@ -529,6 +610,8 @@ namespace RvtMcp.Plugin.Reports.Views
             }
             _ = _vm.RefreshAsync();
         }
+
+        private void OnActivated(object sender, EventArgs e) { if (!_disposed) _vm.RefreshDates(); }
 
         private void OnLanguageChanged(object sender, EventArgs e)
         {
@@ -544,6 +627,7 @@ namespace RvtMcp.Plugin.Reports.Views
         {
             if (_disposed) return;
             ApplyLocalization();
+            _vm.RefreshDates();
             ShowView();
             SyncStatus();
         }

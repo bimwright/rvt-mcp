@@ -21,6 +21,10 @@ internal sealed class FakeReportsRuntime : IReportsRuntime
     public int LoadCount { get; private set; }
     public ActiveDocumentIdentity ActiveDocument { get; set; }
     public DateTime Now { get; set; } = DemoData.Now;
+    public TimeZoneInfo LocalTimeZone { get; set; } = TimeZoneInfo.Local;
+    public ReportHostStatus HostStatus { get; set; } = new ReportHostStatus(12345, true, "Pipe:synthetic-revit-12345");
+    public event EventHandler HostStatusChanged;
+    public void SetHost(ReportHostStatus status) { HostStatus = status; HostStatusChanged?.Invoke(this, EventArgs.Empty); }
 
     public event EventHandler ReportsChanged;
     public event EventHandler ActiveDocumentChanged;
@@ -40,6 +44,8 @@ internal sealed class FakeReportsRuntime : IReportsRuntime
         }
     }
 
+    public Func<string, int, int, Newtonsoft.Json.Linq.JObject> HistoryReader { get; set; }
+    public Newtonsoft.Json.Linq.JObject LoadHistory(string reportId, int callOffset, int elementOffset) => HistoryReader?.Invoke(reportId, callOffset, elementOffset) ?? new Newtonsoft.Json.Linq.JObject { ["status"] = "no_provenance", ["calls"] = new Newtonsoft.Json.Linq.JArray() };
     public void DeleteReport(string reportId)
     {
         lock (_gate) _reports.RemoveAll(r => r.ReportId == reportId);
@@ -72,11 +78,13 @@ internal sealed class FakeNavigation : INavigationService
 {
     public List<ReportNavigationRequest> Requests { get; } = new List<ReportNavigationRequest>();
     public ReportNavigationResult Next { get; set; }
+    public event EventHandler<ReportNavigationRequest> Started;
     public event EventHandler<ReportNavigationResult> Completed;
 
     public void Navigate(ReportNavigationRequest request)
     {
         Requests.Add(request);
+        Started?.Invoke(this, request);
         if (Next != null) Completed?.Invoke(this, Next);
     }
 }

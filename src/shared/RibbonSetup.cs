@@ -22,10 +22,12 @@ namespace RvtMcp.Plugin
     {
         private const string PanelName = "RvtMcp";
         private static readonly HashSet<string> CreatedButtons = new HashSet<string>();
+        private static object _styledRibbon;
+        private static int _styledLanguage = -1, _styleAttempts;
         /// <summary>
         /// Revit routes every item added after <c>AddSlideOut()</c> into the
         /// slide-out — so ordering is contractual: all main-panel items first,
-        /// then AddSlideOut, then Settings and Language commands; baked-tool
+        /// then AddSlideOut, then the Language command; baked-tool
         /// buttons added later land below those commands in the slide-out.
         /// </summary>
         public static RibbonResult Create(UIControlledApplication application, RvtMcpConfig config = null, BakedToolRuntimeCache runtimeCache = null)
@@ -67,17 +69,21 @@ namespace RvtMcp.Plugin
             };
 
             var stack = panel.AddStackedItems(toggleData, historyData, toastData);
-            var reportsButton = AddReportsButton(panel, assemblyPath);
+            var reportStack = panel.AddStackedItems(ReportsData(assemblyPath), SettingsData(assemblyPath));
+            var reportsButton = reportStack[0] as PushButton;
+            var settingsButton = reportStack[1] as PushButton;
+            CreatedButtons.Add("ShowReports");
+            CreatedButtons.Add("ShowSettings");
+            EnsureReportsStackIcons();
             PushButton bakeInboxButton = null;
             if (config?.EnableAdaptiveBakeOrDefault == true)
                 bakeInboxButton = AddBakeInboxButton(panel, assemblyPath);
 
             panel.AddSlideOut();
-            var settingsButton = AddSettingsButton(panel, assemblyPath);
             var languageButton = AddLanguageButton(panel, assemblyPath);
 
             // Baked-tool buttons must come AFTER the slide-out — they intentionally
-            // appear below the Settings/Language commands (there is no API slot
+            // appear below the Language command (there is no API slot
             // that puts them back in the main panel once a slide-out exists).
             if (config?.EnableAdaptiveBakeOrDefault == true)
                 AddOrUpdateBakedToolButtons(application, runtimeCache);
@@ -133,40 +139,61 @@ namespace RvtMcp.Plugin
             }
         }
 
-        /// <summary>Large button right after the History stack, in the main panel.</summary>
-        private static PushButton AddReportsButton(RibbonPanel panel, string assemblyPath)
+        private static PushButtonData ReportsData(string assemblyPath)
         {
             const string buttonName = "ShowReports";
-            if (CreatedButtons.Contains(buttonName)) return null;
             var data = new PushButtonData(
                 buttonName,
                 L.T("ribbon.reports.text"),
                 assemblyPath,
                 "RvtMcp.Plugin.Commands.ShowReportsCommand")
             {
-                LargeImage = IconGenerator.Reports32,
-                Image = IconGenerator.Reports16,
+                LargeImage = Views.ReportAssets.Report,
+                Image = Views.ReportAssets.Bitmap(Views.ReportAssets.Report, 16),
                 ToolTip = L.T("ribbon.reports.tooltip")
             };
-            return AddPushButton(panel, data, buttonName);
+            return data;
         }
 
-        private static PushButton AddSettingsButton(RibbonPanel panel, string assemblyPath)
+        private static PushButtonData SettingsData(string assemblyPath)
         {
             const string buttonName = "ShowSettings";
-            if (CreatedButtons.Contains(buttonName)) return null;
             var data = new PushButtonData(
                 buttonName,
                 L.T("ribbon.settings.text"),
                 assemblyPath,
                 "RvtMcp.Plugin.Commands.ShowSettingsCommand")
             {
-                LargeImage = IconGenerator.Settings32,
-                Image = IconGenerator.Settings16,
+                LargeImage = Views.ReportAssets.Settings,
+                Image = Views.ReportAssets.Bitmap(Views.ReportAssets.Settings, 16),
                 ToolTip = L.T("ribbon.settings.tooltip"),
                 LongDescription = L.T("ribbon.settings.tooltip")
             };
-            return AddPushButton(panel, data, buttonName);
+            return data;
+        }
+
+        internal static void EnsureReportsStackIcons()
+        {
+            try
+            {
+                var assembly = Array.Find(AppDomain.CurrentDomain.GetAssemblies(), a => a.GetName().Name == "AdWindows");
+                var root = assembly?.GetType("Autodesk.Windows.ComponentManager")?.GetProperty("Ribbon", BindingFlags.Public | BindingFlags.Static)?.GetValue(null, null);
+                if (root == null || ReferenceEquals(root, _styledRibbon) && _styledLanguage == L.Version) return;
+                var reports = Ribbon.RibbonIconOnly.Apply(root, PanelName, "ShowReports");
+                var settings = Ribbon.RibbonIconOnly.Apply(root, PanelName, "ShowSettings");
+                if (reports == null || settings == null)
+                {
+                    if (++_styleAttempts == 10) App.DebugLog("Reports icon-only ribbon layout is unavailable; command labels remain accessible.");
+                    return;
+                }
+                if (reports is System.Windows.DependencyObject reportControl)
+                    System.Windows.Automation.AutomationProperties.SetName(reportControl, L.T("ribbon.reports.text"));
+                if (settings is System.Windows.DependencyObject settingsControl)
+                    System.Windows.Automation.AutomationProperties.SetName(settingsControl, L.T("ribbon.settings.text"));
+                _styledRibbon = root;
+                _styledLanguage = L.Version;
+            }
+            catch (Exception ex) { if (++_styleAttempts == 10) App.DebugLog("Reports ribbon styling failed: " + ex.Message); }
         }
 
         private static PushButton AddLanguageButton(RibbonPanel panel, string assemblyPath)

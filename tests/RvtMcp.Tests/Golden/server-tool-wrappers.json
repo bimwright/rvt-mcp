@@ -4008,7 +4008,7 @@
       "calls": [
         {
           "command": "report_task_result",
-          "params": "{\"task_id\":\"probe\",\"outcome\":\"completed\",\"summary\":\"probe\",\"body\":null}",
+          "params": "{\"task_id\":\"probe\",\"outcome\":\"completed\",\"summary\":\"probe\",\"body\":null,\"call_ids\":null}",
           "timeout": null
         }
       ],
@@ -4018,7 +4018,7 @@
       "calls": [
         {
           "command": "report_task_result",
-          "params": "{\"task_id\":\"probe\",\"outcome\":\"completed\",\"summary\":\"probe\",\"body\":null}",
+          "params": "{\"task_id\":\"probe\",\"outcome\":\"completed\",\"summary\":\"probe\",\"body\":null,\"call_ids\":null}",
           "timeout": null
         }
       ],

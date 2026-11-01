@@ -18,7 +18,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-241%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-242%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -95,12 +95,12 @@ Các số dưới đây khớp **source hiện tại**, đã thêm 3 tool module
 
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
-| Fresh install | **241** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **54** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **241** | Full catalog |
-| `all` + adaptive bake | **244** | Thêm 3 tool vòng đời suggestion |
+| Fresh install | **242** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **55** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **242** | Full catalog |
+| `all` + adaptive bake | **245** | Thêm 3 tool vòng đời suggestion |
 
-Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 54 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline; báo cáo agent được phép vì chỉ ghi dữ liệu báo cáo của người dùng.
+Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 55 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline; báo cáo agent được phép vì chỉ ghi dữ liệu báo cáo của người dùng.
 
 | Toolset | Phạm vi |
 |---------|---------|
@@ -156,7 +156,7 @@ Toast không chỉ để trang trí. Tính năng này xuất phát từ ba nhu c
 
 Toast báo **kết quả từng tool**, không phải thanh tiến độ bên trong tool đang chạy và cũng không có nghĩa toàn bộ yêu cầu đã hoàn thành. Các kết quả liên tiếp cập nhật chung một card; thông báo có thể chờ khi Revit bị thu nhỏ hoặc đang có hộp thoại modal. Người dùng vẫn cần kiểm tra kết quả công việc của agent.
 
-Mỗi card ghi tên gateway và năm Revit (ví dụ `rvt-mcp 2022`), tên tool vừa chạy, và bộ đếm Success · Failed · Capture. Ảnh chụp được giữ trên card ít nhất 5 giây.
+Mỗi card ghi tên gateway, năm Revit và PID của Revit đang phát toast (ví dụ `rvt-mcp 2022 · PID: 12345`), tên tool vừa chạy, và bộ đếm Success · Failed · Capture. Ảnh chụp được giữ trên card ít nhất 5 giây.
 
 Hover có chủ ý mở timeline với ba kết quả gần nhất và giờ hoàn tất local (`HH:mm:ss`). Cuộn lên để xem các lần gọi trước trong cùng card. Khi ở cuối, kết quả mới trượt vào ngắn (các dòng đẩy lên, dòng mới hiện dần, chấm kết quả nảy lên; tắt animation thì hiện thẳng); khi đọc phía trên, vị trí được giữ nguyên. Bấm trong timeline để đọc mà không đóng card; bấm phần còn lại mở History. Tính năng hoạt động cả khi branding tắt. Tóm tắt được giới hạn và che thông tin nhạy cảm, chỉ giữ trong RAM và xóa khi card đóng. Object/array của script hiện số lượng; khảo sát chưa đủ vẫn ghi rõ chưa đủ. Thay đổi UI này không bổ sung toast cho tool chạy thuần server.
 
@@ -333,6 +333,7 @@ Annotations mô tả tác động lên document/file của từng tool. Đổi s
       "mcp__rvt-mcp__revit_project_point_onto_face",
       "mcp__rvt-mcp__revit_raycast_from_point",
       "mcp__rvt-mcp__revit_report_task_result",
+      "mcp__rvt-mcp__revit_get_report_history",
       "mcp__rvt-mcp__revit_select_elements",
       "mcp__rvt-mcp__revit_show_element_in_view",
       "mcp__rvt-mcp__revit_show_message",

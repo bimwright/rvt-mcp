@@ -15,9 +15,10 @@ internal static class Program
             InitializeLanguage();
             if (args.Length == 1 && args[0] == "--demo") return Snapshots.Demo();
             if (args.Length == 2 && args[0] == "--snapshot") return Snapshots.Save(args[1]);
+            if (args.Length == 2 && args[0] == "--check") return RunChecks(args[1]);
             if (args.Length != 0)
             {
-                Console.Error.WriteLine("usage: [--demo | --snapshot <folder>]");
+                Console.Error.WriteLine("usage: [--demo | --snapshot <folder> | --check <number>]");
                 return 2;
             }
             return RunChecks();
@@ -38,7 +39,7 @@ internal static class Program
         L.Initialize("English", "en", locale => StringTable.Build(locale, english, EmbeddedCatalog.Load(assembly, locale), null), null);
     }
 
-    private static int RunChecks()
+    private static int RunChecks(string number = null)
     {
         var checks = new List<KeyValuePair<string, Action>>
         {
@@ -60,7 +61,23 @@ internal static class Program
             Check("16 Performance", ContentChecks.Performance),
             Check("17 Lifecycle", ReportsChecks.Lifecycle),
             Check("19 Text size", ReportsChecks.TextSize),
+            Check("20 Link focus preserves reading position", ReportReadingChecks.LinkFocus),
+            Check("21 Deferred report tables", ReportReadingChecks.DeferredTables),
+            Check("22 Compact day groups", ReportFeedChecks.Groups),
+            Check("23 Compact reading on new reports", ReportFeedChecks.Reading),
+            Check("24 Compact updated report", ReportFeedChecks.Updated),
+            Check("25 Compact virtualized feed", ReportFeedChecks.VirtualizedFeed),
+            Check("26 Reports owner and transport", ReportFinishChecks.HostTitle),
+            Check("27 Copy feedback", ReportFinishChecks.CopyFeedback),
+            Check("28 Reduced motion", ReportFinishChecks.Motion),
+            Check("29 Per-mode reading positions", ReportFinishChecks.ModeReading),
+            Check("30 Exact History evidence", ReportHistoryChecks.History),
         };
+        if (number != null)
+        {
+            checks = checks.Where(c => c.Key.StartsWith(number + " ", StringComparison.Ordinal)).ToList();
+            if (checks.Count == 0) throw new ArgumentException("Unknown check: " + number);
+        }
         var failed = new List<string>();
         using (var bindingErrors = new WpfBindingErrors())
         {

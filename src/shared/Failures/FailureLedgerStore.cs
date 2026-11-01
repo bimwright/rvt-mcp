@@ -436,6 +436,8 @@ WHERE s.scope=$s AND o.id!=$i AND o.execution!='completed' AND o.execution!='int
                 var result = new JObject();
                 foreach (var name in new[] { "success", "error", "_failure", "_operation", "_changes", "_history" })
                     if (safe.FinalResult[name] != null) result[name] = safe.FinalResult[name].DeepClone();
+                if (safe.FinalResult["_report_capture"] is JObject reportCapture)
+                    RvtMcp.Plugin.SafetyResponseMetadata.Attach(result, new JObject { ["_report_capture"] = reportCapture });
                 RedactResult(result);
                 if (safe.FinalResult["_task"] is JObject task) result["_task"] = RvtMcp.Scripting.ScriptTelemetry.BoundTask(task);
                 if (safe.FinalResult["_script"] is JObject script) result["_script"] = RvtMcp.Scripting.ScriptTelemetry.BoundScript(script);
@@ -473,8 +475,10 @@ WHERE s.scope=$s AND o.id!=$i AND o.execution!='completed' AND o.execution!='int
                 }
                 retained["compacted"] = true; compact[receiptName] = retained;
             }
-            // At most four compact receipts. Preserve failure/operation first if unusually long IDs remain.
-            if (Encoding.UTF8.GetByteCount(compact.ToString(Newtonsoft.Json.Formatting.None)) > 4096) { compact.Remove("_history"); compact.Remove("_changes"); }
+            if (result["_report_capture"] is JObject reportCapture)
+                RvtMcp.Plugin.SafetyResponseMetadata.Attach(compact, new JObject { ["_report_capture"] = reportCapture });
+            // Compact receipts. Preserve failure/operation first if unusually long IDs remain.
+            if (Encoding.UTF8.GetByteCount(compact.ToString(Newtonsoft.Json.Formatting.None)) > 4096) { compact.Remove("_history"); compact.Remove("_changes"); compact.Remove("_report_capture"); }
             foreach (var name in new[] { "_failure", "_operation" })
                 if (compact[name] is JObject receipt && receipt["incidentIds"] is JArray ids
                     && Encoding.UTF8.GetByteCount(compact.ToString(Newtonsoft.Json.Formatting.None)) > 4096)

@@ -62,11 +62,10 @@ internal static class TimelineVisualTests
                 throw new Exception("Timeline append moved the reader's older-call position.");
             Capture(window, captureDirectory, "timeline-older.png");
             var oldEntries = panel.Entries;
-            var localized = new Dictionary<string, string>(en)
-            {
-                ["toast.activity.recent"] = "Hoạt động · {count:n} lệnh",
-                ["toast.activity.success"] = "Thành công", ["toast.activity.failed"] = "Thất bại"
-            };
+            var localized = en.ToDictionary(pair => pair.Key, pair => pair.Value);
+            localized["toast.activity.recent"] = "Hoạt động · {count:n} lệnh";
+            localized["toast.activity.success"] = "Thành công";
+            localized["toast.activity.failed"] = "Thất bại";
             L.InitializeForTests(StringTable.Build("tt", localized, null, null));
             window.RefreshLocalization(); Pump(40);
             if (!ReferenceEquals(oldEntries, panel.Entries) || Math.Abs(viewer.VerticalOffset - oldOffset) > .1

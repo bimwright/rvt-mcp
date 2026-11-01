@@ -46,6 +46,11 @@ internal static class Program
                 PositionVisualTests.Run();
                 return 0;
             }
+            if (args.Length == 1 && args[0] == "--position-layout")
+            {
+                PositionVisualTests.Run(includeNativeDrag: false);
+                return 0;
+            }
             if (args.Length == 1 && args[0] == "--demo")
                 return ToastPreview.Run();
             if (args.Length == 1 && args[0] == "--manager")
@@ -141,6 +146,8 @@ internal static class Program
 
     private static void CheckCompactLayout()
     {
+        int processId;
+        using (var process = System.Diagnostics.Process.GetCurrentProcess()) processId = process.Id;
         double Measure(string body)
         {
             var snapshot = new ActivitySnapshot(1, false, 2, 1, 1, "List Rooms", body, true, true);
@@ -155,14 +162,14 @@ internal static class Program
                 var hasProductHeader = false;
                 foreach (var child in header.Children)
                 {
-                    if (child is TextBlock text && text.Text == "rvt-mcp")
+                    if (child is TextBlock text && text.Text == "rvt-mcp · PID: " + processId)
                     {
                         hasProductHeader = true;
                         break;
                     }
                 }
                 if (!hasProductHeader)
-                    throw new Exception("The activity card must name the product in its title.");
+                    throw new Exception("The activity card must name the product and owning process PID in its title.");
                 if (((TextBlock)grid.Children[1]).Text != "List Rooms")
                     throw new Exception("The line under the title must name the latest tool.");
                 var bodyGrid = (Grid)grid.Children[2];
@@ -222,6 +229,8 @@ internal static class Program
 
     private static void CheckBrandingFollowsPreference()
     {
+        string expectedTitle;
+        using (var process = System.Diagnostics.Process.GetCurrentProcess()) expectedTitle = "rvt-mcp · PID: " + process.Id;
         var show = false;
         var aggregator = new ActivityAggregator();
         var manager = new McpToastManager(Dispatcher.CurrentDispatcher, aggregator, showBranding: () => show);
@@ -235,13 +244,13 @@ internal static class Program
             if (window == null)
                 throw new Exception("The activity card was not created.");
             var footer = BrandRow(window);
-            if (TitleText(window) != "rvt-mcp" || ToolText(window) != "List Rooms"
+            if (TitleText(window) != expectedTitle || ToolText(window) != "List Rooms"
                 || footer.Visibility != Visibility.Collapsed)
                 throw new Exception("A card opened with branding off must omit the wordmark row.");
             show = true;
             manager.ApplyShowBranding();
             Pump();
-            if (TitleText(window) != "rvt-mcp" || ToolText(window) != "List Rooms"
+            if (TitleText(window) != expectedTitle || ToolText(window) != "List Rooms"
                 || footer.Visibility != Visibility.Hidden)
                 throw new Exception("Turning branding on must reserve a blank brand row and leave the text alone.");
         }
@@ -251,19 +260,21 @@ internal static class Program
 
     private static void CheckIdentityRow()
     {
+        string pidSuffix;
+        using (var process = System.Diagnostics.Process.GetCurrentProcess()) pidSuffix = " · PID: " + process.Id;
         var snapshot = new ActivitySnapshot(1, false, 1, 0, 0, "List Rooms", "Done", true, false);
 
         var window = new McpToastWindow(snapshot, null, null, null, null, null,
             instanceIdentity: "rvt-mcp 2027");
         try
         {
-            if (TitleText(window) != "rvt-mcp 2027" || ToolText(window) != "List Rooms")
-                throw new Exception("The title must carry the supplied instance identity above the tool.");
+            if (TitleText(window) != "rvt-mcp 2027" + pidSuffix || ToolText(window) != "List Rooms")
+                throw new Exception("The title must carry the instance identity and owning process PID above the tool.");
             window.SetShowBranding(false);
-            if (TitleText(window) != "rvt-mcp 2027" || BrandRow(window).Visibility != Visibility.Collapsed)
+            if (TitleText(window) != "rvt-mcp 2027" + pidSuffix || BrandRow(window).Visibility != Visibility.Collapsed)
                 throw new Exception("Turning branding off must keep the title and collapse the wordmark row.");
             window.SetShowBranding(true);
-            if (TitleText(window) != "rvt-mcp 2027" || BrandRow(window).Visibility != Visibility.Hidden)
+            if (TitleText(window) != "rvt-mcp 2027" + pidSuffix || BrandRow(window).Visibility != Visibility.Hidden)
                 throw new Exception("Turning branding on must keep the title and reserve the wordmark row.");
         }
         finally { window.CloseImmediate(); }
@@ -271,8 +282,8 @@ internal static class Program
         var plain = new McpToastWindow(snapshot, null, null, null, null, null);
         try
         {
-            if (TitleText(plain) != "rvt-mcp")
-                throw new Exception("A card without identity must fall back to the product name.");
+            if (TitleText(plain) != "rvt-mcp" + pidSuffix)
+                throw new Exception("A card without instance metadata must still name its owning process PID.");
         }
         finally { plain.CloseImmediate(); }
         Console.WriteLine("PASS: title names the instance independently of branding");
@@ -535,7 +546,8 @@ internal static class Program
 
     private static void AssertPosition(McpToastWindow window, double top, double left)
     {
-        if (!double.IsFinite(window.Top) || !double.IsFinite(window.Left)
+        if (double.IsNaN(window.Top) || double.IsInfinity(window.Top)
+            || double.IsNaN(window.Left) || double.IsInfinity(window.Left)
             || Math.Abs(window.Top - top) > 1 || Math.Abs(window.Left - left) > 1)
             throw new Exception($"Expected ({top}, {left}); got ({window.Top}, {window.Left}).");
     }

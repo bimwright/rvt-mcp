@@ -29,6 +29,11 @@ namespace RvtMcp.Plugin.Reports.Presentation
         public MarkdownParseResult Body { get; }
         public IReadOnlyList<ReportLinkViewModel> Links { get; }
         public ChangeSectionViewModel Changes { get; }
+        internal bool HistoryExpanded;
+        internal int HistoryCallOffset, HistoryElementOffset;
+        // Reading state belongs to the detail, not a disposable Compact/Wide visual tree.
+        internal Dictionary<int, bool> ExpandedBodySections { get; } = new Dictionary<int, bool>();
+        internal Dictionary<int, int> BodyTablePages { get; } = new Dictionary<int, int>();
         public void UpdateActiveDocument()
         {
             foreach (var link in Links) link.UpdateActiveDocument();

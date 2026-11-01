@@ -24,6 +24,13 @@ namespace RvtMcp.Plugin.Reports.Views
 
         public static ToolTip Create(ReportLinkViewModel link)
         {
+            var tip = new ToolTip { Style = (Style)ReportsStyles.Dictionary[typeof(ToolTip)] };
+            tip.Opened += (s, e) => { if (tip.Content == null) tip.Content = BuildContent(link); };
+            return tip;
+        }
+
+        private static Panel BuildContent(ReportLinkViewModel link)
+        {
             var panel = new StackPanel { MaxWidth = 340 };
             var elements = link.Elements;
             if (elements.Count == 1)
@@ -53,8 +60,7 @@ namespace RvtMcp.Plugin.Reports.Views
                     L.T("reports.link.otherModel", ("model", link.DimTooltip)))
             });
             panel.Children.Add(footer);
-            // Set explicitly: a link inside the RichTextBox document should not depend on implicit-style lookup to find the window's.
-            return new ToolTip { Content = panel, Style = (Style)ReportsStyles.Dictionary[typeof(ToolTip)] };
+            return panel;
         }
 
         private static string Describe(ReportElement element)

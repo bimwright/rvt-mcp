@@ -199,6 +199,9 @@ namespace RvtMcp.Tests.Shared.Reports
             Assert.Equal("disabled", nullJson.Value<string>("toast"));
             Assert.Equal(0, emptyJson["changes_attached"].Value<int>("documents"));
             Assert.True(emptyJson["changes_attached"].Value<bool>("complete"));
+            Assert.NotNull(emptyJson["changes_attached"]["truncated"]);
+            Assert.False(emptyJson["changes_attached"].Value<bool>("truncated"));
+            Assert.Equal("process", emptyJson["changes_attached"].Value<string>("scope"));
             Assert.Equal("shown", emptyJson.Value<string>("toast"));
             Assert.Equal(1, fullJson["changes_attached"].Value<int>("documents"));
             Assert.Equal(2, fullJson["changes_attached"].Value<int>("added"));

@@ -29,7 +29,10 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ### Agent reports
 
-- Add `revit_report_task_result` for validated, replaceable agent reports without changing the model. Catalog: `--toolsets all` **241**, adaptive bake **244**, bare defaults **54**.
+- Keep capture selection atomic during checkpoint read failures, including saved call ownership, sequence and reference limits; return local Report History errors as tool error text.
+- Include the owning Revit process PID in every toast title, including cards shown before instance metadata is available and with branding hidden.
+- Add exact capture/client isolation and `revit_get_report_history` for record reasons and before/after, a live Reports caption, original Reports/Settings ribbon stack, Copy feedback, reduced motion and per-mode reading bookmarks.
+- Add `revit_report_task_result` for validated, replaceable agent reports without changing the model. Catalog: `--toolsets all` **242**, adaptive bake **245**, bare defaults **55**.
 - Add a **Reports** ribbon button and window (Wide and Compact modes, adjustable text size). It lists each report with the changes rvt-mcp recorded. Links select elements or open views without transactions or Revit dialogs, and the report toast opens the report. Reports are kept for 30 days (`reportRetentionDays`). See [docs/agent-reports.md](docs/agent-reports.md).
 
 ### Script inputs and helper modules

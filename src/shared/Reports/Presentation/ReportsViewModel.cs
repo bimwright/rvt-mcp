@@ -13,6 +13,12 @@ namespace RvtMcp.Plugin.Reports.Presentation
     public enum DisplayMode { Wide, Compact }
     public enum ReportStatusTone { Neutral, Success, Warning, Error }
 
+    public sealed class ReportListUpdateEventArgs : EventArgs
+    {
+        public ReportListUpdateEventArgs(bool fromRefresh) { FromRefresh = fromRefresh; }
+        public bool FromRefresh { get; }
+    }
+
     public sealed class ReportsViewModel : ObservableObject, IDisposable
     {
         private readonly IReportsRuntime _runtime;
@@ -28,9 +34,12 @@ namespace RvtMcp.Plugin.Reports.Presentation
         private DisplayMode _mode;
         private ReportListItemViewModel _selectedReport;
         private ReportDetailViewModel _selectedDetail;
-        private bool _deleteConfirmation, _compactChangesExpanded;
+        private bool _deleteConfirmation, _compactChangesExpanded, _navigationPending;
         private string _statusText = "";
         private ReportStatusTone _statusTone;
+        private DateTime _calendarDate;
+        private TimeZoneInfo _calendarZone;
+        private int _calendarLanguageVersion;
 
         public ReportsViewModel(IReportsRuntime runtime, INavigationService navigation, DisplayMode initialMode)
         {
@@ -42,12 +51,26 @@ namespace RvtMcp.Plugin.Reports.Presentation
             CopyCommand = new RelayCommand(Copy, () => !_disposed && SelectedDetail != null);
             runtime.ReportsChanged += OnReportsChanged;
             runtime.ActiveDocumentChanged += OnActiveDocumentChanged;
+            runtime.HostStatusChanged += OnHostStatusChanged;
+            navigation.Started += OnNavigationStarted;
             navigation.Completed += OnNavigationCompleted;
         }
 
         public ObservableCollection<ReportListItemViewModel> Reports { get; }
+        public event EventHandler<ReportListUpdateEventArgs> ListUpdating;
+        public event EventHandler<ReportListUpdateEventArgs> ListUpdated;
+        public event EventHandler RevealRequested;
         public RelayCommand DeleteCommand { get; }
         public RelayCommand CopyCommand { get; }
+        public int CopyAttempt { get; private set; }
+        public bool LastCopySucceeded { get; private set; }
+        internal ReportReadingPosition CompactReadingPosition { get; set; }
+        internal ReportReadingPosition WideReadingPosition { get; set; }
+        public ReportHostStatus HostStatus => _runtime.HostStatus;
+        private void OnHostStatusChanged(object sender, EventArgs e) => _runtime.Post(() =>
+        {
+            if (!_disposed) OnPropertyChanged(nameof(HostStatus));
+        });
         public ReportFilter Filter
         {
             get => _filter;
@@ -78,9 +101,13 @@ namespace RvtMcp.Plugin.Reports.Presentation
                 if (value != null && !Reports.Contains(value)) return;
                 if (value == null && Mode == DisplayMode.Wide && Reports.Count > 0) value = Reports[0];
                 SetSelection(value);
+                CompactReadingPosition = WideReadingPosition = null;
+                if (value != null) RevealRequested?.Invoke(this, EventArgs.Empty);
             }
         }
         public ReportDetailViewModel SelectedDetail => _selectedDetail;
+        internal Newtonsoft.Json.Linq.JObject LoadHistory(string reportId, int callOffset, int elementOffset)
+            => _runtime.LoadHistory(reportId, callOffset, elementOffset);
         public bool IsDeleteConfirmationPending => _deleteConfirmation;
         public string DeleteLabel => L.T(_deleteConfirmation ? "reports.delete.confirm" : "reports.delete.button");
         public bool CompactChangesExpanded
@@ -146,7 +173,7 @@ namespace RvtMcp.Plugin.Reports.Presentation
                                 }
                                 else _all.Add(new ReportListItemViewModel(report, () => _runtime.ActiveDocument, () => _runtime.Now));
                             }
-                            RebuildVisible();
+                            RebuildVisible(true);
                         }
                     }).ConfigureAwait(false);
                 }
@@ -189,8 +216,31 @@ namespace RvtMcp.Plugin.Reports.Presentation
             else _ = RefreshAsync();
         }
 
-        private void RebuildVisible()
+        public void RefreshDates()
         {
+            if (_disposed) return;
+            var zone = _runtime.LocalTimeZone;
+            if (_calendarDate == _runtime.Now.Date && Equals(_calendarZone, zone) && _calendarLanguageVersion == L.Version) return;
+            RebuildVisible();
+        }
+
+        private void RebuildVisible(bool fromRefresh = false)
+        {
+            var update = new ReportListUpdateEventArgs(fromRefresh);
+            ListUpdating?.Invoke(this, update);
+            bool reveal;
+            try { reveal = RebuildVisibleCore(); }
+            finally { ListUpdated?.Invoke(this, update); }
+            if (reveal)
+            {
+                CompactReadingPosition = WideReadingPosition = null;
+                RevealRequested?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        private bool RebuildVisibleCore()
+        {
+            var reveal = false;
             var desiredId = _selectedReport?.ReportId;
             if (_pendingReportId != null)
             {
@@ -205,9 +255,26 @@ namespace RvtMcp.Plugin.Reports.Presentation
                     }
                     desiredId = target.ReportId;
                     _pendingReportId = null;
+                    reveal = true;
                 }
             }
-            var visible = _filter == ReportFilter.All ? _all : _all.Where(r => !r.IsOtherModel).ToList();
+            var zone = _runtime.LocalTimeZone;
+            var now = _runtime.Now;
+            _calendarDate = now.Date;
+            _calendarZone = zone;
+            _calendarLanguageVersion = L.Version;
+            foreach (var item in _all) item.RefreshCalendar(now, zone);
+            var visible = (_filter == ReportFilter.All ? _all : _all.Where(r => !r.IsOtherModel))
+                .OrderByDescending(r => r.LocalDay).ThenByDescending(r => r.CreatedInstant).ToList();
+            foreach (var day in visible.GroupBy(r => r.LocalDay))
+            {
+                var first = true;
+                foreach (var item in day)
+                {
+                    item.SetDayHeading(first ? ReportCalendar.Header(day.Key, day.Count(), now) : "");
+                    first = false;
+                }
+            }
             _rebuildingVisible = true;
             try
             {
@@ -228,15 +295,29 @@ namespace RvtMcp.Plugin.Reports.Presentation
             SetSelection(selected);
             if (retainedSelection) OnPropertyChanged(nameof(SelectedReport));
             OnPropertyChanged(nameof(EmptyText));
+            return reveal;
         }
 
         private void SetSelection(ReportListItemViewModel selected)
         {
             var changedId = !string.Equals(_selectedReport?.ReportId, selected?.ReportId, StringComparison.Ordinal);
             if (ReferenceEquals(_selectedReport, selected)) return;
+            var previousDetail = _selectedDetail;
             _selectedReport = selected;
             _selectedDetail = selected == null ? null : new ReportDetailViewModel(selected.Report, _navigation,
                 () => _runtime.ActiveDocument, () => _runtime.Now);
+            if (!changedId && previousDetail != null && _selectedDetail != null)
+            {
+                _selectedDetail.HistoryExpanded = previousDetail.HistoryExpanded;
+                _selectedDetail.HistoryCallOffset = previousDetail.HistoryCallOffset;
+                _selectedDetail.HistoryElementOffset = previousDetail.HistoryElementOffset;
+            }
+            if (!changedId && previousDetail != null && _selectedDetail != null
+                && string.Equals(previousDetail.Report.Body, _selectedDetail.Report.Body, StringComparison.Ordinal))
+            {
+                foreach (var pair in previousDetail.ExpandedBodySections) _selectedDetail.ExpandedBodySections[pair.Key] = pair.Value;
+                foreach (var pair in previousDetail.BodyTablePages) _selectedDetail.BodyTablePages[pair.Key] = pair.Value;
+            }
             OnPropertyChanged(nameof(SelectedReport));
             OnPropertyChanged(nameof(SelectedDetail));
             if (changedId)
@@ -291,6 +372,9 @@ namespace RvtMcp.Plugin.Reports.Presentation
             var text = SelectedDetail.Summary ?? "";
             if (!string.IsNullOrEmpty(plain)) text += "\n\n" + plain;
             var copied = _runtime.CopyText(text);
+            LastCopySucceeded = copied;
+            CopyAttempt++;
+            OnPropertyChanged(nameof(CopyAttempt));
             SetStatus(copied ? L.T("reports.status.copied") : L.T("reports.status.copyFailed"),
                 copied ? ReportStatusTone.Success : ReportStatusTone.Error);
         }
@@ -306,11 +390,27 @@ namespace RvtMcp.Plugin.Reports.Presentation
                 RebuildVisible();
             });
         }
+        private void OnNavigationStarted(object sender, ReportNavigationRequest request)
+        {
+            _runtime.Post(() =>
+            {
+                if (_disposed) return;
+                _navigationPending = true;
+                SetStatus(L.T("reports.navigation.pending"), ReportStatusTone.Neutral);
+            });
+        }
         private void OnNavigationCompleted(object sender, ReportNavigationResult result)
         {
             _runtime.Post(() =>
             {
-                if (_disposed || result == null || result.Outcome == ReportNavigationOutcome.NotMatched) return;
+                if (_disposed || result == null) return;
+                if (result.Outcome == ReportNavigationOutcome.NotMatched)
+                {
+                    if (_navigationPending) SetStatus("", ReportStatusTone.Neutral);
+                    _navigationPending = false;
+                    return;
+                }
+                _navigationPending = false;
                 switch (result.Outcome)
                 {
                     case ReportNavigationOutcome.Selected:
@@ -344,6 +444,8 @@ namespace RvtMcp.Plugin.Reports.Presentation
             }
             _runtime.ReportsChanged -= OnReportsChanged;
             _runtime.ActiveDocumentChanged -= OnActiveDocumentChanged;
+            _runtime.HostStatusChanged -= OnHostStatusChanged;
+            _navigation.Started -= OnNavigationStarted;
             _navigation.Completed -= OnNavigationCompleted;
             DeleteCommand.RaiseCanExecuteChanged();
             CopyCommand.RaiseCanExecuteChanged();

@@ -107,6 +107,7 @@ namespace RvtMcp.Plugin
             "project_point_onto_face",
             "raycast_from_point",
             "report_task_result",
+            "get_report_history",
             "select_elements",
             "show_element_in_view",
             "show_message",

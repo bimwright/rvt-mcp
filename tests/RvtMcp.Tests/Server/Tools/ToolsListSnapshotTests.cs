@@ -82,7 +82,8 @@ namespace RvtMcp.Tests
             Assert.DoesNotContain("\"name\": \"revit_dismiss_bake_suggestion\"", captured);
 
             var count = (int)Newtonsoft.Json.Linq.JObject.Parse(captured)["tool_count"]!;
-            Assert.Equal(54, count);
+            Assert.Contains("revit_get_report_history", captured);
+            Assert.Equal(55, count);
         }
 
         [Fact]

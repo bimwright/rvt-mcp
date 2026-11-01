@@ -142,14 +142,7 @@ namespace RvtMcp.Plugin.Reports.Views
         }
 
         /// <summary>Copy as History does it: an icon button whose tooltip and accessible name say what it copies.</summary>
-        public static Button CopyButton(ICommand command)
-        {
-            var label = L.T("reports.copy.button");
-            var button = new Button { Style = (Style)Dictionary[BimwrightStyles.IconButtonKey], Content = "", Command = command,
-                ToolTip = label, Margin = new Thickness(3, 2, 0, 2), VerticalAlignment = VerticalAlignment.Center };
-            AutomationProperties.SetName(button, label);
-            return button;
-        }
+        public static Button CopyButton(ReportsViewModel viewModel) => new ReportCopyButton(viewModel);
 
         /// <summary>Delete next to Copy: an "X" icon button; <see cref="SyncDeleteButton"/> sets its two-step state.</summary>
         public static Button DeleteButton(ICommand command) => new Button

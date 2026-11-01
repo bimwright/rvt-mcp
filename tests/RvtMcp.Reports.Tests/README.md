@@ -9,7 +9,18 @@ Requires the .NET 10 SDK and an interactive Windows session; windows flash brief
 
 ```powershell
 dotnet run --project tests/RvtMcp.Reports.Tests -c Release
+dotnet run --project tests/RvtMcp.Reports.Tests -c Release -- --check 20
 ```
+
+Revit 2022–2024 use .NET Framework. Run the same focus/table checks on that runtime too:
+
+```powershell
+dotnet restore tests/RvtMcp.Reports.Tests -p:TargetFramework=net48 -p:LangVersion=latest
+dotnet run --project tests/RvtMcp.Reports.Tests -c Release --no-restore -p:TargetFramework=net48 -p:LangVersion=latest -- --check 20
+dotnet run --project tests/RvtMcp.Reports.Tests -c Release --no-restore -p:TargetFramework=net48 -p:LangVersion=latest -- --check 21
+```
+
+Restore the default target again before returning to the .NET 10 run.
 
 Exit code 0 requires all checks to pass:
 
@@ -31,8 +42,24 @@ Exit code 0 requires all checks to pass:
 16. Performance (printed as `PERF`): a 32 KiB body and a 5,000-change report each open, and one "Show N more" press completes, in under 1,500 ms.
 17. Lifecycle: hide / show three times, `CloseForShutdown` closes for real, no `PropertyChanged` or `L.Changed` handlers left after `Dispose` or after mode switches.
 18. No WPF binding errors after all scenarios.
+19. Text size controls and shortcuts.
+20. Visible sheet links preserve scroll position; off-screen keyboard focus reveals the link in both modes.
+21. Long sections defer table construction, table pages stay bounded, links keep element identity, and Copy retains hidden content.
+22. Compact day separators, filtered counts, time-only card labels with timestamp tooltips, unknown dates, and non-interactive headings.
+23. New reports keep the reading card, pixel offset, FlowDocument and keyboard focus; the notice jumps to the top without opening a card; arrivals at the top and watcher updates while hidden behave correctly.
+24. Updating the selected report preserves the Compact body position and card focus, with an Updated label; Wide retains its body scroll position too.
+25. A 500-report feed stays virtualized, preserves a deep open body across capped batches, counts each arrival once, and handles deletion of the reading anchor and clock refresh; list/reveal handlers detach on disposal.
+
+26. Short idle caption, host details inline on mouse enter and short text again on leave (no title tooltip); stable height/body scroll/focus, live transport/stopped updates, Compact PID/transport prefix visibly fits at minimum width, long endpoint ellipsis and full UIA help, hide resets hover.
+27. Copy success/failure feedback, timer reset and disposal on a mode switch.
+28. Opacity effects and reduced motion without height changes.
+29. Independent Wide/Compact reading bookmarks.
+30. Lazy background History, exact reason/record ID/before-after, pagination and mode preservation.
 
 ## Preview and snapshots
+
+Check 7 also verifies that both modes state the process scope while the changes list
+is collapsed. Checks 20–21 continue to cover the existing hyperlink and large-table fixes.
 
 ```powershell
 dotnet run --project tests/RvtMcp.Reports.Tests -c Release -- --demo
@@ -41,4 +68,8 @@ dotnet run --project tests/RvtMcp.Reports.Tests -c Release -- --snapshot <folder
 
 `--demo` opens the window over the sample data; closing it ends the run.
 `--snapshot` writes `wide.png`, `wide-other-model.png`, `compact.png`, `compact-expanded.png` and `empty.png` at 150 % scale.
+It also exports `compact-days-{100,125,150,200}.png` and `compact-new-reports.png`;
+Title/transport states, lazy History pages in both modes, and original Reports/Settings
+icons at 16/24/32/64 pixels are also exported. All data are synthetic;
+these are render-scale checks, not a claim about native monitor DPI.
 This harness is separate from the cross-platform xUnit suite and does not establish live Revit acceptance (DPI, several monitors, hover tooltips, snap).

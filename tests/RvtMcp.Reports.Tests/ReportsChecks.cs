@@ -39,7 +39,8 @@ internal static class ReportsChecks
                 && System.Windows.Automation.AutomationProperties.GetName(view.CopyButton) == L.T("reports.copy.button"),
                 "Copy is an icon button with a tooltip and a name");
             Expect(view.Changes.IsExpanded, "actual changes start open");
-            Expect(w.TitleText.Text == "Agent reports" && w.SubtitleText.Visibility == Visibility.Visible, "title and subtitle in wide mode");
+            Expect(w.Title == "BIMwright - Agent report" && w.HostDetailsText.Contains(s.Runtime.HostStatus.Display),
+                "short caption keeps host details in accessibility help");
             Expect(w.WideButton.IsChecked == true && w.CompactButton.IsChecked == false, "wide mode button is pressed");
         }
     }
@@ -66,8 +67,8 @@ internal static class ReportsChecks
             Expect(card != null && card.IsOpen, "the selected report's card is open");
             Expect(s.ViewModel.Filter == ReportFilter.All && s.Compact.Filter.SelectedIndex == 1, "filter survives the switch");
             Expect(s.ViewModel.StatusText == status && w.StatusText.Text == status, "status survives the switch");
-            Expect(w.CompactButton.IsChecked == true && w.WideButton.IsChecked == false && w.SubtitleText.Visibility == Visibility.Collapsed,
-                "compact chrome: button pressed, subtitle hidden");
+            Expect(w.CompactButton.IsChecked == true && w.WideButton.IsChecked == false && Near(w.CaptionArea.ActualHeight, 32),
+                "compact chrome: button pressed, caption stays one row");
             Expect(s.Saved.Count == 1 && s.Saved[0].Mode == ReportsWindowMode.Compact && Same(s.Saved[0].Wide, 300, 100, 800, 560)
                 && Same(s.Saved[0].Compact, 834, 36, 390, 608), "first switch saves the mode and both bounds once");
 
@@ -218,8 +219,8 @@ internal static class ReportsChecks
                     Expect(L.Locale == code, "language " + code + " is active");
                     var view = s.Wide;
                     Expect(view != null && s.Window.CurrentMode == DisplayMode.Wide, code + ": mode stays wide");
-                    Expect(s.Window.TitleText.Text == L.T("reports.window.title") && s.Window.Title == L.T("reports.window.title")
-                        && s.Window.TitleText.Text != "Agent reports", code + ": title follows the language");
+                    Expect(s.Window.Title == "BIMwright - " + L.T("reports.window.title")
+                        && s.Window.HostDetailsText.Contains(s.Runtime.HostStatus.Display), code + ": short title localizes and tooltip retains owner identity");
                     Expect((view.ActiveFilterButton.Content as string) == L.T("reports.filter.activeModel")
                         && (view.AllFilterButton.Content as string) == L.T("reports.filter.all") && L.T("reports.filter.all") != "All models",
                         code + ": filter buttons follow the language");

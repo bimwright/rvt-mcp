@@ -7,11 +7,14 @@ namespace RvtMcp.Plugin.Reports.Presentation
     public interface INavigationService
     {
         void Navigate(ReportNavigationRequest request);
+        event EventHandler<ReportNavigationRequest> Started;
         event EventHandler<ReportNavigationResult> Completed;
     }
 
-    public sealed class ReportNavigationRequest
+    public sealed class ReportNavigationRequest : EventArgs
     {
+        internal long TraceId { get; set; }
+        internal long QueuedTimestamp { get; set; }
         public ReportDocument Document { get; set; }
         public IReadOnlyList<ReportElement> Elements { get; set; }
         public ReportView ViewHint { get; set; }

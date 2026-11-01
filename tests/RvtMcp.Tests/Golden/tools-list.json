@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 241,
+  "tool_count": 242,
   "tools": [
     {
       "name": "revit_acquire_coordinates_from_link",
@@ -4554,6 +4554,44 @@
       }
     },
     {
+      "name": "revit_get_report_history",
+      "description_hash": "sha256:e93d262571cdb42fbe7b3ba49651b5625243d55f0568c1863c82673fa8d521f6",
+      "inputSchema": {
+        "properties": {
+          "call_limit": {
+            "description": "",
+            "type": "Int32"
+          },
+          "call_offset": {
+            "description": "",
+            "type": "Int32"
+          },
+          "element_limit": {
+            "description": "",
+            "type": "Int32"
+          },
+          "element_offset": {
+            "description": "",
+            "type": "Int32"
+          },
+          "report_id": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "report_id"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
       "name": "revit_get_room_boundaries",
       "description_hash": "sha256:402358b0fb407b2d960c4b9c5577020f96c83d11f2b9c28f0042e6d7e978146c",
       "inputSchema": {
@@ -6603,10 +6641,14 @@
     },
     {
       "name": "revit_report_task_result",
-      "description_hash": "sha256:e3c4a09f01cec496544a3482bddeb8491f2128a73e4e46faf2a2ded9633f8472",
+      "description_hash": "sha256:f4403281342d1fab5fe757cf90ee058c0ab50a67628b35f2f9baf3007d2c38fb",
       "inputSchema": {
         "properties": {
           "body": {
+            "description": "",
+            "type": "String"
+          },
+          "call_ids": {
             "description": "",
             "type": "String"
           },

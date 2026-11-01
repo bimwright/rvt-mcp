@@ -134,33 +134,7 @@ namespace RvtMcp.Plugin
             }
         }
 
-        public static BitmapSource CreateSettingsIcon(int size)
-        {
-            using (var bmp = new Bitmap(size, size))
-            using (var g = Graphics.FromImage(bmp))
-            {
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.Clear(Color.Transparent);
-                var cx = size / 2f;
-                var cy = size / 2f;
-                var ring = size * 0.27f;
-                var tip = size * 0.44f;
-                var hub = size * 0.11f;
-                using (var pen = new Pen(Color.FromArgb(60, 60, 60), Math.Max(size / 12f, 1.5f)))
-                {
-                    for (var i = 0; i < 8; i++)
-                    {
-                        var angle = i * Math.PI / 4;
-                        var dx = (float)Math.Cos(angle);
-                        var dy = (float)Math.Sin(angle);
-                        g.DrawLine(pen, cx + dx * ring, cy + dy * ring, cx + dx * tip, cy + dy * tip);
-                    }
-                    g.DrawEllipse(pen, cx - ring, cy - ring, ring * 2, ring * 2);
-                    g.DrawEllipse(pen, cx - hub, cy - hub, hub * 2, hub * 2);
-                }
-                return BitmapToBitmapSource(bmp);
-            }
-        }
+        public static BitmapSource CreateSettingsIcon(int size) => Views.ReportAssets.Bitmap(Views.ReportAssets.Settings, size);
 
         public static BitmapSource CreateLanguageIcon(int size)
         {
@@ -188,34 +162,7 @@ namespace RvtMcp.Plugin
         }
 
         /// <summary>Agent report: a page with a blue outline and three text lines.</summary>
-        public static BitmapSource CreateReportsIcon(int size)
-        {
-            using (var bmp = new Bitmap(size, size))
-            using (var g = Graphics.FromImage(bmp))
-            {
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.Clear(Color.Transparent);
-                var stroke = Math.Max(size / 16f, 1f);
-                var page = new RectangleF(size * 0.2f, size * 0.08f, size * 0.6f, size * 0.84f);
-                using (var fill = new SolidBrush(Color.White))
-                using (var pen = new Pen(Color.FromArgb(0, 122, 204), stroke))
-                {
-                    g.FillRectangle(fill, page);
-                    g.DrawRectangle(pen, page.X, page.Y, page.Width, page.Height);
-                }
-                using (var pen = new Pen(Color.FromArgb(60, 60, 60), stroke))
-                {
-                    var left = page.X + page.Width * 0.22f;
-                    var right = page.Right - page.Width * 0.22f;
-                    for (var i = 0; i < 3; i++)
-                    {
-                        var y = page.Y + page.Height * (0.3f + i * 0.2f);
-                        g.DrawLine(pen, left, y, right, y);
-                    }
-                }
-                return BitmapToBitmapSource(bmp);
-            }
-        }
+        public static BitmapSource CreateReportsIcon(int size) => Views.ReportAssets.Bitmap(Views.ReportAssets.Report, size);
 
         // Pre-generated icons cached for Ribbon use
         public static BitmapSource McpOn32 { get; } = CreateCircleIcon(32, Color.FromArgb(76, 175, 80));

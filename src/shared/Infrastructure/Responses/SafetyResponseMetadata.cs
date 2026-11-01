@@ -11,6 +11,15 @@ namespace RvtMcp.Plugin
     {
         public static void Attach(JObject target, JObject source, bool compact = false)
         {
+            var capture = source?["_report_capture"] as JObject;
+            if (capture != null) target["_report_capture"] = Capture(capture);
+            if (source?["_report_captures"] is JArray captures)
+            {
+                var maximum = compact ? 1 : 32;
+                target["_report_captures"] = new JArray(captures.OfType<JObject>().Take(maximum).Select(Capture));
+                if (captures.Count > maximum) target["_report_captures_truncated"] = true;
+            }
+            if (source?.Value<bool?>("_report_captures_truncated") == true) target["_report_captures_truncated"] = true;
             if (compact) target.Remove("task_contract_hint");
             var actualTarget = source?["_target"] as JObject ?? (source?["data"] as JObject)?["_target"] as JObject;
             if (actualTarget != null)
@@ -43,6 +52,15 @@ namespace RvtMcp.Plugin
             // Dialogs the user handled outside MCP: information only, dropped first when space is short.
             var userDialogs = source?["_userDialogs"] as JObject ?? (source?["data"] as JObject)?["_userDialogs"] as JObject;
             if (userDialogs != null && !compact && Bytes(userDialogs) <= 8192) target["_userDialogs"] = userDialogs.DeepClone();
+        }
+
+        private static JObject Capture(JObject receipt)
+        {
+            var value = new JObject();
+            foreach (var key in new[] { "call_id", "client_session", "status" })
+                if (receipt[key]?.Type == JTokenType.String)
+                    value[key] = receipt.Value<string>(key).Substring(0, Math.Min(64, receipt.Value<string>(key).Length));
+            return value;
         }
 
         public static JObject Bound(JObject receipt, int budget, bool compact = false)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -41,7 +42,10 @@ namespace RvtMcp.Plugin.Reports.Revit
             var linkedView = found.OfType<View>().FirstOrDefault(CanActivate);
             if (linkedView != null)
             {
+                var clock = Stopwatch.StartNew();
                 if (uidoc.ActiveView?.Id != linkedView.Id) uidoc.ActiveView = linkedView;
+                App.DebugLog("Reports navigation " + request.TraceId + ": active_view_ms="
+                    + clock.Elapsed.TotalMilliseconds.ToString("F1", CultureInfo.InvariantCulture));
                 return Result(ReportNavigationOutcome.ViewActivated, view: linkedView);
             }
 

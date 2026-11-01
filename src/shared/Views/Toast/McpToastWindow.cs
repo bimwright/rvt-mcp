@@ -145,7 +145,10 @@ namespace RvtMcp.Plugin.Views.Toast
             string instanceIdentity = null)
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
-            _card = new ToastCardViewModel(snapshot, string.IsNullOrWhiteSpace(instanceIdentity) ? BrandAssets.ProductName : instanceIdentity, onDismiss, onClick);
+            var identityTitle = string.IsNullOrWhiteSpace(instanceIdentity) ? BrandAssets.ProductName : instanceIdentity;
+            // This window runs inside Revit; never take its PID from a gateway or report payload.
+            using (var process = Process.GetCurrentProcess()) identityTitle += " · PID: " + process.Id;
+            _card = new ToastCardViewModel(snapshot, identityTitle, onDismiss, onClick);
             DataContext = _card;
             _activityClosed = onClosed;
             _activityPointerEntered = onPointerEntered;
@@ -193,7 +196,7 @@ namespace RvtMcp.Plugin.Views.Toast
             };
 
             var content = new Grid { Margin = new Thickness(10, 10, 12, 10) };
-            // Title (product + Revit year), then the latest tool or status title.
+            // Title (product + Revit year + process PID), then the latest tool or status title.
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             // Status summary and activity counters share one fixed-height body row.

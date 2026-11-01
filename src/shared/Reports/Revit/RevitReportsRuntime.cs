@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Threading;
 using RvtMcp.Plugin.Reports.Model;
@@ -17,6 +18,9 @@ namespace RvtMcp.Plugin.Reports.Revit
         private readonly Dispatcher _dispatcher;
         private readonly ReportFolderWatcher _watcher;
         private volatile ActiveDocumentIdentity _active;
+        private static readonly int OwnerPid = CapturePid();
+        private ReportHostStatus _host = CaptureHost();
+        private static int CapturePid() { using (var process = Process.GetCurrentProcess()) return process.Id; }
 
         public RevitReportsRuntime(Dispatcher dispatcher)
         {
@@ -27,13 +31,35 @@ namespace RvtMcp.Plugin.Reports.Revit
 
         public event EventHandler ReportsChanged;
         public event EventHandler ActiveDocumentChanged;
+        public event EventHandler HostStatusChanged;
+        public ReportHostStatus HostStatus => _host;
+        private static ReportHostStatus CaptureHost() => new ReportHostStatus(OwnerPid,
+            App.Instance?.IsTransportRunning == true, App.Instance?.Transport?.ConnectionInfo);
+        internal void RefreshHostStatus()
+        {
+            var next = CaptureHost();
+            if (_host.Pid == next.Pid && _host.Running == next.Running && _host.Transport == next.Transport && _host.Endpoint == next.Endpoint) return;
+            _host = next;
+            HostStatusChanged?.Invoke(this, EventArgs.Empty);
+        }
 
         public ActiveDocumentIdentity ActiveDocument => _active;
         public DateTime Now => DateTime.Now;
+        public TimeZoneInfo LocalTimeZone
+        {
+            get
+            {
+                // A visible Reports window must notice an OS time-zone change without restarting Revit.
+                TimeZoneInfo.ClearCachedData();
+                return TimeZoneInfo.Local;
+            }
+        }
 
         public IReadOnlyList<AgentReport> LoadReports() => ReportServices.Store.LoadNewest();
 
         public void DeleteReport(string reportId) => ReportServices.Store.Delete(reportId);
+        public Newtonsoft.Json.Linq.JObject LoadHistory(string reportId, int callOffset, int elementOffset)
+            => new History.ReportHistoryLookup().Read(reportId, callOffset, elementOffset, 1, 10);
 
         public void Post(Action action)
         {

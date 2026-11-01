@@ -90,7 +90,7 @@ internal static class HistoryStateChecks
             windowRuntime.Entries.Add(scriptEntry);
             var activityGrid = Field<DataGrid>(view, "_grid"); activityGrid.SelectedItem = scriptEntry; Pump();
             Expect(!button.IsEnabled, "real History disables enhanced rerun even with a source display copy");
-            Expect(Field<TextBlock>(view, "_warningLabel").Text == RvtMcp.Plugin.Localization.L.T("script.history.freshInputs"),
+            Expect(Field<TextBlock>(view, "_warningLabel").Text.Replace("\u200B", "") == RvtMcp.Plugin.Localization.L.T("script.history.freshInputs"),
                 "real History explains that fresh inputs and module identity are required");
             activityGrid.SelectedItem = windowRuntime.Entries[0]; Pump();
             window.ShowIssues(); Pump();

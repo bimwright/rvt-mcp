@@ -47,6 +47,7 @@ namespace RvtMcp.Plugin.Reports.Revit
         internal static void ShowOrFocus(UIApplication app = null)
         {
             if (_runtime == null) return;
+            _runtime.RefreshHostStatus();
             if (app != null) _tracker?.Refresh(app);
             if (_window == null)
             {
@@ -70,6 +71,8 @@ namespace RvtMcp.Plugin.Reports.Revit
             ShowOrFocus();
             _viewModel?.ShowReport(reportId);
         }
+
+        internal static void RefreshHostStatus() => _runtime?.RefreshHostStatus();
 
         internal static void Shutdown()
         {

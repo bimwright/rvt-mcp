@@ -39,7 +39,8 @@ namespace RvtMcp.Plugin.Reports.Storage
             {
                 Directory.CreateDirectory(_directory);
                 var now = DateTime.UtcNow;
-                var replaced = _tasks.TryGetValue(report.TaskId, out var saved);
+                var key = ReportSource.TaskKey(report.TaskId, report.Source?.ClientSession);
+                var replaced = _tasks.TryGetValue(key, out var saved);
                 if (!replaced)
                 {
                     var id = Guid.NewGuid().ToString("N");
@@ -60,13 +61,29 @@ namespace RvtMcp.Plugin.Reports.Storage
                     }
                     if (File.Exists(saved.Path)) File.Replace(temp, saved.Path, null);
                     else File.Move(temp, saved.Path);
-                    _tasks[report.TaskId] = saved;
+                    _tasks[key] = saved;
                 }
                 finally
                 {
                     if (File.Exists(temp)) File.Delete(temp);
                 }
                 return new ReportSaveResult { ReportId = saved.Id, Replaced = replaced };
+            }
+        }
+
+        public AgentReport LoadForTask(string taskId, string session = null)
+        {
+            lock (_gate)
+            {
+                // Only this store's process-lifetime map owns replacement; never match another process by task_id.
+                if (!_tasks.TryGetValue(ReportSource.TaskKey(taskId, session), out var saved)) return null;
+                string json;
+                using (var stream = new FileStream(saved.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                using (var reader = new StreamReader(stream, Encoding.UTF8)) json = reader.ReadToEnd();
+                if (!ReportJson.TryDeserialize(json, out var report, out var status)
+                    || report.ReportId != saved.Id || report.TaskId != taskId || report.Source?.ClientSession != session)
+                    throw new IOException("Cannot update prior report (" + status + "): " + saved.Path);
+                return report;
             }
         }
 

@@ -170,7 +170,7 @@ namespace RvtMcp.Tests.Shared.Reports
         }
 
         [Fact]
-        public void Empty_commands_and_repeated_tasks_have_distinct_lifetimes()
+        public void Empty_commands_and_repeated_tasks_keep_evidence_across_other_tasks()
         {
             var buffer = new ReportChangeBuffer();
 
@@ -185,7 +185,7 @@ namespace RvtMcp.Tests.Shared.Reports
             Assert.Single(buffer.TakeForReport("a").Changes.Documents.Single().Added);
             Assert.Single(buffer.TakeForReport("a").Changes.Documents.Single().Added);
             Assert.Null(buffer.TakeForReport("b"));
-            Assert.Null(buffer.TakeForReport("a"));
+            Assert.Single(buffer.TakeForReport("a").Changes.Documents.Single().Added);
         }
 
         [Fact]

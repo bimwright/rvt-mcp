@@ -18,7 +18,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-241%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-242%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -94,12 +94,12 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
-| 全新安装 | **241** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
-| 裸 `rvt-mcp.exe` | **54** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **241** | 完整目录 |
-| `all` + adaptive bake | **244** | 再加 3 个 suggestion 生命周期工具 |
+| 全新安装 | **242** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
+| 裸 `rvt-mcp.exe` | **55** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **242** | 完整目录 |
+| `all` + adaptive bake | **245** | 再加 3 个 suggestion 生命周期工具 |
 
-数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 54 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除；agent 报告只写入用户自己的报告数据，因此允许使用。
+数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 55 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除；agent 报告只写入用户自己的报告数据，因此允许使用。
 
 | Toolset | 覆盖 |
 |---------|------|
@@ -155,7 +155,7 @@ Toast 不只是装饰，而是工作反馈。它来自三个实际需求：
 
 Toast 报告的是 **单次工具的结果**，不是运行中工具的进度，也不表示整个任务已完成。连续的结果共用一张卡片；Revit 最小化或被模态对话框阻塞时，通知可能会等待。它们不能代替你检查代理的工作。
 
-每张卡片显示网关名称和 Revit 年份（例如 `rvt-mcp 2022`）、最近一次工具，以及 Success · Failed · Capture 计数。捕获预览至少在卡片上停留 5 秒。
+每张卡片显示网关名称、Revit 年份及发送通知的 Revit 进程 PID（例如 `rvt-mcp 2022 · PID: 12345`）、最近一次工具，以及 Success · Failed · Capture 计数。捕获预览至少在卡片上停留 5 秒。
 
 有意悬停会打开活动时间线，显示最新三条结果及各自的本地完成时间（`HH:mm:ss`）。向上滚动可查看该卡片中更早的调用。新结果以简短的滑入动画跟随到底部（行向上移动，新行淡入，结果圆点弹出；开启减少动态效果时这些都不会出现）；阅读较早的调用时，位置保持不变。在时间线内点击可继续阅读而不关闭它；点击卡片其余部分会打开 History。关闭 branding 时同样可用。摘要有长度限制并已脱敏，只保存在内存中，卡片关闭后清除。脚本的对象/数组显示数量；不完整的调查会明确标注为不完整。仅在 server 端运行的工具不会因这次 UI 变更而获得 toast 覆盖。
 
@@ -332,6 +332,7 @@ Annotations 描述每个工具对文档和文件的影响。临时 selection、a
       "mcp__rvt-mcp__revit_project_point_onto_face",
       "mcp__rvt-mcp__revit_raycast_from_point",
       "mcp__rvt-mcp__revit_report_task_result",
+      "mcp__rvt-mcp__revit_get_report_history",
       "mcp__rvt-mcp__revit_select_elements",
       "mcp__rvt-mcp__revit_show_element_in_view",
       "mcp__rvt-mcp__revit_show_message",

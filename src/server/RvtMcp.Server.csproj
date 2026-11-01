@@ -28,6 +28,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\shared\Reports\History\ReportHistoryLookup.cs" Link="Shared\Reports\ReportHistoryLookup.cs" />
+    <Compile Include="..\shared\Reports\Changes\ReportCallContext.cs" Link="Shared\Reports\ReportCallContext.cs" />
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 

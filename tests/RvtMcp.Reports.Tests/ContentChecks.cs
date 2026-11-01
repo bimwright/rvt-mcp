@@ -105,6 +105,7 @@ internal static class ContentChecks
             var valves = BodyLinks(body).First();
             Expect(Text(valves) == "6 valves V-01…V-06" && ColorOf(valves.Foreground) == Hex(0x007ACC) && valves.Cursor == Cursors.Hand,
                 "live link is blue with a hand cursor");
+            Expect((valves.ToolTip as ToolTip)?.Content == null, "link tooltip content is deferred until opening");
             Click(valves);
             var request = s.Navigation.Requests.Single();
             Expect(request.Document?.Token == DemoData.TokenA && request.Elements.Select(e => e.Id).SequenceEqual(Enumerable.Range(3101, 6).Select(i => (long)i)),
@@ -164,6 +165,12 @@ internal static class ContentChecks
             var view = s.Wide;
             Click(view.AllFilterButton);
             Expect(view.Changes.IsExpanded, "wide changes start open");
+            var scope = Visuals<TextBlock>(view).Single(t => (t.Tag as string) == "ChangesScope");
+            Expect(scope.IsVisible && scope.Text == L.T("reports.changes.scopeProcess"), "wide states process scope");
+            view.Changes.IsExpanded = false;
+            Pump();
+            Expect(scope.IsVisible, "wide scope stays visible when changes are collapsed");
+            view.Changes.IsExpanded = true;
             var header = Texts(view.Changes);
             foreach (var badge in new[] { L.T("reports.changes.badge.added", ("count", 4)), L.T("reports.changes.badge.modified", ("count", 8)),
                 L.T("reports.changes.badge.deleted", ("count", 1)), L.T("reports.changes.title") })
@@ -227,6 +234,8 @@ internal static class ContentChecks
             s.Select("r01");
             var open = s.Compact.OpenBody;
             Expect(open != null && open.Chip != null && !open.ChangesVisible && open.ChangesView == null, "compact chip starts collapsed, list not built");
+            var scope = Visuals<TextBlock>(open).Single(t => (t.Tag as string) == "ChangesScope");
+            Expect(scope.IsVisible && scope.Text == L.T("reports.changes.scopeProcess"), "compact states process scope before expanding");
             Expect(Texts(open.Chip).Contains(L.T("reports.changes.chipTitle")) && Texts(open.Chip).Contains("▾"), "chip shows title, badges and ▾");
             Click(open.Chip);
             Expect(open.ChangesVisible && open.ChangesView != null && s.ViewModel.CompactChangesExpanded && Texts(open.Chip).Contains("▴"), "chip click opens the list");
@@ -453,8 +462,14 @@ internal static class ContentChecks
     }
 
     /// <summary>Text lines of a body link's tooltip, in order (the separator is a Border and is skipped).</summary>
-    private static List<string> TipLines(Hyperlink link) =>
-        (((link.ToolTip as ToolTip)?.Content as Panel)?.Children.OfType<TextBlock>().Select(t => t.Text) ?? new string[0]).ToList();
+    private static List<string> TipLines(Hyperlink link)
+    {
+        var tip = (ToolTip)link.ToolTip;
+        tip.IsOpen = true;
+        Pump();
+        tip.IsOpen = false;
+        return ((tip.Content as Panel)?.Children.OfType<TextBlock>().Select(t => t.Text) ?? new string[0]).ToList();
+    }
 
     private static void Roll(UIElement target)
     {

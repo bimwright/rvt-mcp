@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -21,8 +24,11 @@ namespace RvtMcp.Plugin.Reports.Views
         /// emphasis thousands deep; a flat tree keeps WPF and this builder off the stack limit.
         /// </summary>
         internal const int MaxSpanDepth = 16;
+        internal const int TablePageRows = 25;
+        internal const int DeferredCellBudget = 200;
 
-        public static FlowDocument Build(MarkdownParseResult body, IReadOnlyList<ReportLinkViewModel> links)
+        public static FlowDocument Build(MarkdownParseResult body, IReadOnlyList<ReportLinkViewModel> links,
+            IDictionary<int, bool> expandedSections = null, IDictionary<int, int> tablePages = null)
         {
             var document = new FlowDocument
             {
@@ -31,9 +37,22 @@ namespace RvtMcp.Plugin.Reports.Views
             };
             if (body == null) return document;
             links = links ?? new ReportLinkViewModel[0];
-            foreach (var block in body.Blocks)
+            expandedSections = expandedSections ?? new Dictionary<int, bool>();
+            tablePages = tablePages ?? new Dictionary<int, int>();
+            var defer = body.Blocks.Sum(b => b.Kind == MarkdownBlockKind.Table ? (long)b.Rows.Count * (b.Rows.FirstOrDefault()?.Count ?? 0) : 0) > DeferredCellBudget;
+            var sectionNumber = 0;
+            for (var i = 0; i < body.Blocks.Count; i++)
             {
-                var built = BuildBlock(block, links, document.Blocks.Count == 0);
+                var block = body.Blocks[i];
+                if (defer && block.Kind == MarkdownBlockKind.Heading && block.Level == 2)
+                {
+                    var end = i + 1;
+                    while (end < body.Blocks.Count && !(body.Blocks[end].Kind == MarkdownBlockKind.Heading && body.Blocks[end].Level <= 2)) end++;
+                    document.Blocks.Add(BuildSection(body.Blocks, i, end, sectionNumber++ < 2, links, expandedSections, tablePages));
+                    i = end - 1;
+                    continue;
+                }
+                var built = BuildBlock(block, links, document.Blocks.Count == 0, i, tablePages);
                 if (built != null) document.Blocks.Add(built);
             }
             return document;
@@ -47,7 +66,62 @@ namespace RvtMcp.Plugin.Reports.Views
             return link;
         }
 
-        private static Block BuildBlock(MarkdownBlock block, IReadOnlyList<ReportLinkViewModel> links, bool first)
+        private static Section BuildSection(IReadOnlyList<MarkdownBlock> blocks, int start, int end, bool initiallyOpen,
+            IReadOnlyList<ReportLinkViewModel> links, IDictionary<int, bool> expanded, IDictionary<int, int> pages)
+        {
+            var section = new Section { Margin = new Thickness(0) };
+            var heading = (Paragraph)BuildBlock(blocks[start], links, false);
+            var title = new TextRange(heading.ContentStart, heading.ContentEnd).Text.Trim();
+            var arrow = new Run();
+            var toggle = new Hyperlink(arrow) { Tag = "ReportSectionToggle", Foreground = ReportsStyles.Text, TextDecorations = null };
+            // Heading links remain independent targets; a plain heading can be clicked anywhere.
+            if (!ContainsLink(heading.Inlines))
+            {
+                var inlines = heading.Inlines.ToArray();
+                heading.Inlines.Clear();
+                foreach (var inline in inlines) toggle.Inlines.Add(inline);
+            }
+            if (heading.Inlines.FirstInline == null) heading.Inlines.Add(toggle);
+            else heading.Inlines.InsertBefore(heading.Inlines.FirstInline, toggle);
+            section.Blocks.Add(heading);
+            void Render()
+            {
+                var open = expanded.TryGetValue(start, out var saved) ? saved : initiallyOpen;
+                arrow.Text = open ? "▾ " : "▸ ";
+                var hint = L.T(open ? "reports.body.collapse" : "reports.body.expand") + " " + title;
+                toggle.ToolTip = hint;
+                AutomationProperties.SetName(toggle, hint);
+                while (section.Blocks.Count > 1) section.Blocks.Remove(section.Blocks.LastBlock);
+                if (!open) return;
+                for (var i = start + 1; i < end; i++)
+                {
+                    var built = BuildBlock(blocks[i], links, false, i, pages);
+                    if (built != null) section.Blocks.Add(built);
+                }
+            }
+            toggle.Click += (s, e) =>
+            {
+                expanded[start] = !(expanded.TryGetValue(start, out var saved) ? saved : initiallyOpen);
+                Render();
+            };
+            Render();
+            return section;
+        }
+
+        private static bool ContainsLink(IEnumerable<Inline> inlines)
+        {
+            var pending = new Stack<Inline>(inlines);
+            while (pending.Count > 0)
+            {
+                var inline = pending.Pop();
+                if (inline is Hyperlink) return true;
+                if (inline is Span span) foreach (var child in span.Inlines) pending.Push(child);
+            }
+            return false;
+        }
+
+        private static Block BuildBlock(MarkdownBlock block, IReadOnlyList<ReportLinkViewModel> links, bool first,
+            int index = 0, IDictionary<int, int> pages = null)
         {
             if (block == null) return null;
             switch (block.Kind)
@@ -86,7 +160,8 @@ namespace RvtMcp.Plugin.Reports.Views
                     return new BlockUIContainer(new Border { Height = 1, Background = ReportsStyles.BorderBrush, Margin = new Thickness(0, 8, 0, 8) })
                         { Margin = new Thickness(0) };
                 case MarkdownBlockKind.Table:
-                    return block.Rows.Count == 0 ? null : BuildTable(block.Rows, links);
+                    return block.Rows.Count == 0 ? null : block.Rows.Count <= TablePageRows + 1
+                        ? (Block)BuildTable(block.Rows, links) : BuildPagedTable(block.Rows, links, index, pages ?? new Dictionary<int, int>());
                 default:
                 {
                     var paragraph = new Paragraph { Margin = new Thickness(0, 0, 0, 8) };
@@ -137,16 +212,47 @@ namespace RvtMcp.Plugin.Reports.Views
             return list;
         }
 
-        private static Table BuildTable(List<MarkdownTableRow> rows, IReadOnlyList<ReportLinkViewModel> links)
+        private static Section BuildPagedTable(List<MarkdownTableRow> rows, IReadOnlyList<ReportLinkViewModel> links, int index, IDictionary<int, int> pages)
+        {
+            var section = new Section { Margin = new Thickness(0) };
+            var previous = new Hyperlink(new Run(L.T("reports.body.previous"))) { Tag = "ReportTablePrevious" };
+            var next = new Hyperlink(new Run(L.T("reports.body.next"))) { Tag = "ReportTableNext" };
+            var label = new Run();
+            var pager = new Paragraph { FontSize = 11.5, Margin = new Thickness(0, 0, 0, 10), Foreground = ReportsStyles.TextSecondary };
+            pager.Inlines.Add(previous); pager.Inlines.Add(new Run("   ")); pager.Inlines.Add(label);
+            pager.Inlines.Add(new Run("   ")); pager.Inlines.Add(next);
+            var lastPage = (rows.Count - 2) / TablePageRows;
+            var page = pages.TryGetValue(index, out var saved) ? Math.Max(0, Math.Min(lastPage, saved)) : 0;
+            void Render()
+            {
+                pages[index] = page;
+                if (section.Blocks.FirstBlock is Table oldTable) section.Blocks.Remove(oldTable);
+                var table = BuildTable(rows, links, page * TablePageRows, TablePageRows);
+                // Keep the focused pager attached while replacing the data rows.
+                if (pager.Parent == null) { section.Blocks.Add(table); section.Blocks.Add(pager); }
+                else section.Blocks.InsertBefore(pager, table);
+                previous.IsEnabled = page > 0;
+                next.IsEnabled = page < lastPage;
+                label.Text = L.T("reports.body.rows", ("first", page * TablePageRows + 1),
+                    ("last", Math.Min(rows.Count - 1, (page + 1) * TablePageRows)), ("total", rows.Count - 1));
+            }
+            previous.Click += (s, e) => { if (page > 0) { page--; Render(); } };
+            next.Click += (s, e) => { if (page < lastPage) { page++; Render(); } };
+            Render();
+            return section;
+        }
+
+        private static Table BuildTable(List<MarkdownTableRow> rows, IReadOnlyList<ReportLinkViewModel> links, int offset = 0, int count = int.MaxValue)
         {
             var columns = rows[0].Count;
             var table = new Table { CellSpacing = 0, Margin = new Thickness(0, 4, 0, 10), FontSize = 12 };
             for (var c = 0; c < columns; c++) table.Columns.Add(new TableColumn());
             var group = new TableRowGroup();
             table.RowGroups.Add(group);
-            for (var r = 0; r < rows.Count; r++)
+            var dataRows = Math.Min(count, rows.Count - 1 - offset);
+            for (var r = 0; r <= dataRows; r++)
             {
-                var source = rows[r];
+                var source = rows[r == 0 ? 0 : offset + r];
                 var row = new TableRow();
                 if (r == 0)
                 {

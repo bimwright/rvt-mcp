@@ -33,6 +33,8 @@ namespace RvtMcp.Plugin.Reports.Presentation
         public int ModifiedCount { get; }
         public int DeletedCount { get; }
         public IReadOnlyList<ChangeDocumentViewModel> Documents { get; }
+        public string ScopeText => !HasData ? "" : L.T(_changes.Scope == ReportChanges.ProcessScope ? "reports.changes.scopeProcess"
+            : _changes.Scope == "client" ? "reports.changes.scopeClient" : _changes.Scope == "calls" ? "reports.changes.scopeCalls" : "reports.changes.scopeUnknown");
         public string NoteText => !HasData ? L.T("reports.changes.noData")
             : AddedCount + ModifiedCount + DeletedCount == 0 ? L.T("reports.changes.empty") : "";
         public string IncompleteText => HasData && !_changes.Complete ? L.T("reports.changes.incomplete") : "";

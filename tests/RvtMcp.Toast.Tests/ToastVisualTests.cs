@@ -455,6 +455,8 @@ internal static class ToastVisualTests
 
     private static void CheckHiddenBrand()
     {
+        string expectedTitle;
+        using (var process = System.Diagnostics.Process.GetCurrentProcess()) expectedTitle = "rvt-mcp · PID: " + process.Id;
         var cursor = new Point(10, 10);
         var window = new McpToastWindow(
             new ActivitySnapshot(1, false, 9, 0, 0, "List Rooms", "Done", true, false),
@@ -470,7 +472,7 @@ internal static class ToastVisualTests
             var tool = Field<TextBlock>(window, "_toolText");
             var footer = Field<Grid>(window, "_brandRow");
             window.UpdateLayout();
-            if (title.Text != "rvt-mcp" || tool.Text != "List Rooms" || footer.Visibility != Visibility.Hidden)
+            if (title.Text != expectedTitle || tool.Text != "List Rooms" || footer.Visibility != Visibility.Hidden)
                 throw new Exception("Branding on keeps a blank brand row until hover.");
             var reservedHeight = window.ActualHeight;
 
@@ -486,7 +488,7 @@ internal static class ToastVisualTests
             Pump(280);
             window.SetShowBranding(false);
             window.UpdateLayout();
-            if (footer.Visibility != Visibility.Collapsed || title.Text != "rvt-mcp"
+            if (footer.Visibility != Visibility.Collapsed || title.Text != expectedTitle
                 || window.ActualHeight >= reservedHeight - 0.1)
                 throw new Exception("Hiding branding must drop the reserved row and keep the title.");
             cursor = new Point(40, 12);
@@ -495,14 +497,14 @@ internal static class ToastVisualTests
             if (footer.Visibility != Visibility.Collapsed)
                 throw new Exception("Branding off must ignore hover.");
             window.Update(new ActivitySnapshot(1, false, 10, 0, 0, "Capture View", "Saved", true, false));
-            if (title.Text != "rvt-mcp" || tool.Text != "Capture View")
+            if (title.Text != expectedTitle || tool.Text != "Capture View")
                 throw new Exception("Later results must update the tool line under an unchanged title.");
 
             cursor = new Point(90, 90);
             RaisePointer(window, Mouse.MouseLeaveEvent);
             window.SetShowBranding(true);
             window.UpdateLayout();
-            if (footer.Visibility != Visibility.Hidden || title.Text != "rvt-mcp" || tool.Text != "Capture View"
+            if (footer.Visibility != Visibility.Hidden || title.Text != expectedTitle || tool.Text != "Capture View"
                 || Math.Abs(window.ActualHeight - reservedHeight) > 1)
                 throw new Exception("Turning branding on reserves the brand row and keeps the wordmark hidden.");
             var sweep = Field<TranslateTransform>(window, "_brandSweep");

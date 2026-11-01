@@ -28,6 +28,8 @@ namespace RvtMcp.Plugin
             var now = DateTime.Now;
             if ((now - _lastUpdate).TotalMilliseconds < 1000) return;
             _lastUpdate = now;
+            Reports.Revit.ReportsModule.RefreshHostStatus();
+            RibbonSetup.EnsureReportsStackIcons();
 
             // Toasts held while the frame was minimized/modal flush here.
             _toastNotifier?.FlushPendingIfUsable();

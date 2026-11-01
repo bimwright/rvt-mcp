@@ -11,13 +11,15 @@ using RvtMcp.Plugin.Views.Toast;
 
 internal static class PositionVisualTests
 {
-    public static void Run()
+    public static void Run(bool includeNativeDrag = true)
     {
         CheckAnchorsAndExpansion();
         CheckBottomLiveTail();
-        CheckDragAndClick();
+        if (includeNativeDrag) CheckDragAndClick();
         CheckMotionAndCleanup();
-        Console.WriteLine("PASS: four corners, fixed expansion edge, opposite-side fallback, relative drag/reset, click threshold, owner reflow and motion cleanup");
+        Console.WriteLine(includeNativeDrag
+            ? "PASS: four corners, fixed expansion edge, opposite-side fallback, relative drag/reset, click threshold, owner reflow and motion cleanup"
+            : "PASS: positioning layout and motion cleanup; native drag/click was not exercised");
     }
 
     private static void CheckAnchorsAndExpansion()

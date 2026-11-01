@@ -33,6 +33,11 @@ namespace RvtMcp.Plugin.Reports.Model
 
     public sealed class ReportSource
     {
+        [JsonProperty("client_session", NullValueHandling = NullValueHandling.Ignore)]
+        public string ClientSession { get; set; }
+        [JsonProperty("capture_scope", NullValueHandling = NullValueHandling.Ignore)]
+        public string CaptureScope { get; set; }
+        public static string TaskKey(string taskId, string session) => session == null ? "process:" + taskId : "client:" + session + ":" + taskId;
         [JsonProperty("target_id")]
         public string TargetId { get; set; }
         [JsonProperty("pid")]

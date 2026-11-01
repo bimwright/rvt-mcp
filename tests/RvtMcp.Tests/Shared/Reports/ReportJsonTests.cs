@@ -19,7 +19,7 @@ namespace RvtMcp.Tests.Shared.Reports
               'documents':[{'ref':'d0','token':'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb','model_key':'synthetic-key','title':'Synthetic document','is_family':false,'kind':'central'}],
               'links':[{'label':'piece','doc':'d0','view':{'id':456,'unique_id':'synthetic-view'},
                         'elements':[{'id':123,'unique_id':'synthetic-piece','kind':'element','category':'Synthetic category','name':'Synthetic piece'}]}],
-              'changes':{'complete':true,'truncated':false,'documents':[{'doc':'d0',
+              'changes':{'scope':'process','complete':true,'truncated':false,'documents':[{'doc':'d0',
                          'added':[{'id':1,'unique_id':'synthetic-added','category':'Synthetic category'}],
                          'modified':[],'deleted':[{'id':3,'unique_id':null,'category':null}]}]}
             }";

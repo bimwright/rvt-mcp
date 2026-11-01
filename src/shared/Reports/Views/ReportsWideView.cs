@@ -24,17 +24,19 @@ namespace RvtMcp.Plugin.Reports.Views
         private readonly Action<bool> _changesExpandedChanged;
         private readonly ToggleButton _activeFilter, _allFilter;
         private readonly ListBox _list;
-        private readonly TextBlock _empty, _selectHint, _summary;
+        private readonly TextBlock _empty, _selectHint, _summary, _changesScope;
         private readonly DockPanel _detail;
         private readonly WrapPanel _meta, _changesHeader;
         private readonly Button _copy, _delete;
         private readonly ScrollViewer _scroll;
         private readonly ReportBodyView _body;
+        private readonly ReportHistoryView _history;
         private readonly Expander _changes;
         private readonly Border _changesContent;
         private ReportDetailViewModel _shownDetail;
         private ReportListItemViewModel _shownSelection;
         private bool _disposed;
+        private bool _readingCaptured;
 
         public ReportsWideView(ReportsViewModel viewModel, bool changesExpanded, Action<bool> changesExpandedChanged)
         {
@@ -91,7 +93,7 @@ namespace RvtMcp.Plugin.Reports.Views
                 LineHeight = 19, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, MaxHeight = 38, Foreground = ReportsStyles.Text,
                 VerticalAlignment = VerticalAlignment.Center };
             _meta = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
-            _copy = ReportsStyles.CopyButton(_vm.CopyCommand);
+            _copy = ReportsStyles.CopyButton(_vm);
             _delete = ReportsStyles.DeleteButton(_vm.DeleteCommand);
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12, -2, 0, 0) };
             buttons.Children.Add(_copy);
@@ -116,6 +118,11 @@ namespace RvtMcp.Plugin.Reports.Views
             _changes.Collapsed += OnChangesToggled;
             var scrolled = new StackPanel();
             scrolled.Children.Add(_body);
+            _history = new ReportHistoryView(_vm);
+            scrolled.Children.Add(_history);
+            _changesScope = new TextBlock { Foreground = ReportsStyles.TextSecondary, FontSize = 12,
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), Tag = "ChangesScope" };
+            scrolled.Children.Add(_changesScope);
             scrolled.Children.Add(new Border { BorderBrush = ReportsStyles.BorderBrush, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4),
                 Background = ReportsStyles.Side, Margin = new Thickness(0, 12, 0, 0), Child = _changes });
             // The bar always keeps its thin overlay track: with Auto, going from a report that fits to one that does not
@@ -155,9 +162,18 @@ namespace RvtMcp.Plugin.Reports.Views
         internal TextBlock SummaryText => _summary;
         internal WrapPanel Meta => _meta;
 
+        internal void CaptureReadingPosition()
+        {
+            if (_disposed) return;
+            _vm.WideReadingPosition = new ReportReadingPosition { SelectedId = _shownDetail?.Report.ReportId,
+                Offset = _scroll.VerticalOffset, ListOffset = HistoryChrome.FindScrollViewer(_list)?.VerticalOffset ?? 0 };
+            _readingCaptured = true;
+        }
+
         public void Dispose()
         {
             if (_disposed) return;
+            if (!_readingCaptured) CaptureReadingPosition();
             _disposed = true;
             _vm.PropertyChanged -= OnViewModelChanged;
             _vm.Reports.CollectionChanged -= OnReportsChanged;
@@ -167,7 +183,9 @@ namespace RvtMcp.Plugin.Reports.Views
             BindingOperations.ClearAllBindings(_list);
             _list.ItemsSource = null;
             _copy.Command = null;
+            (_copy as IDisposable)?.Dispose();
             _delete.Command = null;
+            _history.Dispose();
         }
 
         private ToggleButton FilterButton(string text, ReportFilter filter)
@@ -182,7 +200,13 @@ namespace RvtMcp.Plugin.Reports.Views
             Margin = new Thickness(16, 24, 16, 16), Foreground = ReportsStyles.TextSecondary, TextWrapping = TextWrapping.Wrap, FontSize = 12.5
         };
 
-        private void OnLoaded(object sender, RoutedEventArgs e) => ScrollToSelection(true);
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            var saved = _vm.WideReadingPosition;
+            if (saved == null || saved.SelectedId != _vm.SelectedReport?.ReportId) { ScrollToSelection(true); return; }
+            _scroll.ScrollToVerticalOffset(saved.Offset);
+            HistoryChrome.FindScrollViewer(_list)?.ScrollToVerticalOffset(saved.ListOffset);
+        }
 
         private void OnViewModelChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -231,11 +255,16 @@ namespace RvtMcp.Plugin.Reports.Views
             _detail.Visibility = detail != null ? Visibility.Visible : Visibility.Collapsed;
             _selectHint.Visibility = detail == null && _vm.Reports.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             if (ReferenceEquals(detail, _shownDetail)) return;
+            var keepPosition = detail != null && detail.Report.ReportId == _shownDetail?.Report.ReportId;
+            var offset = _scroll.VerticalOffset;
             _shownDetail = detail;
             _body.SetDetail(detail);
+            _history.SetDetail(detail);
             _meta.Children.Clear();
             _changesHeader.Children.Clear();
             _changesContent.Child = null;
+            _changesScope.Text = detail?.Changes.ScopeText ?? "";
+            _changesScope.Visibility = string.IsNullOrEmpty(_changesScope.Text) ? Visibility.Collapsed : Visibility.Visible;
             if (detail == null) return;
             _summary.Text = detail.Summary ?? "";
             _meta.Children.Add(Spaced(ReportsStyles.Pill(detail.Outcome, detail.OutcomeLabel)));
@@ -249,7 +278,15 @@ namespace RvtMcp.Plugin.Reports.Views
                 Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center });
             foreach (var badge in ReportChangesView.Badges(detail.Changes)) _changesHeader.Children.Add(badge);
             _changesContent.Child = new ReportChangesView(detail.Changes);
-            _scroll.ScrollToTop();
+            if (!keepPosition) _scroll.ScrollToTop();
+            else
+            {
+                HistoryChrome.StopWheel(_scroll);
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+                {
+                    if (!_disposed && ReferenceEquals(_shownDetail, detail)) _scroll.ScrollToVerticalOffset(offset);
+                }));
+            }
         }
 
         private void AddMeta(string text, bool mono)

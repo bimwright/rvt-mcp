@@ -23,6 +23,7 @@ namespace RvtMcp.Tests
         // Server-local/control-plane tools have dedicated contracts, including runtime health enrichment.
         internal static readonly Dictionary<string, string> ServerOnly = new Dictionary<string, string>
         {
+            ["revit_get_report_history"] = "ReportHistoryTests",
             ["revit_record_change"] = "ChangeHistoryRuntimeTests",
             ["revit_get_change_records"] = "ChangeHistoryRuntimeTests",
             ["revit_get_failure_records"] = "FailureProtocolTests",
