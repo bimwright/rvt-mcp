@@ -4,6 +4,8 @@
 
 | Version | Date | Available as |
 |---|---|---|
+| v1.2.2 | 2026-11-02 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.2): Setup, Claude Desktop MCPB and server-only NuGet package, each with a checksum |
+| v1.2.1 | 2026-10-20 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.1) |
 | v1.2.0 | 2026-10-19 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.0); [NuGet `RvtMcp.Server` 1.2.0](https://www.nuget.org/packages/RvtMcp.Server/1.2.0); [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.bimwright%2Frvt-mcp/versions/1.2.0) |
 | v1.1.0 | 2026-10-07 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.1.0) |
 | v1.0.1 | 2026-10-04 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.0.1) |
@@ -25,9 +27,9 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
-## v1.2.2 — 2026-11-02 (release preparation)
+## v1.2.2 — 2026-11-02
 
-This source version is prepared locally; v1.2.2 has not been tagged or published.
+Release assets include the Setup ZIP, optional Claude Desktop MCPB and server-only NuGet package, each with a SHA-256 sidecar. NuGet.org and MCP Registry publication are separate.
 
 ### Agent reports
 
@@ -50,6 +52,11 @@ This source version is prepared locally; v1.2.2 has not been tagged or published
 - Same-process re-selection keeps the confirmed document, including through `verify=false`. Confirming a different document (another project, Edit Family) requires `expectedDocumentId` or `rebind=true`.
 - `TARGET_CHANGED`, `TARGET_LOST`, `TARGET_REBIND_REQUIRED` and `TARGET_UNCONFIRMED` name the exact `pid:<n>` or pending document to confirm. `revit_get_current_target` reports `expected_document_id`, and `DOCUMENT_CHANGED` from verification names the active and expected documents.
 - Server instructions tell subagents not to switch targets.
+
+### Packaging and test reliability
+
+- Verify the Setup gateway against the current 55-tool default catalog and 242-tool full catalog.
+- Crash-recovery tests register and await the actual SQLite writer process before reading the recovered database or deleting the fixture; rollback assertions remain unchanged.
 
 ## v1.2.1 — 2026-10-20
 
