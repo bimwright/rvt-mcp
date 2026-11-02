@@ -17,7 +17,7 @@ namespace RvtMcp.Tests
         public async Task Killing_the_actual_store_writer_rolls_back_the_entire_transaction(string checkpoint)
         {
             var root=Path.Combine(Path.GetTempPath(),"rvt-module-crash-"+Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(root); Process child=null;
+            Directory.CreateDirectory(root); Process child=null, writer=null; Task writerExited=null;
             try
             {
                 var path=Path.Combine(root,"bake.db"); using var db=new BakeDb(path); db.Migrate(); var store=new CodeModuleStore(db);
@@ -38,9 +38,14 @@ namespace RvtMcp.Tests
                 while(!File.Exists(marker)&&!child.HasExited&&timer.Elapsed<TimeSpan.FromSeconds(30)) await Task.Delay(50);
                 if(!File.Exists(marker))
                     throw new Exception("Child did not reach the transaction checkpoint. "+(child.HasExited ? await stdout+await stderr : "Timed out."));
+                // vstest is a launcher; register the actual writer's exit while it is still alive.
+                writer=Process.GetProcessById(int.Parse(File.ReadAllText(marker+".pid")));
+                writerExited=writer.WaitForExitAsync();
+                Assert.False(writerExited.IsCompleted);
                 // A concurrent reader still sees the committed state while the child holds its write transaction.
                 Assert.Equal(original.Record.Revision.Hash,store.Resolve(new[]{"root"}).Modules[0].Hash);
                 child.Kill(entireProcessTree:true); await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+                await writerExited.WaitAsync(TimeSpan.FromSeconds(10));
                 Assert.Equal(original.Record.Revision.Hash,store.Resolve(new[]{"root"}).Modules[0].Hash);
                 using var c=ScriptBaselineFixture.Open(path); using var q=c.CreateCommand(); q.CommandText="SELECT COUNT(*) FROM code_module_revisions";
                 Assert.Equal(1L,q.ExecuteScalar());
@@ -48,6 +53,8 @@ namespace RvtMcp.Tests
             finally
             {
                 if(child!=null){if(!child.HasExited){child.Kill(entireProcessTree:true);await child.WaitForExitAsync();}child.Dispose();}
+                if(writerExited!=null) await writerExited.WaitAsync(TimeSpan.FromSeconds(10));
+                writer?.Dispose();
                 Directory.Delete(root,true);
             }
         }
@@ -57,6 +64,7 @@ namespace RvtMcp.Tests
         {
             var path=Environment.GetEnvironmentVariable("RVT_MCP_MODULE_CRASH_DB");
             if(path==null) return; // Parent tests invoke this method in a dedicated, killable test-host process.
+            File.WriteAllText(Environment.GetEnvironmentVariable("RVT_MCP_MODULE_CRASH_MARKER")!+".pid",Environment.ProcessId.ToString());
             using var db=new BakeDb(path); var store=new CodeModuleStore(db);
             var old=store.Resolve(new[]{"root"}).Modules[0];
             store.WriteCheckpointForTests=point=>{
