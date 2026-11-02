@@ -1,5 +1,7 @@
 <!-- mcp-name: io.github.bimwright/rvt-mcp -->
 
+**現在のソース: v1.2.2（リリース準備中、タグ作成・公開前）。** [変更履歴](CHANGELOG.md)を参照してください。
+
 [ツール記述サイズのベンチマーク](docs/benchmarks/2026-10-18-tool-descriptors.md) · [v1.2.0 検証結果と未検証項目](docs/testing/2026-10-18-v1.2.0-validation.md)（英語。ネイティブ実行性能の測定ではありません）。
 
 **v1.2.0 公開済み：** [Setup と Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.0) · [NuGet（サーバーのみ）](https://www.nuget.org/packages/RvtMcp.Server/1.2.0) · [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.bimwright%2Frvt-mcp/versions/1.2.0)。
@@ -91,7 +93,7 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 ## Tools
 
-以下のツール数は**現在のソース**に対応し、`send_code` のモジュール用ツール 3 件とエージェント報告を含みます。**v1.2.1 リリース**では各モードとも 4 件少なくなります。
+以下のツール数は **v1.2.2 のソース**に対応し、`send_code` のモジュール用ツール 3 件とエージェント報告用ツール 2 件を含みます。**v1.2.1 リリース**では各モードとも 5 件少なくなります。
 
 | モード | Tools | 注記 |
 |--------|------:|------|
@@ -181,7 +183,7 @@ v1.0.0 には 6 つの MCP プロンプトがあります。クライアント�
 
 ## 設定
 
-**v1.2.1 ソース（未公開）:** 過去の Issues はレビュー記録であり、後続の書き込みをロックしません。Warning の既定は `rollback`。**Settings → General → Safety** または JSON/env/CLI で明示的に `accept-and-log` を選択できます。Error、corruption、不完全な capture、現在の保存障害では引き続き rollback します。`revit_get_failure_records` と `revit_get_operation_status` はモーダル中もローカル記録を読めます。pending/unknown の処理を自動再実行しないでください。[方針と検証範囲（英語）](docs/controlled-failures.md)を参照してください。
+**v1.2.2 ソース（リリース準備中）:** 過去の Issues はレビュー記録であり、後続の書き込みをロックしません。Warning の既定は `rollback`。**Settings → General → Safety** または JSON/env/CLI で明示的に `accept-and-log` を選択できます。Error、corruption、不完全な capture、現在の保存障害では引き続き rollback します。`revit_get_failure_records` と `revit_get_operation_status` はモーダル中もローカル記録を読めます。pending/unknown の処理を自動再実行しないでください。[方針と検証範囲（英語）](docs/controlled-failures.md)を参照してください。
 
 v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 `_history` を返します。履歴は call log と独立して既定で有効です。記録を止めるには `--disable-change-history` を指定します。`meta` の `revit_record_change` は明示した call ID に理由を関連付け、`revit_get_change_records` は履歴を検索します。プライバシー、制限、復旧は [変更の記録](docs/change-tracking.md) を参照してください。
 

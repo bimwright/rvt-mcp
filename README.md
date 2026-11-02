@@ -1,5 +1,7 @@
 <!-- mcp-name: io.github.bimwright/rvt-mcp -->
 
+**Current source: v1.2.2 (release preparation, not yet tagged or published).** See [release notes](CHANGELOG.md).
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/bimwright/.github/master/assets/logos/rvt-mcp.png" alt="rvt-mcp" width="180" />
 </p>
@@ -88,7 +90,7 @@ Community videos of rvt-mcp at work. Install steps shown in a video can be older
 
 ## Tools
 
-Counts below match the **current source**, which adds the three `send_code` module tools and agent reports. The **v1.2.1 release** has four fewer tools in each mode.
+Counts below match the **v1.2.2 source**, which adds the three `send_code` module tools and two agent-report tools. The **v1.2.1 release** has five fewer tools in each mode.
 
 | Mode | Tools | Notes |
 |------|------:|-------|
@@ -177,7 +179,7 @@ If a prompt's toolsets aren't enabled, it answers with the exact `--toolsets` li
 
 ## Configuration
 
-**v1.2.1 source (release preparation):** Historical Issues no longer block later writes or identical requests. Current transaction warnings still default to rollback; an explicit `accept-and-log` warning policy is available in **Settings → General → Safety**, JSON, environment or CLI. Error, corruption, incomplete capture and current persistence failures still require rollback. Review records in **History → Issues**; `revit_get_failure_records` and `revit_get_operation_status` read local state even while Revit is modal. Inspect pending/unknown outcomes before deciding what to do next. See [controlled failures and acceptance limits](docs/controlled-failures.md).
+**v1.2.2 source (release preparation):** Historical Issues no longer block later writes or identical requests. Current transaction warnings still default to rollback; an explicit `accept-and-log` warning policy is available in **Settings → General → Safety**, JSON, environment or CLI. Error, corruption, incomplete capture and current persistence failures still require rollback. Review records in **History → Issues**; `revit_get_failure_records` and `revit_get_operation_status` read local state even while Revit is modal. Inspect pending/unknown outcomes before deciding what to do next. See [controlled failures and acceptance limits](docs/controlled-failures.md).
 
 Since v1.0.0 the server reports `_changes` and local per-model `_history`. History defaults on independently of call logs; use `--disable-change-history` to disable recording. The `meta` tools `revit_record_change`, `revit_get_change_records` and `revit_resolve_history_identity` attach reasons to explicit call IDs, query stored changes and record the owner's history choice after a copy or Save As. See [change tracking](docs/change-tracking.md) for privacy, limits and recovery.
 

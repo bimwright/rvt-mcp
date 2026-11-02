@@ -1,5 +1,7 @@
 <!-- mcp-name: io.github.bimwright/rvt-mcp -->
 
+**当前源码：v1.2.2（发布准备中，尚未创建标签或发布）。** 参见[更新日志](CHANGELOG.md)。
+
 [工具描述大小基准](docs/benchmarks/2026-10-18-tool-descriptors.md) · [v1.2.0 验证结果与待验证项目](docs/testing/2026-10-18-v1.2.0-validation.md)（英文；不代表原生执行性能）。
 
 **v1.2.0 已发布：** [Setup 和 Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.0) · [NuGet（仅服务器）](https://www.nuget.org/packages/RvtMcp.Server/1.2.0) · [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.bimwright%2Frvt-mcp/versions/1.2.0)。
@@ -90,7 +92,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 ## Tools
 
-下表数量与**当前源码**一致，其中包含 3 个 `send_code` 模块工具和 agent 报告；**v1.2.1 发布版**在每种模式下都少 4 个工具。
+下表数量与 **v1.2.2 源码**一致，其中包含 3 个 `send_code` 模块工具和 2 个 agent 报告工具；**v1.2.1 发布版**在每种模式下都少 5 个工具。
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
@@ -180,7 +182,7 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 
 ## 配置
 
-**v1.2.1 源码（尚未发布）：** 历史 Issues 仅供审查，不再锁住后续写入。Warning 默认仍为 `rollback`；可在 **Settings → General → Safety** 或 JSON/env/CLI 中明确选择 `accept-and-log`。Error、corruption、不完整捕获和当前持久化失败仍要求 rollback。`revit_get_failure_records` 与 `revit_get_operation_status` 在 Revit 模态期间也能读取本地记录。不要自动重试 pending/unknown 操作。参见[策略和验证范围（英文）](docs/controlled-failures.md)。
+**v1.2.2 源码（发布准备中）：** 历史 Issues 仅供审查，不再锁住后续写入。Warning 默认仍为 `rollback`；可在 **Settings → General → Safety** 或 JSON/env/CLI 中明确选择 `accept-and-log`。Error、corruption、不完整捕获和当前持久化失败仍要求 rollback。`revit_get_failure_records` 与 `revit_get_operation_status` 在 Revit 模态期间也能读取本地记录。不要自动重试 pending/unknown 操作。参见[策略和验证范围（英文）](docs/controlled-failures.md)。
 
 自 v1.0.0 起，服务器返回 `_changes` 和按模型保存的本地历史 `_history`。历史默认开启，与 call log 独立；使用 `--disable-change-history` 停止记录。`meta` 中的 `revit_record_change` 将原因关联到明确的 call ID，`revit_get_change_records` 用于查询历史。隐私、限制与恢复方式见[变更记录](docs/change-tracking.md)。
 

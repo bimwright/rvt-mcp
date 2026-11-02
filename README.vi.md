@@ -1,5 +1,7 @@
 <!-- mcp-name: io.github.bimwright/rvt-mcp -->
 
+**Source hiện tại: v1.2.2 (đang chuẩn bị phát hành, chưa tạo tag hay công bố).** Xem [changelog](CHANGELOG.md).
+
 [Benchmark kích thước descriptor](docs/benchmarks/2026-10-18-tool-descriptors.md) · [Kết quả kiểm thử v1.2.0 và các mục pending](docs/testing/2026-10-18-v1.2.0-validation.md) (tiếng Anh; không phải benchmark hiệu năng native).
 
 **Phát hành v1.2.0:** [Setup và Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.0) · [NuGet (chỉ server)](https://www.nuget.org/packages/RvtMcp.Server/1.2.0) · [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.bimwright%2Frvt-mcp/versions/1.2.0).
@@ -91,7 +93,7 @@ Video cộng đồng giới thiệu rvt-mcp. Cách cài trong video có thể c�
 
 ## Tools
 
-Các số dưới đây khớp **source hiện tại**, đã thêm 3 tool module của `send_code` và báo cáo agent. **Bản phát hành v1.2.1** có ít hơn 4 tool ở mỗi chế độ.
+Các số dưới đây khớp **source v1.2.2**, gồm 3 tool module của `send_code` và 2 tool báo cáo agent. **Bản phát hành v1.2.1** có ít hơn 5 tool ở mỗi chế độ.
 
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
@@ -181,7 +183,7 @@ Nếu toolset mà prompt cần chưa bật, prompt trả lời đúng dòng `--t
 
 ## Cấu hình
 
-**Source v1.2.1 (chưa phát hành):** Issues cũ chỉ phục vụ review, không khóa lệnh ghi sau đó. Warning vẫn mặc định `rollback`; người dùng có thể chọn `accept-and-log` trong **Settings → General → Safety** hoặc qua JSON/env/CLI. Error, corruption, capture thiếu và lỗi ghi hiện tại vẫn rollback. `revit_get_failure_records` và `revit_get_operation_status` đọc sổ local khi Revit đang hiện dialog. Không tự chạy lại lệnh pending/chưa rõ kết quả. Xem [policy và giới hạn nghiệm thu (English)](docs/controlled-failures.md).
+**Source v1.2.2 (đang chuẩn bị phát hành):** Issues cũ chỉ phục vụ review, không khóa lệnh ghi sau đó. Warning vẫn mặc định `rollback`; người dùng có thể chọn `accept-and-log` trong **Settings → General → Safety** hoặc qua JSON/env/CLI. Error, corruption, capture thiếu và lỗi ghi hiện tại vẫn rollback. `revit_get_failure_records` và `revit_get_operation_status` đọc sổ local khi Revit đang hiện dialog. Không tự chạy lại lệnh pending/chưa rõ kết quả. Xem [policy và giới hạn nghiệm thu (English)](docs/controlled-failures.md).
 
 Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cục bộ mặc định bật, độc lập với call log; dùng `--disable-change-history` để tắt ghi. Ba tool `meta`: `revit_record_change` gắn lý do với nhóm call ID cụ thể, `revit_get_change_records` tra cứu thay đổi, `revit_resolve_history_identity` ghi lựa chọn tiếp nối hoặc tách lịch sử sau copy/Save As. Xem [ghi nhận thay đổi](docs/change-tracking.md) về riêng tư, giới hạn và phục hồi.
 

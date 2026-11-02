@@ -1,6 +1,6 @@
 # Controlled failures and Revit Issues
 
-This guide describes **unreleased 1.2.1 source behavior**. Scoped native warning-policy checks passed on Revit 2026 using matching development gateway/add-in assemblies; see the [source validation summary](testing/2026-10-20-v1.2.1-validation.md). That is not final-package acceptance or certification of every supported year. Other-year policy coverage and native operation paths retain their separate limits.
+This guide describes **1.2.2 source behavior (release preparation)**. Earlier scoped native warning-policy checks passed on Revit 2026 using matching development gateway/add-in assemblies; see the [v1.2.1 source validation summary](testing/2026-10-20-v1.2.1-validation.md). That is not final-package acceptance or certification of every supported year. Other-year policy coverage and native operation paths retain their separate limits.
 
 ## What changes
 

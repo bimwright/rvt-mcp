@@ -27,6 +27,8 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## v1.2.2 — 2026-11-02 (release preparation)
 
+This source version is prepared locally; v1.2.2 has not been tagged or published.
+
 ### Agent reports
 
 - Keep capture selection atomic during checkpoint read failures, including saved call ownership, sequence and reference limits; return local Report History errors as tool error text.
@@ -38,7 +40,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 ### Script inputs and helper modules
 
 - Add JSON inputs, reusable helper modules, compile-only validation and opt-in `McpTaskResult` task outcomes to send-code. Enhanced requests require `send_code_v2` on the selected gateway/add-in pair; default calls retain the legacy wire format.
-- Expose save/list/delete module tools with compile-before-save, revision conflict checks, source privacy and read-only filtering. Catalog: `--toolsets all` **240**, adaptive bake **243**, bare defaults **53**.
+- Expose save/list/delete module tools with compile-before-save, revision conflict checks, source privacy and read-only filtering. The final v1.2.2 catalog counts are listed above under Agent reports.
 - Show localized compile/script/native-outcome labels in History/toast. Enhanced History records require fresh inputs through MCP instead of replaying cached data or module snapshots.
 - Body scripts also import the discipline namespaces `Autodesk.Revit.DB.Architecture`, `.Electrical`, `.Mechanical`, `.Plumbing` and `.Structure`, so `Stairs`, `Room`, `CableTray`, `Duct`, `Pipe`, `StructuralType` and similar types compile without a `using`. On Revit 2022–2027 no public type in these namespaces shares a name with another default import or with each other. Complete compilation units keep their own imports.
 
