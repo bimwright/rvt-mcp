@@ -145,6 +145,10 @@ Lời gọi thiếu tham số bắt buộc sẽ không chạy. Nó trả `INVALI
 - **`revit_send_code_to_revit`** (bật mặc định) compile và chạy body C# trong Revit khi không có typed tool phù hợp; `--read-only` hoặc `--disable-send-code` sẽ gỡ nó. Xem [docs/send-code.md](docs/send-code.md), và [docs/stairs-workflow.md](docs/stairs-workflow.md) cho cầu thang.
 - **ToolBaker:** `revit_list_baked_tools` / `revit_run_baked_tool` cần `--toolsets toolbaker`. Adaptive bake (`--enable-adaptive-bake`, mặc định tắt) gợi ý tool từ các lời gọi lặp lại; không có gì được thêm cho tới khi bạn accept. Bake compile ngay trong Revit — không cần Visual Studio. Xem [docs/bake.md](docs/bake.md).
 - **Agent reports:** `revit_report_task_result` (trong `meta`) cho agent để lại một báo cáo khi xong việc. Revit hiện toast và liệt kê báo cáo trong cửa sổ **Reports**, kèm link để chọn element hoặc mở view, và các thay đổi rvt-mcp đã ghi nhận. Tool không sửa model và dùng được với `--read-only`. Xem [docs/agent-reports.md](docs/agent-reports.md).
+
+  <img src="docs/images/agent-reports-demo.gif" alt="Agent gắn tag cửa trong Revit qua rvt-mcp, gửi báo cáo, và một link trong cửa sổ Reports chọn cửa trong Revit; báo cáo tiếng Nhật và tiếng Đức từ model khác nằm cùng danh sách" width="720" />
+
+  *Revit 2026 với các model mẫu của Autodesk (Snowdon Towers, サンプル意匠, Golden Nugget). Phần agent chạy đã được tua nhanh.*
 - **Ribbon:** bật/tắt kết nối, mở **History** để tìm và chạy lại các lời gọi trước, mở **Reports** để đọc báo cáo của agent, và bật/tắt **Toast** hoàn thành (mặc định bật).
 - **Ngôn ngữ giao diện:** UI của add-in có 15 ngôn ngữ và theo ngôn ngữ giao diện của Revit; đổi bằng nút **Language** trong slide-out của ribbon — nút mở **Settings → tab General → nhóm Language** (`BIMWRIGHT_UI_LANGUAGE` vẫn thắng). Tên tool và payload vẫn là tiếng Anh. Xem [docs/localization.md](docs/localization.md).
 

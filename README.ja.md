@@ -145,6 +145,10 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 - **`revit_send_code_to_revit`**（既定オン）は、合う typed ツールがないときに C# 本体を Revit 内でコンパイルして実行します。`--read-only` または `--disable-send-code` で外れます。[docs/send-code.md](docs/send-code.md) を参照。階段は [docs/stairs-workflow.md](docs/stairs-workflow.md)。
 - **ToolBaker：** `revit_list_baked_tools` / `revit_run_baked_tool` には `--toolsets toolbaker` が必要です。Adaptive bake（`--enable-adaptive-bake`、既定オフ）は繰り返しの呼び出しからツールを提案し、accept するまで何も追加されません。Bake のコンパイルは Revit 内で行われ、Visual Studio は不要です。[docs/bake.md](docs/bake.md)。
 - **エージェントレポート：** `revit_report_task_result`（`meta`）で、エージェントは作業の完了時にレポートを 1 件残せます。Revit はトーストを表示し、**Reports** ウィンドウにレポートを一覧表示します。レポートには要素を選択したりビューを開いたりするリンクと、rvt-mcp が記録した変更が含まれます。モデルは変更せず、`--read-only` でも使えます。[docs/agent-reports.md](docs/agent-reports.md)。
+
+  <img src="docs/images/agent-reports-demo.gif" alt="エージェントが rvt-mcp 経由で Revit のドアにタグを付けてレポートを送り、Reports ウィンドウのリンクで Revit のドアを選択する。別モデルの日本語とドイツ語のレポートも同じ一覧に並ぶ" width="720" />
+
+  *Revit 2026 と Autodesk のサンプルモデル（Snowdon Towers、サンプル意匠、Golden Nugget）。エージェントの作業部分は早送りです。*
 - **リボン：** 接続の開始/停止、**History** で過去の呼び出しの検索と再実行、**Reports** でエージェントのレポートの閲覧、完了 **Toast** の切り替え（既定オン）。
 - **表示言語：** アドインの UI は 15 言語に対応し、Revit の UI 言語に従います。リボンのスライドアウトにある **Language** ボタンで変更できます。このボタンは **Settings → General → Language** を開きます（`BIMWRIGHT_UI_LANGUAGE` が引き続き優先されます）。ツール名とペイロードは英語のままです。[docs/localization.md](docs/localization.md)。
 

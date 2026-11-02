@@ -52,7 +52,8 @@ try {
         $repo = New-GitFixture
         foreach ($path in @(
             'docs/images/rvt-mcp-architecture-simple.png', 'docs/images/rvt-mcp-architecture.drawio',
-            'docs/images/rvt-mcp-architecture.png',
+            'docs/images/rvt-mcp-architecture.png', 'docs/images/agent-reports-demo.gif',
+            'docs/images/agent-reports-wide.png', 'docs/images/agent-reports-compact.png',
             'tests/RvtMcp.Tests/fixtures/ScriptBaseline/README.txt',
             'tests/RvtMcp.Tests/fixtures/ScriptBaseline/legacy-command.txt',
             'tests/RvtMcp.Tests/fixtures/ScriptIdentity/README.txt'

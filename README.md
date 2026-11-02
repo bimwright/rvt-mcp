@@ -141,6 +141,10 @@ A call missing a required parameter does not run. It returns `INVALID_ARGUMENT` 
 - **Helper modules:** `revit_save_code_module` validates on the selected Revit host before saving; list/delete work without Revit. `--read-only` or `--disable-send-code` hides save/delete and script execution, while `revit_list_code_modules` stays available under `meta` or `toolbaker`. Module source persists only after an explicit save; it is separate from script body-cache/journal opt-ins.
 - **ToolBaker:** `revit_list_baked_tools` / `revit_run_baked_tool` need `--toolsets toolbaker`. Adaptive bake (`--enable-adaptive-bake`, off by default) suggests tools from repeated calls; nothing is added until you accept one. Bake compiles inside Revit — no Visual Studio needed. See [docs/bake.md](docs/bake.md).
 - **Agent reports:** `revit_report_task_result` (in `meta`) lets the agent leave one report when a job is finished. Revit shows a toast and lists the report in the **Reports** window, with links that select elements or open views, and the changes rvt-mcp recorded. It does not change the model and works with `--read-only`. See [docs/agent-reports.md](docs/agent-reports.md).
+
+  <img src="docs/images/agent-reports-demo.gif" alt="An agent tags doors in Revit through rvt-mcp, sends a report, and a link in the Reports window selects a door in Revit; Japanese and German reports from other models appear in the same list" width="720" />
+
+  *Revit 2026 with Autodesk sample models (Snowdon Towers, サンプル意匠, Golden Nugget). The agent run is sped up.*
 - **Ribbon:** start or stop the connection, open **History** to search past calls and review **Issues**, open **Reports** to read agent reports, and switch completion **Toasts** (on by default).
 - **UI languages:** the add-in UI comes in 15 languages and follows Revit's UI language; change it with the **Language** button in the ribbon slide-out — it opens **Settings → General → Language** (`BIMWRIGHT_UI_LANGUAGE` still wins). Tool names and payloads stay English. See [docs/localization.md](docs/localization.md).
 

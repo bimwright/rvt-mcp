@@ -144,6 +144,10 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 - **`revit_send_code_to_revit`**（默认开启）在没有合适 typed 工具时，于 Revit 内编译并运行 C# 正文；`--read-only` 或 `--disable-send-code` 会移除它。见 [docs/send-code.md](docs/send-code.md)；楼梯见 [docs/stairs-workflow.md](docs/stairs-workflow.md)。
 - **ToolBaker：** `revit_list_baked_tools` / `revit_run_baked_tool` 需要 `--toolsets toolbaker`。Adaptive bake（`--enable-adaptive-bake`，默认关闭）会根据重复调用建议工具；在你 accept 之前不会添加任何东西。Bake 在 Revit 内编译，不需要 Visual Studio。见 [docs/bake.md](docs/bake.md)。
 - **Agent 报告：** `revit_report_task_result`（属于 `meta`）让 agent 在任务完成时留下一份报告。Revit 显示 toast，并在 **Reports** 窗口中列出报告，其中包含可选择元素或打开视图的链接，以及 rvt-mcp 记录的变更。它不修改模型，`--read-only` 下也可用。见 [docs/agent-reports.md](docs/agent-reports.md)。
+
+  <img src="docs/images/agent-reports-demo.gif" alt="agent 通过 rvt-mcp 在 Revit 中为门添加标记并发送报告，Reports 窗口中的链接在 Revit 中选中门；来自其他模型的日语和德语报告显示在同一列表中" width="720" />
+
+  *Revit 2026 与 Autodesk 示例模型（Snowdon Towers、サンプル意匠、Golden Nugget）。agent 运行部分已加速。*
 - **Ribbon：** 启动或停止连接，打开 **History** 搜索并重跑历史调用，打开 **Reports** 阅读 agent 报告，切换完成 **Toast**（默认开启）。
 - **界面语言：** 插件 UI 支持 15 种语言，默认跟随 Revit 的界面语言；可通过 ribbon 滑出面板中的 **Language** 按钮更改，该按钮会打开 **Settings → General → Language**（`BIMWRIGHT_UI_LANGUAGE` 仍然优先）。工具名与 payload 保持英文。见 [docs/localization.md](docs/localization.md)。
 

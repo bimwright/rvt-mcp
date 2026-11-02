@@ -131,6 +131,10 @@ the user never sees a broken link. The response tells you which links to fix.
 
 ## What the user sees
 
+<img src="images/agent-reports-wide.png" alt="Reports window in Wide mode: report list on the left, selected report with links, a table and its outcome on the right" width="560" /> <img src="images/agent-reports-compact.png" alt="Reports window in Compact mode with the recorded changes opened: added, modified and deleted elements" width="276" />
+
+*Synthetic test data, rendered by `tests/RvtMcp.Reports.Tests -- --snapshot`.*
+
 The Reports window has two modes, switched in its title bar:
 - **Wide:** the report list on the left, the selected report on the right;
 - **Compact:** one column of cards.
