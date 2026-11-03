@@ -83,9 +83,11 @@ This is not a host-reassignment or constraint-editing tool.
 Both tools return actual `before` and `after` records with element IDs,
 locations, curve endpoints where applicable, point rotation in degrees and
 available bounding boxes. Revit's actual locations are checked after
-regeneration and before commit (1 mm position and 1e-6 radian angle tolerance).
-An exception, missing resulting location or constrained transform rolls back
-the whole selected set. Revit Undo restores a committed operation. Within
+regeneration and again after the inner transaction commits (1 mm position and
+1e-6 radian angle tolerance). The committed elements are looked up again by ID.
+A transaction group remains open until these final snapshots are validated, so
+commit-time changes, a missing element or a failed snapshot roll back the whole
+selected set. Only then is the group assimilated into one native Undo item. Within
 `batch_execute`, the existing `continueOnError` and transaction-group policy
 still apply.
 
@@ -97,7 +99,7 @@ the displacement or angle again.
 
 `ElementTransformTests` compiles the production handlers against API doubles
 to test validation, explicit pivots, negative/wrapped angles, curve endpoints,
-partial selection failure and transaction rollback. Catalog and wrapper
+partial selection failure, commit-time changes/deletion and transaction-group rollback. Catalog and wrapper
 snapshots cover the public protocol. These checks cannot establish real Revit
 constraint, failure-dialog or Undo behavior.
 

@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
+using RvtMcp.Plugin.Failures;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
@@ -73,34 +75,51 @@ namespace RvtMcp.Plugin.Handlers
                 return CommandResult.Fail("Only elements with a point or bounded curve location are supported; nothing was changed.");
             var transform = rotate ? Transform.CreateRotationAtPoint(XYZ.BasisZ, radians, vector) : Transform.CreateTranslation(vector);
 
-            using (var tx = new Transaction(doc, rotate ? "MCP: Rotate elements" : "MCP: Move elements"))
+            State[] after;
+            // Keep committed inner edits reversible until final placement is known.
+            // BeginBatch also preserves the failure ledger's outer-group accounting.
+            using (FailureControl.BeginBatch())
+            using (var group = new TransactionGroup(doc, rotate ? "MCP: Rotate elements" : "MCP: Move elements"))
             {
-                tx.Start();
+                if (group.Start() != TransactionStatus.Started)
+                    return CommandResult.Fail("Revit did not start the placement group; nothing was changed.");
                 try
                 {
-                    if (rotate)
-                        ElementTransformUtils.RotateElements(doc, ids, Line.CreateBound(vector, vector + XYZ.BasisZ), radians);
-                    else
-                        ElementTransformUtils.MoveElements(doc, ids, vector);
-                    doc.Regenerate();
-                    // Revit may constrain a transform without throwing. Check each
-                    // selected location before commit so one miss rolls back all IDs.
-                    for (var i = 0; i < elements.Count; i++)
+                    using (var tx = new Transaction(doc, rotate ? "MCP: Rotate elements" : "MCP: Move elements"))
                     {
-                        var after = Snapshot(elements[i]);
-                        var expected = before[i];
-                        if (after.Point == null || after.Point.DistanceTo(transform.OfPoint(expected.Point)) > PositionTolerance
-                            || (expected.End != null && (after.End == null || after.End.DistanceTo(transform.OfPoint(expected.End)) > PositionTolerance))
-                            || (expected.Rotation.HasValue && (!after.Rotation.HasValue
-                                || Math.Abs(Math.IEEERemainder(after.Rotation.Value - expected.Rotation.Value - (rotate ? radians : 0), 2 * Math.PI)) > AngleTolerance)))
-                            throw new InvalidOperationException("Revit constrained the requested transform; all changes were rolled back.");
+                        if (tx.Start() != TransactionStatus.Started)
+                            throw new InvalidOperationException("Revit did not start the placement transaction; nothing was changed.");
+                        try
+                        {
+                            if (rotate)
+                                ElementTransformUtils.RotateElements(doc, ids, Line.CreateBound(vector, vector + XYZ.BasisZ), radians);
+                            else
+                                ElementTransformUtils.MoveElements(doc, ids, vector);
+                            doc.Regenerate();
+                            ValidatePlacement(doc, ids, before, transform, rotate ? radians : 0);
+                            if (tx.Commit() != TransactionStatus.Committed)
+                                throw new InvalidOperationException("Revit did not commit the transaction; changes were not confirmed.");
+                        }
+                        catch
+                        {
+                            if (tx.GetStatus() == TransactionStatus.Started) tx.RollBack();
+                            throw;
+                        }
                     }
-                    if (tx.Commit() != TransactionStatus.Committed)
-                        return CommandResult.Fail("Revit did not commit the transaction; changes were not confirmed.");
+                    // Commit may apply auto-joins or other finalization changes.
+                    // Re-resolve IDs, validate the committed state, and capture the
+                    // response while the group can still restore the whole selection.
+                    after = ValidatePlacement(doc, ids, before, transform, rotate ? radians : 0);
+                    if (group.Assimilate() != TransactionStatus.Committed)
+                        throw new InvalidOperationException("Revit did not finalize the placement group; changes were not confirmed.");
                 }
                 catch
                 {
-                    if (tx.GetStatus() == TransactionStatus.Started) tx.RollBack();
+                    if (group.GetStatus() == TransactionStatus.Started
+                        && group.RollBack() != TransactionStatus.RolledBack)
+                        throw new InvalidOperationException("Placement group rollback was not confirmed.");
+                    if (group.GetStatus() == TransactionStatus.RolledBack)
+                        FailureControl.NotifyBatchRolledBack();
                     throw;
                 }
             }
@@ -109,8 +128,24 @@ namespace RvtMcp.Plugin.Handlers
                 operation = rotate ? "rotate" : "move", count = ids.Count,
                 angle_degrees = degrees,
                 before = before.Select(s => s.Dto).ToArray(),
-                after = elements.Select(e => Snapshot(e).Dto).ToArray()
+                after = after.Select(state => state.Dto).ToArray()
             });
+        }
+
+        private static State[] ValidatePlacement(Document doc, List<ElementId> ids, State[] before, Transform transform, double angle)
+        {
+            var result = ids.Select(id => Snapshot(doc.GetElement(id))).ToArray();
+            for (var i = 0; i < result.Length; i++)
+            {
+                var actual = result[i];
+                var expected = before[i];
+                if (actual.Point == null || actual.Point.DistanceTo(transform.OfPoint(expected.Point)) > PositionTolerance
+                    || (expected.End != null && (actual.End == null || actual.End.DistanceTo(transform.OfPoint(expected.End)) > PositionTolerance))
+                    || (expected.Rotation.HasValue && (!actual.Rotation.HasValue
+                        || Math.Abs(Math.IEEERemainder(actual.Rotation.Value - expected.Rotation.Value - angle, 2 * Math.PI)) > AngleTolerance)))
+                    throw new InvalidOperationException("Revit constrained the requested transform; all changes were rolled back.");
+            }
+            return result;
         }
 
         private static double Required(JObject request, string name)
@@ -131,6 +166,7 @@ namespace RvtMcp.Plugin.Handlers
 
         private static State Snapshot(Element element)
         {
+            if (element == null) throw new InvalidOperationException("An element disappeared while finalizing placement.");
             var pointLocation = element.Location as LocationPoint;
             var curve = (element.Location as LocationCurve)?.Curve;
             var point = pointLocation?.Point ?? (curve != null && curve.IsBound ? curve.GetEndPoint(0) : null);
