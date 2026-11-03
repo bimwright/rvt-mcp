@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 242,
+  "tool_count": 244,
   "tools": [
     {
       "name": "revit_acquire_coordinates_from_link",
@@ -6781,6 +6781,34 @@
       }
     },
     {
+      "name": "revit_save_model",
+      "description_hash": "sha256:8b86c0bc037511eedbc3d8c26726bf96e67282c2bfe27c8c8d5b840b06cb3cf3",
+      "inputSchema": {
+        "properties": {
+          "overwrite": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "save_as_path": {
+            "description": "",
+            "type": "String"
+          },
+          "timeout_seconds": {
+            "description": "",
+            "type": "Int32"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "revit_save_selection",
       "description_hash": "sha256:480e16b7ed47acb904fe665be725c228ca8e12e8b3254c88377c6c5dd910c0de",
       "inputSchema": {
@@ -7637,6 +7665,37 @@
         },
         "required": [
           "scale"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_set_wall_top",
+      "description_hash": "sha256:ca251b5d32a1ea4895d515cf3ebe635391cb51e689b01c936b31d5fe8199450f",
+      "inputSchema": {
+        "properties": {
+          "top_level": {
+            "description": "",
+            "type": "String"
+          },
+          "top_offset": {
+            "description": "",
+            "type": "Double"
+          },
+          "wall_ids": {
+            "description": "",
+            "type": "Int64[]"
+          }
+        },
+        "required": [
+          "wall_ids",
+          "top_level"
         ],
         "type": "object"
       },

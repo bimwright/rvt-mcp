@@ -34,6 +34,21 @@ namespace RvtMcp.Server
             return await ToolGateway.CallAsync("open_model", new { path, activate, audit, worksets }, timeout_seconds);
         }
 
+        [McpServerTool(Name = "revit_save_model", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
+            "Writes to disk, which Revit Undo cannot restore: saves the active project in place, or as a new local absolute .rvt path (save_as_path); overwrite=true replaces an existing file. " +
+            "A document opened from a .rte template via revit_open_model has no project file yet and must be saved with save_as_path; that is how to start a new project. " +
+            "Refuses workshared models, family documents, network paths and the file of another open document; timeout_seconds is 1-900 (default 300). Example: save_as_path='C:/Projects/Office.rvt'.")]
+        public static async Task<string> SaveModel(string save_as_path = null, bool overwrite = false, int timeout_seconds = 300)
+        {
+            var blocked = ServerState.BlockIfReadOnly("save_model");
+            if (blocked != null) return blocked;
+
+            var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
+            if (timeoutError != null) return timeoutError;
+
+            return await ToolGateway.CallAsync("save_model", new { save_as_path, overwrite }, timeout_seconds);
+        }
+
         [McpServerTool(Name = "revit_show_message", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Show a Revit TaskDialog. Message echo is off by default; opt in with echoMessage and cap it with maxEchoChars.")]
         public static async Task<string> ShowMessage(string message = null, string title = null, bool echoMessage = false, int maxEchoChars = 1024)
         {

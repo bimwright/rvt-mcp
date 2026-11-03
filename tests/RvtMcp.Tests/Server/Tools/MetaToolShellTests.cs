@@ -23,6 +23,7 @@ namespace RvtMcp.Tests
             "revit_list_recent_models",
             "revit_open_model",
             "revit_purge_unused",
+            "revit_save_model",
             "revit_set_project_info",
             "revit_show_message",
             "revit_switch_target"
@@ -62,6 +63,26 @@ namespace RvtMcp.Tests
             Assert.True(json.Value<bool>("audit"));
             Assert.Equal("none", json.Value<string>("worksets"));
             Assert.Equal(120, sent.TimeoutSeconds);
+        }
+
+        [Fact]
+        public async Task Save_model_sends_path_overwrite_and_timeout()
+        {
+            var sent = await Capture.Send(() => MetaTools.SaveModel("C:/p/a.rvt", overwrite: true, timeout_seconds: 120));
+
+            Assert.Equal("save_model", sent.Command);
+            var json = sent.Json();
+            Assert.Equal("C:/p/a.rvt", json.Value<string>("save_as_path"));
+            Assert.True(json.Value<bool>("overwrite"));
+            Assert.Equal(120, sent.TimeoutSeconds);
+        }
+
+        [Fact]
+        public async Task Save_model_rejects_timeout_over_900()
+        {
+            var text = await MetaTools.SaveModel("C:/p/a.rvt", timeout_seconds: 901);
+
+            Assert.Contains("1 and 900", text);
         }
 
         [Fact]

@@ -4047,6 +4047,28 @@
       "result": "Error: golden probe failure"
     }
   },
+  "revit_save_model": {
+    "success": {
+      "calls": [
+        {
+          "command": "save_model",
+          "params": "{\"save_as_path\":null,\"overwrite\":false}",
+          "timeout": 300
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "save_model",
+          "params": "{\"save_as_path\":null,\"overwrite\":false}",
+          "timeout": 300
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
   "revit_save_selection": {
     "success": {
       "calls": [
@@ -4503,6 +4525,28 @@
         {
           "command": "set_view_scale",
           "params": "{\"view_id\":null,\"scale\":1}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
+  "revit_set_wall_top": {
+    "success": {
+      "calls": [
+        {
+          "command": "set_wall_top",
+          "params": "{\"wall_ids\":null,\"top_level\":\"probe\",\"top_offset\":0.0}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "set_wall_top",
+          "params": "{\"wall_ids\":null,\"top_level\":\"probe\",\"top_offset\":0.0}",
           "timeout": null
         }
       ],

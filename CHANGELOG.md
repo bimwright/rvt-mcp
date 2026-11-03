@@ -27,6 +27,14 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
+## Unreleased
+
+### Wall tops and saving
+
+- **`revit_set_wall_top`** in `modify`: attaches walls' top constraint to a level with an optional offset, checking every wall first so a top at or below a wall's base changes nothing.
+- **`revit_save_model`** in `meta`: saves the active project in place or as a new local `.rvt`, which is how a project started from a `.rte` template via `revit_open_model` is saved. Refuses workshared models, network paths and the file of another open document.
+- Development source counts: `--toolsets all` **244**, adaptive bake **247**, and bare defaults **56**.
+
 ## v1.2.2 — 2026-11-02
 
 Release assets include the Setup ZIP, optional Claude Desktop MCPB and server-only NuGet package, each with a SHA-256 sidecar. NuGet.org and MCP Registry publication are separate.

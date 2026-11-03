@@ -47,6 +47,7 @@ namespace RvtMcp.Plugin
             Register(new Handlers.SetTypeParameterValuesHandler());
             Register(new Handlers.ChangeElementTypeHandler());
             Register(new Handlers.AssignElementsToWorksetHandler());
+            Register(new Handlers.SetWallTopHandler());
             Register(new Handlers.DeleteElementHandler());
             // Phase 5: Export & Tags
             Register(new Handlers.ExportRoomDataHandler());
@@ -55,6 +56,7 @@ namespace RvtMcp.Plugin
             // Phase 6: Dynamic Code
             Register(new Handlers.SendCodeToRevitHandler());
             Register(new Handlers.OpenModelHandler());
+            Register(new Handlers.SaveModelHandler());
             Register(new Handlers.ListRecentModelsHandler());
             // Phase 7: Views & Sheets
             Register(new Handlers.CreateViewHandler());
