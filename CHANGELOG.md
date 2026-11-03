@@ -27,6 +27,13 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
+## Unreleased
+
+### Mesh import
+
+- **`revit_create_mesh_shapes`** in `create`: builds DirectShape elements with materials from a local JSON mesh file (vertices in mm, triangle or quad faces), for freeform massing without arbitrary code. One transaction per file; closed, consistently wound meshes are built as solids, and other meshes as open shells that fall back to mesh geometry when Revit cannot make a solid. Existing materials are reused unchanged unless `update_materials=true`; the file is capped at 256 MB and 2,000,000 faces, and network paths are refused.
+- Development source counts: `--toolsets all` **243**, adaptive bake **246**, and bare defaults **56**.
+
 ## v1.2.2 — 2026-11-02
 
 Release assets include the Setup ZIP, optional Claude Desktop MCPB and server-only NuGet package, each with a SHA-256 sidecar. NuGet.org and MCP Registry publication are separate.

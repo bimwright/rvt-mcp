@@ -40,6 +40,7 @@ namespace RvtMcp.Plugin
             Register(new Handlers.CreateGridHandler());
             Register(new Handlers.CreateRoomHandler());
             Register(new Handlers.CreateGroupFromElementsHandler());
+            Register(new Handlers.CreateMeshShapesHandler());
             // Phase 4: Modify & Delete
             Register(new Handlers.OperateElementHandler());
             Register(new Handlers.ColorElementsHandler());

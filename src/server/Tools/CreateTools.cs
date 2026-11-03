@@ -39,5 +39,24 @@ namespace RvtMcp.Server
         [McpServerTool(Name = "revit_create_group_from_elements", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a Revit group from two or more element ids. Optional name renames the generated group type.")]
         public static async Task<string> CreateGroupFromElements(long[] elementIds, string name = "")
             => await ToolGateway.CallAsync("create_group_from_elements", new { elementIds, name });
+
+        [McpServerTool(Name = "revit_create_mesh_shapes", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
+            "Create DirectShape elements with materials from a JSON mesh file; replace_existing deletes earlier shapes and update_materials overwrites material colors, both restorable with Revit Undo. " +
+            "Use for freeform massing that walls and floors cannot express; the payload is read from a local absolute .json path because it is too big for arguments. " +
+            "File: {materials:[{name, color:[r,g,b] 0-255, transparency 0-100, shininess 0-128?}], shapes:[{name, category: GenericModel|Mass|StructuralColumns|StructuralFraming|Roofs|Floors|Walls|Site|Entourage|Planting|Furniture|SpecialtyEquipment, material, vertices:[[x,y,z]...] in mm, faces:[[i,j,k] or [i,j,k,l]...] 0-based, CCW from outside}]}. " +
+            "Existing materials with the same name (any case) are reused unchanged unless update_materials=true. Each shape becomes one DirectShape named after 'name'. Open surfaces fall back to mesh geometry; degenerate faces are skipped and counted. " +
+            "replace_existing deletes shapes this tool created earlier with the same names; mesh_only skips the solid attempt for huge shapes. Limits: 256 MB file, 2,000,000 faces. One transaction per file: any failure rolls back everything and names the failing shape. " +
+            "timeout_seconds is 1-900 (default 600). Example: file='C:/models/canopy.json', replace_existing=true.")]
+        public static async Task<string> CreateMeshShapes(string file, bool replace_existing = false, bool update_materials = false, bool mesh_only = false,
+            int timeout_seconds = 600)
+        {
+            var blocked = ServerState.BlockIfReadOnly("create_mesh_shapes");
+            if (blocked != null) return blocked;
+
+            var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
+            if (timeoutError != null) return timeoutError;
+
+            return await ToolGateway.CallAsync("create_mesh_shapes", new { file, replace_existing, update_materials, mesh_only }, timeout_seconds);
+        }
     }
 }
