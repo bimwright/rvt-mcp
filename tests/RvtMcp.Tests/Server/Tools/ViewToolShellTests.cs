@@ -16,10 +16,13 @@ namespace RvtMcp.Tests
             "revit_activate_view",
             "revit_analyze_sheet_layout",
             "revit_capture_view_image",
+            "revit_create_camera_view",
             "revit_create_view",
             "revit_place_view_on_sheet",
             "revit_set_view_crop",
+            "revit_set_view_orientation",
             "revit_set_view_scale",
+            "revit_set_view_style",
             "revit_show_element_in_view"
         };
 
@@ -136,6 +139,43 @@ namespace RvtMcp.Tests
             Assert.False(json.Value<bool>("activate_view"));
             Assert.True(json.Value<bool>("select"));
             Assert.False(json.Value<bool>("zoom"));
+        }
+
+        [Fact]
+        public async Task Set_view_orientation_sends_points()
+        {
+            var sent = await Capture.Send(() => ViewTools.SetViewOrientation(new double[] { 1, 2, 3 }, new double[] { 4, 5, 6 }, view_name: "3D", perspective: true));
+
+            Assert.Equal("set_view_orientation", sent.Command);
+            var json = sent.Json();
+            Assert.Equal("3D", json.Value<string>("view_name"));
+            Assert.Equal(3, json["eye"].Value<double>(2));
+            Assert.Equal(4, json["target"].Value<double>(0));
+            Assert.True(json.Value<bool>("perspective"));
+            Assert.True(json.Value<bool>("fit"));
+        }
+
+        [Fact]
+        public async Task Create_camera_view_sends_name_and_points()
+        {
+            var sent = await Capture.Send(() => ViewTools.CreateCameraView("Cam", new double[] { 0, 0, 1700 }, new double[] { 0, 1, 1700 }));
+
+            Assert.Equal("create_camera_view", sent.Command);
+            var json = sent.Json();
+            Assert.Equal("Cam", json.Value<string>("name"));
+            Assert.False(json.Value<bool>("far_clip"));
+        }
+
+        [Fact]
+        public async Task Set_view_style_sends_style_and_detail()
+        {
+            var sent = await Capture.Send(() => ViewTools.SetViewStyle(view_id: 7, display_style: "shaded", detail_level: "fine"));
+
+            Assert.Equal("set_view_style", sent.Command);
+            var json = sent.Json();
+            Assert.Equal(7, json.Value<long>("view_id"));
+            Assert.Equal("shaded", json.Value<string>("display_style"));
+            Assert.Equal("fine", json.Value<string>("detail_level"));
         }
     }
 }
