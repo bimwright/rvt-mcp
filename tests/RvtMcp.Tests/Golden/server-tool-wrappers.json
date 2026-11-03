@@ -3673,6 +3673,28 @@
       "result": "Error: golden probe failure"
     }
   },
+  "revit_move_elements": {
+    "success": {
+      "calls": [
+        {
+          "command": "move_elements",
+          "params": "{\"elementIds\":null,\"dx_mm\":1.0,\"dy_mm\":1.0,\"dz_mm\":1.0}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "move_elements",
+          "params": "{\"elementIds\":null,\"dx_mm\":1.0,\"dy_mm\":1.0,\"dz_mm\":1.0}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
   "revit_open_model": {
     "success": {
       "calls": [
@@ -4019,6 +4041,28 @@
         {
           "command": "report_task_result",
           "params": "{\"task_id\":\"probe\",\"outcome\":\"completed\",\"summary\":\"probe\",\"body\":null,\"call_ids\":null}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
+  "revit_rotate_elements": {
+    "success": {
+      "calls": [
+        {
+          "command": "rotate_elements",
+          "params": "{\"elementIds\":null,\"angle_degrees\":1.0,\"pivot_x_mm\":1.0,\"pivot_y_mm\":1.0,\"pivot_z_mm\":1.0}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "rotate_elements",
+          "params": "{\"elementIds\":null,\"angle_degrees\":1.0,\"pivot_x_mm\":1.0,\"pivot_y_mm\":1.0,\"pivot_z_mm\":1.0}",
           "timeout": null
         }
       ],

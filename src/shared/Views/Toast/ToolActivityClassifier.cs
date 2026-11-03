@@ -48,6 +48,8 @@ namespace RvtMcp.Plugin.Views.Toast
             "connect_",
             "bind_",
             "operate_",
+            "move_",
+            "rotate_",
             "load_family",
             "unload_",
             "reload_",

@@ -19,6 +19,7 @@
     See `Checklist-Bimwright-v0.1.0.md` P2-001 scope — "Option 2 refined".
   -->
   <ItemGroup>
+    <Compile Include="../../src/shared/Handlers/Elements/PlacementInput.cs" Link="Shared/Handlers/Elements/PlacementInput.cs" />
     <Compile Include="..\..\src\shared\Presentation\Common\ObservableObject.cs" Link="Shared\Presentation\Common\ObservableObject.cs" />
     <Compile Include="..\..\src\shared\Presentation\Common\RelayCommand.cs" Link="Shared\Presentation\Common\RelayCommand.cs" />
     <Compile Include="..\..\src\shared\Reports\Presentation\**\*.cs" LinkBase="Shared\Reports\Presentation" />

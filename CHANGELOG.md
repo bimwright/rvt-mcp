@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add typed `revit_move_elements` and `revit_rotate_elements` commands with explicit model-space units, atomic selection validation, placement checks and native Undo. See [usage and verification](docs/placement-and-mep-contracts.md#moving-and-rotating-existing-elements-unreleased).
+- Tool catalog: `--toolsets all` **244**, adaptive bake **247**.
+
 ## Release history
 
 | Version | Date | Available as |

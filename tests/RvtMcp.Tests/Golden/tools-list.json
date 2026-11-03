@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 242,
+  "tool_count": 244,
   "tools": [
     {
       "name": "revit_acquire_coordinates_from_link",
@@ -6016,6 +6016,43 @@
       }
     },
     {
+      "name": "revit_move_elements",
+      "description_hash": "sha256:5340f17e71760cb2cf5ec8a5816810fb4db03d61b133741d1bfe63d93a13b74b",
+      "inputSchema": {
+        "properties": {
+          "dx_mm": {
+            "description": "",
+            "type": "Double"
+          },
+          "dy_mm": {
+            "description": "",
+            "type": "Double"
+          },
+          "dz_mm": {
+            "description": "",
+            "type": "Double"
+          },
+          "elementIds": {
+            "description": "",
+            "type": "Int64[]"
+          }
+        },
+        "required": [
+          "elementIds",
+          "dx_mm",
+          "dy_mm",
+          "dz_mm"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "revit_open_model",
       "description_hash": "sha256:947d8f59c1978795cc932c624adf451404cecf6f30e81de546aa60e66b588ef7",
       "inputSchema": {
@@ -6701,6 +6738,48 @@
           "sourceModelKey",
           "decision",
           "reason"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_rotate_elements",
+      "description_hash": "sha256:a36f36873644ae556398b68ee195a204c26f6a6d8d5840ec9d66c690ab1516b1",
+      "inputSchema": {
+        "properties": {
+          "angle_degrees": {
+            "description": "",
+            "type": "Double"
+          },
+          "elementIds": {
+            "description": "",
+            "type": "Int64[]"
+          },
+          "pivot_x_mm": {
+            "description": "",
+            "type": "Double"
+          },
+          "pivot_y_mm": {
+            "description": "",
+            "type": "Double"
+          },
+          "pivot_z_mm": {
+            "description": "",
+            "type": "Double"
+          }
+        },
+        "required": [
+          "elementIds",
+          "angle_degrees",
+          "pivot_x_mm",
+          "pivot_y_mm",
+          "pivot_z_mm"
         ],
         "type": "object"
       },
