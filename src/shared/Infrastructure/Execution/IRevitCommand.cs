@@ -18,6 +18,13 @@ namespace RvtMcp.Plugin
             new CommandResult { Success = true, Data = data };
 
         public static CommandResult Fail(string error) =>
-            new CommandResult { Success = false, Error = error };
+            new CommandResult
+            {
+                Success = false, Error = error,
+                Data = error == "FILE_CHANGED_ON_DISK" ? new
+                {
+                    next_step = "Disk and memory save counts differ. If this followed Reload Latest in Revit UI on a workshared local, ask the user to review and Save the local in Revit (not Synchronize), then read document state again before retrying. Otherwise inspect possible external file replacement; do not overwrite or retry automatically."
+                } : null
+            };
     }
 }

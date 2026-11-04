@@ -48,6 +48,8 @@ For `revit_save_document`, checks stop in this order: an active document and an 
 
 Revit's existing native-action guard still applies. If a save requires a user decision, inspect `_failure` and the Issues record; a user can grant the native action once in History → Issues, after which the agent retries the **same** command. Saving a workshared local, including the first save of a newly created local, needs no such grant unless the save would upgrade the file format; saving a central opened directly still does. This is separate from approval to upgrade a file format. See [controlled failures](controlled-failures.md).
 
+Reload Latest from Revit's UI can advance a workshared local's memory save count while its saved file remains unchanged. Save then returns `FILE_CHANGED_ON_DISK`. If this followed a UI Reload, ask the user to review the open local and **Save it in Revit**, without Synchronize with Central. Then call `revit_get_document_state(scope="active")` again and confirm the intended document and file version before retrying. The agent must not bypass this check with direct API Save, overwrite the local, or repeat Reload/Sync to try to clear the error. If a UI Reload is not established, first investigate a possible external replacement of the file; the same error does not prove UI Reload occurred. Automatic recognition of UI Reload is not implemented.
+
 ## Revit backup limit
 
 For a local file or family, the target is **at least 20** Revit backups, not a maximum of 20. `backups.min_backups_ensured` is `20` when recorded, otherwise `null`; it is a minimum known at the time of the record, not a reading of the file's actual backup setting. `ensured_by` is `raised`, `observed`, or `null`; `count_on_disk` is the current count of matching `<model>.NNNN.<ext>` files.
@@ -89,7 +91,7 @@ The following errors are in addition to ordinary argument validation and the sha
 | `CLOUD_MODEL_UNSUPPORTED` | The requested write is not supported for a cloud model. |
 | `DOCUMENT_NEVER_SAVED` | The document has no path. Save As in Revit. |
 | `FILE_MISSING_ON_DISK` | The working file is no longer present. |
-| `FILE_CHANGED_ON_DISK` | Disk and memory save counts differ; inspect before saving. |
+| `FILE_CHANGED_ON_DISK` | Disk and memory save counts differ. If this followed UI Reload on a workshared local, ask the user to review and Save local in Revit, then re-read state before retrying. Otherwise inspect possible external replacement; do not overwrite automatically. |
 | `FORMAT_UPGRADE_NEEDS_USER` | The file is older and explicit upgrade approval was not supplied. |
 | `FILE_FORMAT_UNKNOWN` | A modified document's file format could not be determined; the tool does not assume an upgrade is unnecessary. |
 | `FILE_READ_ONLY` | The working file is ReadOnly and must not be changed by the tool. |
