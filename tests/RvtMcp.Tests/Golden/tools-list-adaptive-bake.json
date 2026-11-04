@@ -4022,11 +4022,11 @@
     },
     {
       "name": "revit_get_document_state",
-      "description_hash": "sha256:f4a9195b1076f4d79eb90659380be8fd4fa6713f2bc7501a636f75a42a1b2e58",
+      "description_hash": "sha256:3d91f99c37c20ff6d96db2944623b1074dd50b4d54cf17f26e4ca3ecb2436fe6",
       "inputSchema": {
         "properties": {
           "scope": {
-            "description": "active (default) or all.",
+            "description": "active (default) or all; all excludes documents loaded only as Revit links.",
             "type": "String"
           }
         },
@@ -6096,7 +6096,7 @@
     },
     {
       "name": "revit_manage_checkpoints",
-      "description_hash": "sha256:a7049c5db81b16a3813fbbf43fb3331873767892cc78a15eaedca80b55e1f580",
+      "description_hash": "sha256:022e915be63ce49edff26e1433df7f9f954b4b0a51c5dc9c6a3a49857ee7ceea",
       "inputSchema": {
         "properties": {
           "action": {
@@ -6120,7 +6120,7 @@
             "type": "String"
           },
           "timeout_seconds": {
-            "description": "",
+            "description": "Seconds to wait, 1-900 (default 600); inspect operation status after a timeout before retrying.",
             "type": "Int32"
           }
         },
@@ -6895,11 +6895,11 @@
     },
     {
       "name": "revit_save_checkpoint",
-      "description_hash": "sha256:903aae4d3e730f81aefd02836892a87e197e76a4cee894fb3609ed9e80ca85c6",
+      "description_hash": "sha256:3117abe61fa82efb96231205b60614dbc3d5de7d030eb7164dddba698accf718",
       "inputSchema": {
         "properties": {
           "allow_format_upgrade": {
-            "description": "",
+            "description": "Allow saving in the host's newer Revit format only after explicit user approval (default false).",
             "type": "Boolean"
           },
           "label": {
@@ -6907,7 +6907,7 @@
             "type": "String"
           },
           "milestone": {
-            "description": "",
+            "description": "Keep this checkpoint during pruning without counting it toward keep_last (default false).",
             "type": "Boolean"
           },
           "reason": {
@@ -6915,7 +6915,7 @@
             "type": "String"
           },
           "timeout_seconds": {
-            "description": "",
+            "description": "Seconds to wait, 1-900 (default 600); inspect operation status after a timeout before retrying.",
             "type": "Int32"
           }
         },
@@ -6972,15 +6972,15 @@
     },
     {
       "name": "revit_save_document",
-      "description_hash": "sha256:34bff51be283db0682fab8f78d809d7fdb1cdf3e4e43638c074e0445c606bb2b",
+      "description_hash": "sha256:c9cb4a211ea5e75d15b10bc6143410f7becd4ab822962dc2fecf9e3650e0e00e",
       "inputSchema": {
         "properties": {
           "allow_format_upgrade": {
-            "description": "",
+            "description": "Allow saving in the host's newer Revit format only after explicit user approval (default false).",
             "type": "Boolean"
           },
           "timeout_seconds": {
-            "description": "",
+            "description": "Seconds to wait, 1-900 (default 600); inspect operation status after a timeout before retrying.",
             "type": "Int32"
           }
         },
