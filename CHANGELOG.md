@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Add `revit_get_document_state` to `meta` and the opt-in `documents` toolset with `revit_save_document`, `revit_save_checkpoint` and `revit_manage_checkpoints`. State reads exclude loaded links and report an unavailable or busy document index without losing other document results.
+- Save checks mode, external file changes and format-upgrade consent. Local models and families use a per-user record of a minimum 20-backup limit; workshared local save does not sync central. Checkpoints are verified copies; pruning requires an approved dry-run hash, and restore creates a separate file. A checkpoint failure can follow a successful save. Save, checkpoint and checkpoint management take `timeout_seconds` (1–900, default 600). See [document lifecycle](docs/document-lifecycle.md).
+- `revit_open_model`:
+  - Expands environment variables such as `%USERPROFILE%` in the Revit.ini `ProjectPath`.
+  - Stops when `ProjectPath` is empty or is still not a full folder path, and names File > Options > File Locations > *Default path for user files*.
+  - Refuses a workshared model saved in an older Revit before any local copy is created (`WORKSHARED_UPGRADE_NEEDS_USER`).
+- The native open/save guard identifies a central by its stored central path rather than the header flag. Opening a newly created local and saving it the first time no longer need a grant; opening or saving a central still does.
+- Catalog: `--toolsets all` **246**, adaptive bake **249**, bare defaults **56**.
+
 ## Release history
 
 | Version | Date | Available as |

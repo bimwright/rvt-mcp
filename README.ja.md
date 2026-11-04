@@ -20,7 +20,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-242%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-246%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -93,23 +93,24 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 ## Tools
 
-以下のツール数は **v1.2.2 のソース**に対応し、`send_code` のモジュール用ツール 3 件とエージェント報告用ツール 2 件を含みます。**v1.2.1 リリース**では各モードとも 5 件少なくなります。
+以下のツール数は現在の開発ソースに対応します。**v1.2.2 リリース**は `all` が 242 件、adaptive bake が 245 件、素の既定が 55 件です。
 
 | モード | Tools | 注記 |
 |--------|------:|------|
-| 新規インストール | **242** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
-| 素の `rvt-mcp.exe` | **55** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **242** | フルカタログ |
-| `all` + adaptive bake | **245** | 提案ライフサイクル 3 ツールを追加 |
+| 新規インストール | **246** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
+| 素の `rvt-mcp.exe` | **56** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **246** | フルカタログ |
+| `all` + adaptive bake | **249** | 提案ライフサイクル 3 ツールを追加 |
 
-件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 55 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。エージェント報告はユーザーごとの報告データのみを書くため、許可されます。
+件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 56 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。エージェント報告はユーザーごとの報告データのみを書くため、許可されます。
 
 | Toolset | 範囲 |
 |---------|------|
 | `query` | ビュー、選択、フィルタ、統計、パラメータ、関係、ワークセット、グループ/アセンブリ |
 | `create` | 通り芯、レベル、部屋、線/点/面要素、グループ |
 | `view` | ビュー作成、シート配置補助、キャプチャ、クロップ/縮尺 |
-| `meta` | バッチ（最大 20）、複数 Revit、最近のモデル、プロジェクト情報、purge（MVP）、メッセージ、send_code、エージェント報告 |
+| `meta` | ドキュメント状態、バッチ（最大 20）、複数 Revit、最近のモデル、プロジェクト情報、purge（MVP）、メッセージ、send_code、エージェント報告 |
+| `documents` | オプトインのローカルモデル/ファミリー保存とチェックポイント管理、workshared のローカル保存。[document lifecycle](docs/document-lifecycle.md) を参照。 |
 | `lint` | ビュー命名、firm-profile、警告サマリ |
 | `schedule` | 集計表 list/作成、フィールド、式、データ |
 | `families` | ロード/アンロード、タイプ、インスタンス、監査、`.rfa` エクスポート（プロジェクト側） |
@@ -271,6 +272,7 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
       "mcp__rvt-mcp__revit_get_change_records",
       "mcp__rvt-mcp__revit_get_current_target",
       "mcp__rvt-mcp__revit_get_current_view_info",
+      "mcp__rvt-mcp__revit_get_document_state",
       "mcp__rvt-mcp__revit_get_element_bounding_box",
       "mcp__rvt-mcp__revit_get_element_centroid",
       "mcp__rvt-mcp__revit_get_element_details",
@@ -396,7 +398,7 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 
 **Revit を再起動した後は（Revit を 1 つしか開いていない場合でも）**、書き込み可能なセッションは `TARGET_CHANGED` を返し、`revit_switch_target` が 1 回呼ばれるまで待ちます。別のモデルが開いている可能性があるため、提案されたインスタンスを確認してから呼び出しを繰り返してください。
 
-`revit_switch_target` はセッションのルーティングを変えるため、非 read-only の注釈に従い `--read-only` では公開されません。全 toolset の read-only は98ツールです。起動時に `--read-only --target pid:<n>` を指定し、対象を変更するときはゲートウェイを再起動してください。一覧と現在の対象の参照は引き続き利用できます。
+`revit_switch_target` はセッションのルーティングを変えるため、非 read-only の注釈に従い `--read-only` では公開されません。全 toolset の read-only は102ツールです。起動時に `--read-only --target pid:<n>` を指定し、対象を変更するときはゲートウェイを再起動してください。一覧と現在の対象の参照は引き続き利用できます。
 
 ---
 

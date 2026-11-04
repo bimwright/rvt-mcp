@@ -99,6 +99,7 @@ namespace RvtMcp.Server
             if (enabled.Contains("parameters"))   types.Add(typeof(ParametersTools));
             if (enabled.Contains("organization")) types.Add(typeof(OrganizationTools));
             if (enabled.Contains("workflows"))    types.Add(typeof(WorkflowsTools));
+            if (enabled.Contains("documents"))    types.Add(typeof(DocumentTools));
             if (enabled.Contains("toolbaker"))  types.Add(typeof(ToolbakerTools));
             if (enabled.Contains("toolbaker") && config?.EnableAdaptiveBakeOrDefault == true)
                 types.Add(typeof(AdaptiveBakeTools));

@@ -19,6 +19,7 @@ namespace RvtMcp.Tests
             "revit_analyze_usage_patterns",
             "revit_batch_execute",
             "revit_get_current_target",
+            "revit_get_document_state",
             "revit_list_available_targets",
             "revit_list_recent_models",
             "revit_open_model",

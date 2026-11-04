@@ -274,10 +274,13 @@ namespace RvtMcp.Plugin.Failures
                     var model = FileModel(path, identityPath, header.IsWorkshared);
                     var physical = HistoryFileIdentity.TryGet(path);
                     var revision = FileRevision(path, physical, header.Format);
-                    bool risk = header.IsWorkshared && (header.IsCentral || !header.IsSavedInCurrentVersion);
+                    // A fresh local still carries IsCentral in its header; decide by the stored central path.
+                    bool central = RvtMcp.Plugin.Documents.DocumentModeClassifier.IsCentralFile(
+                        header.IsWorkshared, header.IsCentral, path, header.CentralPath);
+                    bool risk = header.IsWorkshared && (central || !header.IsSavedInCurrentVersion);
                     var context = Hash("open|" + physical + "|" + path.ToUpperInvariant() + "|" + header.Format
-                        + "|central=" + header.IsCentral + "|workshared=" + header.IsWorkshared + "|revision=" + revision);
-                    var description = "Open " + (header.IsCentral ? "central" : header.IsWorkshared ? "workshared" : "non-workshared")
+                        + "|central=" + central + "|workshared=" + header.IsWorkshared + "|revision=" + revision);
+                    var description = "Open " + (central ? "central" : header.IsWorkshared ? "workshared" : "non-workshared")
                         + " model; saved format " + header.Format + "; target Revit " + Year + ". File identity and current header are bound to this attempt.";
                     if (!Guard(args, null, model, "open", context, revision, description, risk, physical != null)) return;
                     var attempt = new OpenAttempt { Path = path, Model = model, Revision = revision };
@@ -315,6 +318,16 @@ namespace RvtMcp.Plugin.Failures
             catch { Active.NativeOutcome = "unknown"; Active.Operation.Complete = false; }
         }
 
+        private static string DocumentCentralPath(Document doc)
+        {
+            try
+            {
+                var central = doc.GetWorksharingCentralModelPath();
+                return central == null || central.Empty ? null : ModelPathUtils.ConvertModelPathToUserVisiblePath(central);
+            }
+            catch { return null; }
+        }
+
         private static void OnDocumentSaving(object sender, DocumentSavingEventArgs args)
         {
             DocumentState state = null;
@@ -330,7 +343,10 @@ namespace RvtMcp.Plugin.Failures
                     using (var header = BasicFileInfo.Extract(path))
                     {
                         format = header.Format;
-                        risk = header.IsCentral || !header.IsSavedInCurrentVersion;
+                        // The open document knows its central; the header of a local not yet saved still says central.
+                        risk = RvtMcp.Plugin.Documents.DocumentModeClassifier.IsCentralFile(
+                                true, header.IsCentral, path, DocumentCentralPath(args.Document) ?? header.CentralPath)
+                            || !header.IsSavedInCurrentVersion;
                         physical = HistoryFileIdentity.TryGet(path);
                     }
                 }

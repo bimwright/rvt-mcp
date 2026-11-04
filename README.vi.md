@@ -20,7 +20,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-242%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-246%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -93,23 +93,24 @@ Video cộng đồng giới thiệu rvt-mcp. Cách cài trong video có thể c�
 
 ## Tools
 
-Các số dưới đây khớp **source v1.2.2**, gồm 3 tool module của `send_code` và 2 tool báo cáo agent. **Bản phát hành v1.2.1** có ít hơn 5 tool ở mỗi chế độ.
+Các số dưới đây áp dụng cho source đang phát triển; **bản v1.2.2** có 242 tool với `all`, 245 với adaptive bake và 55 bare defaults.
 
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
-| Fresh install | **242** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **55** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **242** | Full catalog |
-| `all` + adaptive bake | **245** | Thêm 3 tool vòng đời suggestion |
+| Fresh install | **246** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **56** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **246** | Full catalog |
+| `all` + adaptive bake | **249** | Thêm 3 tool vòng đời suggestion |
 
-Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 55 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline; báo cáo agent được phép vì chỉ ghi dữ liệu báo cáo của người dùng.
+Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 56 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline; báo cáo agent được phép vì chỉ ghi dữ liệu báo cáo của người dùng.
 
 | Toolset | Phạm vi |
 |---------|---------|
 | `query` | View, selection, filter, stats, param, quan hệ, workset, group/assembly |
 | `create` | Grid, level, room, element line/point/surface, group |
 | `view` | Tạo view, layout sheet, capture, crop/scale |
-| `meta` | Batch (tối đa 20), multi-Revit target, recent model, project info, purge (MVP), message, send_code, báo cáo agent |
+| `meta` | Trạng thái document, batch (tối đa 20), multi-Revit target, recent model, project info, purge (MVP), message, send_code, báo cáo agent |
+| `documents` | Bật riêng để Save và quản lý checkpoint cho model local/family; Save local cho model workshared. Xem [document lifecycle](docs/document-lifecycle.md). |
 | `lint` | Pattern đặt tên view, firm-profile, tóm tắt warning |
 | `schedule` | List/tạo schedule, field, formula, data |
 | `families` | Load/unload, type, instance, audit, export `.rfa` (phía project) |
@@ -271,6 +272,7 @@ Annotations mô tả tác động lên document/file của từng tool. Đổi s
       "mcp__rvt-mcp__revit_get_change_records",
       "mcp__rvt-mcp__revit_get_current_target",
       "mcp__rvt-mcp__revit_get_current_view_info",
+      "mcp__rvt-mcp__revit_get_document_state",
       "mcp__rvt-mcp__revit_get_element_bounding_box",
       "mcp__rvt-mcp__revit_get_element_centroid",
       "mcp__rvt-mcp__revit_get_element_details",
@@ -396,7 +398,7 @@ Mã lỗi target và cách xử lý trong session cho phép ghi. Với `--read-o
 
 **Sau khi khởi động lại Revit — kể cả khi chỉ mở một Revit** — session cho phép ghi trả về `TARGET_CHANGED` và chờ một lần gọi `revit_switch_target` rồi mới gửi lệnh. Revit vừa khởi động lại có thể đang mở model khác; hãy kiểm tra instance được đề xuất, xác nhận rồi gọi lại lệnh.
 
-`revit_switch_target` thay đổi định tuyến phiên nên bị loại khỏi `--read-only`, đúng với annotation non-read-only. Chế độ read-only với all toolsets có 98 tool. Chọn `--read-only --target pid:<n>` khi khởi động gateway và khởi động lại gateway để đổi target; các tool liệt kê và đọc target vẫn dùng được.
+`revit_switch_target` thay đổi định tuyến phiên nên bị loại khỏi `--read-only`, đúng với annotation non-read-only. Chế độ read-only với all toolsets có 102 tool. Chọn `--read-only --target pid:<n>` khi khởi động gateway và khởi động lại gateway để đổi target; các tool liệt kê và đọc target vẫn dùng được.
 
 ---
 

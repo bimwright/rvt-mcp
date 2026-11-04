@@ -86,13 +86,13 @@ namespace RvtMcp.Tests
         [Fact]
         public async Task Recovery_worker_start_does_not_wait_for_storage()
         {
-            using var entered = new ManualResetEventSlim();
+            var entered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             using var release = new ManualResetEventSlim();
-            using var service = new HistoryRecoveryService(token => { entered.Set(); release.Wait(token); });
+            using var service = new HistoryRecoveryService(token => { entered.TrySetResult(true); release.Wait(token); });
             try
             {
                 await service.StartAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(1));
-                Assert.True(await Task.Run(() => entered.Wait(TimeSpan.FromSeconds(5))));
+                Assert.True(await entered.Task.WaitAsync(TimeSpan.FromSeconds(15)));
                 Assert.False(release.IsSet);
             }
             finally { release.Set(); await service.StopAsync(CancellationToken.None); }

@@ -40,6 +40,7 @@ namespace RvtMcp.Plugin
             "get_current_target",
             "health",
             "get_current_view_info",
+            "get_document_state",
             "get_change_records",
             "get_failure_records",
             "get_operation_status",

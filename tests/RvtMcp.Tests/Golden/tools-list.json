@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 242,
+  "tool_count": 246,
   "tools": [
     {
       "name": "revit_acquire_coordinates_from_link",
@@ -3959,6 +3959,26 @@
       }
     },
     {
+      "name": "revit_get_document_state",
+      "description_hash": "sha256:f4a9195b1076f4d79eb90659380be8fd4fa6713f2bc7501a636f75a42a1b2e58",
+      "inputSchema": {
+        "properties": {
+          "scope": {
+            "description": "active (default) or all.",
+            "type": "String"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
       "name": "revit_get_element_bounding_box",
       "description_hash": "sha256:a4d8ff2b046e2ba08ba8faf9cf4108b32a26d7e49e642c384f1b905539ec391c",
       "inputSchema": {
@@ -5985,6 +6005,48 @@
       }
     },
     {
+      "name": "revit_manage_checkpoints",
+      "description_hash": "sha256:a7049c5db81b16a3813fbbf43fb3331873767892cc78a15eaedca80b55e1f580",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "list, prune, or restore.",
+            "type": "String"
+          },
+          "checkpoint_id": {
+            "description": "Indexed checkpoint to restore.",
+            "type": "String"
+          },
+          "dry_run": {
+            "description": "For prune, preview without deleting (default true).",
+            "type": "Boolean"
+          },
+          "keep_last": {
+            "description": "Non-milestone snapshots to retain when pruning, 1-100.",
+            "type": "Int32"
+          },
+          "plan_hash": {
+            "description": "Hash of the user-approved prune plan, required when applying.",
+            "type": "String"
+          },
+          "timeout_seconds": {
+            "description": "",
+            "type": "Int32"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "revit_measure_distance_between_elements",
       "description_hash": "sha256:ef9042e27837ed99379476146e501e9c626a0e81f1e53d4f43181228bdbd1abf",
       "inputSchema": {
@@ -6742,6 +6804,44 @@
       }
     },
     {
+      "name": "revit_save_checkpoint",
+      "description_hash": "sha256:903aae4d3e730f81aefd02836892a87e197e76a4cee894fb3609ed9e80ca85c6",
+      "inputSchema": {
+        "properties": {
+          "allow_format_upgrade": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "label": {
+            "description": "Checkpoint label, 1-80 characters.",
+            "type": "String"
+          },
+          "milestone": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "reason": {
+            "description": "Optional reason, up to 500 characters.",
+            "type": "String"
+          },
+          "timeout_seconds": {
+            "description": "",
+            "type": "Int32"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "revit_save_code_module",
       "description_hash": "sha256:9736419e3126571672091bca3c30b3a694ea165fa270200d0b980c872cb613b8",
       "inputSchema": {
@@ -6771,6 +6871,30 @@
           "name",
           "code"
         ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_save_document",
+      "description_hash": "sha256:34bff51be283db0682fab8f78d809d7fdb1cdf3e4e43638c074e0445c606bb2b",
+      "inputSchema": {
+        "properties": {
+          "allow_format_upgrade": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "timeout_seconds": {
+            "description": "",
+            "type": "Int32"
+          }
+        },
+        "required": [],
         "type": "object"
       },
       "annotations": {

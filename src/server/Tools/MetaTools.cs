@@ -14,6 +14,11 @@ namespace RvtMcp.Server
     [McpServerToolType, Toolset("meta")]
     public class MetaTools
     {
+        [McpServerTool(Name = "revit_get_document_state", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
+            "Inspect the active or all open documents, including file version, backup and checkpoint state and the save policy. Works at Revit Home with no document.")]
+        public static async Task<string> GetDocumentState([System.ComponentModel.Description("active (default) or all.")] string scope = "active")
+            => await ToolGateway.CallAsync("get_document_state", new { scope });
+
         [McpServerTool(Name = "revit_list_recent_models", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
             "List up to 50 recent model paths from this Revit's Revit.ini, most recent first, even without an open document. " +
             "Confirm the intended absolute path before calling revit_open_model.")]
