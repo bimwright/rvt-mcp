@@ -59,6 +59,9 @@ namespace RvtMcp.Plugin
             // Phase 7: Views & Sheets
             Register(new Handlers.CreateViewHandler());
             Register(new Handlers.PlaceViewOnSheetHandler());
+            Register(new Handlers.SetViewStyleHandler());
+            Register(new Handlers.SetViewOrientationHandler());
+            Register(new Handlers.CreateCameraViewHandler());
             // Phase 8+: MEP System Analysis
             Register(new Handlers.DetectSystemElementsHandler());
             // Phase 10: New tools (post-analysis)

@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 245,
+  "tool_count": 248,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -1328,6 +1328,46 @@
       },
       "annotations": {
         "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_create_camera_view",
+      "description_hash": "sha256:48996a0c743d0646fa76268811959b1cbd6b43ba76a0d48bb69900527bcae819",
+      "inputSchema": {
+        "properties": {
+          "eye": {
+            "description": "",
+            "type": "Double[]"
+          },
+          "far_clip": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "name": {
+            "description": "",
+            "type": "String"
+          },
+          "target": {
+            "description": "",
+            "type": "Double[]"
+          },
+          "up": {
+            "description": "",
+            "type": "Double[]"
+          }
+        },
+        "required": [
+          "name",
+          "eye",
+          "target"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -7676,6 +7716,53 @@
       }
     },
     {
+      "name": "revit_set_view_orientation",
+      "description_hash": "sha256:e2f7dce32980e66f3fd1e295059a4a104167f325c4876134a512f282a7726dbb",
+      "inputSchema": {
+        "properties": {
+          "eye": {
+            "description": "",
+            "type": "Double[]"
+          },
+          "fit": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "perspective": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "target": {
+            "description": "",
+            "type": "Double[]"
+          },
+          "up": {
+            "description": "",
+            "type": "Double[]"
+          },
+          "view_id": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "view_name": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "eye",
+          "target"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "revit_set_view_phase",
       "description_hash": "sha256:a21d70ef1b873f1adb0f246d1fa73e72ced1d2d4925902a4a67f6b49295c8937",
       "inputSchema": {
@@ -7728,6 +7815,38 @@
         "required": [
           "scale"
         ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_set_view_style",
+      "description_hash": "sha256:0cdf661228081373fb0afc0757fca7751e955d0daf7c43b017a7ebb11279864c",
+      "inputSchema": {
+        "properties": {
+          "detail_level": {
+            "description": "",
+            "type": "String"
+          },
+          "display_style": {
+            "description": "",
+            "type": "String"
+          },
+          "view_id": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "view_name": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [],
         "type": "object"
       },
       "annotations": {
