@@ -63,7 +63,14 @@ namespace RvtMcp.Plugin.Handlers
                         return CommandResult.Fail("View '" + view.Name + "' is locked.");
                     }
 
+                    if (!view.CanSaveOrientation())
+                    {
+                        tx.RollBack();
+                        return CommandResult.Fail("View '" + view.Name + "' cannot save its orientation; choose a named perspective 3D view.");
+                    }
+
                     view.SetOrientation(orientation);
+                    view.SaveOrientation();
                     if (!keepFarClip)
                     {
                         var farClip = view.get_Parameter(BuiltInParameter.VIEWER_BOUND_FAR_CLIPPING);
@@ -80,6 +87,7 @@ namespace RvtMcp.Plugin.Handlers
                 }
             }
 
+            SavedViewOrientationRefresh.Track(app, view);
             return CommandResult.Ok(new { created, view = ViewPresentationSupport.Describe(view) });
         }
     }

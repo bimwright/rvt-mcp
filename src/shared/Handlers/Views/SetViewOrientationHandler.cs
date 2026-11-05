@@ -23,6 +23,8 @@ namespace RvtMcp.Plugin.Handlers
             var view = resolved as View3D;
             if (view == null) return CommandResult.Fail("View '" + resolved.Name + "' is not a 3D view.");
             if (view.IsLocked) return CommandResult.Fail("View '" + view.Name + "' has a locked orientation; unlock it in Revit first.");
+            if (!view.CanSaveOrientation())
+                return CommandResult.Fail("View '" + view.Name + "' cannot save its orientation; rename the default 3D view in Revit or choose a named 3D view.");
 
             var eye = ViewPresentationSupport.ReadPointMm(request, "eye", out error);
             if (error != null) return CommandResult.Fail(error);
@@ -58,6 +60,7 @@ namespace RvtMcp.Plugin.Handlers
                     }
 
                     view.SetOrientation(orientation);
+                    view.SaveOrientation();
                     if (fit && !view.IsPerspective && view.CropBoxActive)
                     {
                         // A crop box sized for the earlier orientation would clip the new framing.
@@ -75,6 +78,7 @@ namespace RvtMcp.Plugin.Handlers
                 }
             }
 
+            SavedViewOrientationRefresh.Track(app, view);
             var zoomed = fit && !view.IsPerspective && ViewPresentationSupport.TryZoomToFit(uidoc, view);
             if (fit && !view.IsPerspective && !zoomed)
                 notes.Add("View is not open in the UI so ZoomToFit was skipped; image export of an uncropped 3D view still fits the model.");
