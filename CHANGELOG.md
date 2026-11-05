@@ -29,10 +29,14 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
+### Wall top constraints
+
+- **`revit_set_wall_top`** in `modify`: attaches walls' top constraint to a level with an optional offset, checking every wall first so a top at or below a wall's base changes nothing.
+
 ### View style, orientation and camera views
 
 - **`revit_set_view_style`, `revit_set_view_orientation` and `revit_create_camera_view`** in `view`: set display style and detail level, aim a 3D view from eye and target points, and create or re-aim perspective camera views, so an agent can frame and capture its own result with `revit_capture_view_image`.
-- Development source counts: `--toolsets all` **245**, adaptive bake **248**, and bare defaults **58**.
+- Development source counts: `--toolsets all` **246**, adaptive bake **249**, and bare defaults **58**.
 
 ## v1.2.2 — 2026-11-02
 

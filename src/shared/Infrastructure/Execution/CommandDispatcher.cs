@@ -47,6 +47,7 @@ namespace RvtMcp.Plugin
             Register(new Handlers.SetTypeParameterValuesHandler());
             Register(new Handlers.ChangeElementTypeHandler());
             Register(new Handlers.AssignElementsToWorksetHandler());
+            Register(new Handlers.SetWallTopHandler());
             Register(new Handlers.DeleteElementHandler());
             // Phase 5: Export & Tags
             Register(new Handlers.ExportRoomDataHandler());

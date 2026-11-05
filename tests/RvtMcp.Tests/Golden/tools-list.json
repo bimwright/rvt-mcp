@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 245,
+  "tool_count": 246,
   "tools": [
     {
       "name": "revit_acquire_coordinates_from_link",
@@ -7757,6 +7757,37 @@
           }
         },
         "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_set_wall_top",
+      "description_hash": "sha256:ca251b5d32a1ea4895d515cf3ebe635391cb51e689b01c936b31d5fe8199450f",
+      "inputSchema": {
+        "properties": {
+          "top_level": {
+            "description": "",
+            "type": "String"
+          },
+          "top_offset": {
+            "description": "",
+            "type": "Double"
+          },
+          "wall_ids": {
+            "description": "",
+            "type": "Int64[]"
+          }
+        },
+        "required": [
+          "wall_ids",
+          "top_level"
+        ],
         "type": "object"
       },
       "annotations": {

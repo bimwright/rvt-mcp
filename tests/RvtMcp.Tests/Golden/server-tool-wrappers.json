@@ -4575,6 +4575,28 @@
       "result": "Error: golden probe failure"
     }
   },
+  "revit_set_wall_top": {
+    "success": {
+      "calls": [
+        {
+          "command": "set_wall_top",
+          "params": "{\"wall_ids\":null,\"top_level\":\"probe\",\"top_offset\":0.0}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "set_wall_top",
+          "params": "{\"wall_ids\":null,\"top_level\":\"probe\",\"top_offset\":0.0}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
   "revit_show_element_in_view": {
     "success": {
       "calls": [
