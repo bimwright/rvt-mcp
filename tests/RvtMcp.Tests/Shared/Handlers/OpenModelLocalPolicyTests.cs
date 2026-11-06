@@ -14,6 +14,18 @@ namespace RvtMcp.Tests
     /// </summary>
     public class OpenModelLocalPolicyTests
     {
+        [Theory]
+        [InlineData(true, "2022", "2024", true)]
+        [InlineData(true, "Autodesk Revit 2023", "2026", true)]
+        [InlineData(true, "2024", "2024", false)]
+        [InlineData(false, "2022", "2024", false)]
+        [InlineData(true, null, "2024", false)]
+        public void Workshared_model_from_an_older_revit_is_refused_before_a_local_is_created(bool workshared,
+            string savedIn, string running, bool expected)
+        {
+            Assert.Equal(expected, IsWorksharedUpgrade(workshared, savedIn, running));
+        }
+
         [Fact]
         public void Decide_creates_local_when_target_is_free()
         {
@@ -129,6 +141,34 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void ParseProjectPath_expands_environment_variables()
+        {
+            // Revit 2024 writes ProjectPath=%USERPROFILE%\Documents\ (SPEC r7 O4).
+            var expected = Environment.GetEnvironmentVariable("USERPROFILE") + @"\Documents\";
+            Assert.Equal(expected, OpenModelLocalPolicy.ParseProjectPath(new[] { @"ProjectPath=%USERPROFILE%\Documents\" }));
+        }
+
+        [Theory]
+        [InlineData(@"%RVTMCP_TEST_UNDEFINED_VARIABLE%\Locals")]
+        [InlineData(@"Locals")]
+        [InlineData(@"C:Locals")]
+        [InlineData(@"\Locals")]
+        public void DecideLocalDir_refuses_a_folder_that_is_not_absolute(string dir)
+        {
+            // Using it would create locals under Revit's working directory.
+            Assert.Equal(LocalDirDecision.StopNotAbsolute, OpenModelLocalPolicy.DecideLocalDir(dir));
+        }
+
+        [Theory]
+        [InlineData(@"D:\Workspace\RevitLocalProjects")]
+        [InlineData(@"D:/Workspace/RevitLocalProjects")]
+        [InlineData(@"\\server\share\Locals")]
+        public void DecideLocalDir_uses_an_absolute_folder(string dir)
+        {
+            Assert.Equal(LocalDirDecision.UseConfigured, OpenModelLocalPolicy.DecideLocalDir(dir));
+        }
+
+        [Fact]
         public void DecideLocalDir_never_falls_back_to_another_folder()
         {
             Assert.Equal(LocalDirDecision.StopMissing, OpenModelLocalPolicy.DecideLocalDir(null));
@@ -159,6 +199,9 @@ namespace RvtMcp.Tests
             Assert.Contains("InputDecision.RefuseUnclassified", source);
             Assert.Contains("OpenModelLocalPolicy.DecideLocalDir", source);
             Assert.Contains("LocalDirDecision.StopMissing", source);
+            Assert.Contains("LocalDirDecision.StopNotAbsolute", source);
+            // An empty or missing ProjectPath names the Revit setting the user can fix (SPEC r7 O5).
+            Assert.Contains("Default path for user files", source);
             // No SpecialFolder-based fallback (Documents/Personal/…) - §4.2 is ProjectPath only.
             Assert.DoesNotContain("SpecialFolder", source);
         }

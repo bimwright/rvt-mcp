@@ -146,7 +146,7 @@ def main():
         env = None
     report["profileMode"] = "real-profile-live-opt-in" if args.live_2027 else "disposable-package-only"
     all_count = repo_json("tests/RvtMcp.Tests/Golden/tools-list.json")["tool_count"]
-    for mode, flags, expected in (("default", ["--toolsets", "query,create,view,meta"], 58),
+    for mode, flags, expected in (("default", ["--toolsets", "query,create,view,meta"], 59),
                                   ("all", ["--toolsets", "all"], all_count)):
         client = Client(exe, package.parent / f"smoke-{mode}-stderr.log", flags + ["--target", "2027"], env)
         try:

@@ -20,7 +20,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-245%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-250%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -92,23 +92,24 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 ## Tools
 
-下表数量与 **v1.2.2 源码**一致，其中包含 3 个 `send_code` 模块工具和 2 个 agent 报告工具；**v1.2.1 发布版**在每种模式下都少 5 个工具。
+下表数量对应当前开发源码；**v1.2.2 发布版**的 `all` 为 242 个、adaptive bake 为 245 个、裸服务器默认为 55 个。
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
-| 全新安装 | **245** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
-| 裸 `rvt-mcp.exe` | **58** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **245** | 完整目录 |
-| `all` + adaptive bake | **248** | 再加 3 个 suggestion 生命周期工具 |
+| 全新安装 | **250** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
+| 裸 `rvt-mcp.exe` | **59** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **250** | 完整目录 |
+| `all` + adaptive bake | **253** | 再加 3 个 suggestion 生命周期工具 |
 
-数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 58 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除；agent 报告只写入用户自己的报告数据，因此允许使用。
+数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 59 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除；agent 报告只写入用户自己的报告数据，因此允许使用。
 
 | Toolset | 覆盖 |
 |---------|------|
 | `query` | 视图、选择、过滤、统计、参数、关系、workset、组/程序集 |
 | `create` | 轴网、标高、房间、线/点/面构件、组 |
 | `view` | 建视图、图纸布局辅助、截图、裁剪/比例 |
-| `meta` | 批处理（最多 20）、多 Revit 目标、最近模型、项目信息、purge（MVP）、消息、send_code、agent 报告 |
+| `meta` | 文档状态、批处理（最多 20）、多 Revit 目标、最近模型、项目信息、purge（MVP）、消息、send_code、agent 报告 |
+| `documents` | 可选启用：本地模型/族的保存和检查点管理，以及 workshared 本地保存。见 [document lifecycle](docs/document-lifecycle.md)。 |
 | `lint` | 视图命名、firm-profile、警告摘要 |
 | `schedule` | 明细表 list/创建、字段、公式、数据 |
 | `families` | 加载/卸载、类型、实例、审计、导出 `.rfa`（项目侧） |
@@ -270,6 +271,7 @@ Annotations 描述每个工具对文档和文件的影响。临时 selection、a
       "mcp__rvt-mcp__revit_get_change_records",
       "mcp__rvt-mcp__revit_get_current_target",
       "mcp__rvt-mcp__revit_get_current_view_info",
+      "mcp__rvt-mcp__revit_get_document_state",
       "mcp__rvt-mcp__revit_get_element_bounding_box",
       "mcp__rvt-mcp__revit_get_element_centroid",
       "mcp__rvt-mcp__revit_get_element_details",
@@ -395,7 +397,7 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 
 **Revit 重启后（即使只打开了一个 Revit）**，允许写入的会话会返回 `TARGET_CHANGED`，并等待一次 `revit_switch_target` 调用。重启后的 Revit 可能打开了另一个模型；请检查建议的实例，确认后再重复调用。
 
-`revit_switch_target` 会修改会话路由，因此按非只读注解从 `--read-only` 中移除。启用全部 toolsets 时只读模式提供98个工具。启动网关时使用 `--read-only --target pid:<n>` 选择目标，修改目标时重启网关；目标列表与当前目标查询仍可使用。
+`revit_switch_target` 会修改会话路由，因此按非只读注解从 `--read-only` 中移除。启用全部 toolsets 时只读模式提供102个工具。启动网关时使用 `--read-only --target pid:<n>` 选择目标，修改目标时重启网关；目标列表与当前目标查询仍可使用。
 
 ---
 

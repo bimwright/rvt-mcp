@@ -11,7 +11,7 @@ $publicDocs = @(
     'AGENTS.md', 'ARCHITECTURE.md', 'CHANGELOG.md', 'CLAUDE.md',
     'CODE_OF_CONDUCT.md', 'CONTRIBUTING.md', 'SECURITY.md', 'THIRD_PARTY_NOTICES.md',
     'README.md', 'README.vi.md', 'README.ja.md', 'README.zh-CN.md',
-    'docs/agent-reports.md', 'docs/bake.md', 'docs/change-survey.md', 'docs/change-tracking.md', 'docs/controlled-failures.md',
+    'docs/agent-reports.md', 'docs/bake.md', 'docs/change-survey.md', 'docs/change-tracking.md', 'docs/controlled-failures.md', 'docs/document-lifecycle.md',
     'docs/firm-profiles/README.md', 'docs/install.md', 'docs/localization.md',
     'docs/mcp-client-wiring.md', 'docs/mcp-config-claude-clients.md',
     'docs/mcp-config-codex.md', 'docs/mcp-config-opencode-kilo.md',

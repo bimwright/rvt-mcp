@@ -47,6 +47,7 @@ namespace RvtMcp.Plugin
             Register(new Handlers.SetTypeParameterValuesHandler());
             Register(new Handlers.ChangeElementTypeHandler());
             Register(new Handlers.AssignElementsToWorksetHandler());
+            Register(new Handlers.SetWallTopHandler());
             Register(new Handlers.DeleteElementHandler());
             // Phase 5: Export & Tags
             Register(new Handlers.ExportRoomDataHandler());
@@ -56,6 +57,10 @@ namespace RvtMcp.Plugin
             Register(new Handlers.SendCodeToRevitHandler());
             Register(new Handlers.OpenModelHandler());
             Register(new Handlers.ListRecentModelsHandler());
+            Register(new Handlers.GetDocumentStateHandler());
+            Register(new Handlers.SaveDocumentHandler());
+            Register(new Handlers.SaveCheckpointHandler());
+            Register(new Handlers.ManageCheckpointsHandler());
             // Phase 7: Views & Sheets
             Register(new Handlers.CreateViewHandler());
             Register(new Handlers.PlaceViewOnSheetHandler());

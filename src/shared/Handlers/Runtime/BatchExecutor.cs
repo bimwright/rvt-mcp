@@ -124,6 +124,16 @@ namespace RvtMcp.Plugin.Handlers
                     continue;
                 }
 
+                if (string.Equals(cmdName, "save_document", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(cmdName, "save_checkpoint", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(cmdName, "manage_checkpoints", StringComparison.OrdinalIgnoreCase))
+                {
+                    outcome.Results.Add(new { index = i, ok = false, error = cmdName + " cannot be invoked through batch_execute; call it directly." });
+                    outcome.AnyFailed = true;
+                    if (!continueOnError) return outcome;
+                    continue;
+                }
+
                 if (isBakedCommand != null && isBakedCommand(cmdName))
                 {
                     outcome.Results.Add(new { index = i, ok = false, error = BakedCommandNotSupportedMessage(cmdName) });

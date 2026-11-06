@@ -126,6 +126,9 @@ namespace RvtMcp.Plugin.Handlers
             string renamedTo = null;
             if (isWorkshared)
             {
+                if (OpenModelLocalPolicy.IsWorksharedUpgrade(isWorkshared, savedInVersion, app.Application.VersionNumber))
+                    return CommandResult.Fail("WORKSHARED_UPGRADE_NEEDS_USER: '" + Path.GetFileName(path) + "' is a workshared model saved in Revit " + savedInVersion
+                        + ". Opening it here would upgrade it, and upgrading a central affects everyone who works on it. No local copy was created; ask the user to upgrade or open it in Revit.");
                 if (string.IsNullOrWhiteSpace(centralPath))
                     return CommandResult.Fail("'" + Path.GetFileName(path) + "' is workshared but its header has no Central Model Path. Ask the user to open it once in Revit, or handle it via revit_send_code_to_revit.");
 
@@ -133,8 +136,11 @@ namespace RvtMcp.Plugin.Handlers
                     return CommandResult.Fail("This file is workshared and its central model is not reachable at '" + centralPath + "' (offline share, missing drive map or VPN down). Ask the user to check connectivity; do not retry until the path resolves.");
 
                 var configuredDir = GetLocalProjectsDir(app, out var revitIniPath);
-                if (OpenModelLocalPolicy.DecideLocalDir(configuredDir) == OpenModelLocalPolicy.LocalDirDecision.StopMissing)
-                    return CommandResult.Fail("No ProjectPath entry in this Revit's Revit.ini ('" + revitIniPath + "'), so there is no configured local-projects folder. The user can set one under File > Options > File Locations, or manage local copies by hand via revit_send_code_to_revit.");
+                var dirDecision = OpenModelLocalPolicy.DecideLocalDir(configuredDir);
+                if (dirDecision == OpenModelLocalPolicy.LocalDirDecision.StopMissing)
+                    return CommandResult.Fail("This Revit's Revit.ini ('" + revitIniPath + "') has no ProjectPath folder (File > Options > File Locations > Default path for user files is empty), so no local copy was created. Ask the user to set that path, or manage local copies by hand via revit_send_code_to_revit.");
+                if (dirDecision == OpenModelLocalPolicy.LocalDirDecision.StopNotAbsolute)
+                    return CommandResult.Fail("ProjectPath '" + configuredDir + "' in this Revit's Revit.ini ('" + revitIniPath + "') is not a full folder path, even after expanding environment variables, so no local copy was created. Ask the user to set File > Options > File Locations > Default path for user files to a full folder path.");
                 var localDir = configuredDir;
                 try { Directory.CreateDirectory(localDir); }
                 catch (Exception ex) { return CommandResult.Fail("Could not create the local-projects folder '" + localDir + "': " + ex.Message); }

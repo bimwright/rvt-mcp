@@ -2309,6 +2309,28 @@
       "result": "Error: golden probe failure"
     }
   },
+  "revit_get_document_state": {
+    "success": {
+      "calls": [
+        {
+          "command": "get_document_state",
+          "params": "{\"scope\":\"active\"}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "get_document_state",
+          "params": "{\"scope\":\"active\"}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
   "revit_get_element_bounding_box": {
     "success": {
       "calls": [
@@ -3673,6 +3695,28 @@
       "result": "Error: golden probe failure"
     }
   },
+  "revit_manage_checkpoints": {
+    "success": {
+      "calls": [
+        {
+          "command": "manage_checkpoints",
+          "params": "{\"action\":\"probe\",\"keep_last\":5,\"dry_run\":true,\"plan_hash\":null,\"checkpoint_id\":null}",
+          "timeout": 600
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "manage_checkpoints",
+          "params": "{\"action\":\"probe\",\"keep_last\":5,\"dry_run\":true,\"plan_hash\":null,\"checkpoint_id\":null}",
+          "timeout": 600
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
   "revit_measure_distance_between_elements": {
     "success": {
       "calls": [
@@ -4064,6 +4108,50 @@
           "command": "run_baked_tool",
           "params": "{\"name\":\"probe\",\"params\":{},\"output\":\"inline\"}",
           "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
+  "revit_save_checkpoint": {
+    "success": {
+      "calls": [
+        {
+          "command": "save_checkpoint",
+          "params": "{\"label\":\"probe\",\"reason\":null,\"milestone\":false,\"allow_format_upgrade\":false}",
+          "timeout": 600
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "save_checkpoint",
+          "params": "{\"label\":\"probe\",\"reason\":null,\"milestone\":false,\"allow_format_upgrade\":false}",
+          "timeout": 600
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
+  "revit_save_document": {
+    "success": {
+      "calls": [
+        {
+          "command": "save_document",
+          "params": "{\"allow_format_upgrade\":false,\"save_as_path\":null}",
+          "timeout": 600
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "save_document",
+          "params": "{\"allow_format_upgrade\":false,\"save_as_path\":null}",
+          "timeout": 600
         }
       ],
       "result": "Error: golden probe failure"
@@ -4569,6 +4657,28 @@
         {
           "command": "set_view_style",
           "params": "{\"view_id\":null,\"view_name\":null,\"display_style\":null,\"detail_level\":null}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
+  "revit_set_wall_top": {
+    "success": {
+      "calls": [
+        {
+          "command": "set_wall_top",
+          "params": "{\"wall_ids\":null,\"top_level\":\"probe\",\"top_offset\":0.0}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "set_wall_top",
+          "params": "{\"wall_ids\":null,\"top_level\":\"probe\",\"top_offset\":0.0}",
           "timeout": null
         }
       ],

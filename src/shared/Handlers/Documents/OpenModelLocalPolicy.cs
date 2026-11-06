@@ -55,6 +55,17 @@ namespace RvtMcp.Plugin.Handlers
             return saved.HasValue && running.HasValue && saved.Value < running.Value ? saved : null;
         }
 
+        /// <summary>
+        /// A workshared model saved by an older Revit would be upgraded on open.
+        /// That upgrade belongs to whoever owns the central, so the tool stops
+        /// before it creates a local: a native grant could never match a retry,
+        /// because every retry would create a new local file.
+        /// </summary>
+        public static bool IsWorksharedUpgrade(bool isWorkshared, string savedInVersion, string runningVersion)
+        {
+            return isWorkshared && UpgradedFrom(savedInVersion, runningVersion).HasValue;
+        }
+
         private static int? FirstYear(string value)
         {
             if (string.IsNullOrEmpty(value)) return null;
@@ -89,20 +100,31 @@ namespace RvtMcp.Plugin.Handlers
             /// No ProjectPath in this Revit's Revit.ini - stop and report. There
             /// is deliberately no fallback folder: silently picking a directory
             /// the user never chose could move or create locals in the wrong place.
-            StopMissing
+            StopMissing,
+            /// ProjectPath is set but is not a full folder path even after expanding
+            /// environment variables (relative, drive-relative, or an undefined %VAR%).
+            /// Using it would create locals under Revit's working directory.
+            StopNotAbsolute
         }
 
         /// <summary>Rule §4.2: the configured ProjectPath, or nothing.</summary>
         public static LocalDirDecision DecideLocalDir(string configuredProjectPath)
         {
-            return string.IsNullOrWhiteSpace(configuredProjectPath)
-                ? LocalDirDecision.StopMissing
-                : LocalDirDecision.UseConfigured;
+            if (string.IsNullOrWhiteSpace(configuredProjectPath)) return LocalDirDecision.StopMissing;
+            return IsAbsoluteFolder(configuredProjectPath.Trim()) ? LocalDirDecision.UseConfigured : LocalDirDecision.StopNotAbsolute;
+        }
+
+        private static bool IsAbsoluteFolder(string dir)
+        {
+            if (dir.IndexOf('%') >= 0) return false; // a variable that did not expand: refuse rather than guess
+            if (dir.StartsWith(@"\\", StringComparison.Ordinal) || dir.StartsWith("//", StringComparison.Ordinal)) return true;
+            return dir.Length >= 3 && char.IsLetter(dir[0]) && dir[1] == ':' && (dir[2] == '\\' || dir[2] == '/');
         }
 
         /// <summary>
         /// First usable "ProjectPath=" entry in a Revit.ini's lines, or null.
-        /// Accepts optional quoting and the ";"-separated form Revit writes.
+        /// Accepts optional quoting and the ";"-separated form Revit writes, and
+        /// expands environment variables such as %USERPROFILE% (Revit 2024 writes one).
         /// </summary>
         public static string ParseProjectPath(IEnumerable<string> iniLines)
         {
@@ -116,7 +138,7 @@ namespace RvtMcp.Plugin.Handlers
                 var dir = t.Substring(eq + 1);
                 var semi = dir.IndexOf(';');
                 if (semi >= 0) dir = dir.Substring(0, semi);
-                dir = dir.Trim().Trim('"').Trim();
+                dir = Environment.ExpandEnvironmentVariables(dir.Trim().Trim('"').Trim()).Trim();
                 if (!string.IsNullOrWhiteSpace(dir)) return dir;
             }
             return null;

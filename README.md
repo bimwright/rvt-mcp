@@ -16,7 +16,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-245%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-250%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -90,23 +90,24 @@ Community videos of rvt-mcp at work. Install steps shown in a video can be older
 
 ## Tools
 
-Counts below match the **v1.2.2 source**, which adds the three `send_code` module tools and two agent-report tools. The **v1.2.1 release** has five fewer tools in each mode.
+Counts below describe the current development source. The **v1.2.2 release** has 242 tools with `all`, 245 with adaptive bake and 55 bare defaults.
 
 | Mode | Tools | Notes |
 |------|------:|-------|
-| Fresh install | **245** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **58** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **245** | Full catalog |
-| `all` + adaptive bake | **248** | Adds 3 suggestion-lifecycle tools |
+| Fresh install | **250** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **59** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **250** | Full catalog |
+| `all` + adaptive bake | **253** | Adds 3 suggestion-lifecycle tools |
 
-Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 58-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline; agent reports are allowed because they only write per-user report data.
+Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 59-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline; agent reports are allowed because they only write per-user report data.
 
 | Toolset | What it covers |
 |---------|----------------|
 | `query` | View, selection, filters, stats, parameters, relationships, worksets, groups/assemblies |
 | `create` | Grids, levels, rooms, line/point/surface-based elements, groups |
 | `view` | Create views, sheets layout helpers, capture image, crop/scale |
-| `meta` | Batch execute (max 20), multi-Revit targets, recent models, project info, purge unused (MVP), message, send_code, agent reports, local failure records and operation status |
+| `meta` | Document state, batch execute (max 20), multi-Revit targets, recent models, project info, purge unused (MVP), message, send_code, agent reports, local failure records and operation status |
+| `documents` | Opt-in save and checkpoint management for local models and families; local save for workshared models. See [document lifecycle](docs/document-lifecycle.md). |
 | `lint` | View naming patterns, firm-profile detect, warnings summary |
 | `schedule` | List/create schedules, fields, formulas, data |
 | `families` | Load/unload, types, instances, audit, export `.rfa` (project-side) |
@@ -272,6 +273,7 @@ MCP annotations describe each tool's document/file effects. Transient selection,
       "mcp__rvt-mcp__revit_get_change_records",
       "mcp__rvt-mcp__revit_get_current_target",
       "mcp__rvt-mcp__revit_get_current_view_info",
+      "mcp__rvt-mcp__revit_get_document_state",
       "mcp__rvt-mcp__revit_get_element_bounding_box",
       "mcp__rvt-mcp__revit_get_element_centroid",
       "mcp__rvt-mcp__revit_get_element_details",
@@ -407,7 +409,7 @@ Target error codes and recovery in writable sessions. Read-only sessions use the
 
 **Read-only sessions:** call `revit_list_available_targets`, choose `--target pid:<n>` at gateway startup and restart the gateway whenever the target changes. `revit_switch_target` is unavailable; the target errors above provide startup/restart guidance instead of recommending that tool.
 
-`revit_switch_target` changes session routing and is excluded from `--read-only`, matching its non-read-only annotation. Read-only mode exposes 98 tools with all toolsets. Select the intended process using `--read-only --target pid:<n>` at gateway startup; to change it, restart the gateway with the new selector. `revit_list_available_targets` and `revit_get_current_target` remain available for inspection.
+`revit_switch_target` changes session routing and is excluded from `--read-only`, matching its non-read-only annotation. Read-only mode exposes 102 tools with all toolsets. Select the intended process using `--read-only --target pid:<n>` at gateway startup; to change it, restart the gateway with the new selector. `revit_list_available_targets` and `revit_get_current_target` remain available for inspection.
 
 `DOCUMENT_UNCONFIRMED` and `DOCUMENT_CHANGED` are add-in refusals: the request reached Revit but the model operation did not start. Check the reported `_target`, then confirm the intended document. Gateway and add-ins must both support `document_target_v1`; update them together. An add-in connected to an older gateway returns `PAIRING_REQUIRED` instead: update the server, because that gateway cannot confirm a document.
 

@@ -20,7 +20,7 @@ namespace RvtMcp.Plugin.Views.Toast
             "save_code_module",
             "run_baked_tool",
             "capture_view_image", "get_material_takeoff", "compute_room_finishes",
-            "list_bake_suggestions", "open_model",
+            "list_bake_suggestions", "open_model", "manage_checkpoints",
             "accept_bake_suggestion", "dismiss_bake_suggestion",
             // switch_target mutates session routing (spec §6.8 annotation ReadOnly=false);
             // it is a server-side meta command, not a plugin command.

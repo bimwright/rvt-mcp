@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 245,
+  "tool_count": 250,
   "tools": [
     {
       "name": "revit_acquire_coordinates_from_link",
@@ -3999,6 +3999,26 @@
       }
     },
     {
+      "name": "revit_get_document_state",
+      "description_hash": "sha256:3d91f99c37c20ff6d96db2944623b1074dd50b4d54cf17f26e4ca3ecb2436fe6",
+      "inputSchema": {
+        "properties": {
+          "scope": {
+            "description": "active (default) or all; all excludes documents loaded only as Revit links.",
+            "type": "String"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
       "name": "revit_get_element_bounding_box",
       "description_hash": "sha256:a4d8ff2b046e2ba08ba8faf9cf4108b32a26d7e49e642c384f1b905539ec391c",
       "inputSchema": {
@@ -6025,6 +6045,48 @@
       }
     },
     {
+      "name": "revit_manage_checkpoints",
+      "description_hash": "sha256:022e915be63ce49edff26e1433df7f9f954b4b0a51c5dc9c6a3a49857ee7ceea",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "list, prune, or restore.",
+            "type": "String"
+          },
+          "checkpoint_id": {
+            "description": "Indexed checkpoint to restore.",
+            "type": "String"
+          },
+          "dry_run": {
+            "description": "For prune, preview without deleting (default true).",
+            "type": "Boolean"
+          },
+          "keep_last": {
+            "description": "Non-milestone snapshots to retain when pruning, 1-100.",
+            "type": "Int32"
+          },
+          "plan_hash": {
+            "description": "Hash of the user-approved prune plan, required when applying.",
+            "type": "String"
+          },
+          "timeout_seconds": {
+            "description": "Seconds to wait, 1-900 (default 600); inspect operation status after a timeout before retrying.",
+            "type": "Int32"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "revit_measure_distance_between_elements",
       "description_hash": "sha256:ef9042e27837ed99379476146e501e9c626a0e81f1e53d4f43181228bdbd1abf",
       "inputSchema": {
@@ -6782,6 +6844,44 @@
       }
     },
     {
+      "name": "revit_save_checkpoint",
+      "description_hash": "sha256:3117abe61fa82efb96231205b60614dbc3d5de7d030eb7164dddba698accf718",
+      "inputSchema": {
+        "properties": {
+          "allow_format_upgrade": {
+            "description": "Allow saving in the host's newer Revit format only after explicit user approval (default false).",
+            "type": "Boolean"
+          },
+          "label": {
+            "description": "Checkpoint label, 1-80 characters.",
+            "type": "String"
+          },
+          "milestone": {
+            "description": "Keep this checkpoint during pruning without counting it toward keep_last (default false).",
+            "type": "Boolean"
+          },
+          "reason": {
+            "description": "Optional reason, up to 500 characters.",
+            "type": "String"
+          },
+          "timeout_seconds": {
+            "description": "Seconds to wait, 1-900 (default 600); inspect operation status after a timeout before retrying.",
+            "type": "Int32"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "revit_save_code_module",
       "description_hash": "sha256:9736419e3126571672091bca3c30b3a694ea165fa270200d0b980c872cb613b8",
       "inputSchema": {
@@ -6811,6 +6911,34 @@
           "name",
           "code"
         ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_save_document",
+      "description_hash": "sha256:980e6e54c1a3c201ec5af8c75fdf6f29294712713dc27f1e9c980acdc480276a",
+      "inputSchema": {
+        "properties": {
+          "allow_format_upgrade": {
+            "description": "Allow saving in the host's newer Revit format only after explicit user approval (default false).",
+            "type": "Boolean"
+          },
+          "save_as_path": {
+            "description": "First save only: absolute local .rvt path the user gave, for an unsaved document or an opened .rte template. Omit for a normal save.",
+            "type": "String"
+          },
+          "timeout_seconds": {
+            "description": "Seconds to wait, 1-900 (default 600); inspect operation status after a timeout before retrying.",
+            "type": "Int32"
+          }
+        },
+        "required": [],
         "type": "object"
       },
       "annotations": {
@@ -7627,7 +7755,7 @@
     },
     {
       "name": "revit_set_view_orientation",
-      "description_hash": "sha256:e2f7dce32980e66f3fd1e295059a4a104167f325c4876134a512f282a7726dbb",
+      "description_hash": "sha256:cd4c7c177e3fbc0360c880ef789c4eb1af7b52041ab862a3710ca8205fb4ad3c",
       "inputSchema": {
         "properties": {
           "eye": {
@@ -7757,6 +7885,37 @@
           }
         },
         "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_set_wall_top",
+      "description_hash": "sha256:ca251b5d32a1ea4895d515cf3ebe635391cb51e689b01c936b31d5fe8199450f",
+      "inputSchema": {
+        "properties": {
+          "top_level": {
+            "description": "",
+            "type": "String"
+          },
+          "top_offset": {
+            "description": "",
+            "type": "Double"
+          },
+          "wall_ids": {
+            "description": "",
+            "type": "Int64[]"
+          }
+        },
+        "required": [
+          "wall_ids",
+          "top_level"
+        ],
         "type": "object"
       },
       "annotations": {
