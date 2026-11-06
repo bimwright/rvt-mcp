@@ -90,7 +90,7 @@ Community videos of rvt-mcp at work. Install steps shown in a video can be older
 
 ## Tools
 
-Counts below match the **v1.2.2 source**, which adds the three `send_code` module tools and two agent-report tools. The **v1.2.1 release** has five fewer tools in each mode.
+Counts below match the **current development source**, which is newer than the v1.2.2 release; the Unreleased section of the [changelog](CHANGELOG.md) lists the tools added since.
 
 | Mode | Tools | Notes |
 |------|------:|-------|
