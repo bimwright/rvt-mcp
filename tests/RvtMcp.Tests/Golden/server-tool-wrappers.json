@@ -791,6 +791,28 @@
       "result": "Error: golden probe failure"
     }
   },
+  "revit_create_camera_view": {
+    "success": {
+      "calls": [
+        {
+          "command": "create_camera_view",
+          "params": "{\"name\":\"probe\",\"eye\":null,\"target\":null,\"up\":null,\"far_clip\":false}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "create_camera_view",
+          "params": "{\"name\":\"probe\",\"eye\":null,\"target\":null,\"up\":null,\"far_clip\":false}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
   "revit_create_conduit": {
     "success": {
       "calls": [
@@ -4553,6 +4575,28 @@
       "result": "Error: golden probe failure"
     }
   },
+  "revit_set_view_orientation": {
+    "success": {
+      "calls": [
+        {
+          "command": "set_view_orientation",
+          "params": "{\"view_id\":null,\"view_name\":null,\"eye\":null,\"target\":null,\"up\":null,\"perspective\":null,\"fit\":true}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "set_view_orientation",
+          "params": "{\"view_id\":null,\"view_name\":null,\"eye\":null,\"target\":null,\"up\":null,\"perspective\":null,\"fit\":true}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
   "revit_set_view_phase": {
     "success": {
       "calls": [
@@ -4591,6 +4635,50 @@
         {
           "command": "set_view_scale",
           "params": "{\"view_id\":null,\"scale\":1}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
+  "revit_set_view_style": {
+    "success": {
+      "calls": [
+        {
+          "command": "set_view_style",
+          "params": "{\"view_id\":null,\"view_name\":null,\"display_style\":null,\"detail_level\":null}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "set_view_style",
+          "params": "{\"view_id\":null,\"view_name\":null,\"display_style\":null,\"detail_level\":null}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
+  "revit_set_wall_top": {
+    "success": {
+      "calls": [
+        {
+          "command": "set_wall_top",
+          "params": "{\"wall_ids\":null,\"top_level\":\"probe\",\"top_offset\":0.0}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "set_wall_top",
+          "params": "{\"wall_ids\":null,\"top_level\":\"probe\",\"top_offset\":0.0}",
           "timeout": null
         }
       ],

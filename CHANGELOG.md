@@ -1,17 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- Add `revit_get_document_state` to `meta` and the opt-in `documents` toolset with `revit_save_document`, `revit_save_checkpoint` and `revit_manage_checkpoints`. State reads exclude loaded links and report an unavailable or busy document index without losing other document results.
-- Save checks mode, external file changes and format-upgrade consent. Local models and families use a per-user record of a minimum 20-backup limit; workshared local save does not sync central. Checkpoints are verified copies; pruning requires an approved dry-run hash, and restore creates a separate file. A checkpoint failure can follow a successful save. Save, checkpoint and checkpoint management take `timeout_seconds` (1–900, default 600). See [document lifecycle](docs/document-lifecycle.md).
-- A `.rte` opened for editing is a `template` and is never saved in place. An unsaved document or a template is saved once with `revit_save_document(save_as_path)` to a new local `.rvt` the user names, which starts a project from a template; an existing file is never overwritten. Path rules and the template guard come from `revit_save_model` in [#29](https://github.com/bimwright/rvt-mcp/pull/29); thanks [@gbwzzy218](https://github.com/gbwzzy218).
-- `revit_open_model`:
-  - Expands environment variables such as `%USERPROFILE%` in the Revit.ini `ProjectPath`.
-  - Stops when `ProjectPath` is empty or is still not a full folder path, and names File > Options > File Locations > *Default path for user files*.
-  - Refuses a workshared model saved in an older Revit before any local copy is created (`WORKSHARED_UPGRADE_NEEDS_USER`).
-- The native open/save guard identifies a central by its stored central path rather than the header flag. Opening a newly created local and saving it the first time no longer need a grant; opening or saving a central still does.
-- Catalog: `--toolsets all` **246**, adaptive bake **249**, bare defaults **56**.
-
 ## Release history
 
 | Version | Date | Available as |
@@ -38,6 +26,30 @@
 | v0.1.0 | 2026-04-17 | Git tag (public launch) |
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
+
+## Unreleased
+
+- Development source counts: `--toolsets all` **250**, adaptive bake **253**, and bare defaults **59**.
+
+### Document lifecycle
+
+- Add `revit_get_document_state` to `meta` and the opt-in `documents` toolset with `revit_save_document`, `revit_save_checkpoint` and `revit_manage_checkpoints`. State reads exclude loaded links and report an unavailable or busy document index without losing other document results.
+- Save checks mode, external file changes and format-upgrade consent. Local models and families use a per-user record of a minimum 20-backup limit; workshared local save does not sync central. Checkpoints are verified copies; pruning requires an approved dry-run hash, and restore creates a separate file. A checkpoint failure can follow a successful save. Save, checkpoint and checkpoint management take `timeout_seconds` (1–900, default 600). See [document lifecycle](docs/document-lifecycle.md).
+- A `.rte` opened for editing is a `template` and is never saved in place. An unsaved document or a template is saved once with `revit_save_document(save_as_path)` to a new local `.rvt` the user names, which starts a project from a template; an existing file is never overwritten. Path rules and the template guard come from `revit_save_model` in [#29](https://github.com/bimwright/rvt-mcp/pull/29); thanks [@gbwzzy218](https://github.com/gbwzzy218).
+- `revit_open_model`:
+  - Expands environment variables such as `%USERPROFILE%` in the Revit.ini `ProjectPath`.
+  - Stops when `ProjectPath` is empty or is still not a full folder path, and names File > Options > File Locations > *Default path for user files*.
+  - Refuses a workshared model saved in an older Revit before any local copy is created (`WORKSHARED_UPGRADE_NEEDS_USER`).
+- The native open/save guard identifies a central by its stored central path rather than the header flag. Opening a newly created local and saving it the first time no longer need a grant; opening or saving a central still does.
+
+### Wall top constraints
+
+- **`revit_set_wall_top`** in `modify`: attaches walls' top constraint to a level with an optional offset, checking every wall first so a top at or below a wall's base changes nothing.
+
+### View style, orientation and camera views
+
+- **`revit_set_view_style`, `revit_set_view_orientation` and `revit_create_camera_view`** in `view`: set display style and detail level, aim a 3D view from eye and target points, and create or re-aim perspective camera views, so an agent can frame and capture its own result with `revit_capture_view_image`.
+- Named 3D views and cameras save the new orientation, which Revit Undo restores. The default 3D view (`{3D}`, or `{3D - user}` when workshared) is a viewing view: only its temporary camera moves, nothing is saved, and the result reports `orientation_saved: false`. A failed call leaves the camera where it was. New cameras turn off Far Clip Active and report `far_clip_active`.
 
 ## v1.2.2 — 2026-11-02
 

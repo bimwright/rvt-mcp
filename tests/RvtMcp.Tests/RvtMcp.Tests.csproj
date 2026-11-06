@@ -49,6 +49,7 @@
     <Compile Include="..\..\src\shared\Failures\UserDialogBuffer.cs" Link="Shared\Failures\UserDialogBuffer.cs" />
     <Compile Include="..\..\src\shared\Failures\CommittedTransactionLog.cs" Link="Shared\Failures\CommittedTransactionLog.cs" />
     <Compile Include="..\..\src\shared\Handlers\Sheets\ViewportLayoutMath.cs" Link="Shared\Handlers\Sheets\ViewportLayoutMath.cs" />
+    <Compile Include="..\..\src\shared\Handlers\Views\ViewOrientationMath.cs" Link="Shared\Handlers\Views\ViewOrientationMath.cs" />
     <Compile Include="..\..\src\shared\Security\PathAllowlist.cs" Link="Shared\Security\PathAllowlist.cs" />
     <Compile Include="..\..\src\shared\Security\DiscoveryPublisher.cs" Link="Shared\Security\DiscoveryPublisher.cs" />
     <Compile Include="..\..\src\shared\Security\AuthToken.cs" Link="Shared\Security\AuthToken.cs" />

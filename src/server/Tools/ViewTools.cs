@@ -99,5 +99,40 @@ namespace RvtMcp.Server
                 zoom
             });
         }
+
+        [McpServerTool(Name = "revit_set_view_style", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
+            "Replace a view's display style and detail level; restore them with Revit Undo. Use before revit_capture_view_image to get shaded or realistic images. " +
+            "display_style: wireframe|hidden_line|shaded|shaded_edges|consistent_colors|realistic; detail_level: coarse|medium|fine. View by view_id or view_name; default active view. " +
+            "For category visibility use revit_set_category_visibility. Example: view_name='3D Overview', display_style='shaded', detail_level='fine'.")]
+        public static async Task<string> SetViewStyle(long? view_id = null, string view_name = null, string display_style = null, string detail_level = null)
+        {
+            var blocked = ServerState.BlockIfReadOnly("set_view_style");
+            if (blocked != null) return blocked;
+            return await ToolGateway.CallAsync("set_view_style", new { view_id, view_name, display_style, detail_level });
+        }
+
+        [McpServerTool(Name = "revit_set_view_orientation", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
+            "Replace a 3D view's camera orientation; restore it with Revit Undo. The default 3D view ({3D}, or {3D - user} when workshared) only moves its temporary camera, which is not saved and has no Undo. " +
+            "Use to frame a model for revit_capture_view_image, e.g. for turntable images. " +
+            "eye and target are [x,y,z] in mm; up defaults to +Z and falls back to another axis when parallel to the view direction. perspective=true toggles an isometric view to perspective (false toggles back) when Revit allows. " +
+            "fit=true (default) turns off the crop box on isometric views and zooms to fit if the view is open. Example: view_name='3D Overview', eye=[-50000,-50000,30000], target=[0,0,0].")]
+        public static async Task<string> SetViewOrientation(double[] eye, double[] target, long? view_id = null, string view_name = null, double[] up = null,
+            bool? perspective = null, bool fit = true)
+        {
+            var blocked = ServerState.BlockIfReadOnly("set_view_orientation");
+            if (blocked != null) return blocked;
+            return await ToolGateway.CallAsync("set_view_orientation", new { view_id, view_name, eye, target, up, perspective, fit });
+        }
+
+        [McpServerTool(Name = "revit_create_camera_view", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
+            "Create a perspective 3D camera view, or replace the orientation of an existing perspective view with the same name; restore it with Revit Undo. " +
+            "Use for eye-level or aerial perspective images with revit_capture_view_image. eye and target are [x,y,z] in mm, optional up. Far clipping is turned off unless far_clip=true. " +
+            "Returns the view id. Example: name='Entrance Camera', eye=[0,-30000,1700], target=[0,0,1700].")]
+        public static async Task<string> CreateCameraView(string name, double[] eye, double[] target, double[] up = null, bool far_clip = false)
+        {
+            var blocked = ServerState.BlockIfReadOnly("create_camera_view");
+            if (blocked != null) return blocked;
+            return await ToolGateway.CallAsync("create_camera_view", new { name, eye, target, up, far_clip });
+        }
     }
 }

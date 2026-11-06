@@ -35,5 +35,16 @@ namespace RvtMcp.Server
         [McpServerTool(Name = "revit_assign_elements_to_workset", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace element workset assignments; restore them with Revit Undo. Assign elements to a user workset by worksetId or worksetName in a workshared document.")]
         public static async Task<string> AssignElementsToWorkset(long[] elementIds, long? worksetId = null, string worksetName = "")
             => await ToolGateway.CallAsync("assign_elements_to_workset", new { elementIds, worksetId, worksetName });
+
+        [McpServerTool(Name = "revit_set_wall_top", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
+            "Replace walls' top constraint; restore it with Revit Undo. Attach walls to a level (Top Constraint: Up to level) with an optional top_offset in mm. " +
+            "Use after revit_create_line_based_element, which only sets an unconnected height. Every wall is checked first: a non-wall id or a top at or below a wall's base changes nothing. " +
+            "Returns the stored constraint, offset and height per wall. Example: wall_ids=[1234,1235], top_level='Roof', top_offset=0.")]
+        public static async Task<string> SetWallTop(long[] wall_ids, string top_level, double top_offset = 0)
+        {
+            var blocked = ServerState.BlockIfReadOnly("set_wall_top");
+            if (blocked != null) return blocked;
+            return await ToolGateway.CallAsync("set_wall_top", new { wall_ids, top_level, top_offset });
+        }
     }
 }
