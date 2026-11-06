@@ -32,12 +32,13 @@ namespace RvtMcp.Plugin.Handlers
             var keepFarClip = request.Value<bool?>("far_clip") ?? false;
 
             // Case-insensitive, like view lookup elsewhere, so "entrance camera" re-aims "Entrance Camera".
-            var existing = new FilteredElementCollector(doc).OfClass(typeof(View)).Cast<View>()
+            // Only 3D views compete for the name; a floor plan called "Level 1" does not block a camera of that name.
+            var view = new FilteredElementCollector(doc).OfClass(typeof(View3D)).Cast<View3D>()
                 .FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, name, StringComparison.OrdinalIgnoreCase));
-            var view = existing as View3D;
-            if (existing != null && (view == null || !view.IsPerspective))
-                return CommandResult.Fail("A view named '" + existing.Name + "' exists and is not a perspective 3D view; pick another name.");
+            if (view != null && !view.IsPerspective)
+                return CommandResult.Fail("A 3D view named '" + view.Name + "' exists and is not a perspective view; pick another name.");
             var created = view == null;
+            var before = view?.GetOrientation();
 
             using (var tx = new Transaction(doc, "MCP: Create camera view"))
             {
@@ -73,22 +74,30 @@ namespace RvtMcp.Plugin.Handlers
                     view.SaveOrientation();
                     if (!keepFarClip)
                     {
-                        var farClip = view.get_Parameter(BuiltInParameter.VIEWER_BOUND_FAR_CLIPPING);
+                        // 3D views expose "Far Clip Active"; VIEWER_BOUND_FAR_CLIPPING is the section/elevation setting.
+                        var farClip = view.get_Parameter(BuiltInParameter.VIEWER_BOUND_ACTIVE_FAR);
                         if (farClip != null && !farClip.IsReadOnly) farClip.Set(0);
                     }
 
                     if (tx.Commit() != TransactionStatus.Committed)
+                    {
+                        if (!created) ViewPresentationSupport.RestoreCamera(view, before);
                         return CommandResult.Fail("Revit did not commit the transaction; the camera view was not created.");
+                    }
                 }
                 catch (Exception ex)
                 {
                     if (tx.HasStarted()) tx.RollBack();
+                    if (!created) ViewPresentationSupport.RestoreCamera(view, before);
                     return CommandResult.Fail("Failed to create camera view '" + name + "': " + ex.Message + " Nothing was changed.");
                 }
             }
 
             SavedViewOrientationRefresh.Track(app, view);
-            return CommandResult.Ok(new { created, view = ViewPresentationSupport.Describe(view) });
+            // Reported, not assumed, so a view without the parameter is visible to the caller.
+            var farClipActive = view.get_Parameter(BuiltInParameter.VIEWER_BOUND_ACTIVE_FAR);
+            return CommandResult.Ok(new { created, view = ViewPresentationSupport.Describe(view),
+                far_clip_active = farClipActive == null ? (bool?)null : farClipActive.AsInteger() != 0 });
         }
     }
 }

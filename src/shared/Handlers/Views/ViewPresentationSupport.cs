@@ -70,6 +70,14 @@ namespace RvtMcp.Plugin.Handlers
             return new ViewOrientation3D(eye, new XYZ(trueUp[0], trueUp[1], trueUp[2]), forward.Normalize());
         }
 
+        // SetOrientation moves Revit's temporary camera, which a transaction rollback leaves where it was set.
+        public static void RestoreCamera(View3D view, ViewOrientation3D before)
+        {
+            // A restore failure must not replace the error that caused the rollback.
+            try { view.SetOrientation(before); }
+            catch (Autodesk.Revit.Exceptions.ApplicationException ex) { App.DebugLog("Camera restore after rollback failed: " + ex.Message); }
+        }
+
         public static object Describe(View3D view)
         {
             var o = view.GetOrientation();
