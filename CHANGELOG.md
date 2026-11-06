@@ -58,7 +58,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ### Move and rotate
 
-- Add typed `revit_move_elements` and `revit_rotate_elements` commands with explicit model-space units, atomic selection validation, placement checks and native Undo. See [usage and verification](docs/placement-and-mep-contracts.md#moving-and-rotating-existing-elements-unreleased).
+- Add typed `revit_move_elements` and `revit_rotate_elements` commands with explicit model-space units, atomic selection validation, placement checks and native Undo. Rotation has no default pivot: pass one explicit pivot for the whole selection, or `pivot_mode="each_location"` to turn each element in place about its insertion point or location-line midpoint. See [usage and verification](docs/placement-and-mep-contracts.md#moving-and-rotating-existing-elements-unreleased).
 
 ## v1.2.2 — 2026-11-02
 

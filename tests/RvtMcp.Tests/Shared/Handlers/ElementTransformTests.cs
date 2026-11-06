@@ -34,6 +34,9 @@ public class ElementTransformTests
     [InlineData("unbounded_curve")]
     [InlineData("readonly")]
     [InlineData("no_document")]
+    [InlineData("rotate_each_with_pivot")]
+    [InlineData("rotate_bad_mode")]
+    [InlineData("rotate_missing_pivot")]
     public void InvalidSelectionOrInputDoesNotStartTransaction(string scenario)
     {
         var result = Run(scenario);
@@ -50,6 +53,7 @@ public class ElementTransformTests
     [InlineData("rotate_curve")]
     [InlineData("rotate_negative")]
     [InlineData("rotate_wrapped")]
+    [InlineData("rotate_point_mode")]
     public void ValidTransformsReportActualPlacementAndCommitOnce(string scenario)
     {
         var result = Run(scenario);
@@ -80,6 +84,7 @@ public class ElementTransformTests
     [InlineData("move_second_constrained")]
     [InlineData("move_curve_end_constrained")]
     [InlineData("rotate_ignored")]
+    [InlineData("rotate_each_ignored")]
     [InlineData("rotate_angle_constrained")]
     [InlineData("lost_location")]
     [InlineData("api_throw")]
@@ -91,6 +96,49 @@ public class ElementTransformTests
         Assert.Equal(0, result.Value<int>("committed"));
         Assert.Equal(1, result.Value<int>("rolledBack"));
         Assert.True(result.Value<bool>("restored"));
+    }
+
+    [Fact]
+    public void EachLocationTurnsAnInstanceInPlace()
+    {
+        var result = Run("rotate_each");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        Assert.Equal(1, result.Value<int>("committed"));
+        Assert.Equal(1, result.Value<int>("groupCommitted"));
+        var data = result["data"]!;
+        Assert.Equal("each_location", data.Value<string>("pivot_mode"));
+        Assert.Equal(JTokenType.Null, data["pivot_mm"]!.Type);
+        var after = data["after"]![0]!;
+        Assert.Equal(1100, after["location_mm"]!.Value<double>("x"), 6);
+        Assert.Equal(2000, after["location_mm"]!.Value<double>("y"), 6);
+        Assert.Equal(90, after.Value<double>("rotation_degrees"), 6);
+    }
+
+    [Fact]
+    public void EachLocationTurnsACurveAboutItsMidpoint()
+    {
+        // The curve runs 304.8 mm along +Y from (1100, 2000); its midpoint is (1100, 2152.4).
+        var result = Run("rotate_each_curve");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        var after = result["data"]!["after"]![0]!;
+        Assert.Equal(1252.4, after["location_mm"]!.Value<double>("x"), 6);
+        Assert.Equal(2152.4, after["location_mm"]!.Value<double>("y"), 6);
+        Assert.Equal(947.6, after["curve_end_mm"]!.Value<double>("x"), 6);
+        Assert.Equal(2152.4, after["curve_end_mm"]!.Value<double>("y"), 6);
+    }
+
+    [Fact]
+    public void EachLocationUsesEveryElementsOwnPivot()
+    {
+        var result = Run("rotate_each_two");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        Assert.Equal(2, result.Value<int>("calls"));
+        Assert.Equal(1, result.Value<int>("committed"));
+        var after = result["data"]!["after"]!;
+        Assert.Equal(1100, after[0]!["location_mm"]!.Value<double>("x"), 6);
+        Assert.Equal(5000, after[1]!["location_mm"]!.Value<double>("x"), 6);
+        Assert.Equal(0, after[1]!["location_mm"]!.Value<double>("y"), 6);
+        Assert.All(after, record => Assert.Equal(90, record.Value<double>("rotation_degrees"), 6));
     }
 
     [Fact]
@@ -132,6 +180,9 @@ public class ElementTransformTests
         Assert.Equal("rotate_elements", rotate.Command);
         Assert.Equal(-90, rotate.Json().Value<double>("angle_degrees"));
         Assert.Equal(3400, rotate.Json().Value<double>("pivot_y_mm"));
+        var each = await Capture.Send(() => ModifyTools.RotateElements(new long[] { 42 }, 90, pivot_mode: "each_location"));
+        Assert.Equal("each_location", each.Json().Value<string>("pivot_mode"));
+        Assert.Null(each.Json()["pivot_x_mm"]);
     }
 
     [Theory]
@@ -249,9 +300,10 @@ namespace Autodesk.Revit.DB {
  public static class ElementTransformUtils {
   public static void MoveElements(Document d,ICollection<ElementId> ids,XYZ delta)=>Apply(d,ids,Transform.CreateTranslation(delta),0);
   public static void RotateElements(Document d,ICollection<ElementId> ids,Line axis,double radians)=>Apply(d,ids,Transform.CreateRotationAtPoint(XYZ.BasisZ,radians,axis.A),radians);
+  public static void RotateElement(Document d,ElementId id,Line axis,double radians)=>Apply(d,new List<ElementId>{id},Transform.CreateRotationAtPoint(XYZ.BasisZ,radians,axis.A),radians);
   static void Apply(Document d,ICollection<ElementId> ids,Transform t,double angle){
    d.Calls++;if(d.Scenario=="api_throw")throw new Exception("injected API failure");
-   foreach(var id in ids){var e=d.GetElement(id);if(d.Scenario=="rotate_ignored"||d.Scenario=="move_constrained"||(d.Scenario=="move_second_constrained"&&id.Value==2))continue;
+   foreach(var id in ids){var e=d.GetElement(id);if(d.Scenario.EndsWith("_ignored")||d.Scenario=="move_constrained"||(d.Scenario=="move_second_constrained"&&id.Value==2))continue;
     if(e.Location is LocationPoint p){p.Point=t.OfPoint(p.Point);if(d.Scenario!="rotate_angle_constrained")p.Rotation=(p.Rotation+angle)%(2*Math.PI);}
     else if(e.Location is LocationCurve c){c.Curve.A=t.OfPoint(c.Curve.A);if(d.Scenario!="move_curve_end_constrained")c.Curve.B=t.OfPoint(c.Curve.B);}
     if(d.Scenario=="lost_location")e.Location=null;
@@ -292,6 +344,12 @@ public static class TransformProbe {
   if(scenario=="nonfinite")args["dx_mm"]=double.NaN;
   if(scenario=="rotate_negative")args["angle_degrees"]=-90;
   if(scenario=="rotate_wrapped")args["angle_degrees"]=450;
+  if(scenario.StartsWith("rotate_each")){args.Remove("pivot_x_mm");args.Remove("pivot_y_mm");args.Remove("pivot_z_mm");args["pivot_mode"]="each_location";}
+  if(scenario=="rotate_each_with_pivot")args["pivot_x_mm"]=1000;
+  if(scenario=="rotate_bad_mode")args["pivot_mode"]="center";
+  if(scenario=="rotate_point_mode")args["pivot_mode"]="point";
+  if(scenario=="rotate_missing_pivot")args.Remove("pivot_y_mm");
+  if(scenario=="rotate_each_two"){d.Elements.Add(new Element{Id=new ElementId(2),Location=new LocationPoint{Point=new XYZ(5000/304.8,0,0)}});args["elementIds"]=new JArray(1,2);}
   if(scenario=="move_second_constrained"||scenario=="move_commit_second_adjusted"){d.Elements.Add(new Element{Id=new ElementId(2),Location=new LocationPoint{Point=original}});args["elementIds"]=new JArray(1,2);}
   var app=new Autodesk.Revit.UI.UIApplication{ActiveUIDocument=scenario=="no_document"?null:new Autodesk.Revit.UI.UIDocument{Document=d}};
   RvtMcp.Plugin.IRevitCommand handler=scenario.StartsWith("rotate")?(RvtMcp.Plugin.IRevitCommand)new RvtMcp.Plugin.Handlers.RotateElementsHandler():new RvtMcp.Plugin.Handlers.MoveElementsHandler();

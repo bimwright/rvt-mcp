@@ -4140,7 +4140,7 @@
       "calls": [
         {
           "command": "rotate_elements",
-          "params": "{\"elementIds\":null,\"angle_degrees\":1.0,\"pivot_x_mm\":1.0,\"pivot_y_mm\":1.0,\"pivot_z_mm\":1.0}",
+          "params": "{\"elementIds\":null,\"angle_degrees\":1.0,\"pivot_x_mm\":1.0,\"pivot_y_mm\":1.0,\"pivot_z_mm\":1.0,\"pivot_mode\":null}",
           "timeout": null
         }
       ],
@@ -4150,7 +4150,7 @@
       "calls": [
         {
           "command": "rotate_elements",
-          "params": "{\"elementIds\":null,\"angle_degrees\":1.0,\"pivot_x_mm\":1.0,\"pivot_y_mm\":1.0,\"pivot_z_mm\":1.0}",
+          "params": "{\"elementIds\":null,\"angle_degrees\":1.0,\"pivot_x_mm\":1.0,\"pivot_y_mm\":1.0,\"pivot_z_mm\":1.0,\"pivot_mode\":null}",
           "timeout": null
         }
       ],

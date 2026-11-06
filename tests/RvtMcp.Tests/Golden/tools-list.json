@@ -6157,7 +6157,7 @@
     },
     {
       "name": "revit_move_elements",
-      "description_hash": "sha256:5340f17e71760cb2cf5ec8a5816810fb4db03d61b133741d1bfe63d93a13b74b",
+      "description_hash": "sha256:41ba8c64adb50e9e44521446491d27ce170de0328e0b07d0942a439cc29cb0a6",
       "inputSchema": {
         "properties": {
           "dx_mm": {
@@ -6890,7 +6890,7 @@
     },
     {
       "name": "revit_rotate_elements",
-      "description_hash": "sha256:a36f36873644ae556398b68ee195a204c26f6a6d8d5840ec9d66c690ab1516b1",
+      "description_hash": "sha256:ba246cb1c3f9a11925ae9d2b1799407e369883c6792710822a9df6e4955b0e72",
       "inputSchema": {
         "properties": {
           "angle_degrees": {
@@ -6901,25 +6901,26 @@
             "description": "",
             "type": "Int64[]"
           },
+          "pivot_mode": {
+            "description": "",
+            "type": "String"
+          },
           "pivot_x_mm": {
             "description": "",
-            "type": "Double"
+            "type": "Nullable`1"
           },
           "pivot_y_mm": {
             "description": "",
-            "type": "Double"
+            "type": "Nullable`1"
           },
           "pivot_z_mm": {
             "description": "",
-            "type": "Double"
+            "type": "Nullable`1"
           }
         },
         "required": [
           "elementIds",
-          "angle_degrees",
-          "pivot_x_mm",
-          "pivot_y_mm",
-          "pivot_z_mm"
+          "angle_degrees"
         ],
         "type": "object"
       },

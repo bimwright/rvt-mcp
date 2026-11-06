@@ -65,15 +65,40 @@ Translation uses explicit model-coordinate deltas in millimetres:
 {"elementIds":[12345],"dx_mm":100,"dy_mm":-50,"dz_mm":0}
 ```
 
-Rotation uses degrees and a vertical Z axis through an explicit model-space
-pivot in millimetres. Positive angles turn counterclockwise when viewed
-from above. For example, rotate around the point `(1200, 3400, 0)`:
+Deltas run along the model X/Y/Z axes, which follow Project North, not True
+North. Every selected element moves by the same delta, so no origin is involved.
+
+Rotation uses degrees about a vertical Z axis. Positive angles turn
+counterclockwise when viewed from above. There is no default pivot; a call names
+exactly one of two pivots:
+
+| Pivot | Arguments | What turns |
+|---|---|---|
+| One explicit point | `pivot_x_mm`, `pivot_y_mm`, `pivot_z_mm` (optional `pivot_mode: "point"`) | The whole selection turns together about that point, like Revit Rotate with a placed center. |
+| Each element's own location | `pivot_mode: "each_location"`, no pivot coordinates | Each element turns in place about its location: a family instance's insertion point, or the midpoint between a location curve's end points. |
+
+An explicit pivot is in model coordinates: millimetres from Revit's internal
+origin, the same frame as `location_mm` in the results and as
+`revit_create_point_based_element`. It is not a Project Base Point or Survey
+Point coordinate. Because the axis is vertical, `pivot_z_mm` does not change
+the result. A family instance's insertion point is defined by its family and
+is not necessarily its geometric center; use the returned bounding box when the
+center matters.
+
+Rotate the selection about the point `(1200, 3400, 0)`:
 
 ```json
 {"elementIds":[12345],"angle_degrees":90,"pivot_x_mm":1200,"pivot_y_mm":3400,"pivot_z_mm":0}
 ```
 
-All coordinates are required, including zero components. IDs must be positive
+Turn each element in place:
+
+```json
+{"elementIds":[12345,12346],"angle_degrees":90,"pivot_mode":"each_location"}
+```
+
+With an explicit pivot, all three coordinates are required, including zero
+components. `each_location` refuses pivot coordinates. IDs must be positive
 integers; the raw selection is limited to 1000 IDs and duplicates are removed.
 Missing elements, types, pinned elements and individual group members are
 rejected before starting a transaction. The initial implementation supports

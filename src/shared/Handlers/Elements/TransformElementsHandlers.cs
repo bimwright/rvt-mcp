@@ -21,8 +21,8 @@ namespace RvtMcp.Plugin.Handlers
     public class RotateElementsHandler : IRevitCommand
     {
         public string Name => "rotate_elements";
-        public string Description => "Rotate existing elements around an explicit model-space vertical Z axis; degrees, positive counterclockwise, Undo supported.";
-        public string ParametersSchema => @"{""type"":""object"",""properties"":{""elementIds"":{""type"":""array"",""items"":{""type"":""integer""}},""angle_degrees"":{""type"":""number""},""pivot_x_mm"":{""type"":""number""},""pivot_y_mm"":{""type"":""number""},""pivot_z_mm"":{""type"":""number""}},""required"":[""elementIds"",""angle_degrees"",""pivot_x_mm"",""pivot_y_mm"",""pivot_z_mm""]}";
+        public string Description => "Rotate existing elements about a vertical Z axis through one explicit model-space pivot, or each about its own location (pivot_mode=each_location); degrees, positive counterclockwise, Undo supported.";
+        public string ParametersSchema => @"{""type"":""object"",""properties"":{""elementIds"":{""type"":""array"",""items"":{""type"":""integer""}},""angle_degrees"":{""type"":""number""},""pivot_x_mm"":{""type"":""number""},""pivot_y_mm"":{""type"":""number""},""pivot_z_mm"":{""type"":""number""},""pivot_mode"":{""type"":""string"",""enum"":[""point"",""each_location""]}},""required"":[""elementIds"",""angle_degrees""]}";
 
         public CommandResult Execute(UIApplication app, string paramsJson)
             => PlacementOperation.Execute(app, paramsJson, true);
@@ -61,9 +61,27 @@ namespace RvtMcp.Plugin.Handlers
             if (elements.Any(e => e is ElementType || e.Pinned || e.GroupId != ElementId.InvalidElementId))
                 return CommandResult.Fail("Types, pinned elements and individual group members are refused; nothing was changed.");
 
-            var x = Required(request, rotate ? "pivot_x_mm" : "dx_mm");
-            var y = Required(request, rotate ? "pivot_y_mm" : "dy_mm");
-            var z = Required(request, rotate ? "pivot_z_mm" : "dz_mm");
+            var eachLocation = false;
+            if (rotate)
+            {
+                var mode = request["pivot_mode"];
+                if (mode != null && mode.Type != JTokenType.Null)
+                {
+                    if (mode.Type == JTokenType.String && (string)mode == "each_location") eachLocation = true;
+                    else if (mode.Type != JTokenType.String || (string)mode != "point")
+                        return CommandResult.Fail("pivot_mode must be 'point' or 'each_location'; nothing was changed.");
+                }
+                if (eachLocation && new[] { "pivot_x_mm", "pivot_y_mm", "pivot_z_mm" }.Any(name => request[name] != null && request[name].Type != JTokenType.Null))
+                    return CommandResult.Fail("pivot_mode='each_location' turns each element about its own location; omit pivot_x_mm, pivot_y_mm and pivot_z_mm. Nothing was changed.");
+            }
+
+            double x = 0, y = 0, z = 0;
+            if (!eachLocation)
+            {
+                x = Required(request, rotate ? "pivot_x_mm" : "dx_mm");
+                y = Required(request, rotate ? "pivot_y_mm" : "dy_mm");
+                z = Required(request, rotate ? "pivot_z_mm" : "dz_mm");
+            }
             var degrees = rotate ? Required(request, "angle_degrees") : 0;
             PlacementInput.Finite(x, y, z, degrees);
             // A full turn is equivalent to zero; normalizing avoids overflow and
@@ -73,7 +91,11 @@ namespace RvtMcp.Plugin.Handlers
             var before = elements.Select(Snapshot).ToArray();
             if (before.Any(s => s.Point == null))
                 return CommandResult.Fail("Only elements with a point or bounded curve location are supported; nothing was changed.");
-            var transform = rotate ? Transform.CreateRotationAtPoint(XYZ.BasisZ, radians, vector) : Transform.CreateTranslation(vector);
+            // In each_location mode every element turns about its own location point, or about
+            // the midpoint between a location curve's end points.
+            var pivots = before.Select(s => !eachLocation ? vector : s.End == null ? s.Point
+                : new XYZ((s.Point.X + s.End.X) / 2, (s.Point.Y + s.End.Y) / 2, (s.Point.Z + s.End.Z) / 2)).ToArray();
+            var transforms = pivots.Select(p => rotate ? Transform.CreateRotationAtPoint(XYZ.BasisZ, radians, p) : Transform.CreateTranslation(vector)).ToArray();
 
             State[] after;
             // Keep committed inner edits reversible until final placement is known.
@@ -91,12 +113,15 @@ namespace RvtMcp.Plugin.Handlers
                             throw new InvalidOperationException("Revit did not start the placement transaction; nothing was changed.");
                         try
                         {
-                            if (rotate)
+                            if (!rotate)
+                                ElementTransformUtils.MoveElements(doc, ids, vector);
+                            else if (!eachLocation)
                                 ElementTransformUtils.RotateElements(doc, ids, Line.CreateBound(vector, vector + XYZ.BasisZ), radians);
                             else
-                                ElementTransformUtils.MoveElements(doc, ids, vector);
+                                for (var i = 0; i < ids.Count; i++)
+                                    ElementTransformUtils.RotateElement(doc, ids[i], Line.CreateBound(pivots[i], pivots[i] + XYZ.BasisZ), radians);
                             doc.Regenerate();
-                            ValidatePlacement(doc, ids, before, transform, rotate ? radians : 0);
+                            ValidatePlacement(doc, ids, before, transforms, rotate ? radians : 0);
                             if (tx.Commit() != TransactionStatus.Committed)
                                 throw new InvalidOperationException("Revit did not commit the transaction; changes were not confirmed.");
                         }
@@ -109,7 +134,7 @@ namespace RvtMcp.Plugin.Handlers
                     // Commit may apply auto-joins or other finalization changes.
                     // Re-resolve IDs, validate the committed state, and capture the
                     // response while the group can still restore the whole selection.
-                    after = ValidatePlacement(doc, ids, before, transform, rotate ? radians : 0);
+                    after = ValidatePlacement(doc, ids, before, transforms, rotate ? radians : 0);
                     if (group.Assimilate() != TransactionStatus.Committed)
                         throw new InvalidOperationException("Revit did not finalize the placement group; changes were not confirmed.");
                 }
@@ -127,18 +152,21 @@ namespace RvtMcp.Plugin.Handlers
             {
                 operation = rotate ? "rotate" : "move", count = ids.Count,
                 angle_degrees = degrees,
+                pivot_mode = rotate ? (eachLocation ? "each_location" : "point") : null,
+                pivot_mm = rotate && !eachLocation ? Coordinates(vector) : null,
                 before = before.Select(s => s.Dto).ToArray(),
                 after = after.Select(state => state.Dto).ToArray()
             });
         }
 
-        private static State[] ValidatePlacement(Document doc, List<ElementId> ids, State[] before, Transform transform, double angle)
+        private static State[] ValidatePlacement(Document doc, List<ElementId> ids, State[] before, Transform[] transforms, double angle)
         {
             var result = ids.Select(id => Snapshot(doc.GetElement(id))).ToArray();
             for (var i = 0; i < result.Length; i++)
             {
                 var actual = result[i];
                 var expected = before[i];
+                var transform = transforms[i];
                 if (actual.Point == null || actual.Point.DistanceTo(transform.OfPoint(expected.Point)) > PositionTolerance
                     || (expected.End != null && (actual.End == null || actual.End.DistanceTo(transform.OfPoint(expected.End)) > PositionTolerance))
                     || (expected.Rotation.HasValue && (!actual.Rotation.HasValue
