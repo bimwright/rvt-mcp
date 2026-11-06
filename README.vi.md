@@ -98,11 +98,11 @@ Các số dưới đây áp dụng cho source đang phát triển; **bản v1.2.
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
 | Fresh install | **251** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **60** | `query` + `create` + `view` + `meta` |
+| Bare `rvt-mcp.exe` | **59** | `query` + `create` + `view` + `meta` |
 | `--toolsets all` | **251** | Full catalog |
 | `all` + adaptive bake | **254** | Thêm 3 tool vòng đời suggestion |
 
-Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 60 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline; báo cáo agent được phép vì chỉ ghi dữ liệu báo cáo của người dùng.
+Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 59 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline; báo cáo agent được phép vì chỉ ghi dữ liệu báo cáo của người dùng.
 
 | Toolset | Phạm vi |
 |---------|---------|

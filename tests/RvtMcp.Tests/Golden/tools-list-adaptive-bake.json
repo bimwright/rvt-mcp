@@ -1964,7 +1964,7 @@
     },
     {
       "name": "revit_create_mesh_shapes",
-      "description_hash": "sha256:8d86876f25b6663fd993cf91264b755cf8f2900c335592a61da00599133b4a57",
+      "description_hash": "sha256:911255afaff76e28a4e24f3df838d12bcea0a5d85c8017e8b4c5052b9cd93619",
       "inputSchema": {
         "properties": {
           "file": {

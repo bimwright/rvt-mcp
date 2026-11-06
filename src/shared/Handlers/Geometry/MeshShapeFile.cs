@@ -55,9 +55,9 @@ namespace RvtMcp.Plugin.Handlers
         };
 
         /// <summary>The whole file is parsed on Revit's UI thread, so its size is capped.</summary>
-        public const long MaxFileBytes = 256L * 1024 * 1024;
+        public const long MaxFileBytes = 64L * 1024 * 1024;
         /// <summary>Faces summed over all shapes; larger imports should be split across files.</summary>
-        public const int MaxTotalFaces = 2000000;
+        public const int MaxTotalFaces = 500000;
 
         /// <summary>Characters Revit rejects in element and material names.</summary>
         private static readonly char[] InvalidNameChars = { '\\', ':', '{', '}', '[', ']', '|', ';', '<', '>', '?', '`', '~' };

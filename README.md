@@ -95,11 +95,11 @@ Counts below describe the current development source. The **v1.2.2 release** has
 | Mode | Tools | Notes |
 |------|------:|-------|
 | Fresh install | **251** | `install.ps1` seeds `"toolsets": ["all"]` in `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **60** | `query` + `create` + `view` + `meta` |
+| Bare `rvt-mcp.exe` | **59** | `query` + `create` + `view` + `meta` |
 | `--toolsets all` | **251** | Full catalog |
 | `all` + adaptive bake | **254** | Adds 3 suggestion-lifecycle tools |
 
-Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 60-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline; agent reports are allowed because they only write per-user report data.
+Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 59-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline; agent reports are allowed because they only write per-user report data.
 
 | Toolset | What it covers |
 |---------|----------------|
