@@ -1121,6 +1121,28 @@
       "result": "Error: golden probe failure"
     }
   },
+  "revit_create_mesh_shapes": {
+    "success": {
+      "calls": [
+        {
+          "command": "create_mesh_shapes",
+          "params": "{\"file\":\"probe\",\"replace_existing\":false,\"update_materials\":false,\"mesh_only\":false}",
+          "timeout": 600
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "create_mesh_shapes",
+          "params": "{\"file\":\"probe\",\"replace_existing\":false,\"update_materials\":false,\"mesh_only\":false}",
+          "timeout": 600
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
   "revit_create_pipe": {
     "success": {
       "calls": [
