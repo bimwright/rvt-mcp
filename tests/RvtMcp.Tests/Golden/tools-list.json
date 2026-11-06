@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 251,
+  "tool_count": 253,
   "tools": [
     {
       "name": "revit_acquire_coordinates_from_link",
@@ -6156,6 +6156,43 @@
       }
     },
     {
+      "name": "revit_move_elements",
+      "description_hash": "sha256:41ba8c64adb50e9e44521446491d27ce170de0328e0b07d0942a439cc29cb0a6",
+      "inputSchema": {
+        "properties": {
+          "dx_mm": {
+            "description": "",
+            "type": "Double"
+          },
+          "dy_mm": {
+            "description": "",
+            "type": "Double"
+          },
+          "dz_mm": {
+            "description": "",
+            "type": "Double"
+          },
+          "elementIds": {
+            "description": "",
+            "type": "Int64[]"
+          }
+        },
+        "required": [
+          "elementIds",
+          "dx_mm",
+          "dy_mm",
+          "dz_mm"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "revit_open_model",
       "description_hash": "sha256:947d8f59c1978795cc932c624adf451404cecf6f30e81de546aa60e66b588ef7",
       "inputSchema": {
@@ -6841,6 +6878,49 @@
           "sourceModelKey",
           "decision",
           "reason"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_rotate_elements",
+      "description_hash": "sha256:537d60d2d895d9bb925f5958a98d115048244727cdd3b9f72c5f031c680256a1",
+      "inputSchema": {
+        "properties": {
+          "angle_degrees": {
+            "description": "",
+            "type": "Double"
+          },
+          "elementIds": {
+            "description": "",
+            "type": "Int64[]"
+          },
+          "pivot_mode": {
+            "description": "",
+            "type": "String"
+          },
+          "pivot_x_mm": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "pivot_y_mm": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "pivot_z_mm": {
+            "description": "",
+            "type": "Nullable`1"
+          }
+        },
+        "required": [
+          "elementIds",
+          "angle_degrees"
         ],
         "type": "object"
       },

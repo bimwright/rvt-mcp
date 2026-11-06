@@ -51,3 +51,95 @@ Connection verification accepts a direct connection or two distinct physical por
 ## Evidence and limits
 
 Revit 2022/2024/2027 builds passed at the v0.6.2 acceptance checkpoint; live acceptance was on Revit 2027. The reporters' Revit 2025/2026 environments were not tested. Build coverage does not establish runtime acceptance on those versions. See the [automated test guide](../tests/RvtMcp.Tests/README.md) for reproducible unit coverage.
+
+## Moving and rotating existing elements (unreleased)
+
+Use `revit_move_elements` and `revit_rotate_elements` from the `modify` toolset
+to adjust existing instances without `send_code_to_revit` or ToolBaker.
+Read the intended elements' current locations and confirm the active target
+and document before editing.
+
+Translation uses explicit model-coordinate deltas in millimetres:
+
+```json
+{"elementIds":[12345],"dx_mm":100,"dy_mm":-50,"dz_mm":0}
+```
+
+Deltas run along the model X/Y/Z axes, which follow Project North, not True
+North. Every selected element moves by the same delta, so no origin is involved.
+
+Rotation uses degrees about a vertical Z axis. Positive angles turn
+counterclockwise when viewed from above. There is no default pivot; a call names
+exactly one of two pivots:
+
+| Pivot | Arguments | What turns |
+|---|---|---|
+| One explicit point | `pivot_x_mm`, `pivot_y_mm`, optional `pivot_z_mm` (optional `pivot_mode: "point"`) | The whole selection turns together about that point, like Revit Rotate with a placed center. |
+| Each element's own location | `pivot_mode: "each_location"`, no pivot coordinates | Each element turns in place about its location: a family instance's insertion point, or the midpoint between a location curve's end points. |
+
+An explicit pivot is in model coordinates: millimetres from Revit's internal
+origin, the same frame as `location_mm` in the results and as
+`revit_create_point_based_element`. It is not a Project Base Point or Survey
+Point coordinate. Because the axis is vertical, `pivot_z_mm` does not change
+the result and defaults to 0. A family instance's insertion point is defined by its family and
+is not necessarily its geometric center; use the returned bounding box when the
+center matters.
+
+Rotate the selection about the point `(1200, 3400, 0)`:
+
+```json
+{"elementIds":[12345],"angle_degrees":90,"pivot_x_mm":1200,"pivot_y_mm":3400,"pivot_z_mm":0}
+```
+
+Turn each element in place:
+
+```json
+{"elementIds":[12345,12346],"angle_degrees":90,"pivot_mode":"each_location"}
+```
+
+With an explicit pivot, `pivot_x_mm` and `pivot_y_mm` are required, including
+zero components. `each_location` refuses pivot coordinates. Rooms and model
+groups have a location point without a readable rotation, so only their
+position is checked. IDs must be positive
+integers; the raw selection is limited to 1000 IDs and duplicates are removed.
+Missing elements, types, pinned elements and individual group members are
+rejected before starting a transaction. The initial implementation supports
+point locations and bounded curve locations; other selections are refused.
+This is not a host-reassignment or constraint-editing tool.
+
+Both tools return actual `before` and `after` records with element IDs,
+locations, curve endpoints where applicable, point rotation in degrees and
+available bounding boxes. Revit's actual locations are checked after
+regeneration and again after the inner transaction commits (1 mm position and
+1e-6 radian angle tolerance). The committed elements are looked up again by ID.
+A transaction group remains open until these final snapshots are validated, so
+commit-time changes, a missing element or a failed snapshot roll back the whole
+selected set. Only then is the group assimilated into one native Undo item. Within
+`batch_execute`, the existing `continueOnError` and transaction-group policy
+still apply.
+
+These edits are relative and non-idempotent. Inspect the current model before
+retrying a call whose outcome is unknown; a repeated successful call applies
+the displacement or angle again.
+
+### Transform verification
+
+`ElementTransformTests` compiles the production handlers against API doubles
+to test validation, explicit pivots, negative/wrapped angles, curve endpoints,
+partial selection failure, commit-time changes/deletion and transaction-group rollback. Catalog and wrapper
+snapshots cover the public protocol. These checks cannot establish real Revit
+constraint, failure-dialog or Undo behavior.
+
+Before accepting the change, use a disposable model in a supported Revit year:
+
+1. Move a free point-based instance by an explicit XYZ delta and verify its
+   actual coordinates; Undo once and verify the original location.
+2. Rotate an instance by +90 and -90 degrees about an offset pivot; verify both
+   position and orientation, then Undo.
+3. Repeat with a bounded curve-based element.
+4. Select a pinned or missing element alongside a valid one; verify that
+   neither moves. Test a constrained translation and rotation as well.
+5. Run a move followed by a failing transform in `batch_execute` with
+   `continueOnError=false`; verify outer group rollback.
+6. Verify read-only mode blocks both commands and the normal target/document
+   confirmation and native failure-policy prompts still apply.
