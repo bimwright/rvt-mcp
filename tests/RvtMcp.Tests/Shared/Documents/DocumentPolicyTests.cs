@@ -30,10 +30,19 @@ namespace RvtMcp.Tests.Shared.Documents
         [Theory]
         [InlineData("workshared_central")]
         [InlineData("cloud")]
-        [InlineData("unsaved")]
         public void Unsupported_save_modes_allow_state_only(string mode)
         {
             Assert.Equal(new[] { "revit_get_document_state" }, DocumentPolicy.ForMode(mode).Allowed);
+        }
+
+        [Theory]
+        [InlineData("unsaved")]
+        [InlineData("template")]
+        public void Documents_without_a_project_file_may_only_save_as_to_a_user_path(string mode)
+        {
+            var policy = DocumentPolicy.ForMode(mode);
+            Assert.Equal(new[] { "revit_get_document_state", "revit_save_document" }, policy.Allowed);
+            Assert.Contains(policy.Rules, r => r.Contains("save_as_path") && r.Contains("never choose the path"));
         }
 
         [Fact]

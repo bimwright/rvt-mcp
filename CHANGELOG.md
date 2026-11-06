@@ -4,6 +4,7 @@
 
 - Add `revit_get_document_state` to `meta` and the opt-in `documents` toolset with `revit_save_document`, `revit_save_checkpoint` and `revit_manage_checkpoints`. State reads exclude loaded links and report an unavailable or busy document index without losing other document results.
 - Save checks mode, external file changes and format-upgrade consent. Local models and families use a per-user record of a minimum 20-backup limit; workshared local save does not sync central. Checkpoints are verified copies; pruning requires an approved dry-run hash, and restore creates a separate file. A checkpoint failure can follow a successful save. Save, checkpoint and checkpoint management take `timeout_seconds` (1–900, default 600). See [document lifecycle](docs/document-lifecycle.md).
+- A `.rte` opened for editing is a `template` and is never saved in place. An unsaved document or a template is saved once with `revit_save_document(save_as_path)` to a new local `.rvt` the user names, which starts a project from a template; an existing file is never overwritten. Path rules and the template guard come from `revit_save_model` in [#29](https://github.com/bimwright/rvt-mcp/pull/29); thanks [@gbwzzy218](https://github.com/gbwzzy218).
 - `revit_open_model`:
   - Expands environment variables such as `%USERPROFILE%` in the Revit.ini `ProjectPath`.
   - Stops when `ProjectPath` is empty or is still not a full folder path, and names File > Options > File Locations > *Default path for user files*.

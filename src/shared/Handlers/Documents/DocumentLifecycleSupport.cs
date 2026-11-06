@@ -49,6 +49,8 @@ namespace RvtMcp.Plugin.Handlers
             internal int? MinBackupsEnsured;
             internal string EnsuredBy;
             internal bool RaisedNow;
+            internal bool SavedAs;
+            internal string SourceMode;
             internal List<string> Warnings = new List<string>();
 
             internal object ToDto() => new
@@ -57,6 +59,8 @@ namespace RvtMcp.Plugin.Handlers
                 reason = Reason,
                 path = Path,
                 mode = Mode,
+                saved_as = SavedAs,
+                source_mode = SourceMode,
                 number_of_saves = NumberOfSaves,
                 backups = new { count_on_disk = BackupCount, min_backups_ensured = MinBackupsEnsured, ensured_by = EnsuredBy, raised_now = RaisedNow },
                 warnings = Warnings,
@@ -204,6 +208,68 @@ namespace RvtMcp.Plugin.Handlers
             catch
             {
                 result.NumberOfSaves = null;
+                result.Warnings.Add("SAVED_VERSION_UNAVAILABLE");
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// First save of a document without its own project file (unsaved, or a .rte opened for editing)
+        /// to a new local .rvt path. Never overwrites a file; the new file starts with at least 20 backups.
+        /// </summary>
+        internal static SaveOutcome SaveAsNew(UIApplication app, Document doc, string target, out string error)
+        {
+            error = null;
+            if (doc == null) { error = "NO_ACTIVE_DOCUMENT"; return null; }
+            var context = Capture(doc);
+            error = context.ModeError ?? SaveAsPathPolicy.CheckMode(context.Mode);
+            if (error != null) return null;
+            var pathError = SaveAsPathPolicy.CheckPath(target);
+            if (pathError != null) { error = "SAVE_AS_PATH_INVALID: " + pathError; return null; }
+
+            var path = System.IO.Path.GetFullPath(target);
+            foreach (Document open in app.Application.Documents)
+            {
+                if (!open.Equals(doc) && OpenModelLocalPolicy.PathsEqual(open.PathName, path))
+                {
+                    error = "SAVE_AS_PATH_IN_USE: save_as_path is the file of another open document; choose another path.";
+                    return null;
+                }
+            }
+            var folder = System.IO.Path.GetDirectoryName(path);
+            if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder))
+            {
+                error = "SAVE_AS_FOLDER_MISSING: the folder of save_as_path does not exist on the Revit machine.";
+                return null;
+            }
+            if (File.Exists(path))
+            {
+                error = "SAVE_AS_TARGET_EXISTS: a file already exists at save_as_path and is never overwritten; choose a new file name.";
+                return null;
+            }
+
+            using (var options = new SaveAsOptions { OverwriteExistingFile = false, MaximumBackups = BackupLimitRegistry.MinimumBackups })
+                doc.SaveAs(path, options);
+            // Native pre-events may cancel even if the API returns normally.
+            FailureControl.ThrowIfStopped();
+
+            var result = new SaveOutcome
+            {
+                Saved = true, SavedAs = true, SourceMode = context.Mode, Path = doc.PathName, Mode = Capture(doc).Mode,
+                MinBackupsEnsured = BackupLimitRegistry.MinimumBackups, EnsuredBy = "raised", RaisedNow = true
+            };
+            try
+            {
+                if (!new BackupLimitRegistry().Record(result.Path, "raised", DateTimeOffset.UtcNow, HostYear(app)))
+                    result.Warnings.Add("BACKUP_REGISTRY_BUSY");
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)
+            {
+                result.Warnings.Add("BACKUP_REGISTRY_WRITE_FAILED");
+            }
+            try { result.NumberOfSaves = Document.GetDocumentVersion(doc).NumberOfSaves; }
+            catch
+            {
                 result.Warnings.Add("SAVED_VERSION_UNAVAILABLE");
             }
             return result;

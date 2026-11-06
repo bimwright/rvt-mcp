@@ -8,7 +8,8 @@ namespace RvtMcp.Tests.Shared.Documents
     {
         [Theory]
         [InlineData(false, false, false, @"C:\Models\tower.rvt", null, "local_file")]
-        [InlineData(false, false, false, @"C:\Models\template.rte", null, "local_file")]
+        [InlineData(false, false, false, @"C:\Models\template.rte", null, "template")]
+        [InlineData(false, false, false, @"C:\Models\Template.RTE", null, "template")]
         [InlineData(false, true, false, @"C:\Models\chair.rfa", null, "family")]
         [InlineData(false, false, true, @"C:\Models\tower-local.rvt", @"C:\Models\tower.rvt", "workshared_local")]
         [InlineData(false, false, true, @"C:\Models\Tower.rvt", @"c:\models\tower.rvt", "workshared_central")]

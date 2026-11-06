@@ -9,13 +9,13 @@ Use `revit_get_document_state` before saving and follow the returned `policy`. A
 | Tool | Toolset | Effect |
 | --- | --- | --- |
 | `revit_get_document_state` | `meta` | Read the active document or all open documents and the active document's policy. |
-| `revit_save_document` | `documents` | Save the active document, overwriting its working file. |
+| `revit_save_document` | `documents` | Save the active document, overwriting its working file; or save a document without a project file to a new `.rvt`. |
 | `revit_save_checkpoint` | `documents` | Save the active document if modified, then make a verified file copy and add it to the checkpoint index. |
 | `revit_manage_checkpoints` | `documents` | List, prune or restore checkpoints of the active document. |
 
 The `documents` toolset is off in bare server defaults. Enable `--toolsets all`, or include both `meta` and `documents` in an explicit toolset list; selecting `documents` alone does not include the state tool. An installed configuration may already select `all`. `--read-only` keeps the state tool when `meta` is enabled, but removes all three `documents` tools, including the list action. The three `documents` commands must be called directly: `revit_batch_execute` refuses them, including `manage_checkpoints` with `action="list"`.
 
-`revit_save_document` and `revit_save_checkpoint` take `allow_format_upgrade` (default `false`) and `timeout_seconds` (1–900, default 600). `revit_manage_checkpoints` takes the same `timeout_seconds`, because a restore copies the whole model file. A caller timeout can occur while Revit is still processing the operation. Inspect its operation receipt and `revit_get_operation_status` before deciding what to do; do not blindly retry a save.
+`revit_save_document` and `revit_save_checkpoint` take `allow_format_upgrade` (default `false`) and `timeout_seconds` (1–900, default 600). `revit_save_document` also takes `save_as_path` for the first save of a document without a project file; see below. `revit_manage_checkpoints` takes the same `timeout_seconds`, because a restore copies the whole model file. A caller timeout can occur while Revit is still processing the operation. Inspect its operation receipt and `revit_get_operation_status` before deciding what to do; do not blindly retry a save.
 
 ## Inspecting a document
 
@@ -35,16 +35,23 @@ Unavailable observations remain unknown rather than being guessed. Check the doc
 
 | Mode | Save | Checkpoint / manage |
 | --- | --- | --- |
-| `local_file` | Save a non-workshared `.rvt` or `.rte` at its existing path. | Supported. |
+| `local_file` | Save a non-workshared `.rvt` at its existing path. | Supported. |
+| `template` | A `.rte` opened for editing. Saving in place is refused so the template is never overwritten; save it as a new `.rvt` with `save_as_path`. Saving the template itself is left to the user in Revit. | Not supported. |
 | `family` | Save a family at its existing path. | Supported. |
 | `workshared_local` | Save only the local file. Sync to central is not supported; tell the user about unsynchronized changes. | Not supported. |
 | `workshared_central` | Do not save a central opened directly. Ask the user to reopen a local copy; `revit_open_model` creates a local for a workshared input. | Not supported. |
 | `cloud` | Not supported; ask the user to save in Revit. | Not supported. |
-| `unsaved` | No path has been chosen; ask the user to use Save As in Revit. | Not supported. |
+| `unsaved` | No path has been chosen. Save with `save_as_path` only to a path the user gave; otherwise ask the user to use Save As in Revit. | Not supported. |
 
 If a workshared document's central path cannot be read, the state returns `mode=null` and `mode_error="WORKSHARED_CENTRAL_UNKNOWN"`; save and checkpoint refuse rather than guessing the mode.
 
 For `revit_save_document`, checks stop in this order: an active document and an allowed mode; file exists; disk save count has not changed; if unmodified, return `saved=false, reason="no_changes"`; then check format upgrade and file ReadOnly. An unmodified file therefore returns `no_changes` before the upgrade and ReadOnly checks. A modified file in an older format requires the user's explicit approval and `allow_format_upgrade=true`; a modified file whose format cannot be determined is refused. The tool never clears ReadOnly on the user's working file.
+
+### Saving a document without a project file
+
+An `unsaved` document, or a `template` (`.rte`) opened with `revit_open_model`, has no project file of its own. Save it with `revit_save_document(save_as_path=...)`, an absolute local `.rvt` path that **the user gave**; the agent never chooses the path. This is how a new project is started from a template. `save_as_path` is refused for every other mode (`SAVE_AS_NOT_ALLOWED`); copies of a saved model are checkpoints.
+
+The path must start with a drive letter, end in `.rvt`, and be on a local drive (UNC paths and mapped network drives are refused). Its folder must exist, it must not be the file of another open document, and an existing file is **never overwritten**. The new file is created with `MaximumBackups=20` and recorded with `ensured_by="raised"`. The response has `saved_as=true`, `source_mode` (`unsaved` or `template`) and the new `path`; the document's mode is then `local_file`, and later saves follow the rules above. The template file itself is not changed.
 
 Revit's existing native-action guard still applies. If a save requires a user decision, inspect `_failure` and the Issues record; a user can grant the native action once in History → Issues, after which the agent retries the **same** command. Saving a workshared local, including the first save of a newly created local, needs no such grant unless the save would upgrade the file format; saving a central opened directly still does. This is separate from approval to upgrade a file format. See [controlled failures](controlled-failures.md).
 
@@ -62,7 +69,7 @@ The per-user registry is `%LOCALAPPDATA%\Bimwright\rvt-mcp\documents\backup-limi
 
 ## Creating a checkpoint
 
-Call `revit_save_checkpoint` on an active local model, template or family with a nonblank `label` of at most 80 characters. Optional `reason` is at most 500 characters, and `milestone` defaults to `false`. The same active-mode, file existence and disk-version checks apply. Format upgrade and ReadOnly checks apply when the document is modified and must be saved first. The tool also checks the index and requires free space of at least 1.1 times the model file's size.
+Call `revit_save_checkpoint` on an active local model or family with a nonblank `label` of at most 80 characters. Optional `reason` is at most 500 characters, and `milestone` defaults to `false`. The same active-mode, file existence and disk-version checks apply. Format upgrade and ReadOnly checks apply when the document is modified and must be saved first. The tool also checks the index and requires free space of at least 1.1 times the model file's size.
 
 If modified, Revit first saves the working file using the backup rules above. The tool then copies it without overwriting into `<model-folder>\<Model>.checkpoints\<yyyyMMdd-HHmmss>[-n].<rvt|rfa|rte>`, clears ReadOnly on its new copy, verifies size and the disk `NumberOfSaves`/`VersionGUID`, and atomically updates `index.json`. The ID uses local clock time; stored `created_utc` values determine newest-first ordering. Duplicate names gain `-2`, `-3`, and so on. A successful response includes `checkpoint`, `saved_first`, totals and, when there are more than five non-milestones, a `prune_hint`. The hint never deletes anything automatically.
 
@@ -89,7 +96,13 @@ The following errors are in addition to ordinary argument validation and the sha
 | `WORKSHARED_CENTRAL_UNKNOWN` | The central path could not be read; no mode is guessed. |
 | `CENTRAL_OPEN_DIRECTLY` | Saving a directly opened central is refused. |
 | `CLOUD_MODEL_UNSUPPORTED` | The requested write is not supported for a cloud model. |
-| `DOCUMENT_NEVER_SAVED` | The document has no path. Save As in Revit. |
+| `DOCUMENT_NEVER_SAVED` | The document has no path. Save with `save_as_path` the user gave, or Save As in Revit. |
+| `TEMPLATE_SAVE_AS_REQUIRED` | The active document is a `.rte` template; it is not saved in place. Use `save_as_path` for a new `.rvt`. |
+| `SAVE_AS_NOT_ALLOWED` | `save_as_path` was given for a document that already has its own file, or whose mode is unsupported. |
+| `SAVE_AS_PATH_INVALID` | `save_as_path` is not an absolute local `.rvt` path; the message gives the reason. |
+| `SAVE_AS_PATH_IN_USE` | `save_as_path` is the file of another open document. |
+| `SAVE_AS_FOLDER_MISSING` | The folder of `save_as_path` does not exist on the Revit machine. |
+| `SAVE_AS_TARGET_EXISTS` | A file already exists at `save_as_path`; it is never overwritten. |
 | `FILE_MISSING_ON_DISK` | The working file is no longer present. |
 | `FILE_CHANGED_ON_DISK` | Disk and memory save counts differ. If this followed UI Reload on a workshared local, ask the user to review and Save local in Revit, then re-read state before retrying. Otherwise inspect possible external replacement; do not overwrite automatically. |
 | `FORMAT_UPGRADE_NEEDS_USER` | The file is older and explicit upgrade approval was not supplied. |

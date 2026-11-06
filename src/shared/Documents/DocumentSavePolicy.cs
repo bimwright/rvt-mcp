@@ -15,6 +15,7 @@ namespace RvtMcp.Plugin.Documents
             {
                 case "cloud": return "CLOUD_MODEL_UNSUPPORTED";
                 case "unsaved": return "DOCUMENT_NEVER_SAVED";
+                case "template": return "TEMPLATE_SAVE_AS_REQUIRED";
                 case "workshared_central": return "CENTRAL_OPEN_DIRECTLY";
                 case "local_file":
                 case "family":

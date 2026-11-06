@@ -8,16 +8,19 @@ namespace RvtMcp.Server
     public class DocumentTools
     {
         [McpServerTool(Name = "revit_save_document", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), Description(
-            "Save the confirmed active document after verified work, following revit_get_document_state policy. This overwrites the working file; Revit keeps a backup. Older formats require explicit user approval and allow_format_upgrade=true. A timeout may leave the operation running; inspect its status before retrying. Example: revit_save_document(allow_format_upgrade=false, timeout_seconds=600).")]
+            "Save the confirmed active document after verified work, following revit_get_document_state policy. This overwrites the working file; Revit keeps a backup. Older formats require explicit user approval and allow_format_upgrade=true. " +
+            "A document with no project file yet (unsaved, or a .rte template opened for editing) is saved only with save_as_path, a new local .rvt the user named; existing files are never overwritten. " +
+            "A timeout may leave the operation running; inspect its status before retrying. Example: revit_save_document(allow_format_upgrade=false, timeout_seconds=600).")]
         public static async Task<string> SaveDocument(
             [Description("Allow saving in the host's newer Revit format only after explicit user approval (default false).")] bool allow_format_upgrade = false,
-            [Description("Seconds to wait, 1-900 (default 600); inspect operation status after a timeout before retrying.")] int timeout_seconds = 600)
+            [Description("Seconds to wait, 1-900 (default 600); inspect operation status after a timeout before retrying.")] int timeout_seconds = 600,
+            [Description("First save only: absolute local .rvt path the user gave, for an unsaved document or an opened .rte template. Omit for a normal save.")] string save_as_path = null)
         {
             var blocked = ServerState.BlockIfReadOnly("save_document");
             if (blocked != null) return blocked;
             var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
             if (timeoutError != null) return timeoutError;
-            return await ToolGateway.CallAsync("save_document", new { allow_format_upgrade }, timeout_seconds);
+            return await ToolGateway.CallAsync("save_document", new { allow_format_upgrade, save_as_path }, timeout_seconds);
         }
 
         [McpServerTool(Name = "revit_save_checkpoint", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), Description(

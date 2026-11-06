@@ -51,8 +51,24 @@ namespace RvtMcp.Plugin.Documents
                     return new DocumentPolicy
                     {
                         Mode = mode,
-                        Rules = new[] { "This document has not been saved.", "Ask the user to use Save As in Revit; tools do not choose the path." },
-                        Allowed = new[] { "revit_get_document_state" }
+                        Rules = new[]
+                        {
+                            "This document has not been saved.",
+                            "Save it with revit_save_document(save_as_path) only to a new local .rvt path the user gave; never choose the path yourself. Otherwise ask the user to use Save As in Revit."
+                        },
+                        Allowed = new[] { "revit_get_document_state", "revit_save_document" }
+                    };
+                case "template":
+                    return new DocumentPolicy
+                    {
+                        Mode = mode,
+                        Rules = new[]
+                        {
+                            "This is a template file (.rte) opened for editing; do not overwrite it.",
+                            "To start a project from it, save it with revit_save_document(save_as_path) to a new local .rvt path the user gave; never choose the path yourself.",
+                            "Saving the template itself is left to the user in Revit."
+                        },
+                        Allowed = new[] { "revit_get_document_state", "revit_save_document" }
                     };
                 default:
                     throw new ArgumentException("Unknown document mode.", nameof(mode));

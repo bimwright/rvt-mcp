@@ -6972,12 +6972,16 @@
     },
     {
       "name": "revit_save_document",
-      "description_hash": "sha256:c9cb4a211ea5e75d15b10bc6143410f7becd4ab822962dc2fecf9e3650e0e00e",
+      "description_hash": "sha256:980e6e54c1a3c201ec5af8c75fdf6f29294712713dc27f1e9c980acdc480276a",
       "inputSchema": {
         "properties": {
           "allow_format_upgrade": {
             "description": "Allow saving in the host's newer Revit format only after explicit user approval (default false).",
             "type": "Boolean"
+          },
+          "save_as_path": {
+            "description": "First save only: absolute local .rvt path the user gave, for an unsaved document or an opened .rte template. Omit for a normal save.",
+            "type": "String"
           },
           "timeout_seconds": {
             "description": "Seconds to wait, 1-900 (default 600); inspect operation status after a timeout before retrying.",

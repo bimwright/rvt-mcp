@@ -8,6 +8,8 @@ namespace RvtMcp.Tests.Shared.Documents
         [Theory]
         [InlineData("cloud", false, "CLOUD_MODEL_UNSUPPORTED")]
         [InlineData("unsaved", false, "DOCUMENT_NEVER_SAVED")]
+        [InlineData("template", false, "TEMPLATE_SAVE_AS_REQUIRED")]
+        [InlineData("template", true, "TEMPLATE_SAVE_AS_REQUIRED")]
         [InlineData("workshared_central", false, "CENTRAL_OPEN_DIRECTLY")]
         [InlineData("workshared_local", true, "CHECKPOINT_WORKSHARED_UNSUPPORTED")]
         [InlineData("workshared_central", true, "CHECKPOINT_WORKSHARED_UNSUPPORTED")]

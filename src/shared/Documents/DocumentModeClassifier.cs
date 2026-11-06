@@ -10,6 +10,8 @@ namespace RvtMcp.Plugin.Documents
             if (isCloud) return "cloud";
             if (string.IsNullOrWhiteSpace(path)) return "unsaved";
             if (isFamily) return "family";
+            // revit_open_model opens a .rte for editing; an in-place save would overwrite the template itself.
+            if (path.EndsWith(".rte", StringComparison.OrdinalIgnoreCase)) return "template";
             if (!isWorkshared) return "local_file";
             if (string.IsNullOrWhiteSpace(centralPath))
                 throw new ArgumentException("A central path is required for a workshared document.", nameof(centralPath));

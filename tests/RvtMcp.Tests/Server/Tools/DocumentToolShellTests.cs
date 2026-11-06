@@ -29,6 +29,16 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public async Task Save_forwards_save_as_path_only_when_given()
+        {
+            var plain = await Capture.Send(() => DocumentTools.SaveDocument());
+            // The gateway drops null arguments, so a normal save sends no save_as_path at all.
+            Assert.Null(plain.Json()["save_as_path"]);
+            var saveAs = await Capture.Send(() => DocumentTools.SaveDocument(save_as_path: @"C:\Projects\Office.rvt"));
+            Assert.Equal(@"C:\Projects\Office.rvt", saveAs.Json().Value<string>("save_as_path"));
+        }
+
+        [Fact]
         public async Task Checkpoint_and_manage_forward_their_explicit_arguments()
         {
             var checkpoint = await Capture.Send(() => DocumentTools.SaveCheckpoint("before", "approved", true, true, 42));

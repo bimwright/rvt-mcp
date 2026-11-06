@@ -4118,7 +4118,7 @@
       "calls": [
         {
           "command": "save_document",
-          "params": "{\"allow_format_upgrade\":false}",
+          "params": "{\"allow_format_upgrade\":false,\"save_as_path\":null}",
           "timeout": 600
         }
       ],
@@ -4128,7 +4128,7 @@
       "calls": [
         {
           "command": "save_document",
-          "params": "{\"allow_format_upgrade\":false}",
+          "params": "{\"allow_format_upgrade\":false,\"save_as_path\":null}",
           "timeout": 600
         }
       ],
