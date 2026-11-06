@@ -71,16 +71,19 @@ namespace RvtMcp.Plugin.Handlers
                     else if (mode.Type != JTokenType.String || (string)mode != "point")
                         return CommandResult.Fail("pivot_mode must be 'point' or 'each_location'; nothing was changed.");
                 }
-                if (eachLocation && new[] { "pivot_x_mm", "pivot_y_mm", "pivot_z_mm" }.Any(name => request[name] != null && request[name].Type != JTokenType.Null))
+                if (eachLocation && new[] { "pivot_x_mm", "pivot_y_mm", "pivot_z_mm" }.Any(name => !IsMissing(request, name)))
                     return CommandResult.Fail("pivot_mode='each_location' turns each element about its own location; omit pivot_x_mm, pivot_y_mm and pivot_z_mm. Nothing was changed.");
             }
 
             double x = 0, y = 0, z = 0;
             if (!eachLocation)
             {
+                if (rotate && (IsMissing(request, "pivot_x_mm") || IsMissing(request, "pivot_y_mm")))
+                    return CommandResult.Fail("Pass pivot_x_mm and pivot_y_mm for one pivot, or pivot_mode='each_location' to turn each element in place; nothing was changed.");
                 x = Required(request, rotate ? "pivot_x_mm" : "dx_mm");
                 y = Required(request, rotate ? "pivot_y_mm" : "dy_mm");
-                z = Required(request, rotate ? "pivot_z_mm" : "dz_mm");
+                // The axis is vertical, so the pivot's Z does not change the result.
+                z = rotate && IsMissing(request, "pivot_z_mm") ? 0 : Required(request, rotate ? "pivot_z_mm" : "dz_mm");
             }
             var degrees = rotate ? Required(request, "angle_degrees") : 0;
             PlacementInput.Finite(x, y, z, degrees);
@@ -171,10 +174,14 @@ namespace RvtMcp.Plugin.Handlers
                     || (expected.End != null && (actual.End == null || actual.End.DistanceTo(transform.OfPoint(expected.End)) > PositionTolerance))
                     || (expected.Rotation.HasValue && (!actual.Rotation.HasValue
                         || Math.Abs(Math.IEEERemainder(actual.Rotation.Value - expected.Rotation.Value - angle, 2 * Math.PI)) > AngleTolerance)))
-                    throw new InvalidOperationException("Revit constrained the requested transform; all changes were rolled back.");
+                    throw new InvalidOperationException("Revit constrained the requested transform of element " + RevitCompat.GetId(ids[i])
+                        + " (for example a hosted, joined or level-bound element); all changes were rolled back.");
             }
             return result;
         }
+
+        private static bool IsMissing(JObject request, string name)
+            => request[name] == null || request[name].Type == JTokenType.Null;
 
         private static double Required(JObject request, string name)
         {
@@ -199,7 +206,7 @@ namespace RvtMcp.Plugin.Handlers
             var curve = (element.Location as LocationCurve)?.Curve;
             var point = pointLocation?.Point ?? (curve != null && curve.IsBound ? curve.GetEndPoint(0) : null);
             var end = curve != null && curve.IsBound ? curve.GetEndPoint(1) : null;
-            var rotation = pointLocation == null ? (double?)null : pointLocation.Rotation;
+            var rotation = pointLocation == null ? (double?)null : ReadRotation(pointLocation);
             var box = element.get_BoundingBox(null);
             return new State { Point = point, End = end, Rotation = rotation, Dto = new
             {
@@ -209,6 +216,13 @@ namespace RvtMcp.Plugin.Handlers
                 rotation_degrees = rotation * 180.0 / Math.PI,
                 bbox_min_mm = Coordinates(box?.Min), bbox_max_mm = Coordinates(box?.Max)
             }};
+        }
+
+        // Rooms and model groups have a location point without a rotation; only their position is checked.
+        private static double? ReadRotation(LocationPoint location)
+        {
+            try { return location.Rotation; }
+            catch (Autodesk.Revit.Exceptions.InvalidOperationException) { return null; }
         }
 
         private static object Coordinates(XYZ p)

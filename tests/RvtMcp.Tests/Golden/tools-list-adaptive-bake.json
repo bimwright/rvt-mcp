@@ -6980,7 +6980,7 @@
     },
     {
       "name": "revit_rotate_elements",
-      "description_hash": "sha256:ba246cb1c3f9a11925ae9d2b1799407e369883c6792710822a9df6e4955b0e72",
+      "description_hash": "sha256:537d60d2d895d9bb925f5958a98d115048244727cdd3b9f72c5f031c680256a1",
       "inputSchema": {
         "properties": {
           "angle_degrees": {

@@ -54,6 +54,9 @@ public class ElementTransformTests
     [InlineData("rotate_negative")]
     [InlineData("rotate_wrapped")]
     [InlineData("rotate_point_mode")]
+    [InlineData("rotate_no_z")]
+    [InlineData("rotate_no_rotation")]
+    [InlineData("move_no_rotation")]
     public void ValidTransformsReportActualPlacementAndCommitOnce(string scenario)
     {
         var result = Run(scenario);
@@ -96,6 +99,28 @@ public class ElementTransformTests
         Assert.Equal(0, result.Value<int>("committed"));
         Assert.Equal(1, result.Value<int>("rolledBack"));
         Assert.True(result.Value<bool>("restored"));
+    }
+
+    [Fact]
+    public void ConstrainedTransformNamesTheElement()
+    {
+        var result = Run("move_second_constrained");
+        Assert.Contains("element 2", result.Value<string>("error"));
+    }
+
+    [Fact]
+    public void MissingPivotNamesBothChoices()
+    {
+        var result = Run("rotate_missing_pivot");
+        Assert.Contains("pivot_mode='each_location'", result.Value<string>("error"));
+    }
+
+    [Fact]
+    public void ElementWithoutRotationReportsNoAngle()
+    {
+        var result = Run("move_no_rotation");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        Assert.Equal(JTokenType.Null, result["data"]!["after"]![0]!["rotation_degrees"]!.Type);
     }
 
     [Fact]
@@ -271,7 +296,7 @@ namespace Autodesk.Revit.DB {
  public class Curve { public bool IsBound=true; public XYZ A,B; public XYZ GetEndPoint(int i)=>i==0?A:B; }
  public class Line:Curve {public static Line CreateBound(XYZ a,XYZ b)=>new Line{A=a,B=b};}
  public class Location {}
- public class LocationPoint:Location { public XYZ Point; public double Rotation; }
+ public class LocationPoint:Location { public XYZ Point; public bool NoRotation; double r; public double Rotation { get { if (NoRotation) throw new Autodesk.Revit.Exceptions.InvalidOperationException("The rotation property is not supported"); return r; } set { r = value; } } }
  public class LocationCurve:Location { public Curve Curve; }
  public class BoundingBoxXYZ {public XYZ Min,Max;}
  public class Element {public ElementId Id; public Location Location; public bool Pinned; public ElementId GroupId=ElementId.InvalidElementId; public bool ThrowOnSnapshot; public BoundingBoxXYZ get_BoundingBox(object view){if(ThrowOnSnapshot)throw new InvalidOperationException("injected post-commit snapshot failure");return null;}}
@@ -281,7 +306,7 @@ namespace Autodesk.Revit.DB {
  public class Transaction:IDisposable {
   Document d; List<Location> saved; TransactionStatus status;
   public Transaction(Document doc,string name){d=doc;}
-  public static Location Clone(Location l){if(l is LocationPoint p)return new LocationPoint{Point=p.Point,Rotation=p.Rotation};if(l is LocationCurve c)return new LocationCurve{Curve=new Curve{A=c.Curve.A,B=c.Curve.B,IsBound=c.Curve.IsBound}};return null;}
+  public static Location Clone(Location l){if(l is LocationPoint p)return p.NoRotation?new LocationPoint{Point=p.Point,NoRotation=true}:new LocationPoint{Point=p.Point,Rotation=p.Rotation};if(l is LocationCurve c)return new LocationCurve{Curve=new Curve{A=c.Curve.A,B=c.Curve.B,IsBound=c.Curve.IsBound}};return null;}
   public TransactionStatus Start(){if(d.Scenario=="transaction_start_rejected")return status=TransactionStatus.RolledBack;d.Started++;saved=d.Elements.Select(e=>Clone(e.Location)).ToList();return status=TransactionStatus.Started;}
   public TransactionStatus GetStatus()=>status;
   public TransactionStatus Commit(){if(d.Scenario=="move_commit_adjusted"||d.Scenario=="move_commit_second_adjusted"){((LocationPoint)d.Elements.Last().Location).Point=new XYZ(1100/304.8,2000/304.8,300/304.8);}if(d.Scenario=="rotate_commit_angle")((LocationPoint)d.Elements[0].Location).Rotation=0;if(d.Scenario=="move_commit_curve_end")((LocationCurve)d.Elements[0].Location).Curve.B=new XYZ(1100/304.8,2000/304.8+1,300/304.8);if(d.Scenario=="move_commit_deleted")d.Elements.RemoveAt(0);if(d.Scenario=="move_commit_snapshot_failure")d.Elements[0].ThrowOnSnapshot=true;if(d.Scenario=="commit_rejected"){RollBack();return status;}d.Committed++;return status=TransactionStatus.Committed;}
@@ -304,13 +329,14 @@ namespace Autodesk.Revit.DB {
   static void Apply(Document d,ICollection<ElementId> ids,Transform t,double angle){
    d.Calls++;if(d.Scenario=="api_throw")throw new Exception("injected API failure");
    foreach(var id in ids){var e=d.GetElement(id);if(d.Scenario.EndsWith("_ignored")||d.Scenario=="move_constrained"||(d.Scenario=="move_second_constrained"&&id.Value==2))continue;
-    if(e.Location is LocationPoint p){p.Point=t.OfPoint(p.Point);if(d.Scenario!="rotate_angle_constrained")p.Rotation=(p.Rotation+angle)%(2*Math.PI);}
+    if(e.Location is LocationPoint p){p.Point=t.OfPoint(p.Point);if(!p.NoRotation&&d.Scenario!="rotate_angle_constrained")p.Rotation=(p.Rotation+angle)%(2*Math.PI);}
     else if(e.Location is LocationCurve c){c.Curve.A=t.OfPoint(c.Curve.A);if(d.Scenario!="move_curve_end_constrained")c.Curve.B=t.OfPoint(c.Curve.B);}
     if(d.Scenario=="lost_location")e.Location=null;
    }
   }
  }
 }
+namespace Autodesk.Revit.Exceptions { public class InvalidOperationException:System.Exception { public InvalidOperationException(string m):base(m){} } }
 namespace Autodesk.Revit.UI { public class UIDocument {public Document Document;} public class UIApplication {public UIDocument ActiveUIDocument;} }
 namespace RvtMcp.Plugin.Failures {
  public static class FailureControl {
@@ -333,6 +359,7 @@ public static class TransformProbe {
   Element e=scenario=="type"?new ElementType():new Element();e.Id=new ElementId(1);e.Location=new LocationPoint{Point=original};e.Pinned=scenario=="pinned";if(scenario=="group_member")e.GroupId=new ElementId(7);
   if(scenario.Contains("curve"))e.Location=new LocationCurve{Curve=new Curve{A=original,B=original+new XYZ(0,1,0),IsBound=scenario!="unbounded_curve"}};
   if(scenario=="no_location")e.Location=null;
+  if(scenario.Contains("no_rotation"))((LocationPoint)e.Location).NoRotation=true;
   d.Elements.Add(e);
   var args=new JObject{["elementIds"]=new JArray(1),["dx_mm"]=100,["dy_mm"]=-50,["dz_mm"]=25,["angle_degrees"]=90,["pivot_x_mm"]=1000,["pivot_y_mm"]=2000,["pivot_z_mm"]=0};
   if(scenario=="missing_id")args["elementIds"]=new JArray(1,999);
@@ -349,6 +376,7 @@ public static class TransformProbe {
   if(scenario=="rotate_bad_mode")args["pivot_mode"]="center";
   if(scenario=="rotate_point_mode")args["pivot_mode"]="point";
   if(scenario=="rotate_missing_pivot")args.Remove("pivot_y_mm");
+  if(scenario=="rotate_no_z")args.Remove("pivot_z_mm");
   if(scenario=="rotate_each_two"){d.Elements.Add(new Element{Id=new ElementId(2),Location=new LocationPoint{Point=new XYZ(5000/304.8,0,0)}});args["elementIds"]=new JArray(1,2);}
   if(scenario=="move_second_constrained"||scenario=="move_commit_second_adjusted"){d.Elements.Add(new Element{Id=new ElementId(2),Location=new LocationPoint{Point=original}});args["elementIds"]=new JArray(1,2);}
   var app=new Autodesk.Revit.UI.UIApplication{ActiveUIDocument=scenario=="no_document"?null:new Autodesk.Revit.UI.UIDocument{Document=d}};

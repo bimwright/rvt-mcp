@@ -13,7 +13,7 @@ namespace RvtMcp.Server
             => await ToolGateway.CallAsync("move_elements", new { elementIds, dx_mm, dy_mm, dz_mm });
 
         [McpServerTool(Name = "revit_rotate_elements", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Rotate existing elements about a vertical axis; restore with Revit Undo. angle_degrees is positive counterclockwise when viewed from above. There is no default pivot; pass exactly one of: " +
-            "(1) pivot_x_mm, pivot_y_mm and pivot_z_mm: one pivot for the whole selection, which turns together like Revit Rotate with a placed center. The pivot is in model coordinates (mm from the internal origin, the frame of location_mm), not Project Base Point or Survey Point coordinates. " +
+            "(1) pivot_x_mm and pivot_y_mm (pivot_z_mm is optional and does not change a vertical-axis turn): one pivot for the whole selection, which turns together like Revit Rotate with a placed center. The pivot is in model coordinates (mm from the internal origin, the frame of location_mm), not Project Base Point or Survey Point coordinates. " +
             "(2) pivot_mode='each_location': each element turns in place about its own location, which is a family instance's insertion point (not its geometric center) or the midpoint of a wall's or beam's location line. " +
             "Supports point or bounded curve locations. Invalid or constrained selections roll back atomically; returns actual before/after placement. Example: elementIds=[123,456], angle_degrees=90, pivot_mode='each_location'.")]
         public static async Task<string> RotateElements(long[] elementIds, double angle_degrees, double? pivot_x_mm = null, double? pivot_y_mm = null, double? pivot_z_mm = null,

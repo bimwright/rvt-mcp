@@ -74,14 +74,14 @@ exactly one of two pivots:
 
 | Pivot | Arguments | What turns |
 |---|---|---|
-| One explicit point | `pivot_x_mm`, `pivot_y_mm`, `pivot_z_mm` (optional `pivot_mode: "point"`) | The whole selection turns together about that point, like Revit Rotate with a placed center. |
+| One explicit point | `pivot_x_mm`, `pivot_y_mm`, optional `pivot_z_mm` (optional `pivot_mode: "point"`) | The whole selection turns together about that point, like Revit Rotate with a placed center. |
 | Each element's own location | `pivot_mode: "each_location"`, no pivot coordinates | Each element turns in place about its location: a family instance's insertion point, or the midpoint between a location curve's end points. |
 
 An explicit pivot is in model coordinates: millimetres from Revit's internal
 origin, the same frame as `location_mm` in the results and as
 `revit_create_point_based_element`. It is not a Project Base Point or Survey
 Point coordinate. Because the axis is vertical, `pivot_z_mm` does not change
-the result. A family instance's insertion point is defined by its family and
+the result and defaults to 0. A family instance's insertion point is defined by its family and
 is not necessarily its geometric center; use the returned bounding box when the
 center matters.
 
@@ -97,8 +97,10 @@ Turn each element in place:
 {"elementIds":[12345,12346],"angle_degrees":90,"pivot_mode":"each_location"}
 ```
 
-With an explicit pivot, all three coordinates are required, including zero
-components. `each_location` refuses pivot coordinates. IDs must be positive
+With an explicit pivot, `pivot_x_mm` and `pivot_y_mm` are required, including
+zero components. `each_location` refuses pivot coordinates. Rooms and model
+groups have a location point without a readable rotation, so only their
+position is checked. IDs must be positive
 integers; the raw selection is limited to 1000 IDs and duplicates are removed.
 Missing elements, types, pinned elements and individual group members are
 rejected before starting a transaction. The initial implementation supports
