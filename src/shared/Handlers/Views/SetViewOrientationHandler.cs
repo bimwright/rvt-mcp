@@ -37,7 +37,11 @@ namespace RvtMcp.Plugin.Handlers
             if (orientation == null) return CommandResult.Fail(error);
 
             var perspective = request.Value<bool?>("perspective");
-            var fit = request.Value<bool?>("fit") ?? true;
+            var fitArg = request.Value<bool?>("fit");
+            var fit = fitArg ?? true;
+            // A named view may be placed on a sheet, where turning its crop box off resizes the viewport.
+            // Without an explicit fit, only the default 3D view, a viewing view, loses its crop box.
+            var cropOff = fitArg ?? !saveOrientation;
             var notes = new List<string>();
             var before = view.GetOrientation();
 
@@ -66,11 +70,16 @@ namespace RvtMcp.Plugin.Handlers
                         view.SetOrientation(orientation);
                         view.SaveOrientation();
                     }
-                    if (fit && !view.IsPerspective && view.CropBoxActive)
+                    if (!view.IsPerspective && view.CropBoxActive)
                     {
-                        // A crop box sized for the earlier orientation would clip the new framing.
-                        view.CropBoxActive = false;
-                        notes.Add("Crop box turned off so the whole model is framed.");
+                        if (cropOff)
+                        {
+                            // A crop box sized for the earlier orientation would clip the new framing.
+                            view.CropBoxActive = false;
+                            notes.Add("Crop box turned off so the whole model is framed.");
+                        }
+                        else if (fitArg == null)
+                            notes.Add("Crop box kept on this named view; pass fit=true to turn it off and frame the whole model.");
                     }
 
                     if (tx.Commit() != TransactionStatus.Committed)

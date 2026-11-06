@@ -7755,7 +7755,7 @@
     },
     {
       "name": "revit_set_view_orientation",
-      "description_hash": "sha256:cd4c7c177e3fbc0360c880ef789c4eb1af7b52041ab862a3710ca8205fb4ad3c",
+      "description_hash": "sha256:4256de383253a309c2d47af64b6561b8d5d92f3f333becae8aec3a6cd373bfd6",
       "inputSchema": {
         "properties": {
           "eye": {
@@ -7764,7 +7764,7 @@
           },
           "fit": {
             "description": "",
-            "type": "Boolean"
+            "type": "Nullable`1"
           },
           "perspective": {
             "description": "",

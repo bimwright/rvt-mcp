@@ -50,6 +50,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 - **`revit_set_view_style`, `revit_set_view_orientation` and `revit_create_camera_view`** in `view`: set display style and detail level, aim a 3D view from eye and target points, and create or re-aim perspective camera views, so an agent can frame and capture its own result with `revit_capture_view_image`.
 - Named 3D views and cameras save the new orientation, which Revit Undo restores. The default 3D view (`{3D}`, or `{3D - user}` when workshared) is a viewing view: only its temporary camera moves, nothing is saved, and the result reports `orientation_saved: false`. A failed call leaves the camera where it was. New cameras turn off Far Clip Active and report `far_clip_active`.
+- `revit_set_view_orientation` without `fit` turns off the crop box only on the default 3D view. A named view keeps its crop box, since it may be placed on a sheet, unless `fit=true`; `fit=false` changes neither crop nor zoom.
 
 ## v1.2.2 — 2026-11-02
 
