@@ -8,6 +8,14 @@ namespace RvtMcp.Server
     [McpServerToolType, Toolset("modify")]
     public class ModifyTools
     {
+        [McpServerTool(Name = "revit_move_elements", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Translate existing elements by dx_mm/dy_mm/dz_mm in model coordinates; restore with Revit Undo. Use for furniture placement and offsets. All three millimetre deltas are required. Rejects missing IDs, types, pinned elements and individual group members. Supports elements with a point or bounded curve location; constrained movement rolls back the entire selection. Returns actual before/after placement.")]
+        public static async Task<string> MoveElements(long[] elementIds, double dx_mm, double dy_mm, double dz_mm)
+            => await ToolGateway.CallAsync("move_elements", new { elementIds, dx_mm, dy_mm, dz_mm });
+
+        [McpServerTool(Name = "revit_rotate_elements", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Rotate existing elements around an explicit vertical Z axis through pivot_x_mm/pivot_y_mm/pivot_z_mm in model coordinates; restore with Revit Undo. angle_degrees is positive counterclockwise when viewed from above. All pivot coordinates are required. Supports point or bounded curve locations. Invalid or constrained selections roll back atomically; returns actual before/after placement. Read the current location before choosing the pivot.")]
+        public static async Task<string> RotateElements(long[] elementIds, double angle_degrees, double pivot_x_mm, double pivot_y_mm, double pivot_z_mm)
+            => await ToolGateway.CallAsync("rotate_elements", new { elementIds, angle_degrees, pivot_x_mm, pivot_y_mm, pivot_z_mm });
+
         [McpServerTool(Name = "revit_operate_element", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Change element visibility or graphics; restore document changes with Revit Undo. Select/hide/isolate/color elements in current view. operation: select (highlight), hide, unhide, isolate (hide everything else), setcolor (RGB override). elementIds: JSON int array e.g. '[12345, 67890]'. For setcolor: r/g/b 0-255 (default red 255,0,0).")]
         public static async Task<string> OperateElement(string operation, string elementIds, byte r = 255, byte g = 0, byte b = 0)
             => await ToolGateway.CallWithParamsAsync("operate_element", () =>

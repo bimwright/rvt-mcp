@@ -29,7 +29,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
-- Development source counts: `--toolsets all` **251**, adaptive bake **254**, and bare defaults **59**.
+- Development source counts: `--toolsets all` **253**, adaptive bake **256**, and bare defaults **59**.
 
 ### Document lifecycle
 
@@ -55,6 +55,10 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 ### Mesh import
 
 - **`revit_create_mesh_shapes`** in `geometry`: builds DirectShape elements with materials from a local JSON mesh file (vertices in mm, triangle or quad faces), for freeform massing without arbitrary code. One transaction per file; closed, consistently wound meshes are built as solids, and other meshes as open shells that fall back to mesh geometry when Revit cannot make a solid. Existing materials are reused unchanged unless `update_materials=true`; each call is capped at 64 MB and 500,000 faces, and network paths are refused. It is opt-in with the `geometry` toolset, which installed setups enable through `all`.
+
+### Move and rotate
+
+- Add typed `revit_move_elements` and `revit_rotate_elements` commands with explicit model-space units, atomic selection validation, placement checks and native Undo. See [usage and verification](docs/placement-and-mep-contracts.md#moving-and-rotating-existing-elements-unreleased).
 
 ## v1.2.2 — 2026-11-02
 
