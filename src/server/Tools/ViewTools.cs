@@ -112,7 +112,8 @@ namespace RvtMcp.Server
         }
 
         [McpServerTool(Name = "revit_set_view_orientation", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
-            "Replace a 3D view's camera orientation; restore it with Revit Undo. Use to frame a model for revit_capture_view_image, e.g. for turntable images. " +
+            "Replace a 3D view's camera orientation; restore it with Revit Undo. The default 3D view ({3D}, or {3D - user} when workshared) only moves its temporary camera, which is not saved and has no Undo. " +
+            "Use to frame a model for revit_capture_view_image, e.g. for turntable images. " +
             "eye and target are [x,y,z] in mm; up defaults to +Z and falls back to another axis when parallel to the view direction. perspective=true toggles an isometric view to perspective (false toggles back) when Revit allows. " +
             "fit=true (default) turns off the crop box on isometric views and zooms to fit if the view is open. Example: view_name='3D Overview', eye=[-50000,-50000,30000], target=[0,0,0].")]
         public static async Task<string> SetViewOrientation(double[] eye, double[] target, long? view_id = null, string view_name = null, double[] up = null,

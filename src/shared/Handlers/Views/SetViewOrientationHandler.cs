@@ -23,8 +23,9 @@ namespace RvtMcp.Plugin.Handlers
             var view = resolved as View3D;
             if (view == null) return CommandResult.Fail("View '" + resolved.Name + "' is not a 3D view.");
             if (view.IsLocked) return CommandResult.Fail("View '" + view.Name + "' has a locked orientation; unlock it in Revit first.");
-            if (!view.CanSaveOrientation())
-                return CommandResult.Fail("View '" + view.Name + "' cannot save its orientation; rename the default 3D view in Revit or choose a named 3D view.");
+            // Revit keeps no saved orientation for the default 3D view ({3D}, or {3D - user} when workshared).
+            // It is a viewing view, so only its temporary camera moves, like an orbit, and Undo has nothing to restore.
+            var saveOrientation = view.CanSaveOrientation();
 
             var eye = ViewPresentationSupport.ReadPointMm(request, "eye", out error);
             if (error != null) return CommandResult.Fail(error);
@@ -38,6 +39,7 @@ namespace RvtMcp.Plugin.Handlers
             var perspective = request.Value<bool?>("perspective");
             var fit = request.Value<bool?>("fit") ?? true;
             var notes = new List<string>();
+            var before = view.GetOrientation();
 
             using (var tx = new Transaction(doc, "MCP: Set view orientation"))
             {
@@ -59,8 +61,11 @@ namespace RvtMcp.Plugin.Handlers
                         else notes.Add("View stays perspective (cannot toggle to isometric).");
                     }
 
-                    view.SetOrientation(orientation);
-                    view.SaveOrientation();
+                    if (saveOrientation)
+                    {
+                        view.SetOrientation(orientation);
+                        view.SaveOrientation();
+                    }
                     if (fit && !view.IsPerspective && view.CropBoxActive)
                     {
                         // A crop box sized for the earlier orientation would clip the new framing.
@@ -69,20 +74,30 @@ namespace RvtMcp.Plugin.Handlers
                     }
 
                     if (tx.Commit() != TransactionStatus.Committed)
+                    {
+                        if (saveOrientation) ViewPresentationSupport.RestoreCamera(view, before);
                         return CommandResult.Fail("Revit did not commit the transaction; the orientation was not changed.");
+                    }
                 }
                 catch (Exception ex)
                 {
                     if (tx.HasStarted()) tx.RollBack();
+                    if (saveOrientation) ViewPresentationSupport.RestoreCamera(view, before);
                     return CommandResult.Fail("Failed to orient '" + view.Name + "': " + ex.Message + " Nothing was changed.");
                 }
             }
 
-            SavedViewOrientationRefresh.Track(app, view);
+            if (saveOrientation) SavedViewOrientationRefresh.Track(app, view);
+            else
+            {
+                // Moved only after the commit, so a rolled-back toggle or crop change never leaves it aimed.
+                view.SetOrientation(orientation);
+                notes.Add("Default 3D view: only the temporary camera moved. It is not saved in the model and Revit Undo does not restore it; use a named 3D view or revit_create_camera_view to keep a camera.");
+            }
             var zoomed = fit && !view.IsPerspective && ViewPresentationSupport.TryZoomToFit(uidoc, view);
             if (fit && !view.IsPerspective && !zoomed)
                 notes.Add("View is not open in the UI so ZoomToFit was skipped; image export of an uncropped 3D view still fits the model.");
-            return CommandResult.Ok(new { view = ViewPresentationSupport.Describe(view), zoomed_to_fit = zoomed, notes });
+            return CommandResult.Ok(new { view = ViewPresentationSupport.Describe(view), orientation_saved = saveOrientation, zoomed_to_fit = zoomed, notes });
         }
     }
 }
