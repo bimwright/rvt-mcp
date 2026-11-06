@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 250,
+  "tool_count": 251,
   "tools": [
     {
       "name": "revit_acquire_coordinates_from_link",
@@ -1922,6 +1922,44 @@
       },
       "annotations": {
         "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_create_mesh_shapes",
+      "description_hash": "sha256:8d86876f25b6663fd993cf91264b755cf8f2900c335592a61da00599133b4a57",
+      "inputSchema": {
+        "properties": {
+          "file": {
+            "description": "",
+            "type": "String"
+          },
+          "mesh_only": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "replace_existing": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "timeout_seconds": {
+            "description": "",
+            "type": "Int32"
+          },
+          "update_materials": {
+            "description": "",
+            "type": "Boolean"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false

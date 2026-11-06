@@ -112,7 +112,7 @@ namespace RvtMcp.Tests
         {
             var full = new RvtMcpConfig { Toolsets = new List<string> { "all" }, EnableAdaptiveBake = true };
             var methods = Program.ResolveRegisteredToolMethods(ToolsetFilter.Resolve(full), full).ToArray();
-            Assert.Equal(253, methods.Length);
+            Assert.Equal(254, methods.Length);
             foreach (var method in methods)
             {
                 var attr = method.GetCustomAttribute<McpServerToolAttribute>();
