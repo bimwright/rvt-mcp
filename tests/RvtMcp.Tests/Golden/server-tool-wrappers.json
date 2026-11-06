@@ -4580,7 +4580,7 @@
       "calls": [
         {
           "command": "set_view_orientation",
-          "params": "{\"view_id\":null,\"view_name\":null,\"eye\":null,\"target\":null,\"up\":null,\"perspective\":null,\"fit\":true}",
+          "params": "{\"view_id\":null,\"view_name\":null,\"eye\":null,\"target\":null,\"up\":null,\"perspective\":null,\"fit\":null}",
           "timeout": null
         }
       ],
@@ -4590,7 +4590,7 @@
       "calls": [
         {
           "command": "set_view_orientation",
-          "params": "{\"view_id\":null,\"view_name\":null,\"eye\":null,\"target\":null,\"up\":null,\"perspective\":null,\"fit\":true}",
+          "params": "{\"view_id\":null,\"view_name\":null,\"eye\":null,\"target\":null,\"up\":null,\"perspective\":null,\"fit\":null}",
           "timeout": null
         }
       ],

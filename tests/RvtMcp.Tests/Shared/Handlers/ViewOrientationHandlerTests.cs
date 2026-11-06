@@ -24,6 +24,27 @@ public class ViewOrientationHandlerTests
         Assert.Equal(-50000, r.Value<double>("current_eye_x_mm"));
         Assert.True(r.Value<bool>("tracked"));
         Assert.Equal(1, r.Value<int>("transactions"));
+        // A named view may be on a sheet, so its crop box stays unless fit is explicit.
+        Assert.True(r.Value<bool>("crop"));
+        Assert.Contains(r["data"]!["notes"]!, note => note.Value<string>()!.StartsWith("Crop box kept", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Named_view_with_fit_true_turns_off_its_crop_box()
+    {
+        var r = Run("orient", "named_fit_true");
+        Assert.True(r.Value<bool>("success"), r.Value<string>("error"));
+        Assert.True(r["data"]!.Value<bool>("orientation_saved"));
+        Assert.False(r.Value<bool>("crop"));
+    }
+
+    [Fact]
+    public void Default_view_with_fit_false_keeps_its_crop_box()
+    {
+        var r = Run("orient", "default_fit_false");
+        Assert.True(r.Value<bool>("success"), r.Value<string>("error"));
+        Assert.True(r.Value<bool>("crop"));
+        Assert.Equal(-50000, r.Value<double>("current_eye_x_mm"));
     }
 
     [Fact]
@@ -272,6 +293,8 @@ public static class Probe {
     IsLocked=scenario=="locked",FailOn=scenario=="named_exception"?"crop":null};
    doc.Add(view);ui.ActiveView=view;ui.Open.Add(new UIView{ViewId=view.Id});
    var request=new JObject{["eye"]=new JArray(-50000,-50000,30000),["target"]=new JArray(0,0,0)};
+   if(scenario.Contains("fit_true")||scenario=="named_exception")request["fit"]=true;
+   if(scenario.Contains("fit_false"))request["fit"]=false;
    result=new RvtMcp.Plugin.Handlers.SetViewOrientationHandler().Execute(app,request.ToString());
   }else{
    View3D.CreateWithoutActiveFar=scenario=="missing_far_param";

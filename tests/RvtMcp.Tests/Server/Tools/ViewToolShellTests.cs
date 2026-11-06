@@ -152,7 +152,10 @@ namespace RvtMcp.Tests
             Assert.Equal(3, json["eye"].Value<double>(2));
             Assert.Equal(4, json["target"].Value<double>(0));
             Assert.True(json.Value<bool>("perspective"));
-            Assert.True(json.Value<bool>("fit"));
+            // Omitted fit lets the add-in choose by view kind; an explicit value is forwarded.
+            Assert.Null(json["fit"]);
+            var explicitFit = await Capture.Send(() => ViewTools.SetViewOrientation(new double[] { 1, 2, 3 }, new double[] { 4, 5, 6 }, fit: false));
+            Assert.False(explicitFit.Json().Value<bool>("fit"));
         }
 
         [Fact]
