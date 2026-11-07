@@ -456,6 +456,8 @@ Code, bug reports, reproducible examples and proposals help improve rvt-mcp. Tha
 | [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) | Pull request [#15](https://github.com/bimwright/rvt-mcp/pull/15): the fix that lets `send_code` run with no model open, the `revit_switch_target` hint fix, and the `revit_open_model` proposal, shipped in reworked form in v0.8.1. |
 | [@BenniOST](https://github.com/BenniOST) | Detailed review of multi-instance targeting that shaped explicit target confirmation, document checks and rebind rules ([#19](https://github.com/bimwright/rvt-mcp/issues/19)). |
 | [@maxzalizniak](https://github.com/maxzalizniak) | Pull request [#8](https://github.com/bimwright/rvt-mcp/pull/8): diagnosed and fixed the no-op History button on Revit 2025/2026; the fix shipped with co-author credit in [#9](https://github.com/bimwright/rvt-mcp/pull/9), extended to 2027 with a regression test. |
+| [@gbwzzy218](https://github.com/gbwzzy218) | Pull requests [#28](https://github.com/bimwright/rvt-mcp/pull/28), [#29](https://github.com/bimwright/rvt-mcp/pull/29) and [#30](https://github.com/bimwright/rvt-mcp/pull/30) for [#26](https://github.com/bimwright/rvt-mcp/issues/26): view style, orientation and camera view tools, wall top constraints, the template-safe Save As path rules now in `revit_save_document`, and DirectShape mesh import. |
+| [@kiselas](https://github.com/kiselas) | Pull request [#27](https://github.com/bimwright/rvt-mcp/pull/27): typed `revit_move_elements` and `revit_rotate_elements`, with placement checks after commit and rollback of the whole selection. |
 
 ---
 

@@ -441,6 +441,8 @@ Response guard 默认 **开启**：UTF-8 警告阈值 65536 byte，强警告高�
 | [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) | 拉取请求 [#15](https://github.com/bimwright/rvt-mcp/pull/15)：让 `send_code` 在未打开模型时也能运行的修复、`revit_switch_target` 提示的修正，以及 `revit_open_model` 提案（经重新实现后在 v0.8.1 发布）。 |
 | [@BenniOST](https://github.com/BenniOST) | 对多实例目标选择的详细审查，促成了显式目标确认、文档校验和重新绑定规则（[#19](https://github.com/bimwright/rvt-mcp/issues/19)）。 |
 | [@maxzalizniak](https://github.com/maxzalizniak) | 拉取请求 [#8](https://github.com/bimwright/rvt-mcp/pull/8)：定位并修复了 Revit 2025/2026 上 History 按钮无响应的问题；该修复以共同作者身份并入 [#9](https://github.com/bimwright/rvt-mcp/pull/9)，并扩展到 2027，附带回归测试。 |
+| [@gbwzzy218](https://github.com/gbwzzy218) | 拉取请求 [#28](https://github.com/bimwright/rvt-mcp/pull/28)、[#29](https://github.com/bimwright/rvt-mcp/pull/29) 和 [#30](https://github.com/bimwright/rvt-mcp/pull/30)（对应 [#26](https://github.com/bimwright/rvt-mcp/issues/26)）：视图样式、方向和相机视图工具，墙顶约束，现已并入 `revit_save_document` 的模板安全另存为路径规则，以及 DirectShape 网格导入。 |
+| [@kiselas](https://github.com/kiselas) | 拉取请求 [#27](https://github.com/bimwright/rvt-mcp/pull/27)：类型化的 `revit_move_elements` 和 `revit_rotate_elements`，提交后检查放置结果，并整体回滚所选元素。 |
 
 ---
 

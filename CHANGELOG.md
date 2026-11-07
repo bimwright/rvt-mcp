@@ -44,21 +44,21 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ### Wall top constraints
 
-- **`revit_set_wall_top`** in `modify`: attaches walls' top constraint to a level with an optional offset, checking every wall first so a top at or below a wall's base changes nothing.
+- **`revit_set_wall_top`** in `modify`: attaches walls' top constraint to a level with an optional offset, checking every wall first so a top at or below a wall's base changes nothing. From [#29](https://github.com/bimwright/rvt-mcp/pull/29); thanks [@gbwzzy218](https://github.com/gbwzzy218).
 
 ### View style, orientation and camera views
 
-- **`revit_set_view_style`, `revit_set_view_orientation` and `revit_create_camera_view`** in `view`: set display style and detail level, aim a 3D view from eye and target points, and create or re-aim perspective camera views, so an agent can frame and capture its own result with `revit_capture_view_image`.
+- **`revit_set_view_style`, `revit_set_view_orientation` and `revit_create_camera_view`** in `view`: set display style and detail level, aim a 3D view from eye and target points, and create or re-aim perspective camera views, so an agent can frame and capture its own result with `revit_capture_view_image`. From [#28](https://github.com/bimwright/rvt-mcp/pull/28); thanks [@gbwzzy218](https://github.com/gbwzzy218).
 - Named 3D views and cameras save the new orientation, which Revit Undo restores. The default 3D view (`{3D}`, or `{3D - user}` when workshared) is a viewing view: only its temporary camera moves, nothing is saved, and the result reports `orientation_saved: false`. A failed call leaves the camera where it was. New cameras turn off Far Clip Active and report `far_clip_active`.
 - `revit_set_view_orientation` without `fit` turns off the crop box only on the default 3D view. A named view keeps its crop box, since it may be placed on a sheet, unless `fit=true`; `fit=false` changes neither crop nor zoom.
 
 ### Mesh import
 
-- **`revit_create_mesh_shapes`** in `geometry`: builds DirectShape elements with materials from a local JSON mesh file (vertices in mm, triangle or quad faces), for freeform massing without arbitrary code. One transaction per file; closed, consistently wound meshes are built as solids, and other meshes as open shells that fall back to mesh geometry when Revit cannot make a solid. Existing materials are reused unchanged unless `update_materials=true`; each call is capped at 64 MB and 500,000 faces, and network paths are refused. It is opt-in with the `geometry` toolset, which installed setups enable through `all`.
+- **`revit_create_mesh_shapes`** in `geometry`: builds DirectShape elements with materials from a local JSON mesh file (vertices in mm, triangle or quad faces), for freeform massing without arbitrary code. One transaction per file; closed, consistently wound meshes are built as solids, and other meshes as open shells that fall back to mesh geometry when Revit cannot make a solid. Existing materials are reused unchanged unless `update_materials=true`; each call is capped at 64 MB and 500,000 faces, and network paths are refused. It is opt-in with the `geometry` toolset, which installed setups enable through `all`. From [#30](https://github.com/bimwright/rvt-mcp/pull/30) for [#26](https://github.com/bimwright/rvt-mcp/issues/26); thanks [@gbwzzy218](https://github.com/gbwzzy218).
 
 ### Move and rotate
 
-- Add typed `revit_move_elements` and `revit_rotate_elements` commands with explicit model-space units, atomic selection validation, placement checks and native Undo. Rotation has no default pivot: pass one explicit pivot for the whole selection, or `pivot_mode="each_location"` to turn each element in place about its insertion point or location-line midpoint. See [usage and verification](docs/placement-and-mep-contracts.md#moving-and-rotating-existing-elements-unreleased).
+- Add typed `revit_move_elements` and `revit_rotate_elements` commands with explicit model-space units, atomic selection validation, placement checks and native Undo. Rotation has no default pivot: pass one explicit pivot for the whole selection, or `pivot_mode="each_location"` to turn each element in place about its insertion point or location-line midpoint. See [usage and verification](docs/placement-and-mep-contracts.md#moving-and-rotating-existing-elements-unreleased). From [#27](https://github.com/bimwright/rvt-mcp/pull/27); thanks [@kiselas](https://github.com/kiselas).
 
 ## v1.2.2 — 2026-11-02
 

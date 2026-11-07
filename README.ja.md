@@ -442,6 +442,8 @@ Response guard は既定 **オン**。UTF-8 の警告は 65536 byte、強い警�
 | [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) | プルリクエスト [#15](https://github.com/bimwright/rvt-mcp/pull/15)：モデル未オープン時にも `send_code` を実行できるようにする修正、`revit_switch_target` のヒント修正、そして `revit_open_model` の提案（手直しのうえ v0.8.1 で公開）。 |
 | [@BenniOST](https://github.com/BenniOST) | 複数インスタンス時のターゲット選択に関する詳細なレビュー。明示的なターゲット確認、ドキュメント検証、再バインド規則の設計につながりました（[#19](https://github.com/bimwright/rvt-mcp/issues/19)）。 |
 | [@maxzalizniak](https://github.com/maxzalizniak) | プルリクエスト [#8](https://github.com/bimwright/rvt-mcp/pull/8)：Revit 2025/2026 で History ボタンが動作しない問題を特定して修正。修正は共同作成者として [#9](https://github.com/bimwright/rvt-mcp/pull/9) に取り込まれ、2027 対応と回帰テストが追加されました。 |
+| [@gbwzzy218](https://github.com/gbwzzy218) | プルリクエスト [#28](https://github.com/bimwright/rvt-mcp/pull/28)、[#29](https://github.com/bimwright/rvt-mcp/pull/29)、[#30](https://github.com/bimwright/rvt-mcp/pull/30)（[#26](https://github.com/bimwright/rvt-mcp/issues/26)）：ビューの表示スタイル・向き・カメラビューのツール、壁の上部拘束、`revit_save_document` に取り込まれたテンプレートを上書きしない Save As のパス規則、そして DirectShape メッシュの読み込み。 |
+| [@kiselas](https://github.com/kiselas) | プルリクエスト [#27](https://github.com/bimwright/rvt-mcp/pull/27)：型付きの `revit_move_elements` と `revit_rotate_elements`。コミット後に配置を確認し、選択全体をロールバックします。 |
 
 ---
 
