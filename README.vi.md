@@ -442,6 +442,8 @@ Mã nguồn, báo lỗi, ví dụ tái hiện và đề xuất giúp cải thi�
 | [@PhanCongVuDuc](https://github.com/PhanCongVuDuc) | Pull request [#15](https://github.com/bimwright/rvt-mcp/pull/15): bản sửa để `send_code` chạy được khi chưa mở model, sửa gợi ý tham số của `revit_switch_target`, và đề xuất `revit_open_model` (được làm lại rồi phát hành trong v0.8.1). |
 | [@BenniOST](https://github.com/BenniOST) | Review chi tiết về chọn target khi chạy nhiều instance Revit, giúp định hình cơ chế xác nhận target, kiểm tra document và quy tắc rebind ([#19](https://github.com/bimwright/rvt-mcp/issues/19)). |
 | [@maxzalizniak](https://github.com/maxzalizniak) | Pull request [#8](https://github.com/bimwright/rvt-mcp/pull/8): tìm ra và sửa lỗi nút History không hoạt động trên Revit 2025/2026; bản sửa được đưa vào [#9](https://github.com/bimwright/rvt-mcp/pull/9) với tư cách đồng tác giả, mở rộng cho 2027 và thêm regression test. |
+| [@gbwzzy218](https://github.com/gbwzzy218) | Pull request [#28](https://github.com/bimwright/rvt-mcp/pull/28), [#29](https://github.com/bimwright/rvt-mcp/pull/29) và [#30](https://github.com/bimwright/rvt-mcp/pull/30) cho [#26](https://github.com/bimwright/rvt-mcp/issues/26): các tool kiểu hiển thị, hướng nhìn và camera cho view, ràng buộc đỉnh tường, quy tắc đường dẫn Save As an toàn cho template nay nằm trong `revit_save_document`, và nhập khối mesh DirectShape. |
+| [@kiselas](https://github.com/kiselas) | Pull request [#27](https://github.com/bimwright/rvt-mcp/pull/27): `revit_move_elements` và `revit_rotate_elements` với tham số tường minh, kiểm vị trí sau khi commit và rollback toàn bộ lựa chọn. |
 
 ---
 
