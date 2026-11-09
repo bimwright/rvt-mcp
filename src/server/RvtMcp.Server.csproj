@@ -7,6 +7,10 @@
     <AssemblyName>RvtMcp.Server</AssemblyName>
     <LangVersion>latest</LangVersion>
     <NuGetAuditMode>all</NuGetAuditMode>
+    <!-- Sdk.Web defaults to Server GC: one heap + GC thread per logical core (31 on a 32-core box),
+         ~60 MB extra private memory at idle and hundreds of MB retained after a burst. Each MCP client
+         spawns its own stdio server, so Workstation GC fits. -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
   </PropertyGroup>
 
   <!-- NuGet .NET tool packaging (P4-001) -->
