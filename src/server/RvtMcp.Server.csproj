@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>RvtMcp.Server</RootNamespace>
     <AssemblyName>RvtMcp.Server</AssemblyName>
     <LangVersion>latest</LangVersion>
@@ -106,12 +106,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ModelContextProtocol" Version="1.1.0" />
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.1.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <PackageReference Include="ModelContextProtocol" Version="1.4.2" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.34" />
     <!-- Pin patched native SQLite without changing managed assembly bindings. -->
-    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.14" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 

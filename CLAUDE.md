@@ -7,7 +7,7 @@ Open-source (Apache-2.0) MCP gateway that lets Claude Code (and any MCP-capable 
 Full C# stack. No TypeScript. Single language, single build system. Multi-version: one plugin shell per Revit 2022–2027.
 
 ```
-MCP client (Claude Code / Cursor / Cline / …) → stdio → C# MCP Server (.NET 8 Console App) → TCP or Named Pipe → per-version C# plugin shell → Revit 2022–2027 API
+MCP client (Claude Code / Cursor / Cline / …) → stdio → C# MCP Server (.NET 10 Console App) → TCP or Named Pipe → per-version C# plugin shell → Revit 2022–2027 API
 ```
 
 Two processes:
@@ -49,7 +49,7 @@ Other per-user data under the same root:
 src/
 ├── RvtMcp.sln         # Solution (Server + 6 plugin shells)
 │
-├── server/                   # MCP Server (Console App, .NET 8)
+├── server/                   # MCP Server (Console App, .NET 10)
 │   ├── RvtMcp.Server.csproj
 │   ├── Program*.cs           # Host startup, server options/instructions, toolset registration (partial class)
 │   ├── ToolGateway*.cs       # SendToRevit / CallAsync + transport client to plugin shells
@@ -100,7 +100,7 @@ dotnet build src/plugin-r24/RvtMcp.Plugin.R24.csproj -c Release -p:RvtMcpSkipDep
 ```
 
 Each shell auto-deploys to `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\` for its target year, plus a matching `RvtMcp.R<nn>.addin` manifest at the parent level.
-MCP Server runs from `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`.
+MCP Server runs from `src/server/bin/Debug/net10.0/RvtMcp.Server.exe`.
 
 ## Key Patterns
 

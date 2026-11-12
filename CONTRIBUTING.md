@@ -7,8 +7,8 @@ Thanks for your interest. rvt-mcp is a solo-maintained bimwright gateway; this g
 ### Prereqs
 
 - Windows 10/11 (Revit is Windows-only).
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) — required for the server and the Revit 2025/2026 plugins.
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) — required for the Revit 2027 plugin. Skip if you're not building it.
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) 10.0.404 or a later patch in the same feature band — selected by `global.json` for the server, tests and all plugin builds.
+- Plugin targets remain .NET Framework 4.8 (2022–2024), .NET 8 (2025/2026) and .NET 10 (2027); the .NET 10 SDK restores their targeting packs.
 - Visual Studio 2022+ or JetBrains Rider (optional — `dotnet build` from CLI works).
 - One or more Revit installations (2022–2027) for runtime testing.
 
@@ -24,7 +24,7 @@ dotnet build src/RvtMcp.sln -c Debug
 
 **Close every running Revit before building.** Plugin DLLs auto-deploy to `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\` as part of the build, and Revit holds a file lock on loaded add-ins.
 
-Build output lands in `src/plugin-r<nn>/bin/Debug/<tfm>/` and `src/server/bin/Debug/net8.0/`. The deploy target copies plugin DLLs + the `.addin` manifest into the Revit addins folder so the next Revit launch picks them up.
+Build output lands in `src/plugin-r<nn>/bin/Debug/<tfm>/` and `src/server/bin/Debug/net10.0/`. The deploy target copies plugin DLLs + the `.addin` manifest into the Revit addins folder so the next Revit launch picks them up.
 
 ### Run tests
 
@@ -32,7 +32,7 @@ Build output lands in `src/plugin-r<nn>/bin/Debug/<tfm>/` and `src/server/bin/De
 dotnet test tests/RvtMcp.Tests/RvtMcp.Tests.csproj
 ```
 
-Tests run under .NET 8 xUnit without a running Revit. Coverage includes configuration, tool contracts and permissions, response guards/spill, batch behavior, discovery, per-instance binding and fake-listener transport scenarios. These do not replace live Revit acceptance tests.
+Tests run under .NET 10 xUnit without a running Revit. Coverage includes configuration, tool contracts and permissions, response guards/spill, batch behavior, discovery, per-instance binding and fake-listener transport scenarios. These do not replace live Revit acceptance tests.
 
 Installer/uninstaller and packaging-script fixtures use disposable folders, not a real installation. Run them under both Windows PowerShell 5.1 and PowerShell 7:
 
@@ -82,7 +82,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the conceptual model. Quick reference
 | `src/shared/Config/` | `RvtMcpConfig` — 3-layer precedence |
 | `src/shared/RibbonSetup.cs` | Ribbon setup shared by all plugin shells |
 | `src/plugin-r<nn>/` | Revit-year shell: `App.cs`, `IconGenerator.cs`, csproj, `.addin` |
-| `tests/RvtMcp.Tests/` | xUnit tests (pure .NET 8, no Revit API) |
+| `tests/RvtMcp.Tests/` | xUnit tests (pure .NET 10, no Revit API) |
 | `scripts/` | Setup/NuGet packaging, public-tree checks, install and uninstall entrypoints |
 | `.github/workflows/` | CI matrix build |
 

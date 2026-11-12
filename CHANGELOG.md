@@ -48,6 +48,12 @@ Install the 3.0.1 gateway and add-ins together. TaskDialog declarations require 
 - `revit_capture_view_image` accepts an `output_path` in the user's own `%TEMP%` folder. Revit runs with `TEMP` set to a per-session subfolder, so such a path was refused although the message named `%TEMP%`.
 - A refused `output_path` returns the allowed folders as `allowed_roots` (the paths in the error text are masked) and the next step: omit `output_path` and copy the saved file, or ask the user to allow the folder.
 
+### Build/deployment dependencies
+
+- Move the standalone MCP server and its unit tests to .NET 10; require SDK 10.0.404 or a later patch in the same feature band. Revit 2022–2024 plugins retain .NET Framework 4.8.
+- Update ModelContextProtocol and AspNetCore 1.1.0 → 1.4.2, Microsoft.Data.Sqlite 8.0.11 → 8.0.34, native SQLite package 2.1.13 → 2.1.14 (SQLite 3.54.0), Roslyn 4.8.0 → 4.13.0, System.Drawing.Common 8.0.0 → 8.0.34, xUnit 2.9.0 → 2.9.3, and Test.Sdk 17.10.0 → 17.14.2. Hosting and Windows principal APIs now come from the .NET 10 framework instead of redundant package references.
+- Retain Newtonsoft.Json 13.0.3 and the existing Revit API references; Roslyn remains below 4.14 for the .NET 8 plugin dependency layout.
+
 ### Document lifecycle
 
 - Add `revit_get_document_state` to `meta` and the opt-in `documents` toolset with `revit_save_document`, `revit_save_checkpoint` and `revit_manage_checkpoints`. State reads exclude loaded links and report an unavailable or busy document index without losing other document results.
