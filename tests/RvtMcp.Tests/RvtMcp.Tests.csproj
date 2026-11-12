@@ -41,6 +41,7 @@
     <Compile Include="..\..\src\shared\Infrastructure\SendCodeSourceBuilder.cs" Link="Shared\Infrastructure\SendCodeSourceBuilder.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\SendCodeDocumentRewriter.cs" Link="Shared\Infrastructure\SendCodeDocumentRewriter.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\Scripting\SendCodeCompiler.cs" Link="Shared\Infrastructure\Scripting\SendCodeCompiler.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\Scripting\ScriptReferences.cs" Link="Shared\Infrastructure\Scripting\ScriptReferences.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\Scripting\ScriptCompileHost.cs" Link="Shared\Infrastructure\Scripting\ScriptCompileHost.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\NoDocumentGuidance.cs" Link="Shared\Infrastructure\NoDocumentGuidance.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\RecentFileList.cs" Link="Shared\Infrastructure\RecentFileList.cs" />

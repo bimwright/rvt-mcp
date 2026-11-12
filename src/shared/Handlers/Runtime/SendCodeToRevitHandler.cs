@@ -36,13 +36,10 @@ namespace RvtMcp.Plugin.Handlers
                 // Gather references from loaded assemblies (safe for any .NET runtime).
                 // File.Exists guards stale add-ins whose dll was deleted after Revit
                 // loaded them into the AppDomain (assembly Location points nowhere).
-                var references = AppDomain.CurrentDomain.GetAssemblies()
+                var references = LoadReferences(AppDomain.CurrentDomain.GetAssemblies()
                     .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && File.Exists(a.Location))
                     .GroupBy(a => a.GetName().Name)
-                    .Select(g => g.OrderByDescending(a => a.GetName().Version).First())
-                    .Select(a => MetadataReference.CreateFromFile(a.Location))
-                    .Cast<MetadataReference>()
-                    .ToArray();
+                    .Select(g => g.OrderByDescending(a => a.GetName().Version).First()), out var skipped);
 
                 var compilation = CSharpCompilation.Create(
                     "McpDynamic_" + Guid.NewGuid().ToString("N").Substring(0, 8),
@@ -63,7 +60,7 @@ namespace RvtMcp.Plugin.Handlers
                             .Take(5)
                             .ToArray();
                         Failures.FailureControl.NotifyCompileFailed();
-                        return Fail("Compilation failed:\n" + string.Join("\n", errors));
+                        return Fail("Compilation failed:\n" + string.Join("\n", errors) + SkippedNote(skipped));
                     }
 
                     ms.Seek(0, SeekOrigin.Begin);
@@ -84,6 +81,8 @@ namespace RvtMcp.Plugin.Handlers
                     // (anonymous objects serialize properly, strings stay strings, numbers stay numbers).
                     // Persistence paths (McpLogger, McpSessionLog, JournalEntry, bake suggestions, usage
                     // events) call BakeRedactor independently at write time, so logs/bakes remain redacted.
+                    if (skipped.Length != 0)
+                        return CommandResult.Ok(new { executed = true, result = output, skipped_references = SkippedDto(skipped) });
                     return CommandResult.Ok(new
                     {
                         executed = true,
@@ -122,12 +121,12 @@ namespace RvtMcp.Plugin.Handlers
         {
             try
             {
-                var references = AppDomain.CurrentDomain.GetAssemblies()
+                var references = LoadReferences(AppDomain.CurrentDomain.GetAssemblies()
                     .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && File.Exists(a.Location))
                     .GroupBy(a => a.GetName().Name)
                     .Select(g => g.Key == "RevitAPIUI" ? typeof(UIApplication).Assembly :
-                        g.Key == "RevitAPI" ? typeof(Autodesk.Revit.DB.Document).Assembly : g.OrderByDescending(a => a.GetName().Version).First())
-                    .Select(a => MetadataReference.CreateFromFile(a.Location)).Cast<MetadataReference>().ToArray();
+                        g.Key == "RevitAPI" ? typeof(Autodesk.Revit.DB.Document).Assembly : g.OrderByDescending(a => a.GetName().Version).First()),
+                    out var skipped);
                 var compiled = SendCodeCompiler.Compile(input, modules, references, () => state?.Compiling());
                 state?.CompileFinished();
                 if (!compiled.Success)
@@ -136,7 +135,8 @@ namespace RvtMcp.Plugin.Handlers
                     Failures.FailureControl.NotifyCompileFailed();
                     return new CommandResult { Success = false,
                         Error = compiled.ErrorCode + ": " + string.Join("\n", compiled.Diagnostics.Select(d =>
-                            McpResponsePrivacy.RedactErrorForResponse(d.Source + ":" + d.Line + ":" + d.Column + " " + d.DiagnosticId + " " + d.Message))),
+                            McpResponsePrivacy.RedactErrorForResponse(d.Source + ":" + d.Line + ":" + d.Column + " " + d.DiagnosticId + " " + d.Message)))
+                            + SkippedNote(skipped),
                         Data = new { compiled = false, compile_only = input.CompileOnly, executed = false,
                             diagnostics = compiled.Diagnostics.Select(d => new {
                                 source = McpResponsePrivacy.RedactErrorForResponse(d.Source), line = d.Line, column = d.Column,
@@ -156,6 +156,8 @@ namespace RvtMcp.Plugin.Handlers
                 state?.Invoking();
                 using (McpDocument.Begin(app)) output = method.Invoke(null, new object[] { app, input.Data.Json });
                 output = state == null ? output : state.Complete(output);
+                if (skipped.Length != 0)
+                    return CommandResult.Ok(new { executed = true, result = output, skipped_references = SkippedDto(skipped) });
                 return CommandResult.Ok(new { executed = true, result = output });
             }
             catch (ScriptContractException ex)
@@ -166,6 +168,25 @@ namespace RvtMcp.Plugin.Handlers
             catch (TargetInvocationException ex) { state?.Failed(); return Fail("Runtime error: " + (ex.InnerException?.Message ?? ex.Message)); }
             catch (Exception ex) { state?.Failed(); return Fail("Error: " + ex.Message); }
         }
+
+        // Issue #38: a loaded add-in DLL whose metadata Roslyn cannot read is skipped instead of failing every compile.
+        private static MetadataReference[] LoadReferences(IEnumerable<Assembly> assemblies, out SkippedScriptReference[] skipped)
+        {
+            var references = ScriptReferences.FromPaths(assemblies.Select(a => a.Location), out skipped);
+            foreach (var skip in skipped)
+            {
+                try { DiagnosticLog.Write("SendCodeReferences", $"{DateTime.UtcNow:o} Skipped reference {skip.Name} ({skip.Path}): {skip.Reason}", AuthToken.RevitVersion); }
+                catch { /* diagnostic path must not break compilation */ }
+            }
+            return references;
+        }
+
+        private static object[] SkippedDto(SkippedScriptReference[] skipped) =>
+            skipped.Select(s => (object)new { name = s.Name, reason = s.Reason }).ToArray();
+
+        private static string SkippedNote(SkippedScriptReference[] skipped) =>
+            skipped.Length == 0 ? string.Empty
+                : "\nSkipped references (unreadable metadata): " + string.Join(", ", skipped.Select(s => s.Name));
 
         private static CommandResult Fail(string error)
         {
