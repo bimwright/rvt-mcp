@@ -68,6 +68,10 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 - The MCP server runs Workstation GC instead of the Server GC that `Sdk.Web` turns on, matching the other bimwright gateways. Each MCP client starts its own server, and Server GC kept one heap and GC thread per core. On a 20-core machine, an idle server drops from about 160 MB to about 70 MB private memory and from about 40 to 21 threads; after a burst of large `revit_send_code_to_revit` results it keeps about 135 MB instead of about 750 MB. Call latency and CPU time are unchanged. Set `DOTNET_gcServer=1` to bring back Server GC. From [#36](https://github.com/bimwright/rvt-mcp/pull/36); thanks [@PhanCongVuDuc](https://github.com/PhanCongVuDuc).
 
+### Logs
+
+- Local logs rotate once per day instead of on every write. Daily rotation compared the log's creation time, which Windows gives back to a file re-created right after a rename, so each call left a one-line archive and every later write scanned them all; tens of thousands of archives made a large `revit_send_code_to_revit` call take about 10 s. Rotation now uses the last write time, and log maintenance reads file sizes and times in one directory pass. Archives already created are removed by the existing 30-day retention.
+
 ## v1.2.2 — 2026-11-02
 
 Release assets include the Setup ZIP, optional Claude Desktop MCPB and server-only NuGet package, each with a SHA-256 sidecar. NuGet.org and MCP Registry publication are separate.

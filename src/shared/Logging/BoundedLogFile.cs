@@ -59,7 +59,9 @@ namespace RvtMcp.Plugin
             var directory = Path.GetDirectoryName(path);
             RefuseLink(path);
             Directory.CreateDirectory(directory);
-            if (File.Exists(path) && (new FileInfo(path).Length + bytes.LongLength > fileBytes || File.GetCreationTimeUtc(path).Date < utc.Date))
+            // Daily rotation keys on the last write, not the creation time: Windows file-name tunneling
+            // gives a file re-created right after its rename the old creation time, which rotated every append.
+            if (File.Exists(path) && (new FileInfo(path).Length + bytes.LongLength > fileBytes || File.GetLastWriteTimeUtc(path).Date < utc.Date))
             {
                 Rotate(path, utc); // A failed rotation never falls through to an oversized append.
             }
@@ -92,24 +94,31 @@ namespace RvtMcp.Plugin
         }
 
         public static string[] Files(string directory, string group)
+            => GroupFiles(directory, group).Select(file => file.Path).ToArray();
+
+        // Attributes, size and write time come from the directory enumeration itself:
+        // one pass, no per-file metadata calls, so a large group stays cheap to scan.
+        private static (string Path, long Length, DateTime LastWriteTimeUtc)[] GroupFiles(string directory, string group)
         {
-            if (!Directory.Exists(directory)) return new string[0];
+            if (!Directory.Exists(directory)) return new (string, long, DateTime)[0];
             var pattern = group == "journal"
                 ? @"^\d{4}-\d{2}-\d{2}(?:-\d{8}-\d{6}(?:\d{7})?(?:-[0-9a-f]{32})?)?\.jsonl$"
                 : "^" + Regex.Escape(group) + @"(?:-\d{8}-\d{6}(?:\d{7})?(?:-[0-9a-f]{32})?)?\.jsonl$";
-            return Directory.GetFiles(directory, "*.jsonl").Where(p => Regex.IsMatch(Path.GetFileName(p), pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
-                .Where(p => (File.GetAttributes(p) & FileAttributes.ReparsePoint) == 0)
-                .OrderBy(p => File.GetLastWriteTimeUtc(p)).ThenBy(p => p, StringComparer.Ordinal).ToArray();
+            return new DirectoryInfo(directory).GetFiles("*.jsonl")
+                .Where(f => Regex.IsMatch(f.Name, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+                .Where(f => (f.Attributes & FileAttributes.ReparsePoint) == 0)
+                .Select(f => (Path: Path.Combine(directory, f.Name), f.Length, f.LastWriteTimeUtc))
+                .OrderBy(f => f.LastWriteTimeUtc).ThenBy(f => f.Path, StringComparer.Ordinal).ToArray();
         }
 
         private static void Prune(string directory, string group, string active, long budget, DateTime cutoff)
         {
-            var files = Files(directory, group);
-            long total = files.Sum(p => new FileInfo(p).Length);
-            foreach (var file in files)
+            var files = GroupFiles(directory, group);
+            long total = files.Sum(f => f.Length);
+            foreach (var info in files)
             {
+                var file = info.Path;
                 if (string.Equals(file, active, StringComparison.OrdinalIgnoreCase)) continue;
-                var info = new FileInfo(file);
                 if (info.LastWriteTimeUtc >= cutoff && total <= budget) continue;
                 var length = info.Length;
                 // A locked archive prevents the new append; it never permits unbounded growth.

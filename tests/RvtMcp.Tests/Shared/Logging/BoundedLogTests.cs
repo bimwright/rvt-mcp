@@ -30,6 +30,27 @@ public sealed class BoundedLogTests : IDisposable
     }
 
     [Fact]
+    public void Daily_rotation_happens_once_per_day_not_on_every_append()
+    {
+        // Windows file-name tunneling gives a file re-created right after its rename the old
+        // creation time, so a creation-time check rotated on every append and left one
+        // one-line archive per call (tens of thousands of files that each append re-scanned).
+        Directory.CreateDirectory(_root);
+        var path = Path.Combine(_root, "usage.jsonl");
+        File.WriteAllText(path, "yesterday\n");
+        var yesterday = DateTime.UtcNow.AddDays(-1);
+        File.SetCreationTimeUtc(path, yesterday);
+        File.SetLastWriteTimeUtc(path, yesterday);
+
+        for (var i = 0; i < 3; i++) BoundedLogFile.Append(path, "today " + i);
+
+        var archives = BoundedLogFile.Files(_root, "usage").Where(file => file != path).ToArray();
+        Assert.Single(archives);
+        Assert.Equal(new[] { "yesterday" }, File.ReadAllLines(archives[0]));
+        Assert.Equal(new[] { "today 0", "today 1", "today 2" }, File.ReadAllLines(path));
+    }
+
+    [Fact]
     public void Retention_prunes_old_generated_archives()
     {
         Directory.CreateDirectory(_root);
