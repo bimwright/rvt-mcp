@@ -64,6 +64,10 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 - A DLL loaded in Revit whose metadata the C# compiler cannot read (for example a protected assembly from another add-in) no longer makes every `revit_send_code_to_revit` and baked-tool compile fail with `CS0009`. The file is left out of the compile references and written to the diagnostic log. Send-code results then include `skipped_references` (`name`, `reason`), and compile errors list the skipped names. Fixes [#38](https://github.com/bimwright/rvt-mcp/issues/38).
 
+### Server memory
+
+- The MCP server runs Workstation GC instead of the Server GC that `Sdk.Web` turns on, matching the other bimwright gateways. Each MCP client starts its own server, and Server GC kept one heap and GC thread per core. On a 20-core machine, an idle server drops from about 160 MB to about 70 MB private memory and from about 40 to 21 threads; after a burst of large `revit_send_code_to_revit` results it keeps about 135 MB instead of about 750 MB. Call latency and CPU time are unchanged. Set `DOTNET_gcServer=1` to bring back Server GC. From [#36](https://github.com/bimwright/rvt-mcp/pull/36); thanks [@PhanCongVuDuc](https://github.com/PhanCongVuDuc).
+
 ## v1.2.2 — 2026-11-02
 
 Release assets include the Setup ZIP, optional Claude Desktop MCPB and server-only NuGet package, each with a SHA-256 sidecar. NuGet.org and MCP Registry publication are separate.
