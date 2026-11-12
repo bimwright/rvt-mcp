@@ -21,6 +21,9 @@ namespace RvtMcp.Tests
 
         public void Dispose()
         {
+            // Metadata references keep their files open until finalized; release them so the folder can be removed.
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
             try { Directory.Delete(_dir, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
 
