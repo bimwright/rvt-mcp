@@ -176,7 +176,7 @@ public class BakedTool_{safeName} : IRevitCommand
         {
             foreach (var skip in skipped)
             {
-                try { DiagnosticLog.Write("CompileReferences", $"{DateTime.UtcNow:o} Bake-compile skipped reference {skip.Name} ({skip.Path}): {skip.Reason}", AuthToken.RevitVersion); }
+                try { DiagnosticLog.Write("CompileReferences", $"Bake-compile skipped reference {skip.Name} ({skip.Path}): {skip.Reason}", AuthToken.RevitVersion); }
                 catch { /* diagnostic path must not break compilation */ }
             }
         }

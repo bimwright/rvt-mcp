@@ -175,7 +175,7 @@ namespace RvtMcp.Plugin.Handlers
             var references = ScriptReferences.FromPaths(assemblies.Select(a => a.Location), out skipped);
             foreach (var skip in skipped)
             {
-                try { DiagnosticLog.Write("SendCodeReferences", $"{DateTime.UtcNow:o} Skipped reference {skip.Name} ({skip.Path}): {skip.Reason}", AuthToken.RevitVersion); }
+                try { DiagnosticLog.Write("SendCodeReferences", $"Skipped reference {skip.Name} ({skip.Path}): {skip.Reason}", AuthToken.RevitVersion); }
                 catch { /* diagnostic path must not break compilation */ }
             }
             return references;
