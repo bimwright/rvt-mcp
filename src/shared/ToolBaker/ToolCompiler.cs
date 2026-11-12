@@ -95,11 +95,10 @@ public class BakedTool_{safeName} : IRevitCommand
                 // can make a baked tool compile against a newer API than the author tested.
                 LogAssemblyConflicts(groups);
 
-                var references = groups
-                    .Select(g => g.OrderByDescending(a => a.GetName().Version).First())
-                    .Select(a => MetadataReference.CreateFromFile(a.Location))
-                    .Cast<MetadataReference>()
-                    .ToArray();
+                // Issue #38: skip loaded DLLs whose metadata Roslyn cannot read instead of failing every compile.
+                var references = ScriptReferences.FromPaths(groups
+                    .Select(g => g.OrderByDescending(a => a.GetName().Version).First().Location), out var skipped);
+                LogSkippedReferences(skipped);
 
                 var policy = BakeCompilerPolicy.Validate(sourceCode, references);
                 if (!policy.Allowed)
@@ -170,6 +169,15 @@ public class BakedTool_{safeName} : IRevitCommand
                     Error = $"Compilation error: {ex.Message}",
                     Diagnostics = new[] { ex.GetType().Name + ": " + ex.Message }
                 };
+            }
+        }
+
+        private static void LogSkippedReferences(SkippedScriptReference[] skipped)
+        {
+            foreach (var skip in skipped)
+            {
+                try { DiagnosticLog.Write("CompileReferences", $"Bake-compile skipped reference {skip.Name} ({skip.Path}): {skip.Reason}", AuthToken.RevitVersion); }
+                catch { /* diagnostic path must not break compilation */ }
             }
         }
 

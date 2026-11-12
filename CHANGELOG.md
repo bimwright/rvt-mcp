@@ -60,6 +60,10 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 - Add typed `revit_move_elements` and `revit_rotate_elements` commands with explicit model-space units, atomic selection validation, placement checks and native Undo. Rotation has no default pivot: pass one explicit pivot for the whole selection, or `pivot_mode="each_location"` to turn each element in place about its insertion point or location-line midpoint. See [usage and verification](docs/placement-and-mep-contracts.md#moving-and-rotating-existing-elements-unreleased). From [#27](https://github.com/bimwright/rvt-mcp/pull/27); thanks [@kiselas](https://github.com/kiselas).
 
+### Send code and baked tools
+
+- A DLL loaded in Revit whose metadata the C# compiler cannot read (for example a protected assembly from another add-in) no longer makes every `revit_send_code_to_revit` and baked-tool compile fail with `CS0009`. The file is left out of the compile references and written to the diagnostic log. Send-code results then include `skipped_references` (`name`, `reason`), and compile errors list the skipped names. Fixes [#38](https://github.com/bimwright/rvt-mcp/issues/38).
+
 ## v1.2.2 — 2026-11-02
 
 Release assets include the Setup ZIP, optional Claude Desktop MCPB and server-only NuGet package, each with a SHA-256 sidecar. NuGet.org and MCP Registry publication are separate.
