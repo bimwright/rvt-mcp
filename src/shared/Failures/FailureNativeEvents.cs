@@ -692,7 +692,12 @@ namespace RvtMcp.Plugin.Failures
                         {
                             if (!Active.DialogAnswers.TryGetValue(args.DialogId ?? "", out var answers))
                                 Active.DialogAnswers[args.DialogId ?? ""] = answers = new List<JObject>();
-                            answers.Add(new JObject { ["button"] = adapter.Result.ToString(), ["meaning"] = adapter.ButtonSemantic, ["by"] = "rule" });
+                            var ruleAnswer = new JObject { ["button"] = adapter.Result.ToString(), ["meaning"] = adapter.ButtonSemantic, ["by"] = "rule" };
+                            // What the agent had declared for this dialog, if anything: reported as not used.
+                            var declared = task == null || Active.IsRead ? null : DialogAnswerPolicy.Select(Active.Request.DialogAnswers,
+                                RevitMessageCatalog.Current, args.DialogId, false, false, false);
+                            if (declared != null) ruleAnswer["agentDeclarationNotUsed"] = new JObject { ["button"] = declared["button"], ["text"] = declared["text"] };
+                            answers.Add(ruleAnswer);
                             PendingRequestLifecycle.SetHostBusy(false);
                             return;
                         }

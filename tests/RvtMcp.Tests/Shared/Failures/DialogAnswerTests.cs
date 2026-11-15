@@ -137,5 +137,22 @@ namespace RvtMcp.Tests
             Assert.Equal("1002", group["answer"].Value<string>("button"));
 
         }
+
+        [Fact]
+        public void A_rule_that_wins_over_the_agent_declaration_says_so()
+        {
+            var rule = new JObject { ["button"] = "1002", ["meaning"] = "Synthetic rule", ["by"] = "rule",
+                ["agentDeclarationNotUsed"] = new JObject { ["button"] = "1001", ["text"] = "Synthetic declared" } };
+            var group = new JObject { ["count"] = 1 };
+            FailureCapture.DescribeAnswers(group, new[] { rule });
+            Assert.Equal("rule", group.Value<string>("answeredBy"));
+            Assert.Equal("1002", group["answer"].Value<string>("button"));
+            Assert.Null(group["answer"]["agentDeclarationNotUsed"]);
+            Assert.Equal("1001", group["agentDeclarationNotUsed"].Value<string>("button"));
+            Assert.Contains("user choices take priority", group["agentDeclarationNotUsed"].Value<string>("reason"));
+            group = new JObject { ["count"] = 1 };
+            FailureCapture.DescribeAnswers(group, new[] { new JObject { ["button"] = "1002", ["by"] = "rule" } });
+            Assert.Null(group["agentDeclarationNotUsed"]);
+        }
     }
 }

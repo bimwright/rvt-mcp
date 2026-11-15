@@ -733,8 +733,9 @@ namespace RvtMcp.Plugin.Failures
                         ["captureErrors"] = new JArray(own.Where(i => i.Action == "capture_failed").Take(10).Select(i => new JObject
                         { ["incidentId"] = i.IncidentId, ["description"] = FailureCapture.SafeText(i.NativeContextDescription, 512) })),
                         ["nextStep"] = FailureCapture.NextStep(Stopped ? ErrorCode ?? "REVIT_FAILURE_ROLLED_BACK" : null, needsReview,
-                            own.Any(i => i.State == "accepted_by_rule" || i.State == "accepted_once" || i.State == "accepted_by_policy"),
-                            own.Any(i => i.State == "accepted_by_policy") ? WarningPolicyModes.AcceptAndLog : WarningPolicyModes.Rollback)
+                            own.Any(i => i.Source != "dialog" && (i.State == "accepted_by_rule" || i.State == "accepted_once" || i.State == "accepted_by_policy")),
+                            own.Any(i => i.State == "accepted_by_policy") ? WarningPolicyModes.AcceptAndLog : WarningPolicyModes.Rollback,
+                            own.Any(i => i.Source == "dialog" && (i.State == "accepted_by_rule" || i.State == "accepted_once")))
                     };
                 }
                 if (!IsRead || Persisted || Stopped)

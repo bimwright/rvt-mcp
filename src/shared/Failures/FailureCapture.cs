@@ -134,7 +134,8 @@ namespace RvtMcp.Failures
             + "Send it again once Revit is free.";
 
         // Written for the agent: it cannot act in Revit UI, but it can read, resurvey and revise its plan.
-        public static string NextStep(string errorCode, bool reviewRequired, bool acceptedWarnings, string warningPolicy = WarningPolicyModes.Rollback)
+        public static string NextStep(string errorCode, bool reviewRequired, bool acceptedWarnings, string warningPolicy = WarningPolicyModes.Rollback,
+            bool acceptedDialogs = false)
         {
             const string records = "Read the incidents with revit_get_failure_records (includeDetails=true)";
             const string review = "The user can review it in Revit (History > Issues); revit_show_issue opens it on an incident.";
@@ -166,6 +167,8 @@ namespace RvtMcp.Failures
                 return "Warnings were accepted and recorded under the user's accept-and-log policy. Check the recorded outcome; acceptance does not certify model correctness or repair earlier operations.";
             if (acceptedWarnings)
                 return "Committed with warnings the user accepted by rule or one-use grant (see the incident). The warnings remain in the model; this does not certify design quality.";
+            if (acceptedDialogs)
+                return "Committed after a user rule or one-use grant answered a Revit dialog (see _failure.groups[].answer and the incident). This does not certify the model is correct.";
             return "Revit reported conditions during this operation. " + records + " before relying on the result.";
         }
 
@@ -181,6 +184,15 @@ namespace RvtMcp.Failures
             {
                 var choices = answers.Select(a => { var choice = (JObject)a.DeepClone(); choice.Remove("by"); return choice; }).ToList();
                 if (choices.Select(a => a.Value<string>("button")).Distinct(StringComparer.Ordinal).Count() == 1) group["answer"] = choices[0];
+            }
+            // A user rule or grant wins over the agent's declaration; say so instead of leaving the agent to infer it.
+            var skipped = answers?.Select(a => a["agentDeclarationNotUsed"]).OfType<JObject>().FirstOrDefault();
+            if (skipped != null)
+            {
+                var notice = (JObject)skipped.DeepClone();
+                notice["reason"] = "A user rule or one-use grant answered this dialog first; user choices take priority. A scope=next declaration was still spent by this write.";
+                group["agentDeclarationNotUsed"] = notice;
+                if (group["answer"] is JObject answer) answer.Remove("agentDeclarationNotUsed");
             }
         }
 

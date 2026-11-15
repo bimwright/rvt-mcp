@@ -150,7 +150,7 @@ namespace RvtMcp.Server
                     brief["groups"] = new JArray(groups.OfType<JObject>().Take(5).Select(g =>
                     {
                         var group = new JObject();
-                        foreach (var key in new[] { "failureDefinitionId", "severity", "count", "title", "answeredBy", "answeredCount" })
+                        foreach (var key in new[] { "failureDefinitionId", "severity", "count", "title", "answeredBy", "answeredCount", "agentDeclarationNotUsed" })
                             if (g[key] != null) group[key] = g[key].DeepClone();
                         if (g["description"]?.Type == JTokenType.String) group["description"] = Bounded(g.Value<string>("description"), 200);
                         return group;
