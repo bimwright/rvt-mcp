@@ -123,6 +123,7 @@
   "failure.action.allowOnce": "Zezwól raz",
   "failure.action.addRule": "Dodaj regułę",
   "failure.action.allowNative": "Akcja natywna",
+  "failure.agentSuggestion": "Agent sugeruje: {action}. Sprawdź, zaznacz pole weryfikacji i kliknij samodzielnie.",
   "failure.review.short": "Sprawdziłem model",
   "failure.copy.warning": "Skopiuj to ostrzeżenie wraz ze wszystkimi identyfikatorami elementów.",
   "failure.rules.noneLine": "Brak",

@@ -111,6 +111,7 @@ namespace RvtMcp.Plugin
             "get_report_history",
             "select_elements",
             "show_element_in_view",
+            "show_issue",
             "show_message",
             "suggest_view_name_corrections",
             "survey_change_impact",

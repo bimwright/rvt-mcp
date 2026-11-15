@@ -137,7 +137,7 @@ namespace RvtMcp.Failures
         public static string NextStep(string errorCode, bool reviewRequired, bool acceptedWarnings, string warningPolicy = WarningPolicyModes.Rollback)
         {
             const string records = "Read the incidents with revit_get_failure_records (includeDetails=true)";
-            const string review = "The user can review it in Revit (History > Issues).";
+            const string review = "The user can review it in Revit (History > Issues); revit_show_issue opens it on an incident.";
             const string admission = "Previous Issues do not block subsequent MCP commands or repeated requests. ";
             switch (errorCode)
             {

@@ -123,6 +123,7 @@
   "failure.action.allowOnce": "Povolit jednou",
   "failure.action.addRule": "Přidat pravidlo",
   "failure.action.allowNative": "Nativní akce",
+  "failure.agentSuggestion": "Agent navrhuje akci {action}. Zkontrolujte ji, zaškrtněte potvrzení kontroly a klikněte sami.",
   "failure.review.short": "Zkontroloval jsem model",
   "failure.copy.warning": "Kopírovat toto varování včetně všech ID prvků.",
   "failure.rules.noneLine": "Žádné",

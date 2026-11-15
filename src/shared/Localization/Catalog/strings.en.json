@@ -137,6 +137,7 @@
   "failure.action.allowOnce": "Allow once",
   "failure.action.addRule": "Add rule",
   "failure.action.allowNative": "Allow native",
+  "failure.agentSuggestion": "The agent suggests {action}. Review it, tick the review box and click it yourself.",
   "failure.review.short": "I reviewed the model",
   "failure.copy.warning": "Copy this warning, including every element id.",
   "failure.rules.noneLine": "None",

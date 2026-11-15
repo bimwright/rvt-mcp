@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 257,
+  "tool_count": 258,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -8189,6 +8189,32 @@
         },
         "required": [
           "element_ids"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "revit_show_issue",
+      "description_hash": "sha256:aa819daec8b03a8478041bdfe159815de7d5c1ef9708cc8e1d8b43e0481a5554",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "",
+            "type": "String"
+          },
+          "incidentId": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "incidentId"
         ],
         "type": "object"
       },

@@ -108,6 +108,8 @@ internal static class IssuesStateChecks
             Expect(runtime.Saves == 1 && dialogs.Confirms == 1, "consented reviewed dialog rule uses confirmation and one save");
         }
 
+        CheckAgentFocus();
+
         runtime = new Runtime();
         var first = runtime.Incidents[0];
         runtime.Incidents = Enumerable.Range(0, 620).Select(i => new FailureIncident { IncidentId = "page-" + i,
@@ -127,6 +129,40 @@ internal static class IssuesStateChecks
             "deactivate/dispose detach source and reject late actions");
         CheckSharedWindow();
         Console.WriteLine("PASS: Issues VM scope/year/revision, review/consent/persistence, reset cancel/busy/commit, paging and lifetime");
+    }
+
+    // revit_show_issue: the agent opens Issues on one incident; nothing is decided for the user.
+    private static void CheckAgentFocus()
+    {
+        var runtime = new Runtime();
+        var other = new FailureIncident { IncidentId = "observed-c", ModelScopeKey = "other-c", ModelTitle = "Other C", RevitYear = 2024,
+            OperationId = "operation-b", State = "observed", OperationContext = "open:ignore_unresolved_references",
+            Messages = new List<FailureMessage> { new FailureMessage { Severity = "TaskDialog", DefinitionId = "TaskDialog_Unresolved_References" } } };
+        runtime.Incidents.Add(other);
+        using (var vm = new IssuesViewModel(runtime, new Dialogs()))
+        {
+            vm.Activate();
+            vm.State = "open";
+            Expect(vm.SelectedModel.ModelScopeKey == "selected-b", "fixture starts on another model");
+            vm.FocusIncident("observed-c", "create_rule");
+            Expect(vm.State == "" && vm.SelectedModel.ModelScopeKey == "other-c" && vm.SelectedModel.RevitYear == 2024
+                && vm.Incident?.IncidentId == "observed-c" && vm.SelectedIssue?.Incident.IncidentId == "observed-c",
+                "show_issue selects the incident's model and row on all states, even from another filter");
+            Expect(vm.SuggestedAction == "create_rule" && vm.StatusText.Contains(L.T("failure.action.addRule")),
+                "the suggested action is marked and named in the status line");
+            Expect(!vm.VerifiedModel && !vm.DecisionCommand("create_rule").CanExecute(null) && runtime.Saves == 0,
+                "focus never ticks the review box, enables or records a decision");
+            vm.SelectedModel = vm.Models.First(m => m.ModelScopeKey == "selected-b");
+            Expect(vm.SuggestedAction == null, "the suggestion clears once the user moves to another incident");
+        }
+        using (var vm = new IssuesViewModel(runtime, new Dialogs()))
+        {
+            var pages = runtime.PageQueries;
+            vm.FocusIncident("observed-c", null);
+            Expect(vm.Incident == null && runtime.PageQueries == pages, "an inactive view only remembers the request");
+            vm.Activate();
+            Expect(vm.Incident?.IncidentId == "observed-c" && vm.SuggestedAction == null, "the request is applied when Issues opens");
+        }
     }
 
     private static void CheckSharedWindow()
@@ -238,7 +274,7 @@ internal static class IssuesStateChecks
         public FailureRecordPage Query(FailureRecordQuery query)
         {
             Queries.Add(query);
-            var matching = Incidents.Where(i => i.ModelScopeKey == query.ModelScopeKey && (!query.RevitYear.HasValue || i.RevitYear == query.RevitYear)
+            var matching = Incidents.Where(i => (query.ModelScopeKey == null || i.ModelScopeKey == query.ModelScopeKey) && (!query.RevitYear.HasValue || i.RevitYear == query.RevitYear)
                 && (query.State == null || i.State == query.State) && (query.IncidentId == null || i.IncidentId == query.IncidentId)).OrderByDescending(i => i.CreatedUtc).ToList();
             var offset = query.Cursor == null ? 0 : int.Parse(query.Cursor);
             if (!query.IncludeDetails) PageQueries++;

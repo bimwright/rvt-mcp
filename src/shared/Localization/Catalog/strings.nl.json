@@ -123,6 +123,7 @@
   "failure.action.allowOnce": "Eenmaal toestaan",
   "failure.action.addRule": "Regel toevoegen",
   "failure.action.allowNative": "Native actie",
+  "failure.agentSuggestion": "De agent stelt {action} voor. Controleer het, vink het controlevakje aan en klik zelf.",
   "failure.review.short": "Ik heb het model gecontroleerd",
   "failure.copy.warning": "Kopieer deze waarschuwing, inclusief alle element-id's.",
   "failure.rules.noneLine": "Geen",

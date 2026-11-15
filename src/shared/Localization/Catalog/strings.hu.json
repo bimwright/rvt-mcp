@@ -123,6 +123,7 @@
   "failure.action.allowOnce": "Engedély egyszer",
   "failure.action.addRule": "Szabály hozzáadása",
   "failure.action.allowNative": "Natív művelet",
+  "failure.agentSuggestion": "Az ügynök javaslata: {action}. Ellenőrizze, jelölje be az ellenőrzés jelölőnégyzetét, és kattintson saját maga.",
   "failure.review.short": "Átnéztem a modellt",
   "failure.copy.warning": "Figyelmeztetés másolása az összes elemazonosítóval.",
   "failure.rules.noneLine": "Nincs",

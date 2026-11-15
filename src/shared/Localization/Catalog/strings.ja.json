@@ -123,6 +123,7 @@
   "failure.action.allowOnce": "一度許可",
   "failure.action.addRule": "ルール追加",
   "failure.action.allowNative": "ネイティブ許可",
+  "failure.agentSuggestion": "エージェントの提案: {action}。内容を確認し、確認チェックを入れてから自分でクリックしてください。",
   "failure.review.short": "モデルを確認しました",
   "failure.copy.warning": "この警告を、すべての要素 ID を含めてコピーします。",
   "failure.rules.noneLine": "なし",

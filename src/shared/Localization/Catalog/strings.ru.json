@@ -123,6 +123,7 @@
   "failure.action.allowOnce": "Разрешить один раз",
   "failure.action.addRule": "Добавить правило",
   "failure.action.allowNative": "Нативное действие",
+  "failure.agentSuggestion": "Агент предлагает: {action}. Проверьте, отметьте флажок проверки и нажмите сами.",
   "failure.review.short": "Я проверил модель",
   "failure.copy.warning": "Копировать это предупреждение, включая все идентификаторы элементов.",
   "failure.rules.noneLine": "Нет",

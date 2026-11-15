@@ -211,6 +211,15 @@ namespace RvtMcp.Plugin
             _historyWindow?.ShowIssues();
         }
 
+        /// <summary>revit_show_issue: open History → Issues on one incident for the user to decide.</summary>
+        public void FocusIssue(string incidentId, string action)
+        {
+            ShowOrFocusHistoryWindow();
+            if (_historyWindow.WindowState == System.Windows.WindowState.Minimized)
+                _historyWindow.WindowState = System.Windows.WindowState.Normal;
+            _historyWindow.FocusIssue(incidentId, action);
+        }
+
         public void ShowOrFocusSettingsWindow(SettingsTab initialTab = SettingsTab.General)
         {
             if (_settingsWindow == null || !_settingsWindow.IsLoaded)

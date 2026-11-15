@@ -123,6 +123,7 @@
   "failure.action.allowOnce": "한 번 허용",
   "failure.action.addRule": "규칙 추가",
   "failure.action.allowNative": "네이티브 허용",
+  "failure.agentSuggestion": "에이전트 제안: {action}. 내용을 검토하고 검토 확인란을 선택한 후 직접 클릭하세요.",
   "failure.review.short": "모델을 검토했습니다",
   "failure.copy.warning": "모든 요소 ID를 포함해 이 경고를 복사합니다.",
   "failure.rules.noneLine": "없음",

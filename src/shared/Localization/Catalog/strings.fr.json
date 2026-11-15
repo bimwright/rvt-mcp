@@ -123,6 +123,7 @@
   "failure.action.allowOnce": "Autoriser une fois",
   "failure.action.addRule": "Ajouter une règle",
   "failure.action.allowNative": "Action native",
+  "failure.agentSuggestion": "L'agent suggère {action}. Vérifiez, cochez la case de vérification et cliquez vous-même.",
   "failure.review.short": "J'ai examiné le modèle",
   "failure.copy.warning": "Copier cet avertissement, y compris tous les identifiants d'éléments.",
   "failure.rules.noneLine": "Aucune",

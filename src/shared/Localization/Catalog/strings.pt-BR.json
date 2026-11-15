@@ -123,6 +123,7 @@
   "failure.action.allowOnce": "Permitir uma vez",
   "failure.action.addRule": "Adicionar regra",
   "failure.action.allowNative": "Ação nativa",
+  "failure.agentSuggestion": "O agente sugere {action}. Revise, marque a caixa de revisão e clique você mesmo.",
   "failure.review.short": "Revisei o modelo",
   "failure.copy.warning": "Copiar este aviso, incluindo todos os IDs de elemento.",
   "failure.rules.noneLine": "Nenhuma",

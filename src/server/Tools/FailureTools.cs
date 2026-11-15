@@ -63,6 +63,25 @@ namespace RvtMcp.Server
             catch { return Error("FAILURE_STORAGE_FAILED", "Local failure records are unavailable. No Revit operation was dispatched; model safety is unknown."); }
         }
 
+        [McpServerTool(Name = "revit_show_issue", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), Description(
+            "Open History > Issues in Revit on one recorded incident so the user can decide it: shows all states, selects its model and incident and highlights the suggested action. " +
+            "Use this instead of telling the user where to click. It records nothing and never decides; the user reviews, ticks the review box and clicks the action. " +
+            "action (optional): rework, abandon, accept_once, create_rule (Add rule) or native_grant. Read the outcome afterwards with revit_get_failure_records. " +
+            "Example: {incidentId: \"<issued-id>\", action: \"create_rule\"}.")]
+        public static async Task<string> ShowIssue(string incidentId, string action = null)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(incidentId)) throw new ArgumentException("incidentId is required; take it from a receipt or revit_get_failure_records.");
+                ValidateKey(incidentId);
+                if (action != null && Array.IndexOf(IssueActions, action) < 0)
+                    throw new ArgumentException("action must be one of " + string.Join(", ", IssueActions) + ".");
+            }
+            catch (ArgumentException ex) { return Error("INVALID_ARGUMENT", ex.Message); }
+            return await ToolGateway.CallAsync("show_issue", new { incident_id = incidentId, action });
+        }
+        private static readonly string[] IssueActions = { "rework", "abandon", "accept_once", "create_rule", "native_grant" };
+
         internal const int MaxWaitSeconds = 90;
         internal static TimeSpan WaitPollInterval = TimeSpan.FromMilliseconds(500);
 

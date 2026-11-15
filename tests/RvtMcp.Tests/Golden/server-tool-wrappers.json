@@ -4773,6 +4773,28 @@
       "result": "Error: golden probe failure"
     }
   },
+  "revit_show_issue": {
+    "success": {
+      "calls": [
+        {
+          "command": "show_issue",
+          "params": "{\"incident_id\":\"probe\",\"action\":null}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "show_issue",
+          "params": "{\"incident_id\":\"probe\",\"action\":null}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
   "revit_show_message": {
     "success": {
       "calls": [

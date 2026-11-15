@@ -123,6 +123,7 @@
   "failure.action.allowOnce": "允许一次",
   "failure.action.addRule": "添加规则",
   "failure.action.allowNative": "允许原生",
+  "failure.agentSuggestion": "代理建议：{action}。请检查后勾选审阅确认，再由您自己点击。",
   "failure.review.short": "我已检查模型",
   "failure.copy.warning": "复制此警告，包括全部图元 ID。",
   "failure.rules.noneLine": "无",

@@ -29,7 +29,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
-- Development source counts: `--toolsets all` **254**, adaptive bake **257**, and bare defaults **60**.
+- Development source counts: `--toolsets all` **255**, adaptive bake **258**, and bare defaults **61**.
 
 ### Document lifecycle
 
@@ -193,6 +193,8 @@ The [existing GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/
 - `revit_health` provides offline-by-default startup diagnostics with loaded gateway/add-in identities, semantic-version and revision alignment, optional bounded stable-release checks, and state-gated update guidance. It replies from the authenticated listener while Revit is modal; document fields are explicitly dated UI snapshots. The MCP handshake retains the build revision and the health catalog entry carries runtime metadata for client-side reconnect verification.
 
 - Advance TaskDialog answers: `revit_set_dialog_answers` validates exact permitted pairs, scopes declarations to the next write or gateway session (a target or active-document change drops them and reports `_dialogAnswers` once), requires `dialog_answers_v1`, and records authorization/native outcome in Issues. User choices retain priority; denied pairs and native failure guards remain enforced.
+- Open an issue for the user: `revit_show_issue` opens History → Issues in Revit on one recorded incident, with all states shown, its model and incident selected and an optional suggested action highlighted. It records nothing; the user still reviews, ticks the review box and clicks the action.
+- History → Issues opens on **All states** every time, so models whose only incidents are observed (user-answered dialogs) stay listed.
 
 - **History → Issues** for reviewing local incidents, Rework, Abandon, constrained Accept once, model rules/revocation and supported one-use native-operation grants. Decisions are recorded in Revit with an optional reason; no MCP approval or rule-mutation tool is exposed. Closing an issue never automatically retries, saves, discards or undoes earlier commits.
 - **`revit_get_failure_records` and `revit_get_operation_status`** in `meta`: bounded read-only local queries that work while Revit is modal and with send-code/history disabled. They use issued identifiers, preserve missing/incomplete evidence, and do not create a missing ledger. Development source counts: `--toolsets all` **237**, adaptive bake **240**, and bare defaults **50**.
