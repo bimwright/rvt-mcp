@@ -19,7 +19,7 @@ namespace RvtMcp.Plugin.Presentation.Issues
         private RuleRow _selectedRule;
         private FailureIncident _incident;
         private FailureOperation _operation;
-        private string _state = "open", _search = "", _reason = "", _lastScope;
+        private string _state = "", _search = "", _reason = "", _lastScope;
         private bool _verified, _consent, _loading, _disposed, _active, _hasActivated;
         private bool _resetting;
         private UiTone _bannerTone;
@@ -88,7 +88,10 @@ namespace RvtMcp.Plugin.Presentation.Issues
             _active = true;
             _hasActivated = true;
             _runtime.Activate();
-            if (refresh || firstActivation) Refresh();
+            // Every opening starts from all states, whatever filter the view was closed with.
+            var filterReset = _state.Length != 0;
+            if (filterReset) { _state = ""; OnPropertyChanged(nameof(State)); }
+            if (refresh || firstActivation || filterReset) Refresh();
             else
             {
                 // Hide/Show resumes observation without discarding the existing review.

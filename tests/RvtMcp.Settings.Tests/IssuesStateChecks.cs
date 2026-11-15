@@ -94,7 +94,13 @@ internal static class IssuesStateChecks
         runtime.Incidents[0].Messages[0].DefinitionId = "TaskDialog_Unresolved_References";
         using (var vm = new IssuesViewModel(runtime, dialogs))
         {
-            vm.State = "observed"; vm.Activate(); vm.VerifiedModel = true;
+            vm.Activate();
+            Expect(vm.State == "" && vm.Models.Count == 1 && vm.Rows.Count == 1 && vm.Incident != null, "Issues opens on all states, so an observed-only model is listed");
+            vm.State = "open";
+            Expect(vm.Rows.Count == 0, "the Open filter hides observed incidents");
+            vm.Deactivate(); vm.Activate(refresh: false);
+            Expect(vm.State == "" && vm.Rows.Count == 1, "reopening Issues returns to all states, whatever filter it closed with");
+            vm.State = "observed"; vm.VerifiedModel = true;
             vm.DecisionCommand("create_rule").Execute(null);
             Expect(runtime.Saves == 0 && dialogs.Confirms == 0, "supported dialog still requires explicit semantic consent");
             vm.DialogConsent = true;
@@ -111,7 +117,7 @@ internal static class IssuesStateChecks
         bounded.Activate();
         Expect(bounded.Rows.Count == 500 && bounded.Models[0].Source.IssueCount == 620 && runtime.PageQueries == 5,
             "bounded newest rows do not truncate model counts");
-        Expect(runtime.Queries.Where(q => !q.IncludeDetails).All(q => q.NewestFirst && q.ModelScopeKey == "selected-b" && q.RevitYear == 2027 && q.State == "open"),
+        Expect(runtime.Queries.Where(q => !q.IncludeDetails).All(q => q.NewestFirst && q.ModelScopeKey == "selected-b" && q.RevitYear == 2027 && q.State == null),
             "every page pins scope/year/state and newest direction");
         var late = runtime.ContextCallback;
         var queries = runtime.PageQueries;

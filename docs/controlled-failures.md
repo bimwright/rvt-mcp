@@ -43,7 +43,7 @@ Captured context is bounded. Raw code, credentials and full argument bodies are 
 
 ## Handle an issue in Revit
 
-Open **History → Issues** from the Revit ribbon or History window. Select the correct model and incident, inspect the outcome, captured elements and any incomplete evidence, then choose an action. The reason is optional: the input shows a hint while empty, and a blank or whitespace-only reason is recorded as `No reason provided`. Model-review confirmations and acceptance constraints still apply. **Rework** and **Abandon** are saved as soon as you click them and the status line confirms it. **Accept once**, **Create rule**, **Allow native action once** and **Revoke rule** first open a review of the exact constraints, which you must approve.
+Open **History → Issues** from the Revit ribbon or History window. The **State** filter starts at **All states** each time Issues opens, so every model with recorded issues is listed. Select the correct model and incident, inspect the outcome, captured elements and any incomplete evidence, then choose an action. The reason is optional: the input shows a hint while empty, and a blank or whitespace-only reason is recorded as `No reason provided`. Model-review confirmations and acceptance constraints still apply. **Rework** and **Abandon** are saved as soon as you click them and the status line confirms it. **Accept once**, **Add rule**, **Allow native action once** and **Revoke rule** first open a review of the exact constraints, which you must approve.
 
 The model dropdown puts models open in this Revit instance first, with the active model at the top of that group. Within each group, rows sort by Revit version from newest to oldest, then by model name; unknown versions come last. Open models are bold only for this host's Revit year; there is no active-model dot. The emphasis and ordering update when the active model or open models change, while preserving the model selected for review. Model-kind labels follow the UI language. The list shows models with issues matching the chosen state, plus the previously selected model with a zero count if it still has issues in another state. Refresh preserves that selection. When there is no retained selection, Issues prefers the active model, then the first available row.
 
@@ -54,7 +54,7 @@ Open the Model combobox to search within its embedded editor. Partial names matc
 | **Rework** | Records that the attempt will be reworked. It does not execute the revised operation. |
 | **Abandon** | Closes the attempted action after review. It does not undo earlier commits, delete elements, save or discard the model. Partial or unknown outcomes require explicit confirmation that the model was checked. |
 | **Accept once** | Grants one matching new attempt for supported, fully captured warnings or an exact supported dialog. It does not recommit a rolled-back transaction or retry the old call. |
-| **Create rule** | Records a model-specific rule with the displayed definition, Revit year, context, count and existing-element constraints. Every observed failure must match. |
+| **Add rule** | Records a model-specific rule with the displayed definition, Revit year, context, count and existing-element constraints. Every observed failure must match. |
 | **Revoke rule** | Disables a selected rule for future attempts. It does not undo previous changes. |
 | **Allow native action once** | When available for a blocked native operation, authorizes only the displayed action, file/options and request context. It does not execute it. |
 
