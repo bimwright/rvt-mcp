@@ -403,6 +403,7 @@
   "failure.state.resolved_abandoned": "시도 포기됨",
   "failure.state.accepted_once": "한 번 수락됨",
   "failure.state.accepted_by_rule": "규칙에 따라 수락됨",
+  "failure.state.answered_by_agent": "에이전트 응답 (결과 확인)",
   "failure.outcome.not_started": "시작 안 함",
   "failure.outcome.committed": "커밋됨",
   "failure.outcome.rolled_back": "롤백됨",

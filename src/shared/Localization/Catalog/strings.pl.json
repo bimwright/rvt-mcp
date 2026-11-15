@@ -403,6 +403,7 @@
   "failure.state.resolved_abandoned": "Próba porzucona",
   "failure.state.accepted_once": "Zaakceptowano jednorazowo",
   "failure.state.accepted_by_rule": "Zaakceptowano na podstawie reguły",
+  "failure.state.answered_by_agent": "Odpowiedź agenta (zobacz wynik)",
   "failure.outcome.not_started": "Nie rozpoczęto",
   "failure.outcome.committed": "Zatwierdzono",
   "failure.outcome.rolled_back": "Wycofano",

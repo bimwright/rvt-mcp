@@ -36,6 +36,7 @@ namespace RvtMcp.Tests
         private static readonly DateTime Start = new DateTime(2026, 10, 8, 8, 0, 0, DateTimeKind.Utc);
         private readonly string _root = Path.Combine(Path.GetTempPath(), "rvt-gateway-failure-" + Guid.NewGuid().ToString("N"));
         private readonly string _oldDir = ServerAuthToken.DiscoveryDirOverride;
+        private readonly string _oldCatalogRoot = RevitMessageLookup.RootOverride;
         private readonly RvtMcpConfig _oldConfig = ServerState.Config;
         private readonly RvtMcp.ToolCatalog.ToolCatalog _oldCatalog = ServerState.ToolCatalog;
         private readonly Func<string, object, int?, Task<JObject>> _oldSend = ToolGateway.SendOverride;
@@ -49,6 +50,7 @@ namespace RvtMcp.Tests
         {
             Directory.CreateDirectory(_root);
             ServerAuthToken.DiscoveryDirOverride = _root;
+            RevitMessageLookup.RootOverride = _root;
             ToolGateway.ResetForTests();
             ToolGateway.SendOverride = null;
             ToolGateway.History = new ChangeHistoryStore(Path.Combine(_root, "history"));
@@ -64,6 +66,7 @@ namespace RvtMcp.Tests
             ToolGateway.ResetForTests();
             RevitTargetBinding.ResetForTests();
             ServerAuthToken.DiscoveryDirOverride = _oldDir;
+            RevitMessageLookup.RootOverride = _oldCatalogRoot;
             ServerState.Config = _oldConfig;
             ServerState.ToolCatalog = _oldCatalog;
             ToolGateway.SendOverride = _oldSend;
@@ -219,7 +222,8 @@ namespace RvtMcp.Tests
                             string line;
                             while ((line = reader.ReadLine()) != null)
                             {
-                                var request = JObject.Parse(line);
+                                using var jsonReader = new JsonTextReader(new StringReader(line)) { DateParseHandling = DateParseHandling.None };
+                                var request = JObject.Load(jsonReader);
                                 if (request.Value<string>("command") == "set_tool_catalog")
                                 {
                                     if (CloseHandshake) { client.Close(); break; }
@@ -250,7 +254,7 @@ namespace RvtMcp.Tests
             public void Dispose() { _listener.Stop(); CloseClient(); }
         }
 
-        private void Descriptor(int port, bool protocol = true, int pid = Pid, string token = "test-token", string pipe = null, bool prepareBinding = true, string missingCapability = null)
+        private void Descriptor(int port, bool protocol = true, int pid = Pid, string token = "test-token", string pipe = null, bool prepareBinding = true, string missingCapability = null, bool dialogProtocol = false)
         {
             var descriptor = new JObject
             {
@@ -262,6 +266,7 @@ namespace RvtMcp.Tests
                     ? new JArray(new[] { "tool_catalog", "controlled_failures_v1", "document_target_v1" }.Where(value => value != missingCapability))
                     : new JArray("tool_catalog")
             };
+            if (dialogProtocol) ((JArray)descriptor["capabilities"]).Add("dialog_answers_v1");
             var path = Path.Combine(_root, "revit-2024-" + pid + ".json");
             File.WriteAllText(path + ".tmp", descriptor.ToString(Formatting.None));
             File.Move(path + ".tmp", path, overwrite: true);
@@ -327,6 +332,173 @@ namespace RvtMcp.Tests
         }
 
         private static JObject Text(CallToolResult result) => JObject.Parse(((TextContentBlock)result.Content[0]).Text);
+
+        private void WriteDialogCatalog() => RevitMessageLookup.Write(RevitMessageLookup.CachePath(2024), DialogAnswerTests.Catalog());
+        private static JObject Declare(string scope = "next") => JObject.Parse(FailureTools.SetDialogAnswers(DialogAnswerTests.Answer().ToString(), scope));
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task Dialog_answers_reach_real_TCP_and_pipe_transport(bool pipe)
+        {
+            var oldYear = PluginAuthToken.RevitVersion; PluginAuthToken.RevitVersion = "2024";
+            var nativeDir = Path.Combine(_root, "native"); Directory.CreateDirectory(nativeDir);
+            var name = pipe ? "rvt-dialog-" + Guid.NewGuid().ToString("N") : null;
+            using ITransportServer transport = pipe ? new PipeTransportServer(nativeDir, null, name) : new TcpTransportServer(nativeDir, null);
+            var requests = new ConcurrentQueue<JObject>();
+            try
+            {
+                transport.Start((line, completion) => { var request = JObject.Parse(line); requests.Enqueue(request); completion.SetResult(Final(request).ToString(Formatting.None)); });
+                Descriptor(transport is TcpTransportServer tcp ? tcp.Port : 0, token: PluginAuthToken.Current, pipe: name, dialogProtocol: true);
+                await Send(); WriteDialogCatalog(); Assert.True(Declare().Value<bool>("success"));
+                await Send("open_model"); await Send("open_model");
+                var writes = requests.Where(x => x.Value<string>("command") == "open_model").ToArray();
+                Assert.Equal("Close", writes[0]["dialog_answers"][0].Value<string>("button"));
+                Assert.Null(writes[1]["dialog_answers"]);
+            }
+            finally { ToolGateway.CloseConnection(); transport.Stop(); PluginAuthToken.RevitVersion = oldYear; }
+        }
+
+        [Fact]
+        public async Task Dialog_next_is_not_replayed_after_unknown_wire_failure()
+        {
+            using var wire = new WireHost(); Descriptor(wire.Port, dialogProtocol: true); await Send(); WriteDialogCatalog();
+            Assert.True(Declare().Value<bool>("success"));
+            ToolGateway.BeforeWriteForTests = () => {
+                ToolGateway.BeforeWriteForTests = null;
+                var conn = typeof(ToolGateway).GetField("_conn", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+                ((StreamWriter)conn.GetType().GetField("Writer").GetValue(conn)).Dispose();
+            };
+            var error = await Assert.ThrowsAsync<TargetException>(() => Send("open_model"));
+            Assert.Equal("interrupted_unknown", error.Operation.Value<string>("execution"));
+            Assert.Equal("unknown", error.Operation.Value<string>("outcome"));
+            ToolGateway.CloseConnection();
+            await Send("open_model"); Assert.Null(wire.Requests.Last()["dialog_answers"]);
+        }
+
+        [Fact]
+        public async Task Dialog_declaration_cannot_move_to_a_target_switched_after_call_arrival()
+        {
+            using var wire = new WireHost(); using var other = new WireHost();
+            Descriptor(wire.Port, dialogProtocol: true); await Send(); WriteDialogCatalog();
+            var ctx = TargetCallContext.Begin();
+            try
+            {
+                Descriptor(other.Port, pid: Pid + 1, dialogProtocol: true);
+                Assert.True(ToolGateway.SwitchBinding(TargetSelector.ForPid(Pid + 1), RevitTargetBinding.Scan().Live, out _, rebind: true).Ok);
+                Assert.False(Declare().Value<bool>("success"));
+            }
+            finally { TargetCallContext.End(ctx); }
+            await Send("open_model"); Assert.Null(other.Requests.Last()["dialog_answers"]);
+        }
+
+        [Fact]
+        public async Task Dialog_declaration_validates_binding_capability_catalog_and_clear_without_dispatch()
+        {
+            Assert.Equal("TARGET_NOT_BOUND", Declare().Value<string>("error"));
+            Assert.True(JObject.Parse(FailureTools.SetDialogAnswers(clear: true)).Value<bool>("success"));
+            using var wire = new WireHost(); Descriptor(wire.Port); await Send();
+            WriteDialogCatalog();
+            Assert.Equal("PAIRING_REQUIRED", Declare().Value<string>("error"));
+            Descriptor(wire.Port, dialogProtocol: true); ToolGateway.CloseConnection();
+            File.Delete(RevitMessageLookup.CachePath(2024));
+            Assert.Equal("CATALOG_UNAVAILABLE", Declare().Value<string>("error"));
+            WriteDialogCatalog(); Assert.True(Declare().Value<bool>("success"));
+            Assert.Single(wire.Requests); // declaration never needs Revit's UI thread
+            Assert.Equal("INVALID_ARGUMENT", JObject.Parse(FailureTools.SetDialogAnswers("[null]")).Value<string>("error"));
+            Assert.Equal("INVALID_ARGUMENT", JObject.Parse(FailureTools.SetDialogAnswers("{}", clear: true)).Value<string>("error"));
+            _config.ReadOnly = true;
+            Assert.Equal("READ_ONLY", Declare().Value<string>("error"));
+        }
+
+        [Fact]
+        public async Task MCP_dialog_next_survives_reads_invalid_replacement_and_server_local_tools_then_reaches_one_write()
+        {
+            using var wire = new WireHost(); Descriptor(wire.Port, dialogProtocol: true); await Send(); WriteDialogCatalog();
+            await WithMcp(async (client, ct) => {
+                var reply = await client.CallToolAsync("revit_set_dialog_answers", new Dictionary<string, object> { ["answers"] = DialogAnswerTests.Answer().ToString() }, cancellationToken: ct);
+                Assert.True(Text(reply).Value<bool>("success"));
+                var invalid = await client.CallToolAsync("revit_set_dialog_answers", new Dictionary<string, object> { ["answers"] = DialogAnswerTests.Answer("Invalid").ToString() }, cancellationToken: ct);
+                Assert.True(invalid.IsError == true);
+                Assert.Equal("INVALID_ARGUMENT", Text(invalid).Value<string>("error"));
+                FailureTools.LookupMessage("TaskDialog_Test_Answer");
+                await Send();
+                await Task.WhenAll(Send("open_model"), Send("create_wall"));
+            });
+            var requests = wire.Requests.ToArray();
+            Assert.Null(requests[0]["dialog_answers"]); Assert.Null(requests[1]["dialog_answers"]);
+            Assert.Single(requests.Where(r => r["dialog_answers"] != null));
+            Assert.Equal("Close", requests[2]["dialog_answers"][0].Value<string>("button"));
+        }
+
+        [Fact]
+        public async Task Dialog_next_survives_busy_and_pairing_rejection_before_wire()
+        {
+            using var wire = new WireHost(); Descriptor(wire.Port, dialogProtocol: true); await Send(); WriteDialogCatalog();
+            wire.OnCommand = (r, h) => h.Send(new JObject { ["id"] = r["id"], ["frame"] = "event", ["event"] = "dialog_wait" });
+            await Send("open_model");
+            var blockedRequest = wire.Requests.Last(); var pending = Pending[blockedRequest.Value<string>("id")];
+            Assert.True(Declare().Value<bool>("success"));
+            Assert.StartsWith("REVIT_BUSY", (await Send("create_wall")).Value<string>("error"));
+            wire.Send(Final(blockedRequest)); await pending.Execution.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            wire.OnCommand = null;
+            // Same target reconnects with an older add-in: reject before consuming next.
+            ToolGateway.CloseConnection(); Descriptor(wire.Port);
+            Assert.StartsWith("PAIRING_REQUIRED", (await Send("create_wall")).Value<string>("error"));
+            ToolGateway.CloseConnection(); Descriptor(wire.Port, dialogProtocol: true);
+            await Send("create_wall");
+            Assert.NotNull(wire.Requests.Last()["dialog_answers"]);
+            await Send("create_wall"); Assert.Null(wire.Requests.Last()["dialog_answers"]);
+        }
+
+        [Fact]
+        public async Task Dialog_session_persists_until_clear_target_switch_or_document_change()
+        {
+            using var wire = new WireHost(); using var other = new WireHost();
+            Descriptor(wire.Port, dialogProtocol: true); await Send(); WriteDialogCatalog();
+            Assert.True(Declare("session").Value<bool>("success"));
+            await Send("open_model"); await Send("create_wall");
+            Assert.Equal(2, wire.Requests.Count(r => r["dialog_answers"] != null));
+            Assert.True(JObject.Parse(FailureTools.SetDialogAnswers(clear: true)).Value<bool>("success"));
+            await Send("create_wall"); Assert.Null(wire.Requests.Last()["dialog_answers"]);
+            Assert.True(Declare("session").Value<bool>("success"));
+            Descriptor(other.Port, pid: Pid + 1, dialogProtocol: true);
+            Assert.True(ToolGateway.SwitchBinding(TargetSelector.ForPid(Pid + 1), RevitTargetBinding.Scan().Live, out _, rebind: true).Ok);
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-" + (Pid + 1));
+            await Send("create_wall"); Assert.Null(other.Requests.Last()["dialog_answers"]);
+        }
+
+        [Fact]
+        public async Task Dialog_declaration_dropped_by_a_document_change_is_reported_once()
+        {
+            using var wire = new WireHost();
+            Descriptor(wire.Port, dialogProtocol: true); await Send(); WriteDialogCatalog();
+            Assert.True(Declare("session").Value<bool>("success"));
+            RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-other");
+            var first = Delivered(await Send("create_wall"), "revit_create_wall");
+            Assert.Null(wire.Requests.Last()["dialog_answers"]);
+            Assert.Equal("binding_changed", first["_dialogAnswers"]?.Value<string>("reason"));
+            Assert.Equal("session", first["_dialogAnswers"]?.Value<string>("scope"));
+            Assert.Null(Delivered(await Send("create_wall"), "revit_create_wall")["_dialogAnswers"]);
+            // A clear the agent asked for is not reported.
+            Assert.True(Declare("session").Value<bool>("success"));
+            Assert.True(JObject.Parse(FailureTools.SetDialogAnswers(clear: true)).Value<bool>("success"));
+            Assert.Null(Delivered(await Send("create_wall"), "revit_create_wall")["_dialogAnswers"]);
+        }
+
+        [Fact]
+        public async Task Dialog_transport_preserves_literal_parameters_and_retains_next_on_serialization_failure()
+        {
+            using var wire = new WireHost(); Descriptor(wire.Port, dialogProtocol: true); await Send(); WriteDialogCatalog();
+            Assert.True(Declare().Value<bool>("success"));
+            var recursive = new List<object>(); recursive.Add(recursive);
+            await Assert.ThrowsAsync<JsonSerializationException>(() => ToolGateway.SendToRevit("create_wall", recursive));
+            const string literal = "2026-10-13T09:20:30.1200+07:00";
+            await ToolGateway.SendToRevit("create_wall", new { text = literal });
+            // WireHost disables date parsing so the exact JSON string can be inspected.
+            var last = wire.Requests.Last();
+            Assert.Equal(literal, last["params"].Value<string>("text")); Assert.NotNull(last["dialog_answers"]);
+        }
 
         [Theory]
         [InlineData("eof")]

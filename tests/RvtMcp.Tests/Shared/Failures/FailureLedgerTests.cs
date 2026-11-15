@@ -114,6 +114,42 @@ namespace RvtMcp.Tests
             Assert.True(store.GetGate(model.ModelScopeKey).Blocked);
         }
 
+        [Fact] public void AgentAnswerIsQueryableButNeverBlocksOrAcceptsHumanDecisions()
+        {
+            var store = Store(); var model = Model(store); var op = Operation(store, model.ModelScopeKey, "committed");
+            var incident = new FailureIncident { ModelScopeKey = model.ModelScopeKey, OperationId = op.OperationId,
+                State = "answered_by_agent", Action = "dialog_answer_authorized", RequestHash = op.RequestHash,
+                Severity = "TaskDialog", RevitYear = 2024 };
+            Assert.True(store.RecordIncident(incident).Recorded);
+            Assert.Single(store.Query(new FailureRecordQuery { ModelScopeKey = model.ModelScopeKey, State = "answered_by_agent" }).Records);
+            Assert.False(store.GetGate(model.ModelScopeKey).Blocked);
+            Assert.Empty(store.GetRepeatedRequestIncidents(model.ModelScopeKey, op.RequestHash));
+            Assert.Throws<ArgumentException>(() => store.ApplyDecision(Decision(incident)));
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void AgentAuthorizationRequiresCompleteCaptureAndRoomInOperationLedger(bool full)
+        {
+            var store = Store(); var model = Model(store); var op = Operation(store, model.ModelScopeKey, "committed");
+            if (full)
+            {
+                var prior = Incident(store, model.ModelScopeKey, op);
+                using var connection = new SqliteConnection("Data Source=" + Db + ";Pooling=False"); connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "UPDATE incidents SET payload=zeroblob($bytes) WHERE id=$id";
+                command.Parameters.AddWithValue("$bytes", FailureCapture.MaxOperationBytes);
+                command.Parameters.AddWithValue("$id", prior.IncidentId); command.ExecuteNonQuery();
+            }
+            var authorization = new FailureIncident { ModelScopeKey = model.ModelScopeKey, OperationId = op.OperationId,
+                State = "answered_by_agent", Action = "dialog_answer_authorized", Complete = full };
+            var called = false;
+            Assert.False(DialogAnswerPolicy.ApplyRecorded(() => store.RecordIncident(authorization).Recorded,
+                () => { called = true; return true; }, _ => { }));
+            Assert.False(called);
+        }
+
         [Fact] public void MissingLedgerBecomesAnEmptyDatabaseAndDoesNotBlock()
         {
             var store = new FailureLedgerStore(Db, readOnly: true);

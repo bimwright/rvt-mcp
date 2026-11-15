@@ -58,7 +58,8 @@ namespace RvtMcp.Tests
                 "get_material_takeoff", "import_cad_to_view", "link_revit_model", "list_bake_suggestions",
                 "open_model", "workflow_room_documentation",
                 "switch_target", // Session navigation: repins the target binding; touches no document data.
-                "record_change" // Adds one immutable reason/link; rejects calls already assigned to any reason.
+                "record_change", // Adds one immutable reason/link; rejects calls already assigned to any reason.
+                "set_dialog_answers" // Session configuration: declares TaskDialog answers in gateway memory; touches no document data.
             };
             foreach (var method in Tools())
             {

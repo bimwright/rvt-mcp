@@ -104,7 +104,7 @@ namespace RvtMcp.Plugin.Views
             _models.Margin = new Thickness(0, 0, 8, 0);
             filters.Children.Add(_models);
             filters.Children.Add(Label("failure.filter.state"));
-            foreach (var state in new[] { "", "open", "observed", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule", "accepted_by_policy" })
+            foreach (var state in new[] { "", "open", "observed", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule", "accepted_by_policy", "answered_by_agent" })
                 _states.Items.Add(new ComboBoxItem { Tag = state, Content = state.Length == 0 ? L.T("failure.filter.all") : L.T("failure.state." + state) });
             _states.SelectedIndex = 1;
             _states.Margin = new Thickness(0, 0, 8, 0);

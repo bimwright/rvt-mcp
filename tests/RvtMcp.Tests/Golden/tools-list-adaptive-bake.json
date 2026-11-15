@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 256,
+  "tool_count": 257,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -7293,6 +7293,34 @@
       "annotations": {
         "destructiveHint": true,
         "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_set_dialog_answers",
+      "description_hash": "sha256:a1dc74a746e7003a29b29797a618229c37ed04525930420b57e38d84c8d8c77b",
+      "inputSchema": {
+        "properties": {
+          "answers": {
+            "description": "",
+            "type": "String"
+          },
+          "clear": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "scope": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": false
       }

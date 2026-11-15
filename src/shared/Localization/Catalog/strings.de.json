@@ -403,6 +403,7 @@
   "failure.state.resolved_abandoned": "Versuch aufgegeben",
   "failure.state.accepted_once": "Einmal akzeptiert",
   "failure.state.accepted_by_rule": "Durch Regel akzeptiert",
+  "failure.state.answered_by_agent": "Agentenantwort (Ergebnis prüfen)",
   "failure.outcome.not_started": "Nicht gestartet",
   "failure.outcome.committed": "Festgeschrieben",
   "failure.outcome.rolled_back": "Zurückgerollt",

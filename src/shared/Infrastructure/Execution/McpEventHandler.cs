@@ -25,6 +25,7 @@ namespace RvtMcp.Plugin
         public bool FromMcp { get; set; }
         public string ExpectedDocumentId { get; set; }
         public bool DocumentProtocol { get; set; }
+        public JArray DialogAnswers { get; set; }
         public TaskCompletionSource<string> Tcs { get; set; }
     }
 

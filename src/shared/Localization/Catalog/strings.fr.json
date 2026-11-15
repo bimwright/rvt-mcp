@@ -403,6 +403,7 @@
   "failure.state.resolved_abandoned": "Tentative abandonnée",
   "failure.state.accepted_once": "Accepté une fois",
   "failure.state.accepted_by_rule": "Accepté par une règle",
+  "failure.state.answered_by_agent": "Réponse de l’agent (voir résultat)",
   "failure.outcome.not_started": "Non démarré",
   "failure.outcome.committed": "Validé",
   "failure.outcome.rolled_back": "Transaction annulée",

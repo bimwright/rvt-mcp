@@ -165,6 +165,7 @@ namespace RvtMcp.Plugin
                     FromMcp = true,
                     ExpectedDocumentId = request.Value<string>("expected_document_id"),
                     DocumentProtocol = request.Value<int?>("document_protocol") >= 1,
+                    DialogAnswers = request["dialog_answers"] as Newtonsoft.Json.Linq.JArray,
                     Tcs = tcs
                 };
 

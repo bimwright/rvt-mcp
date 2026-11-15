@@ -631,7 +631,7 @@ namespace RvtMcp.Plugin.Failures
             try
             {
                 var dialog = RevitMessageLookup.DialogInfo(args.DialogId, kind, text, RevitMessageCatalog.FindDialog(args.DialogId));
-                if (OwnDialogPending && string.IsNullOrEmpty(args.DialogId))
+                if (OwnDialogPending)
                 {
                     // revit_show_message waits for its own dialog: report the wait, but it is not a Revit condition.
                     dialog["kind"] = "agent_message";
@@ -670,7 +670,12 @@ namespace RvtMcp.Plugin.Failures
                         incident.State = policy.GrantIds.Count == 0 ? "accepted_by_rule" : "accepted_once";
                         incident.Action = "dialog_answer_authorized"; incident.RuleIds = policy.RuleIds; incident.GrantIds = policy.GrantIds;
                     }
-                    Active.SaveOperation(); Active.Record(incident, policy?.GrantIds);
+                    var agentAnswer = task == null || Active.IsRead ? null : DialogAnswerPolicy.Select(Active.Request.DialogAnswers,
+                        RevitMessageCatalog.Current, args.DialogId, policy?.Action == "continue", Active.Stopped, Active.StorageFailed);
+                    TaskDialogResult agentResult;
+                    if (agentAnswer != null && !Enum.TryParse(agentAnswer.Value<string>("button"), out agentResult)) agentAnswer = null;
+                    Active.SaveOperation();
+                    if (agentAnswer == null) Active.Record(incident, policy?.GrantIds);
                     // Exact type/id/year/context semantics only. DocWarnDialog never has an adapter.
                     if (policy?.Action == "continue" && !Active.StorageFailed && adapter != null)
                     {
@@ -687,7 +692,35 @@ namespace RvtMcp.Plugin.Failures
                         {
                             if (!Active.DialogAnswers.TryGetValue(args.DialogId ?? "", out var answers))
                                 Active.DialogAnswers[args.DialogId ?? ""] = answers = new List<JObject>();
-                            answers.Add(new JObject { ["button"] = adapter.Result.ToString(), ["meaning"] = adapter.ButtonSemantic });
+                            answers.Add(new JObject { ["button"] = adapter.Result.ToString(), ["meaning"] = adapter.ButtonSemantic, ["by"] = "rule" });
+                            PendingRequestLifecycle.SetHostBusy(false);
+                            return;
+                        }
+                    }
+                    if (agentAnswer != null)
+                    {
+                        Enum.TryParse(agentAnswer.Value<string>("button"), out agentResult);
+                        incident.State = "answered_by_agent";
+                        incident.Action = "dialog_answer_authorized";
+                        incident.NativeContextDescription = "Agent authorized " + args.DialogId + " -> " + agentAnswer.Value<string>("button")
+                            + " (" + agentAnswer.Value<string>("text") + "). Authorization only; see dialog_result for the native outcome.";
+                        var applied = DialogAnswerPolicy.ApplyRecorded(
+                            () => { Active.Record(incident); return !Active.StorageFailed && !Active.Stopped; },
+                            () => task.OverrideResult((int)agentResult),
+                            accepted => {
+                                var receipt = Active.NewIncident(state, "dialog_result", args.DialogId, "observed",
+                                    accepted ? "dialog_answered" : "dialog_answer_not_applied");
+                                receipt.ModelScopeKey = model.ModelScopeKey; receipt.ModelTitle = model.Title;
+                                receipt.DocumentRevision = incident.DocumentRevision; receipt.OperationContext = incident.OperationContext;
+                                receipt.NativeContextDescription = "Agent answer " + agentAnswer.Value<string>("button") + " ("
+                                    + agentAnswer.Value<string>("text") + "); native OverrideResult accepted=" + accepted + ".";
+                                Active.Record(receipt);
+                            });
+                        if (applied)
+                        {
+                            if (!Active.DialogAnswers.TryGetValue(args.DialogId, out var answers))
+                                Active.DialogAnswers[args.DialogId] = answers = new List<JObject>();
+                            answers.Add(new JObject { ["button"] = agentAnswer["button"], ["text"] = agentAnswer["text"], ["by"] = "agent" });
                             PendingRequestLifecycle.SetHostBusy(false);
                             return;
                         }

@@ -83,7 +83,7 @@ namespace RvtMcp.Tests
 
             var count = (int)Newtonsoft.Json.Linq.JObject.Parse(captured)["tool_count"]!;
             Assert.Contains("revit_get_report_history", captured);
-            Assert.Equal(59, count);
+            Assert.Equal(60, count);
         }
 
         [Fact]
@@ -91,6 +91,7 @@ namespace RvtMcp.Tests
         {
             var captured = CaptureToolsList(new RvtMcpConfig { ReadOnly = true });
             Assert.DoesNotContain("\"name\": \"revit_send_code_to_revit\"", captured);
+            Assert.DoesNotContain("\"name\": \"revit_set_dialog_answers\"", captured);
             Assert.Contains("\"name\": \"revit_list_available_targets\"", captured);
         }
 

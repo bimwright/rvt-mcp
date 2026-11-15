@@ -1,0 +1,727 @@
+[
+  {
+    "id": "D001",
+    "code": "TaskDialog_Project_Not_Saved_Recently",
+    "button": "1001"
+  },
+  {
+    "id": "D002",
+    "code": "TaskDialog_Project_Not_Saved_Recently",
+    "button": "1002"
+  },
+  {
+    "id": "D003",
+    "code": "TaskDialog_Changes_Not_Saved",
+    "button": "1001"
+  },
+  {
+    "id": "D004",
+    "code": "TaskDialog_Changes_Not_Saved",
+    "button": "1002"
+  },
+  {
+    "id": "D005",
+    "code": "TaskDialog_Changes_Not_Saved",
+    "button": "1003"
+  },
+  {
+    "id": "D006",
+    "code": "TaskDialog_Save_File",
+    "button": "Yes"
+  },
+  {
+    "id": "D007",
+    "code": "TaskDialog_Changes_Not_Saved_To_Local_File",
+    "button": "Yes"
+  },
+  {
+    "id": "D008",
+    "code": "TaskDialog_Confirm_Save_Location",
+    "button": "Yes"
+  },
+  {
+    "id": "D009",
+    "code": "TaskDialog_Invalid_Central_Model_Extension",
+    "button": "Yes"
+  },
+  {
+    "id": "D010",
+    "code": "TaskDialog_Save_File_As_Central_Model",
+    "button": "Yes"
+  },
+  {
+    "id": "D011",
+    "code": "TaskDialog_Save_As_Central_Model",
+    "button": "1002"
+  },
+  {
+    "id": "D012",
+    "code": "TaskDialog_Save_As_Revit_Model",
+    "button": "1001"
+  },
+  {
+    "id": "D013",
+    "code": "TaskDialog_Loading_Transmitted_File",
+    "button": "1001"
+  },
+  {
+    "id": "D014",
+    "code": "TaskDialog_Unsynced_Changes",
+    "button": "1001"
+  },
+  {
+    "id": "D015",
+    "code": "TaskDialog_Serious_Error_Occurred_Save_Recovery_File",
+    "button": "Yes"
+  },
+  {
+    "id": "D016",
+    "code": "TaskDialog_Serious_Error_Occurred_Recoverable",
+    "button": "Yes"
+  },
+  {
+    "id": "D017",
+    "code": "TaskDialog_Fatal_Error_Occured",
+    "button": "Yes"
+  },
+  {
+    "id": "D018",
+    "code": "TaskDialog_Close_Project_Without_Saving",
+    "button": "1001"
+  },
+  {
+    "id": "D019",
+    "code": "TaskDialog_Close_Project_Without_Saving",
+    "button": "1002"
+  },
+  {
+    "id": "D020",
+    "code": "TaskDialog_Close_Single_User_Rollback_Incompatible_Model",
+    "button": "1001"
+  },
+  {
+    "id": "D021",
+    "code": "TaskDialog_Close_Single_User_Rollback_Incompatible_Model",
+    "button": "1002"
+  },
+  {
+    "id": "D022",
+    "code": "TaskDialog_Close_Rollback_Incompatible_Model",
+    "button": "1001"
+  },
+  {
+    "id": "D023",
+    "code": "TaskDialog_Close_Rollback_Incompatible_Model",
+    "button": "1002"
+  },
+  {
+    "id": "D024",
+    "code": "TaskDialog_Close_Relinquish_Incompatible_Model",
+    "button": "1001"
+  },
+  {
+    "id": "D025",
+    "code": "TaskDialog_Close_Relinquish_Incompatible_Model",
+    "button": "1002"
+  },
+  {
+    "id": "D026",
+    "code": "TaskDialog_Local_Changes_Not_Synchronized_With_Central",
+    "button": "1002"
+  },
+  {
+    "id": "D027",
+    "code": "TaskDialog_Local_Changes_Not_Synchronized_With_Central",
+    "button": "1003"
+  },
+  {
+    "id": "D028",
+    "code": "TaskDialog_Single_User_Local_Changes_Not_Saved_To_Cloud",
+    "button": "1001"
+  },
+  {
+    "id": "D029",
+    "code": "TaskDialog_Single_User_Local_Changes_Not_Saved_To_Cloud",
+    "button": "1002"
+  },
+  {
+    "id": "D030",
+    "code": "TaskDialog_Unsubmitted_Changes",
+    "button": "1002"
+  },
+  {
+    "id": "D031",
+    "code": "TaskDialog_Single_User_Unsubmitted_Changes",
+    "button": "1002"
+  },
+  {
+    "id": "D032",
+    "code": "TaskDialog_Open_Central_Model_Version_Archived",
+    "button": "1002"
+  },
+  {
+    "id": "D033",
+    "code": "TaskDialog_Open_Rollback_Incompatible_Model",
+    "button": "1002"
+  },
+  {
+    "id": "D034",
+    "code": "TaskDialog_Open_Single_User_Rollback_Incompatible_Model",
+    "button": "1002"
+  },
+  {
+    "id": "D035",
+    "code": "TaskDialog_Open_Relinquish_Incompatible_Model",
+    "button": "1002"
+  },
+  {
+    "id": "D036",
+    "code": "TaskDialog_Missing_Third_Party_Updater",
+    "button": "1003"
+  },
+  {
+    "id": "D037",
+    "code": "TaskDialog_Missing_Third_Party_Updater",
+    "button": "1004"
+  },
+  {
+    "id": "D038",
+    "code": "TaskDialog_Missing_Third_Party_Updaters",
+    "button": "1003"
+  },
+  {
+    "id": "D039",
+    "code": "TaskDialog_Missing_Third_Party_Updaters",
+    "button": "1004"
+  },
+  {
+    "id": "D040",
+    "code": "TaskDialog_Wait_For_Grant_In_Modal_Or_Canvas",
+    "button": "1002"
+  },
+  {
+    "id": "D041",
+    "code": "TaskDialog_Sketch_Edits_Discarded",
+    "button": "Yes"
+  },
+  {
+    "id": "D042",
+    "code": "TaskDialog_Sketch_Discarded",
+    "button": "Yes"
+  },
+  {
+    "id": "D043",
+    "code": "TaskDialog_Quit_Paste_Edit_Mode",
+    "button": "Yes"
+  },
+  {
+    "id": "D044",
+    "code": "TaskDialog_Quit_Toposurface",
+    "button": "Yes"
+  },
+  {
+    "id": "D045",
+    "code": "TaskDialog_Quit_In_Place_Family",
+    "button": "Yes"
+  },
+  {
+    "id": "D046",
+    "code": "TaskDialog_Model_Upgrade_Central",
+    "button": "1001"
+  },
+  {
+    "id": "D047",
+    "code": "TaskDialog_Changes_Not_Synchronized_With_Central",
+    "button": "1001"
+  },
+  {
+    "id": "D048",
+    "code": "TaskDialog_Changes_Not_Synchronized_With_Central",
+    "button": "1002"
+  },
+  {
+    "id": "D049",
+    "code": "TaskDialog_Editable_Elements",
+    "button": "1001"
+  },
+  {
+    "id": "D050",
+    "code": "TaskDialog_Save_Changes_To_Local_File",
+    "button": "1001"
+  },
+  {
+    "id": "D051",
+    "code": "TaskDialog_Repair_Local_Missing_Unique_Elements",
+    "button": "1001"
+  },
+  {
+    "id": "D052",
+    "code": "TaskDialog_Warn_To_Repair_Corrupt_Central_Model",
+    "button": "Ok"
+  },
+  {
+    "id": "D053",
+    "code": "TaskDialog_Corrupt_Model_Detected_On_Save",
+    "button": "1001"
+  },
+  {
+    "id": "D054",
+    "code": "TaskDialog_Dynamic_IRDB_Sync_To_Central",
+    "button": "Ok"
+  },
+  {
+    "id": "D055",
+    "code": "TaskDialog_Confirm_Create_New_Local",
+    "button": "Ok"
+  },
+  {
+    "id": "D056",
+    "code": "TaskDialog_Location_Position_Changed",
+    "button": "1001"
+  },
+  {
+    "id": "D057",
+    "code": "TaskDialog_Location_Position_Changed_For_Unloading_Locally",
+    "button": "1001"
+  },
+  {
+    "id": "D058",
+    "code": "TaskDialog_Host_Model_Has_Different_Geo_Location_Data",
+    "button": "1001"
+  },
+  {
+    "id": "D059",
+    "code": "TaskDialog_Host_Model_Has_No_Geo_Location_Data",
+    "button": "1001"
+  },
+  {
+    "id": "D060",
+    "code": "TaskDialog_Cannot_Modify_Linked_File",
+    "button": "Yes"
+  },
+  {
+    "id": "D061",
+    "code": "TaskDialog_Cannot_Modify_Imported_File",
+    "button": "1001"
+  },
+  {
+    "id": "D062",
+    "code": "TaskDialog_Cannot_Modify_Imported_File",
+    "button": "1002"
+  },
+  {
+    "id": "D063",
+    "code": "TaskDialog_Convert_To_Link",
+    "button": "1001"
+  },
+  {
+    "id": "D064",
+    "code": "TaskDialog_Overwrite_Link_File",
+    "button": "Yes"
+  },
+  {
+    "id": "D065",
+    "code": "TaskDialog_Modified_Shared_Parameter_File",
+    "button": "Yes"
+  },
+  {
+    "id": "D066",
+    "code": "TaskDialog_Overwrite_File",
+    "button": "Yes"
+  },
+  {
+    "id": "D067",
+    "code": "TaskDialog_Overwrite_File_List",
+    "button": "Yes"
+  },
+  {
+    "id": "D068",
+    "code": "TaskDialog_Replace_Existing_File",
+    "button": "Yes"
+  },
+  {
+    "id": "D069",
+    "code": "TaskDialog_Replace_File",
+    "button": "Yes"
+  },
+  {
+    "id": "D070",
+    "code": "TaskDialog_Replace_Multiple_Files",
+    "button": "Yes"
+  },
+  {
+    "id": "D071",
+    "code": "TaskDialog_Workset_File_Already_Exists",
+    "button": "Yes"
+  },
+  {
+    "id": "D072",
+    "code": "TaskDialog_Newer_File_Exists",
+    "button": "Yes"
+  },
+  {
+    "id": "D073",
+    "code": "TaskDialog_Backup_Failed",
+    "button": "Yes"
+  },
+  {
+    "id": "D074",
+    "code": "TaskDialog_File_Name_In_Use",
+    "button": "1001"
+  },
+  {
+    "id": "D075",
+    "code": "TaskDialog_File_Name_In_Use",
+    "button": "1002"
+  },
+  {
+    "id": "D076",
+    "code": "TaskDialog_File_Name_In_Use_LT",
+    "button": "1001"
+  },
+  {
+    "id": "D077",
+    "code": "TaskDialog_File_Name_In_Use_LT",
+    "button": "1002"
+  },
+  {
+    "id": "D078",
+    "code": "TaskDialog_Folder_Not_Empty",
+    "button": "1001"
+  },
+  {
+    "id": "P001",
+    "code": "TaskDialog_Project_Not_Saved_Recently",
+    "button": "1003"
+  },
+  {
+    "id": "P002",
+    "code": "TaskDialog_Changes_Not_Synchronized_With_Central",
+    "button": "1003"
+  },
+  {
+    "id": "P003",
+    "code": "TaskDialog_Location_Position_Changed",
+    "button": "1002"
+  },
+  {
+    "id": "P004",
+    "code": "TaskDialog_Location_Position_Changed",
+    "button": "1003"
+  },
+  {
+    "id": "P005",
+    "code": "TaskDialog_Location_Position_Changed_For_Unloading_Locally",
+    "button": "1002"
+  },
+  {
+    "id": "P006",
+    "code": "TaskDialog_Update_Saved_Position",
+    "button": "Ok"
+  },
+  {
+    "id": "P007",
+    "code": "TaskDialog_Confirm_Save_Location",
+    "button": "No"
+  },
+  {
+    "id": "P008",
+    "code": "TaskDialog_Changes_Not_Saved_To_Local_File",
+    "button": "No"
+  },
+  {
+    "id": "P009",
+    "code": "TaskDialog_Editable_Elements",
+    "button": "1002"
+  },
+  {
+    "id": "P010",
+    "code": "TaskDialog_Save_Changes_To_Local_File",
+    "button": "1002"
+  },
+  {
+    "id": "P011",
+    "code": "TaskDialog_Serious_Error_Occurred_Save_Recovery_File",
+    "button": "No"
+  },
+  {
+    "id": "P012",
+    "code": "TaskDialog_Serious_Error_Occurred_Recoverable",
+    "button": "No"
+  },
+  {
+    "id": "P013",
+    "code": "TaskDialog_Fatal_Error_Occured",
+    "button": "No"
+  },
+  {
+    "id": "P014",
+    "code": "TaskDialog_Model_Upgrade_Local",
+    "button": "1001"
+  },
+  {
+    "id": "P015",
+    "code": "TaskDialog_Detach_Model_From_Central",
+    "button": "1001"
+  },
+  {
+    "id": "P016",
+    "code": "TaskDialog_Detach_Model_From_Central",
+    "button": "1002"
+  },
+  {
+    "id": "P017",
+    "code": "TaskDialog_Open_Model_With_Unsupported_Feature",
+    "button": "1001"
+  },
+  {
+    "id": "P018",
+    "code": "TaskDialog_Schema_Conflict_Load",
+    "button": "1002"
+  },
+  {
+    "id": "P019",
+    "code": "TaskDialog_Shortcut_Changes_Not_Saved",
+    "button": "1001"
+  },
+  {
+    "id": "P020",
+    "code": "TaskDialog_Shortcut_Changes_Not_Saved",
+    "button": "1002"
+  },
+  {
+    "id": "P021",
+    "code": "TaskDialog_Replace_Existing_Keyboard_Shortcuts",
+    "button": "1001"
+  },
+  {
+    "id": "P022",
+    "code": "TaskDialog_Replace_Existing_Keyboard_Shortcuts",
+    "button": "1002"
+  },
+  {
+    "id": "P023",
+    "code": "TaskDialog_Save_Settings",
+    "button": "Yes"
+  },
+  {
+    "id": "P024",
+    "code": "TaskDialog_Save_Settings",
+    "button": "No"
+  },
+  {
+    "id": "P025",
+    "code": "TaskDialog_Asset_Not_Saved",
+    "button": "Yes"
+  },
+  {
+    "id": "P026",
+    "code": "TaskDialog_Asset_Not_Saved",
+    "button": "No"
+  },
+  {
+    "id": "P027",
+    "code": "TaskDialog_Overwrite_Property_Set_Library",
+    "button": "Yes"
+  },
+  {
+    "id": "P028",
+    "code": "TaskDialog_Changes_To_Panel_Schedules_Unsaved",
+    "button": "1002"
+  },
+  {
+    "id": "P029",
+    "code": "TaskDialog_Missing_Third_Party_Updater",
+    "button": "1002"
+  },
+  {
+    "id": "P030",
+    "code": "TaskDialog_Missing_Third_Party_Updaters",
+    "button": "1002"
+  },
+  {
+    "id": "P031",
+    "code": "TaskDialog_Save_File",
+    "button": "No"
+  },
+  {
+    "id": "P032",
+    "code": "TaskDialog_Modified_Shared_Parameter_File",
+    "button": "No"
+  },
+  {
+    "id": "P033",
+    "code": "TaskDialog_Cannot_Relinquish_Renamed_Workset",
+    "button": "Yes"
+  },
+  {
+    "id": "P034",
+    "code": "TaskDialog_Edit_Workset_At_Risk",
+    "button": "Yes"
+  },
+  {
+    "id": "P035",
+    "code": "TaskDialog_Model_Opened_By_Another_User",
+    "button": "1001"
+  },
+  {
+    "id": "P036",
+    "code": "TaskDialog_Energy_Model_Creation_Will_End_If_File_Closed",
+    "button": "Yes"
+  },
+  {
+    "id": "P037",
+    "code": "TaskDialog_Energy_Model_Geometry_Wont_Be_Saved",
+    "button": "Ok"
+  },
+  {
+    "id": "P038",
+    "code": "TaskDialog_Fabrication_Network_Inline_Fittings_Need_Attention",
+    "button": "1002"
+  },
+  {
+    "id": "T001",
+    "code": "TaskDialog_Security_Unsigned_File_Loading",
+    "button": "1001"
+  },
+  {
+    "id": "T002",
+    "code": "TaskDialog_Security_Unsigned_File_Loading",
+    "button": "1002"
+  },
+  {
+    "id": "T003",
+    "code": "TaskDialog_Security_Invalid_Signature",
+    "button": "1001"
+  },
+  {
+    "id": "T004",
+    "code": "TaskDialog_Security_Signed_File_Not_In_Trusted_Folder",
+    "button": "1001"
+  },
+  {
+    "id": "A001",
+    "code": "TaskDialog_Model_Upgrade_Central",
+    "button": "1002"
+  },
+  {
+    "id": "A002",
+    "code": "TaskDialog_Model_Upgrade_Local",
+    "button": "1002"
+  },
+  {
+    "id": "A003",
+    "code": "TaskDialog_Model_Upgrade",
+    "button": "1001"
+  },
+  {
+    "id": "A004",
+    "code": "TaskDialog_Model_Upgrade",
+    "button": "1002"
+  },
+  {
+    "id": "A005",
+    "code": "TaskDialog_Unresolved_References",
+    "button": "1002"
+  },
+  {
+    "id": "A006",
+    "code": "TaskDialog_Views_Related_To_Analytical_Changed",
+    "button": "Close"
+  },
+  {
+    "id": "A007",
+    "code": "TaskDialog_Save_As_Central_Model",
+    "button": "1001"
+  },
+  {
+    "id": "A008",
+    "code": "TaskDialog_Save_File_As_Central_Model",
+    "button": "No"
+  },
+  {
+    "id": "A009",
+    "code": "TaskDialog_Invalid_Central_Model_Extension",
+    "button": "No"
+  },
+  {
+    "id": "A010",
+    "code": "TaskDialog_Loading_Transmitted_File",
+    "button": "1002"
+  },
+  {
+    "id": "A011",
+    "code": "TaskDialog_Host_Model_Has_Different_Geo_Location_Data",
+    "button": "1002"
+  },
+  {
+    "id": "A012",
+    "code": "TaskDialog_Host_Model_Has_No_Geo_Location_Data",
+    "button": "1002"
+  },
+  {
+    "id": "A013",
+    "code": "TaskDialog_Cannot_Modify_Linked_File",
+    "button": "No"
+  },
+  {
+    "id": "A014",
+    "code": "TaskDialog_Cannot_Modify_Imported_File",
+    "button": "1003"
+  },
+  {
+    "id": "A015",
+    "code": "TaskDialog_Repair_Local_Missing_Unique_Elements",
+    "button": "1002"
+  },
+  {
+    "id": "A016",
+    "code": "TaskDialog_Warn_To_Repair_Corrupt_Central_Model",
+    "button": "Cancel"
+  },
+  {
+    "id": "A017",
+    "code": "TaskDialog_Unsaved_Changes_In_Worksets",
+    "button": "Close"
+  },
+  {
+    "id": "A018",
+    "code": "TaskDialog_Changed_Worksets_Not_Saved",
+    "button": "Close"
+  },
+  {
+    "id": "A019",
+    "code": "TaskDialog_Incompatible_Version_Of_Central_Model",
+    "button": "Close"
+  },
+  {
+    "id": "A020",
+    "code": "TaskDialog_Local_File_Incompatible_With_Central_Model",
+    "button": "Close"
+  },
+  {
+    "id": "A021",
+    "code": "TaskDialog_Save_As_Central_Model_Old_Version",
+    "button": "Close"
+  },
+  {
+    "id": "A022",
+    "code": "TaskDialog_Worksets_In_Central_Model_Not_Upgraded",
+    "button": "Close"
+  },
+  {
+    "id": "A023",
+    "code": "TaskDialog_Security_Unsigned_File_Loading",
+    "button": "1003"
+  },
+  {
+    "id": "A024",
+    "code": "TaskDialog_Security_Invalid_Signature",
+    "button": "1002"
+  },
+  {
+    "id": "A025",
+    "code": "TaskDialog_Security_Signed_File_Not_In_Trusted_Folder",
+    "button": "1002"
+  }
+]

@@ -17,6 +17,29 @@ namespace RvtMcp.Server
     {
         internal static Func<FailureLedgerStore> StoreFactory = () => new FailureLedgerStore(readOnly: true);
 
+        [McpServerTool(Name = "revit_set_dialog_answers", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false), Description(
+            "Declare answers before a Revit write operation: answers is a JSON array [{code, button}]. Use a command-link ID string (such as 1002) or a common button name (such as Close) from revit_lookup_message. " +
+            "Only catalogue-valid, permitted pairs are accepted; one invalid pair rejects the entire batch. User rules/grants take priority. " +
+            "scope=next (default) applies to the next write actually sent to the add-in, including open_model/export/send_code; reads and server-side rejections do not consume it. " +
+            "An uncertain/partial wire write consumes next: inspect operation status before retrying. scope=session answers every subsequent write until clear=true, a change of target or active document, or server restart; a declaration dropped by such a change is reported once as _dialogAnswers. " +
+            "A new declaration replaces the previous one. clear=true with no answers removes it. Does not close an already visible dialog or grant acceptance of native failures. " +
+            "Example: {answers: \"[{\\\"code\\\":\\\"<dialog code from lookup>\\\",\\\"button\\\":\\\"Close\\\"}]\", scope: \"next\"}.")]
+        public static string SetDialogAnswers(string answers = null, string scope = "next", bool clear = false)
+        {
+            try
+            {
+                if (ServerState.Config?.ReadOnlyOrDefault == true) return Error("READ_ONLY", "Dialog declarations are disabled in read-only mode.");
+                if (scope != "next" && scope != "session") throw new ArgumentException("scope must be next or session.");
+                if (clear && !string.IsNullOrWhiteSpace(answers)) throw new ArgumentException("clear cannot be combined with answers.");
+                if (!clear && (string.IsNullOrWhiteSpace(answers) || answers.Length > 32768)) throw new ArgumentException("answers is required and must fit in 32768 characters.");
+                return ToolGateway.ConfigureDialogAnswers(clear ? null : JArray.Parse(answers), scope, clear).ToString(Formatting.None);
+            }
+            catch (TargetException ex) { return MetaTools.TargetEnvelope(ex.Payload, ex.Operation).ToString(Formatting.None); }
+            catch (JsonException) { return Error("INVALID_ARGUMENT", "answers must be a JSON array of {code, button} objects."); }
+            catch (ArgumentException ex) { return Error("INVALID_ARGUMENT", ex.Message); }
+            catch { return Error("CATALOG_UNAVAILABLE", "The target message catalogue could not be read; no declaration was changed."); }
+        }
+
         [McpServerTool(Name = "revit_get_failure_records", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), Description(
             "Read the local failure ledger without dispatching Revit; works while native UI is modal and with history or send-code disabled. " +
             "Supply an issued modelScopeKey, incidentId or operationId; no model is guessed. Filter by state, elementId, ISO UTC from/until, limit 1-100 and returned cursor. " +
@@ -145,7 +168,7 @@ namespace RvtMcp.Server
         private static RevitMessageCatalogData _catalog;
 
         // The add-in rewrites the file when Revit's build or language changes.
-        private static RevitMessageCatalogData Catalog(int year)
+        internal static RevitMessageCatalogData Catalog(int year)
         {
             var path = RevitMessageLookup.CachePath(year);
             var stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : DateTime.MinValue;

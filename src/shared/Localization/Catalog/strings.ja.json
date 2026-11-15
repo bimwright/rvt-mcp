@@ -403,6 +403,7 @@
   "failure.state.resolved_abandoned": "試行を断念済み",
   "failure.state.accepted_once": "一度だけ許容済み",
   "failure.state.accepted_by_rule": "ルールにより許容済み",
+  "failure.state.answered_by_agent": "エージェントの応答（結果を確認）",
   "failure.outcome.not_started": "未開始",
   "failure.outcome.committed": "コミット済み",
   "failure.outcome.rolled_back": "ロールバック済み",

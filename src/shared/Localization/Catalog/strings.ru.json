@@ -403,6 +403,7 @@
   "failure.state.resolved_abandoned": "Попытка прекращена",
   "failure.state.accepted_once": "Принято однократно",
   "failure.state.accepted_by_rule": "Принято по правилу",
+  "failure.state.answered_by_agent": "Ответ агента (см. результат)",
   "failure.outcome.not_started": "Не начато",
   "failure.outcome.committed": "Зафиксировано в модели",
   "failure.outcome.rolled_back": "Откачено",

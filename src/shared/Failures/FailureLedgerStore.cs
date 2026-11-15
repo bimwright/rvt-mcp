@@ -500,6 +500,7 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
             FailureCapture.RequireKey(incident.OperationId, "operation ID");
             FailureCapture.RequireKey(incident.ModelScopeKey, "model scope key");
             var bounded = FailureCapture.Bound(incident);
+            var agentAuthorization = bounded.State == "answered_by_agent" && bounded.Action == "dialog_answer_authorized";
             bounded.NativeContextDescription = FailureCapture.SafeText(bounded.NativeContextDescription, 512);
             var grants = (matchedGrantIds ?? bounded.GrantIds).Distinct().ToList();
             var acceptedByPolicy = bounded.State == "accepted_by_policy";
@@ -507,12 +508,13 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
             {
                 // A callback may repeat. The initial event and grant consumption are one durable transaction.
                 if (Scalar(c, tx, "SELECT 1 FROM incidents WHERE id=$i;", "$i", bounded.IncidentId) != null) return;
+                if (agentAuthorization && !bounded.Complete) throw new InvalidOperationException("Agent authorization capture is incomplete.");
                 var priorBytes = Convert.ToInt64(Scalar(c, tx, "SELECT COALESCE(SUM(length(CAST(payload AS BLOB))),0) FROM incidents WHERE operation_id=$o;", "$o", bounded.OperationId));
                 if (priorBytes + Encoding.UTF8.GetByteCount(FailureJson.Serialize(bounded)) > FailureCapture.MaxOperationBytes)
                 {
                     bounded.OmittedMessageCount += bounded.Messages.Count; bounded.Messages.Clear(); bounded.Complete = false;
                     bounded.CountKind = "at_least"; bounded.State = "open"; bounded.Action = "capture_incomplete";
-                    if (acceptedByPolicy || grants.Count > 0 || bounded.RuleIds.Count > 0) throw new InvalidOperationException("Acceptance capture limit exceeded.");
+                    if (acceptedByPolicy || grants.Count > 0 || bounded.RuleIds.Count > 0 || agentAuthorization) throw new InvalidOperationException("Acceptance capture limit exceeded.");
                 }
                 if (acceptedByPolicy)
                 {
@@ -665,7 +667,7 @@ AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i
 
         private static void ValidateState(string state)
         {
-            if (state != null && !new[] { "observed", "open", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule", "accepted_by_policy" }.Contains(state))
+            if (state != null && !new[] { "observed", "open", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule", "accepted_by_policy", "answered_by_agent" }.Contains(state))
                 throw new ArgumentException("Invalid incident state.");
         }
 

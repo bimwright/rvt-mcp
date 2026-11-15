@@ -403,6 +403,7 @@
   "failure.state.resolved_abandoned": "Kísérlet feladva",
   "failure.state.accepted_once": "Egyszer elfogadva",
   "failure.state.accepted_by_rule": "Szabály alapján elfogadva",
+  "failure.state.answered_by_agent": "Ügynök válasza (lásd az eredményt)",
   "failure.outcome.not_started": "Nem indult el",
   "failure.outcome.committed": "Véglegesítve",
   "failure.outcome.rolled_back": "Visszagörgetve",

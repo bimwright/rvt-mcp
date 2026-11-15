@@ -363,7 +363,7 @@ namespace RvtMcp.Plugin.Failures
             internal readonly Stack<bool> GroupStates = new Stack<bool>();
             internal readonly CommittedTransactionLog CommittedLog = new CommittedTransactionLog();
             internal readonly HashSet<string> OpeningPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            // One entry per occurrence a rule answered: the same dialog can appear again in this operation and be closed by the user.
+            // One entry per occurrence a rule or agent answered: the same dialog can appear again in this operation and be closed by the user.
             internal readonly Dictionary<string, List<JObject>> DialogAnswers = new Dictionary<string, List<JObject>>(StringComparer.Ordinal);
             private string _userDialogKey;
             private int _capturedMessages, _capturedReferences, _capturedBytes;

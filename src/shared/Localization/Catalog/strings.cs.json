@@ -403,6 +403,7 @@
   "failure.state.resolved_abandoned": "Pokus opuštěn",
   "failure.state.accepted_once": "Jednorázově přijato",
   "failure.state.accepted_by_rule": "Přijato podle pravidla",
+  "failure.state.answered_by_agent": "Odpověď agenta (viz výsledek)",
   "failure.outcome.not_started": "Nezahájeno",
   "failure.outcome.committed": "Potvrzeno",
   "failure.outcome.rolled_back": "Vráceno zpět",

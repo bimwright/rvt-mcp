@@ -213,8 +213,9 @@ namespace RvtMcp.Server
         }
 
         // Reported once, so they are added last, to the response the agent receives: dialogs the user handled (the
-        // add-in has already let go of them) and operations that finished after their pending receipt. A plain-text
-        // response carries neither. A finished operation that does not fit waits for the next response.
+        // add-in has already let go of them), operations that finished after their pending receipt, and dialog answers
+        // dropped by a target or document change. A plain-text response carries none of them. An item that does not fit
+        // waits for the next response.
         private static void CarryOnceFields(CallToolResult result, JObject original, PreviousOperationTracker previousOperations, int limit)
         {
             var block = result.Content?.OfType<TextContentBlock>().FirstOrDefault();
@@ -228,6 +229,14 @@ namespace RvtMcp.Server
             }
             var taken = previousOperations?.Attach(data);
             if (taken?.Count > 0 && !TrySetText(result, block, data, limit)) previousOperations.Return(taken);
+            // Production responses only: tests that pass no tracker do not drain the gateway's notice.
+            var notice = previousOperations == null ? null : ToolGateway.TakeDialogAnswerNotice();
+            if (notice != null)
+            {
+                data = JObject.Parse(block.Text); // drop fields above that did not fit
+                data["_dialogAnswers"] = notice;
+                if (!TrySetText(result, block, data, limit)) { data.Remove("_dialogAnswers"); ToolGateway.ReturnDialogAnswerNotice(notice); }
+            }
         }
 
         // Until a report is sent, every response that changed the model asks for one, and a check's first answer asks

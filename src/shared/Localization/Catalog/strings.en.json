@@ -353,6 +353,7 @@
   "failure.state.resolved_abandoned": "Attempt abandoned",
   "failure.state.accepted_once": "Accepted once",
   "failure.state.accepted_by_rule": "Accepted by rule",
+  "failure.state.answered_by_agent": "Agent answer (see outcome)",
   "failure.outcome.not_started": "Not started",
   "failure.outcome.committed": "Committed",
   "failure.outcome.rolled_back": "Rolled back",
