@@ -321,8 +321,7 @@ namespace RvtMcp.Plugin.Failures
             bool found = false;
             EnumChildWindows(window, (child, _) =>
             {
-                var name = ClassName(child);
-                found = name == "msctls_progress32" || name.IndexOf("PROGRESS", StringComparison.OrdinalIgnoreCase) >= 0;
+                found = WindowModalTracker.IsProgressControl(ClassName(child), ClassName(GetParent(child)));
                 return !found;
             }, IntPtr.Zero);
             return found;
@@ -389,6 +388,7 @@ namespace RvtMcp.Plugin.Failures
         [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr handle);
         [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr handle);
         [DllImport("user32.dll")] private static extern bool IsWindowEnabled(IntPtr handle);
+        [DllImport("user32.dll")] private static extern IntPtr GetParent(IntPtr handle);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr handle, StringBuilder text, int max);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int InternalGetWindowText(IntPtr handle, StringBuilder text, int max);
         [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] private static extern IntPtr GetWindowLongPtr(IntPtr handle, int index);

@@ -175,6 +175,17 @@ namespace RvtMcp.Failures
             return result;
         }
 
+        /// <summary>
+        /// A progress control that marks a window as busy work. The Explorer address bar of the common file dialogs holds its
+        /// own progress control (parent "Address Band Root"); that one does not make the dialog a progress window.
+        /// </summary>
+        public static bool IsProgressControl(string className, string parentClassName)
+        {
+            if (string.IsNullOrEmpty(className)) return false;
+            bool progress = className == "msctls_progress32" || className.IndexOf("PROGRESS", StringComparison.OrdinalIgnoreCase) >= 0;
+            return progress && !string.Equals(parentClassName, "Address Band Root", StringComparison.Ordinal);
+        }
+
         /// <summary>A window's context is known only if no model opening, closing or view change happened since it was first seen.</summary>
         public static bool ContextUnchanged(long snapshotGeneration, long firstSeenGeneration, long currentGeneration)
             => snapshotGeneration == firstSeenGeneration && currentGeneration == firstSeenGeneration;

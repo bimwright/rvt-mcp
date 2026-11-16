@@ -310,6 +310,15 @@ namespace RvtMcp.Tests
             finally { try { Directory.Delete(root, true); } catch { } }
         }
 
+        [Theory]
+        [InlineData("msctls_progress32", "#32770", true)]
+        [InlineData("WindowsForms10.msctls_progress32.app.0.1", "WindowsForms10.Window.8.app.0.1", true)]
+        [InlineData("msctls_progress32", "Address Band Root", false)] // Explorer address bar inside the common file dialogs (LC-3)
+        [InlineData("Static", "#32770", false)]
+        [InlineData("", "#32770", false)]
+        public void Only_a_real_progress_control_marks_a_progress_window(string className, string parentClassName, bool expected)
+            => Assert.Equal(expected, WindowModalTracker.IsProgressControl(className, parentClassName));
+
         [Fact]
         public void A_progress_bar_that_appears_late_still_prevents_confirmation()
         {
