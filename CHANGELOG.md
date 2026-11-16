@@ -29,7 +29,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
-- Development source counts: `--toolsets all` **253**, adaptive bake **256**, and bare defaults **59**.
+- Development source counts: `--toolsets all` **254**, adaptive bake **257**, and bare defaults **60**.
 
 ### Document lifecycle
 
@@ -71,6 +71,10 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 ### Logs
 
 - Local logs rotate once per day instead of on every write. Daily rotation compared the log's creation time, which Windows gives back to a file re-created right after a rename, so each call left a one-line archive and every later write scanned them all; tens of thousands of archives made a large `revit_send_code_to_revit` call take about 10 s. Rotation now uses the last write time, and log maintenance reads file sizes and times in one directory pass. Archives already created are removed by the existing 30-day retention.
+
+### Agent reports
+
+- **`revit_show_report`** in `meta`: opens the Reports window on one saved report by its `report_id`, as a click on the report toast does, so the agent can show a report the user asks for instead of describing where to click. It does not change the model and stays available with `--read-only`. A deleted or expired report returns `REPORT_NOT_FOUND`. See [agent reports](docs/agent-reports.md#opening-a-report).
 
 ## v1.2.2 — 2026-11-02
 

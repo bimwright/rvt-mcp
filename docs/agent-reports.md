@@ -198,6 +198,30 @@ dimmed otherwise. The tooltip of a dimmed link names its model. A click on a liv
 A click never opens a transaction or shows a Revit dialog. When nothing matches, the
 status line explains why and the active view and selection stay as they were.
 
+## Opening a report
+
+`revit_show_report(report_id)` opens the Reports window on one saved report, the
+same way a click on its toast does: the window is created or brought to the front,
+the model filter switches to all models when the report belongs to another model,
+and the report is selected. It is in `meta`, does not change the model and stays
+available with `--read-only`.
+
+Use it when the user asks to see a report. Do not call it after every
+`revit_report_task_result`: the toast already offers the report, and a window that
+opens by itself after each job gets in the way.
+
+`report_id` is the 32-character hexadecimal value returned by
+`revit_report_task_result`. The add-in checks the reports folder first:
+
+| Error | Meaning |
+|---|---|
+| `REPORT_NOT_FOUND` | No saved report has this ID; the user or retention deleted it. |
+| `REPORT_STORAGE_FAILED` | The reports folder could not be read. |
+| `UI_UNAVAILABLE` | The Reports window did not start in this Revit session. |
+
+The window lists the newest 500 reports, so an older report that still exists on
+disk opens the window without selecting it.
+
 ## Recorded changes
 
 After every native MCP command, the add-in captures changes with a gateway-issued

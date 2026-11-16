@@ -120,6 +120,16 @@ namespace RvtMcp.Plugin.Reports.Storage
             return reports;
         }
 
+        /// <summary>True when a saved report file has this 32-character report ID.</summary>
+        public bool Exists(string reportId)
+        {
+            if (reportId?.Length != 32 || !Guid.TryParseExact(reportId, "N", out _)) return false;
+            lock (_gate)
+            {
+                return Directory.Exists(_directory) && Directory.GetFiles(_directory, "*-" + reportId + ".json").Length > 0;
+            }
+        }
+
         public void Delete(string reportId)
         {
             if (!Guid.TryParseExact(reportId, "N", out var ignored)) return;

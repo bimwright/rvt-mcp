@@ -20,7 +20,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-253%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-254%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -97,12 +97,12 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 | モード | Tools | 注記 |
 |--------|------:|------|
-| 新規インストール | **253** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
-| 素の `rvt-mcp.exe` | **59** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **253** | フルカタログ |
-| `all` + adaptive bake | **256** | 提案ライフサイクル 3 ツールを追加 |
+| 新規インストール | **254** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
+| 素の `rvt-mcp.exe` | **60** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **254** | フルカタログ |
+| `all` + adaptive bake | **257** | 提案ライフサイクル 3 ツールを追加 |
 
-件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 59 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。エージェント報告はユーザーごとの報告データのみを書くため、許可されます。
+件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 60 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。エージェント報告はユーザーごとの報告データのみを書くため、許可されます。
 
 | Toolset | 範囲 |
 |---------|------|
@@ -145,7 +145,7 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 - **`revit_send_code_to_revit`**（既定オン）は、合う typed ツールがないときに C# 本体を Revit 内でコンパイルして実行します。`--read-only` または `--disable-send-code` で外れます。[docs/send-code.md](docs/send-code.md) を参照。階段は [docs/stairs-workflow.md](docs/stairs-workflow.md)。
 - **ToolBaker：** `revit_list_baked_tools` / `revit_run_baked_tool` には `--toolsets toolbaker` が必要です。Adaptive bake（`--enable-adaptive-bake`、既定オフ）は繰り返しの呼び出しからツールを提案し、accept するまで何も追加されません。Bake のコンパイルは Revit 内で行われ、Visual Studio は不要です。[docs/bake.md](docs/bake.md)。
-- **エージェントレポート：** `revit_report_task_result`（`meta`）で、エージェントは作業の完了時にレポートを 1 件残せます。Revit はトーストを表示し、**Reports** ウィンドウにレポートを一覧表示します。レポートには要素を選択したりビューを開いたりするリンクと、rvt-mcp が記録した変更が含まれます。モデルは変更せず、`--read-only` でも使えます。[docs/agent-reports.md](docs/agent-reports.md)。
+- **エージェントレポート：** `revit_report_task_result`（`meta`）で、エージェントは作業の完了時にレポートを 1 件残せます。Revit はトーストを表示し、**Reports** ウィンドウにレポートを一覧表示します。レポートには要素を選択したりビューを開いたりするリンクと、rvt-mcp が記録した変更が含まれます。モデルは変更せず、`--read-only` でも使えます。ユーザーがレポートを見たいときは、`revit_show_report` がそのレポートでウィンドウを開きます。[docs/agent-reports.md](docs/agent-reports.md)。
 
   <img src="docs/images/agent-reports-demo.gif" alt="エージェントが rvt-mcp 経由で Revit のドアにタグを付けてレポートを送り、Reports ウィンドウのリンクで Revit のドアを選択する。別モデルの日本語とドイツ語のレポートも同じ一覧に並ぶ" width="720" />
 
@@ -345,6 +345,7 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
       "mcp__rvt-mcp__revit_select_elements",
       "mcp__rvt-mcp__revit_show_element_in_view",
       "mcp__rvt-mcp__revit_show_message",
+      "mcp__rvt-mcp__revit_show_report",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
       "mcp__rvt-mcp__revit_survey_change_impact",
       "mcp__rvt-mcp__revit_workflow_model_audit"

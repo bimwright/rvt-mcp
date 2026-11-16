@@ -112,6 +112,7 @@ namespace RvtMcp.Plugin
             "select_elements",
             "show_element_in_view",
             "show_message",
+            "show_report",
             "suggest_view_name_corrections",
             "survey_change_impact",
             "workflow_model_audit",

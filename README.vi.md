@@ -20,7 +20,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-253%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-254%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -97,12 +97,12 @@ Các số dưới đây áp dụng cho source đang phát triển; **bản v1.2.
 
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
-| Fresh install | **253** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
-| Bare `rvt-mcp.exe` | **59** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **253** | Full catalog |
-| `all` + adaptive bake | **256** | Thêm 3 tool vòng đời suggestion |
+| Fresh install | **254** | `install.ps1` seeds `"toolsets": ["all"]` trong `rvtmcp.config.json` |
+| Bare `rvt-mcp.exe` | **60** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **254** | Full catalog |
+| `all` + adaptive bake | **257** | Thêm 3 tool vòng đời suggestion |
 
-Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 59 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline; báo cáo agent được phép vì chỉ ghi dữ liệu báo cáo của người dùng.
+Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 60 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline; báo cáo agent được phép vì chỉ ghi dữ liệu báo cáo của người dùng.
 
 | Toolset | Phạm vi |
 |---------|---------|
@@ -145,7 +145,7 @@ Lời gọi thiếu tham số bắt buộc sẽ không chạy. Nó trả `INVALI
 
 - **`revit_send_code_to_revit`** (bật mặc định) compile và chạy body C# trong Revit khi không có typed tool phù hợp; `--read-only` hoặc `--disable-send-code` sẽ gỡ nó. Xem [docs/send-code.md](docs/send-code.md), và [docs/stairs-workflow.md](docs/stairs-workflow.md) cho cầu thang.
 - **ToolBaker:** `revit_list_baked_tools` / `revit_run_baked_tool` cần `--toolsets toolbaker`. Adaptive bake (`--enable-adaptive-bake`, mặc định tắt) gợi ý tool từ các lời gọi lặp lại; không có gì được thêm cho tới khi bạn accept. Bake compile ngay trong Revit — không cần Visual Studio. Xem [docs/bake.md](docs/bake.md).
-- **Agent reports:** `revit_report_task_result` (trong `meta`) cho agent để lại một báo cáo khi xong việc. Revit hiện toast và liệt kê báo cáo trong cửa sổ **Reports**, kèm link để chọn element hoặc mở view, và các thay đổi rvt-mcp đã ghi nhận. Tool không sửa model và dùng được với `--read-only`. Xem [docs/agent-reports.md](docs/agent-reports.md).
+- **Agent reports:** `revit_report_task_result` (trong `meta`) cho agent để lại một báo cáo khi xong việc. Revit hiện toast và liệt kê báo cáo trong cửa sổ **Reports**, kèm link để chọn element hoặc mở view, và các thay đổi rvt-mcp đã ghi nhận. Tool không sửa model và dùng được với `--read-only`. `revit_show_report` mở cửa sổ đúng một báo cáo khi user muốn xem. Xem [docs/agent-reports.md](docs/agent-reports.md).
 
   <img src="docs/images/agent-reports-demo.gif" alt="Agent gắn tag cửa trong Revit qua rvt-mcp, gửi báo cáo, và một link trong cửa sổ Reports chọn cửa trong Revit; báo cáo tiếng Nhật và tiếng Đức từ model khác nằm cùng danh sách" width="720" />
 
@@ -345,6 +345,7 @@ Annotations mô tả tác động lên document/file của từng tool. Đổi s
       "mcp__rvt-mcp__revit_select_elements",
       "mcp__rvt-mcp__revit_show_element_in_view",
       "mcp__rvt-mcp__revit_show_message",
+      "mcp__rvt-mcp__revit_show_report",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
       "mcp__rvt-mcp__revit_survey_change_impact",
       "mcp__rvt-mcp__revit_workflow_model_audit"
