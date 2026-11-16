@@ -51,8 +51,12 @@ namespace RvtMcp.Failures
             if (key == null || item == null || count <= 0) return;
             // Some dialogs (Manage Links) come with no id ("0" or empty) and no text: nothing the agent could use.
             var code = item.Value<string>("code");
-            if ((string.IsNullOrEmpty(code) || code == "0") && string.IsNullOrWhiteSpace(item.Value<string>("text"))) return;
+            // A window without a Revit event (issue-16 phase C) has no code, and often only a readable title.
+            var window = item.Value<string>("kind") == "window";
+            if (window ? string.IsNullOrWhiteSpace(item.Value<string>("title"))
+                : (string.IsNullOrEmpty(code) || code == "0") && string.IsNullOrWhiteSpace(item.Value<string>("text"))) return;
             var bounded = (JObject)item.DeepClone();
+            if (window) bounded["title"] = FailureCapture.SafeText(bounded.Value<string>("title"), 256);
             // The dialog is closed: button choices would read as a dialog still waiting for an answer.
             bounded.Remove("buttons"); bounded.Remove("commonButtons"); bounded.Remove("defaultButton");
             if (bounded["text"]?.Type == JTokenType.String) bounded["text"] = FailureCapture.SafeText(bounded.Value<string>("text"), MaxText);
@@ -62,6 +66,7 @@ namespace RvtMcp.Failures
                 if (!string.IsNullOrWhiteSpace(modelTitle)) model.Title = FailureCapture.SafeText(modelTitle, 256);
                 var same = model.Items.FirstOrDefault(i => i.Value<string>("kind") == bounded.Value<string>("kind")
                     && i.Value<string>("code") == bounded.Value<string>("code")
+                    && (!window || i.Value<string>("title") == bounded.Value<string>("title"))
                     && (bounded.Value<string>("kind") == "failure" || i.Value<string>("text") == bounded.Value<string>("text")));
                 if (same != null)
                 {

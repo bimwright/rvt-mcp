@@ -90,6 +90,7 @@ static bool Guard(DocumentClosingEventArgs args,DocumentState state,Model model,
 static string Hash(string value)=>value;
 static string Revision(DocumentState state)=>"revision";
 static void Invalidate(DocumentState state) {}
+static void BumpContextGeneration() {}
 static void ObserveCancelledOrFailed(RevitAPIEventStatus status,string action,Document doc) {}
 public static object[] ClosingProbe(bool authorized,bool modified,bool stopped) {
  InScope=true;Stopped=stopped;Authorized=authorized;

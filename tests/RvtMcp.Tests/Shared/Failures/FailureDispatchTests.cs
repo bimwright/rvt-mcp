@@ -134,6 +134,8 @@ private void DescribeDialog(JObject group) { }
 private DocumentState _state;
 private string _storageError, _userDialogKey, ErrorCode, FailureModelKey;
 private bool IsRead, _opensModel, Stopped, Persisted, StorageFailed, ExecutionStarted, _activeDocumentBeforeObserved, Indexed, ActivityFailed;
+private int OmittedWindows;
+private readonly List<JObject> WindowsWithoutModel = new List<JObject>();
 private DocumentState State(FakeDocument document, bool refresh=false) => _state;
 private static string Revision(DocumentState state) => "revision";
 private void IndexAndBaseline(DocumentState state) { Indexed=true; }

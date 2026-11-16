@@ -93,6 +93,7 @@ namespace RvtMcp.Plugin.Failures
             application.ViewActivated += OnViewActivated;
             application.ApplicationClosing += OnApplicationClosing;
             _subscribed = true;
+            StartWindowProbe(application.MainWindowHandle);
         }
 
         internal static void Shutdown(UIControlledApplication application)
@@ -116,6 +117,7 @@ namespace RvtMcp.Plugin.Failures
             application.ViewActivated -= OnViewActivated;
             application.ApplicationClosing -= OnApplicationClosing;
             _subscribed = false;
+            StopWindowProbe();
             PendingRequestLifecycle.SetHostBusy(false);
         }
 
@@ -125,6 +127,7 @@ namespace RvtMcp.Plugin.Failures
             PendingRequestLifecycle.SetHostBusy(false);
             _applicationClosing = false; // A cancelled application exit has returned to a live idle UI.
             ManualOpening.Clear(); // Opening is modal; an idle UI has none in progress.
+            if (application != null) _mainWindow = application.MainWindowHandle;
             RevitMessageCatalog.EnsureLoaded(application);
             if (application != null) RefreshContext(application);
             if (_blockedSave != null && DateTimeOffset.UtcNow - _blockedSave.Time > TimeSpan.FromMinutes(2))
@@ -227,6 +230,7 @@ namespace RvtMcp.Plugin.Failures
 
         private static void OnViewActivated(object sender, ViewActivatedEventArgs args)
         {
+            BumpContextGeneration();
             try
             {
                 var previous = args.PreviousActiveView?.Document;
@@ -264,6 +268,7 @@ namespace RvtMcp.Plugin.Failures
 
         private static void OnDocumentOpening(object sender, DocumentOpeningEventArgs args)
         {
+            BumpContextGeneration();
             if (!Scoped()) { ManualOpening.Add(args.PathName ?? ""); return; }
             try
             {
@@ -420,6 +425,7 @@ namespace RvtMcp.Plugin.Failures
 
         private static void OnDocumentClosing(object sender, DocumentClosingEventArgs args)
         {
+            BumpContextGeneration();
             DocumentState state = null;
             try
             {
@@ -611,6 +617,8 @@ namespace RvtMcp.Plugin.Failures
         private static void OnDialogBoxShowing(object sender, DialogBoxShowingEventArgs args)
         {
             PendingRequestLifecycle.SetHostBusy(true);
+            // The window this event shows is not reported again by the window probe; an answered one never shows.
+            var answeredTicket = WindowTracker.NoteEvent(DateTimeOffset.UtcNow);
             var application = sender as UIApplication;
             RevitMessageCatalog.EnsureLoaded(application);
             var task = args.GetType() == typeof(TaskDialogShowingEventArgs) ? (TaskDialogShowingEventArgs)args : null;
@@ -698,6 +706,7 @@ namespace RvtMcp.Plugin.Failures
                                 RevitMessageCatalog.Current, args.DialogId, false, false, false);
                             if (declared != null) ruleAnswer["agentDeclarationNotUsed"] = new JObject { ["button"] = declared["button"], ["text"] = declared["text"] };
                             answers.Add(ruleAnswer);
+                            answeredTicket();
                             PendingRequestLifecycle.SetHostBusy(false);
                             return;
                         }
@@ -726,6 +735,7 @@ namespace RvtMcp.Plugin.Failures
                             if (!Active.DialogAnswers.TryGetValue(args.DialogId, out var answers))
                                 Active.DialogAnswers[args.DialogId] = answers = new List<JObject>();
                             answers.Add(new JObject { ["button"] = agentAnswer["button"], ["text"] = agentAnswer["text"], ["by"] = "agent" });
+                            answeredTicket();
                             PendingRequestLifecycle.SetHostBusy(false);
                             return;
                         }

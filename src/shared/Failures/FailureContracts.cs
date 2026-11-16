@@ -89,6 +89,8 @@ namespace RvtMcp.Failures
         public bool? ActiveDocumentChanged { get; set; }
         public List<string> IncidentIds { get; set; } = new List<string>();
         public JObject FinalResult { get; set; }
+        /// <summary>Issue-16 phase C: the window without a Revit event this operation is waiting on, written by the window probe.</summary>
+        public JObject WindowDialog { get; set; }
         public DateTimeOffset StartedUtc { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset UpdatedUtc { get; set; } = DateTimeOffset.UtcNow;
     }

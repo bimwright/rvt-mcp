@@ -562,6 +562,68 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
             Execute(c, tx, "UPDATE models SET revision=revision+1 WHERE scope=$s;", "$s", incident.ModelScopeKey);
         }
 
+        // Issue-16 phase C. Written from the window probe thread, never from the operation's own UI-thread object:
+        // a conditional update of one live row. Best effort: a failure only means the status shows no window.
+        public bool MarkWindowWait(string operationId, JObject dialog)
+        {
+            var appearanceId = dialog?.Value<string>("appearanceId");
+            if (string.IsNullOrEmpty(appearanceId)) return false;
+            return UpdateWindowWait(operationId, op =>
+            {
+                if (op.Execution != "running" && op.Execution != "waiting_for_user") return false;
+                op.Execution = "waiting_for_user";
+                op.WindowDialog = (JObject)dialog.DeepClone();
+                return true;
+            });
+        }
+
+        // Only the appearance that set the wait can clear it; an event dialog or a newer window keeps its own state.
+        public bool ClearWindowWait(string operationId, string appearanceId)
+        {
+            if (string.IsNullOrEmpty(appearanceId)) return false;
+            return UpdateWindowWait(operationId, op =>
+            {
+                if (op.Execution != "waiting_for_user" || op.WindowDialog?.Value<string>("appearanceId") != appearanceId) return false;
+                op.Execution = "running";
+                op.WindowDialog = null;
+                return true;
+            });
+        }
+
+        private bool UpdateWindowWait(string operationId, Func<FailureOperation, bool> change)
+        {
+            try
+            {
+                FailureCapture.RequireKey(operationId, "operation ID");
+                using (BeginActivity())
+                {
+                    Writer();
+                    if (!File.Exists(DatabasePath)) return false;
+                    using (var c = Open(true))
+                    using (var tx = c.BeginTransaction())
+                    {
+                        var stamp = Scalar(c, tx, "SELECT updated FROM operations WHERE id=$i;", "$i", operationId) as string;
+                        var op = stamp == null ? null : ReadPayload<FailureOperation>(c, tx, "operations", operationId);
+                        if (op == null || !change(op)) return false;
+                        // The observation keeps the row's timestamp and applies only to the row it read: any save by the
+                        // operation itself, even one prepared earlier (its final result), still wins over the probe.
+                        int changed;
+                        using (var command = Command(c, tx, "UPDATE operations SET execution=$e,payload=$p WHERE id=$i AND updated=$u;",
+                            "$e", op.Execution, "$p", FailureJson.Serialize(op), "$i", operationId, "$u", stamp))
+                            changed = command.ExecuteNonQuery();
+                        if (changed != 1) return false;
+                        tx.Commit();
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Diagnostic?.Invoke("Failure ledger window update failed: " + ex.GetType().Name + ": " + ex.Message);
+                return false;
+            }
+        }
+
         public FailureOperation GetOperation(string operationId)
         {
             FailureCapture.RequireKey(operationId, "operation ID"); EnsureDatabaseFile();

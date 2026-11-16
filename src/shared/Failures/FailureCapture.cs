@@ -130,6 +130,14 @@ namespace RvtMcp.Failures
         public const string TimedOutNextStep = "Revit has not finished this request within the timeout and reported no dialog; it may still be running. "
             + "Call revit_get_operation_status with this operationId and waitSeconds (up to 90) to wait for the result. Do not retry unchanged.";
 
+        // Issue-16 phase C: a window shown without a Revit event (add-in MessageBox, file dialog). It has no code and no declared answer.
+        public const string WindowWaitingNextStep = "Revit is showing a window without a dialog code (_operation.dialog.kind=window) and waits for the user. "
+            + "It cannot be answered by revit_set_dialog_answers or looked up. Tell the user what the window says and that it needs them in Revit. "
+            + "Call revit_get_operation_status with waitSeconds (up to 90) to wait for the result. Do not retry unchanged.";
+
+        public const string WindowBlockedNextStep = "Not started: a window is open in Revit and waits for the user (_operation.window.title), so nothing ran and nothing changed. "
+            + "Ask the user to close it in Revit, then send the request again.";
+
         public const string NotStartedNextStep = "Not started: Revit was busy (another request was running, or Revit was not idle), so this request never ran and nothing changed. "
             + "Send it again once Revit is free.";
 
