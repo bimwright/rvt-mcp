@@ -25,6 +25,7 @@ namespace RvtMcp.Plugin
         public bool FromMcp { get; set; }
         public string ExpectedDocumentId { get; set; }
         public bool DocumentProtocol { get; set; }
+        public long? DialogAnswerContext { get; set; }
         public JArray DialogAnswers { get; set; }
         public TaskCompletionSource<string> Tcs { get; set; }
     }
@@ -90,6 +91,11 @@ namespace RvtMcp.Plugin
                     actualTarget = DocumentTargetGuard.Capture(app);
                     if (request.FromMcp)
                     {
+                        if (request.DialogAnswers != null)
+                        {
+                            Failures.FailureControl.ObserveDialogDocument(app.ActiveUIDocument?.Document);
+                            RvtMcp.Failures.DialogDocumentContext.RequireCurrent(Failures.FailureControl.DialogContext, request.DialogAnswerContext);
+                        }
                         var documentRejection = ToolReadPolicy.DocumentRejection(request.CommandName,
                             request.ExpectedDocumentId, actualTarget.Value<string>("document_id"), request.DocumentProtocol);
                         if (documentRejection != null) throw new InvalidOperationException(documentRejection);

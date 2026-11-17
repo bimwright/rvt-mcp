@@ -1,4 +1,5 @@
 using Newtonsoft.Json.Linq;
+using RvtMcp.Failures;
 
 namespace RvtMcp.Server
 {
@@ -11,9 +12,12 @@ namespace RvtMcp.Server
         private JArray _answers;
         private JObject _notice;
 
-        internal void Set(string target, long generation, string scope, JArray answers)
+        internal long DocumentStamp { get; private set; }
+
+        internal void Set(string target, long generation, string scope, JArray answers, long documentStamp)
         {
             _target = target; _generation = generation; _scope = scope;
+            DocumentStamp = documentStamp;
             _answers = (JArray)answers.DeepClone();
             _notice = null;
         }
@@ -40,6 +44,7 @@ namespace RvtMcp.Server
         internal JArray ForWrite(string target, long generation, bool isWrite)
         {
             if (_answers != null && (_target != target || _generation != generation)) Drop();
+            CheckDocument();
             return isWrite && _answers != null ? (JArray)_answers.DeepClone() : null;
         }
 
@@ -47,7 +52,17 @@ namespace RvtMcp.Server
         // attempt. An interrupted/partial write is unknown delivery and must not replay next.
         internal void Sending() { if (_scope == "next") { _answers = null; _target = null; } }
 
-        internal JObject TakeNotice() { var notice = _notice; _notice = null; return notice; }
+        private void CheckDocument()
+        {
+            if (_answers != null && DialogDocumentContext.Read(_target) != DocumentStamp) Drop();
+        }
+
+        internal JObject TakeNotice()
+        {
+            CheckDocument();
+            var notice = _notice; _notice = null;
+            return notice;
+        }
 
         // A response with no room keeps the notice for the next one, unless the agent declared again meanwhile.
         internal void ReturnNotice(JObject notice) { if (_notice == null && _answers == null) _notice = notice; }

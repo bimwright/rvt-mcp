@@ -44,6 +44,7 @@ namespace RvtMcp.Tests
         private readonly Func<FailureLedgerStore> _oldLedger = FailureTools.StoreFactory;
         private readonly FakeProbe _probe = new FakeProbe();
         private readonly RvtMcpConfig _config = new RvtMcpConfig { Toolsets = new List<string> { "all" }, EnableChangeHistory = false };
+        private DialogDocumentContext _dialogContext;
         private readonly FailureLedgerStore _ledger;
 
         public GatewayFailureIntegrationTests()
@@ -63,6 +64,7 @@ namespace RvtMcp.Tests
 
         public void Dispose()
         {
+            _dialogContext?.Dispose();
             ToolGateway.ResetForTests();
             RevitTargetBinding.ResetForTests();
             ServerAuthToken.DiscoveryDirOverride = _oldDir;
@@ -266,7 +268,11 @@ namespace RvtMcp.Tests
                     ? new JArray(new[] { "tool_catalog", "controlled_failures_v1", "document_target_v1" }.Where(value => value != missingCapability))
                     : new JArray("tool_catalog")
             };
-            if (dialogProtocol) ((JArray)descriptor["capabilities"]).Add("dialog_answers_v1");
+            if (dialogProtocol)
+            {
+                ((JArray)descriptor["capabilities"]).Add("dialog_answers_v2");
+                if (pid == Pid) _dialogContext ??= new DialogDocumentContext("revit-2024-" + pid);
+            }
             var path = Path.Combine(_root, "revit-2024-" + pid + ".json");
             File.WriteAllText(path + ".tmp", descriptor.ToString(Formatting.None));
             File.Move(path + ".tmp", path, overwrite: true);
@@ -277,6 +283,115 @@ namespace RvtMcp.Tests
                 RevitTargetBinding.Switch(TargetSelector.ForPid(pid), RevitTargetBinding.Scan().Live);
                 RevitTargetBinding.Binding.ConfirmDocument(RevitTargetBinding.CaptureGeneration(), "doc-" + pid);
             }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task Manual_model_activation_expires_answers_before_open_model(bool backToA)
+        {
+            using var wire = new WireHost();
+            Descriptor(wire.Port, dialogProtocol: true);
+            await Send();
+            WriteDialogCatalog();
+            _dialogContext.Observe("A");
+            Assert.True(Declare("session").Value<bool>("success"));
+            _dialogContext.Observe("B");
+            if (backToA) _dialogContext.Observe("A");
+
+            var reply = Delivered(await Send("open_model"), "revit_open_model");
+            Assert.Null(wire.Requests.Last()["dialog_answers"]);
+            Assert.Equal("binding_changed", reply["_dialogAnswers"]?.Value<string>("reason"));
+            Assert.Null(Delivered(await Send())["_dialogAnswers"]);
+        }
+
+        [Fact]
+        public async Task Queued_declaration_is_rechecked_at_host_dispatch_even_after_returning_to_A()
+        {
+            using var wire = new WireHost();
+            Descriptor(wire.Port, dialogProtocol: true);
+            await Send();
+            WriteDialogCatalog();
+            _dialogContext.Observe("A");
+            Assert.True(Declare().Value<bool>("success"));
+            await Send("open_model");
+            var request = wire.Requests.Last();
+            Assert.NotNull(request["dialog_answers"]);
+            var stamp = request.Value<long?>("dialog_answer_context");
+            DialogDocumentContext.RequireCurrent(_dialogContext, stamp);
+            _dialogContext.Observe("A"); // Another view in the same document.
+            DialogDocumentContext.RequireCurrent(_dialogContext, stamp);
+            _dialogContext.Observe("B");
+            _dialogContext.Observe("A");
+            Assert.StartsWith("DOCUMENT_CHANGED", Assert.Throws<InvalidOperationException>(() =>
+                DialogDocumentContext.RequireCurrent(_dialogContext, stamp)).Message);
+            Assert.Throws<InvalidOperationException>(() => DialogDocumentContext.RequireCurrent(_dialogContext, null));
+            Assert.Throws<InvalidOperationException>(() => DialogDocumentContext.RequireCurrent(null, stamp));
+        }
+
+        private static JObject WindowFrame(JObject request, string appearance, string title) => new JObject
+        {
+            ["id"] = request["id"], ["frame"] = "event", ["event"] = "dialog_wait",
+            ["_operation"] = new JObject
+            {
+                ["operationId"] = request["operation_id"], ["execution"] = "waiting_for_user",
+                ["dialog"] = new JObject { ["kind"] = "window", ["appearanceId"] = appearance, ["title"] = title }
+            }
+        };
+
+        [Fact]
+        public async Task Rowless_read_status_returns_the_current_window()
+        {
+            using var wire = new WireHost();
+            Descriptor(wire.Port);
+            _ledger.Initialize();
+            wire.OnCommand = (request, host) => host.Send(WindowFrame(request, "first", "View activation"));
+            var receipt = await Send("activate_view");
+            var request = wire.Requests.Single();
+            var id = request.Value<string>("operation_id");
+            Assert.Equal("View activation", receipt["_operation"]["dialog"]["title"]);
+            Assert.Null(_ledger.GetOperation(id));
+            var status = JObject.Parse(await FailureTools.GetOperationStatus(id));
+            Assert.Equal("waiting_for_user", status["execution"]);
+            Assert.Equal("View activation", status["windowDialog"]?["title"]);
+
+            wire.OnCommand = null;
+            wire.Send(WindowFrame(request, "second", "Next window"));
+            await Send("health"); // Same wire reader processes the newer event before the health reply.
+            status = JObject.Parse(await FailureTools.GetOperationStatus(id));
+            Assert.Equal("Next window", status["windowDialog"]?["title"]);
+            wire.Send(Final(request));
+        }
+
+        [Fact]
+        public async Task Closing_a_window_resumes_admission_while_execution_continues()
+        {
+            using var wire = new WireHost();
+            Descriptor(wire.Port);
+            _ledger.Initialize();
+            wire.OnCommand = (request, host) => host.Send(WindowFrame(request, "new", "Export"));
+            await Send("open_model");
+            var request = wire.Requests.Single();
+            var id = request.Value<string>("operation_id");
+            wire.OnCommand = null;
+            void Close(string appearance) => wire.Send(new JObject
+            {
+                ["id"] = request["id"], ["frame"] = "event", ["event"] = "window_closed", ["appearanceId"] = appearance
+            });
+            Close("old");
+            await Send("health");
+            Assert.StartsWith("REVIT_BUSY", (await Send("create_wall")).Value<string>("error"));
+            Close("new");
+            await Send("health");
+            // A timeout sampled before close can reach the reader after the resume event.
+            wire.Send(new JObject { ["id"] = request["id"], ["_operation"] = new JObject { ["execution"] = "waiting_for_user" } });
+            await Send("health");
+            var status = JObject.Parse(await FailureTools.GetOperationStatus(id));
+            Assert.Equal("running", status["execution"]);
+            Assert.Null(status["windowDialog"]);
+            Assert.NotNull((await Send("create_wall"))["viewName"]);
+            Assert.False(Pending[request.Value<string>("id")].Execution.Task.IsCompleted);
+            wire.Send(Final(request));
         }
 
         private static JObject Final(JObject request) => new JObject

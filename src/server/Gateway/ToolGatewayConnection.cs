@@ -90,14 +90,17 @@ namespace RvtMcp.Server
                     throw new TargetException(failure);
                 var record = snap.Record;
                 var descriptor = AuthToken.ReadDescriptorFor(record.Pid, record.HostYear);
-                if (descriptor?.TargetId != record.TargetId || descriptor.Capabilities?.Contains("dialog_answers_v1", StringComparer.OrdinalIgnoreCase) != true
+                if (descriptor?.TargetId != record.TargetId || descriptor.Capabilities?.Contains("dialog_answers_v2", StringComparer.OrdinalIgnoreCase) != true
                     || (_conn is { Alive: true } c && c.Generation == snap.Generation && !c.DialogAnswersProtocol))
-                    return new JObject { ["success"] = false, ["error"] = "PAIRING_REQUIRED", ["message"] = "The bound add-in must support dialog_answers_v1; update gateway and add-in together." };
+                    return new JObject { ["success"] = false, ["error"] = "PAIRING_REQUIRED", ["message"] = "The bound add-in must support dialog_answers_v2; update gateway and add-in together." };
                 var catalog = FailureTools.Catalog(record.HostYear);
                 if (catalog == null || catalog.RevitYear != record.HostYear || catalog.TaskDialogError != null)
                     return new JObject { ["success"] = false, ["error"] = "CATALOG_UNAVAILABLE", ["message"] = "No complete TaskDialog catalogue for the bound Revit year is available." };
                 var accepted = DialogAnswerPolicy.Validate(answers, catalog);
-                DialogAnswers.Set(record.TargetId, snap.Generation, scope, accepted);
+                var stamp = DialogDocumentContext.Read(record.TargetId);
+                if (!stamp.HasValue)
+                    return new JObject { ["success"] = false, ["error"] = "DIALOG_CONTEXT_UNAVAILABLE", ["message"] = "The add-in has no live document context for dialog answers." };
+                DialogAnswers.Set(record.TargetId, snap.Generation, scope, accepted, stamp.Value);
                 return new JObject { ["success"] = true, ["answers"] = accepted, ["scope"] = scope, ["target_id"] = record.TargetId,
                     ["appliesTo"] = scope == "next" ? "next dispatched write (unknown delivery consumes it)" : "subsequent writes until cleared, or until the target or its active document changes" };
             }
@@ -545,7 +548,7 @@ namespace RvtMcp.Server
                 ScriptProtocol = desc.Capabilities?.Any(c => string.Equals(c, RvtMcp.Scripting.ScriptProtocol.Capability, StringComparison.OrdinalIgnoreCase)) == true,
                 AgentReports = desc.Capabilities?.Any(c => string.Equals(c, "agent_reports_v1", StringComparison.OrdinalIgnoreCase)) == true,
                 ReportProvenance = desc.Capabilities?.Any(c => string.Equals(c, "agent_report_provenance_v1", StringComparison.OrdinalIgnoreCase)) == true,
-                DialogAnswersProtocol = desc.Capabilities?.Any(c => string.Equals(c, "dialog_answers_v1", StringComparison.OrdinalIgnoreCase)) == true,
+                DialogAnswersProtocol = desc.Capabilities?.Any(c => string.Equals(c, "dialog_answers_v2", StringComparison.OrdinalIgnoreCase)) == true,
             };
             if (transport is TcpClient tcp)
             {
@@ -682,6 +685,7 @@ namespace RvtMcp.Server
                             var declared = DialogAnswers.ForWrite(conn.TargetId, effectiveGeneration, !ToolReadPolicy.IsReadOnly(command));
                             if (declared != null)
                             {
+                                requestObject["dialog_answer_context"] = DialogAnswers.DocumentStamp;
                                 requestObject["dialog_answers"] = declared;
                                 request = requestObject.ToString(Formatting.None);
                                 if (scriptReceipt != null) scriptReceipt["wire_request_bytes"] = ScriptIdentity.Utf8Bytes(request);
@@ -705,7 +709,7 @@ namespace RvtMcp.Server
                                 && !binding.CanWrite(effectiveGeneration, command != "open_model" && command != "send_code_to_revit", out var writeFailure))
                                 throw new TargetException(writeFailure);
                             else if (rejection == null && declared != null && !conn.DialogAnswersProtocol)
-                                rejection = "PAIRING_REQUIRED: the bound add-in does not support dialog_answers_v1. Clear declarations or update the add-in.";
+                                rejection = "PAIRING_REQUIRED: the bound add-in does not support dialog_answers_v2. Clear declarations or update the add-in.";
                             else if (rejection == null && command != "health"
                                 && (blocking = _pending.Values.FirstOrDefault(value => value.ConnectionId == conn.Epoch && value.WaitingForUser)) != null)
                                 rejection = "REVIT_BUSY: Revit is waiting for native user input. _operation.blockedBy names the waiting operation and its dialog. Use the local failure or operation queries.";

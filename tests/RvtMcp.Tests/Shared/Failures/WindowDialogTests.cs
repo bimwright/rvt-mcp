@@ -100,14 +100,27 @@ namespace RvtMcp.Tests
         public void A_TaskDialog_with_an_event_then_a_MessageBox_in_one_command_reports_only_the_MessageBox()
         {
             var tracker = new WindowModalTracker();
-            tracker.NoteEvent(T0);
-            var taskDialog = Tick(tracker, 0.1, Box(1, "Revit")).New.Single();
+            tracker.NoteEvent(T0, taskDialog: true);
+            var taskWindow = Box(1, "Revit");
+            taskWindow.HasTaskDialogFrame = true;
+            var taskDialog = Tick(tracker, 0.1, taskWindow).New.Single();
             Assert.Equal("event", taskDialog.Kind);
-            for (var second = 1; second <= 4; second++) Assert.Empty(Tick(tracker, second, Box(1, "Revit")).Confirmed);
+            for (var second = 1; second <= 4; second++) Assert.Empty(Tick(tracker, second, taskWindow).Confirmed);
             Assert.Single(Tick(tracker, 4.5).Closed); // the user closed the TaskDialog; the command continues
             Assert.Equal("window", Tick(tracker, 4.75, Box(2, "Add-in")).New.Single().Kind);
             Tick(tracker, 5.75, Box(2, "Add-in"));
             Assert.Equal("Add-in", Tick(tracker, 6.75, Box(2, "Add-in")).Confirmed.Single().Title);
+        }
+
+        [Fact]
+        public void Unseen_TaskDialog_followed_by_a_MessageBox_does_not_consume_its_window()
+        {
+            var tracker = new WindowModalTracker();
+            tracker.NoteEvent(T0, taskDialog: true);
+            var second = Box(2, "Same caption");
+            Tick(tracker, 0.1, second);
+            Tick(tracker, 1.1, second);
+            Assert.Equal("Same caption", Tick(tracker, 2.1, second).Confirmed.Single().Title);
         }
 
         [Fact]
@@ -145,6 +158,34 @@ namespace RvtMcp.Tests
             var released = tracker.Reset();
             Assert.Single(released);
             Assert.Empty(tracker.OpenAppearances);
+        }
+
+        [Fact]
+        public void Window_close_releases_host_wait_only_for_the_current_appearance()
+        {
+            var execution = new TaskCompletionSource<string>();
+            var life = PendingRequestLifecycle.For(execution);
+            var frames = new List<JObject>();
+            life.Configure("req", null, line => frames.Add(JObject.Parse(line)));
+            Assert.True(life.TryStart());
+            void Wait(string id) => life.EmitDialogWait(new JObject { ["dialog"] = new JObject { ["kind"] = "window", ["appearanceId"] = id } });
+            try
+            {
+                Wait("one");
+                Wait("two");
+                life.WindowClosed("one");
+                Assert.True(PendingRequestLifecycle.IsHostWaitingForUser);
+                life.WindowClosed("two");
+                Assert.False(PendingRequestLifecycle.IsHostWaitingForUser);
+                Assert.Equal("window_closed", frames.Last()["event"]);
+                Assert.Equal("two", frames.Last()["appearanceId"]);
+                Assert.False(execution.Task.IsCompleted);
+                Wait("three");
+                life.EmitDialogWait(new JObject { ["dialog"] = new JObject { ["kind"] = "TaskDialog" } });
+                life.WindowClosed("three");
+                Assert.True(PendingRequestLifecycle.IsHostWaitingForUser);
+            }
+            finally { execution.SetResult("{}"); }
         }
 
         [Fact]

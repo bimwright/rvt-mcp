@@ -33,7 +33,7 @@ Discovery file format (`schema_version=3`):
   "port": 49891,
   "pipe_name": null,
   "auth_token": "...",
-  "capabilities": ["tool_catalog", "controlled_failures_v1", "dialog_answers_v1"]
+  "capabilities": ["tool_catalog", "controlled_failures_v1", "dialog_answers_v2"]
 }
 ```
 

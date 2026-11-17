@@ -16,6 +16,7 @@ namespace RvtMcp.Failures
         public bool Visible { get; set; }
         public bool Enabled { get; set; }
         public bool IsOwn { get; set; }
+        public bool HasTaskDialogFrame { get; set; }
         public bool HasProgressBar { get; set; }
     }
 
@@ -107,16 +108,16 @@ namespace RvtMcp.Failures
         public static readonly TimeSpan EventTicketLifetime = TimeSpan.FromSeconds(5);
         public const int SightingsToConfirm = 3;
 
-        private sealed class EventTicket { internal DateTimeOffset Time; internal bool Answered, Used; }
+        private sealed class EventTicket { internal DateTimeOffset Time; internal bool TaskDialog, Answered, Used; }
 
         private readonly object _gate = new object();
         private readonly List<EventTicket> _tickets = new List<EventTicket>();
         private readonly Dictionary<long, WindowAppearance> _open = new Dictionary<long, WindowAppearance>();
 
         /// <summary>A Revit DialogBoxShowing event fired. Returns an action that marks it answered (the dialog then never shows).</summary>
-        public Action NoteEvent(DateTimeOffset now)
+        public Action NoteEvent(DateTimeOffset now, bool taskDialog = false)
         {
-            var ticket = new EventTicket { Time = now };
+            var ticket = new EventTicket { Time = now, TaskDialog = taskDialog };
             lock (_gate) { _tickets.Add(ticket); _tickets.RemoveAll(t => now - t.Time > EventTicketLifetime + EventTicketLifetime); }
             return () => { lock (_gate) ticket.Answered = true; };
         }
@@ -151,17 +152,19 @@ namespace RvtMcp.Failures
                     if (!_open.TryGetValue(window.Handle, out var appearance))
                     {
                         appearance = new WindowAppearance { Handle = window.Handle, Title = window.Title, ClassName = window.ClassName, FirstSeen = now };
-                        // The first new window after an unused, unanswered event within the lifetime is that event's dialog.
-                        var ticket = _tickets.Where(t => !t.Used && !t.Answered && now - t.Time <= EventTicketLifetime && t.Time <= now)
-                            .OrderBy(t => t.Time).FirstOrDefault();
-                        if (ticket != null) { ticket.Used = true; appearance.Kind = "event"; }
-                        else if (window.HasProgressBar) appearance.Kind = "progress";
+                        if (window.HasProgressBar) appearance.Kind = "progress";
                         _open[window.Handle] = appearance;
                         result.New.Add(appearance);
                     }
                     // A progress bar may be added after the window first shows: check again until confirmed.
                     if (appearance.Kind == "window" && !appearance.Confirmed && window.HasProgressBar) appearance.Kind = "progress";
                     if (appearance.Kind != "window" || appearance.Confirmed) continue;
+                    // Another handler may already have answered the event. A later MessageBox
+                    // cannot belong to a TaskDialog event, even when it has the same caption.
+                    // Recheck while the window's child controls are being created.
+                    var ticket = _tickets.FirstOrDefault(t => !t.Used && !t.Answered && t.Time <= appearance.FirstSeen
+                        && now - t.Time <= EventTicketLifetime && (!t.TaskDialog || window.HasTaskDialogFrame));
+                    if (ticket != null) { ticket.Used = true; appearance.Kind = "event"; continue; }
                     if (now - appearance.LastSighting < SightingSpacing) continue;
                     // A window whose UI thread does not pump is busy work (progress), not a dialog waiting for the user: start over.
                     if (pumps != null && !pumps(window)) { appearance.Sightings = 0; appearance.LastSighting = now; continue; }

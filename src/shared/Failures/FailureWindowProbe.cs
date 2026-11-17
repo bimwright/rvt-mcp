@@ -12,8 +12,8 @@ using RvtMcp.Failures;
 namespace RvtMcp.Plugin.Failures
 {
     // Issue-16 phase C: windows that wait for the user without a Revit DialogBoxShowing event (add-in MessageBox, file dialog).
-    // The probe only reads: it never clicks, posts, activates or closes a window. The only message it sends is WM_NULL,
-    // which does nothing, to tell a dialog's message loop from busy work. See docs/controlled-failures.md.
+    // The probe checks UI responsiveness with WM_NULL and reads static text and button labels.
+    // See docs/controlled-failures.md for its window and control filters.
     internal static partial class FailureControl
     {
         internal sealed class WindowTarget
@@ -24,7 +24,7 @@ namespace RvtMcp.Plugin.Failures
         }
 
         // Kept on the appearance: the window may close after its operation has ended.
-        private sealed class WindowLogEntry { internal WindowOperationLog Log; internal object Token; }
+        private sealed class WindowLogEntry { internal WindowTarget Target; internal object Token; }
 
         private sealed class ContextSnapshot { internal string Key, Title, ModelScopeKey; internal long Generation; }
 
@@ -101,17 +101,16 @@ namespace RvtMcp.Plugin.Failures
             {
                 ["kind"] = "window", ["title"] = content.Value<string>("title") ?? "",
                 ["text"] = content.Value<string>("text") ?? "", ["buttons"] = content["buttons"]?.DeepClone() ?? new JArray(),
-                ["source"] = "win32"
+                ["source"] = "win32", ["appearanceId"] = appearance.AppearanceId
             };
             var target = Volatile.Read(ref _windowTarget);
             if (target == null) { BlockOutsideMcp(appearance); return; }
             appearance.OperationId = target.OperationId;
             // Past the cap the window is still reported live below; the final receipt says how many were left out.
             var token = target.Log.Add(dialog, appearance.ContextGeneration, SnapshotFor(appearance)?.ModelScopeKey);
-            appearance.Record = token == null ? null : new WindowLogEntry { Log = target.Log, Token = token };
+            appearance.Record = new WindowLogEntry { Target = target, Token = token };
             // Ledger first, so a status query after the receipt already reports the wait.
-            var stored = (JObject)dialog.DeepClone(); stored["appearanceId"] = appearance.AppearanceId;
-            try { Store?.MarkWindowWait(target.OperationId, stored); } catch { }
+            try { Store?.MarkWindowWait(target.OperationId, dialog); } catch { }
             var text = dialog.Value<string>("text");
             target.Lifecycle.EmitDialogWait(new JObject
             {
@@ -141,8 +140,12 @@ namespace RvtMcp.Plugin.Failures
             PendingRequestLifecycle.ClearWindowModal(appearance.AppearanceId);
             if (appearance.OperationId != null)
             {
-                if (appearance.Record is WindowLogEntry entry) entry.Log.Close(entry.Token, SnapshotFor(appearance) != null);
                 try { Store?.ClearWindowWait(appearance.OperationId, appearance.AppearanceId); } catch { }
+                if (appearance.Record is WindowLogEntry entry)
+                {
+                    entry.Target.Log.Close(entry.Token, SnapshotFor(appearance) != null);
+                    entry.Target.Lifecycle.WindowClosed(appearance.AppearanceId);
+                }
                 return;
             }
             // Outside MCP: noted for the next call on that model, only when the model is certain.
@@ -309,7 +312,14 @@ namespace RvtMcp.Plugin.Failures
                     SameUiThread = thread == uiThread, Visible = IsWindowVisible(handle), Enabled = IsWindowEnabled(handle),
                     IsOwn = OwnWindows.Contains(handle)
                 };
-                if (WindowModalTracker.IsCandidate(sighting)) sighting.HasProgressBar = HasProgressBar(handle);
+                if (WindowModalTracker.IsCandidate(sighting))
+                {
+                    sighting.HasProgressBar = HasProgressBar(handle);
+                    // Revit TaskDialogs host DirectUI directly. Explorer file dialogs nest it
+                    // under DUIViewWndClassName. Standard MessageBoxes use Static and Button.
+                    sighting.HasTaskDialogFrame = FindWindowEx(handle, IntPtr.Zero, "DirectUIHWND", null) != IntPtr.Zero
+                        && FindWindowEx(handle, IntPtr.Zero, "DUIViewWndClassName", null) == IntPtr.Zero;
+                }
                 result.Add(sighting);
                 return true;
             }, IntPtr.Zero);
@@ -382,6 +392,7 @@ namespace RvtMcp.Plugin.Failures
         private static string Text(IntPtr handle) { var buffer = new StringBuilder(1024); InternalGetWindowText(handle, buffer, buffer.Capacity); return buffer.ToString(); }
 
         private delegate bool EnumProc(IntPtr handle, IntPtr parameter);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string className, string title);
         [DllImport("user32.dll")] private static extern bool EnumWindows(EnumProc callback, IntPtr parameter);
         [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr parent, EnumProc callback, IntPtr parameter);
         [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr handle, out uint processId);

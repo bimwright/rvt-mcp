@@ -45,6 +45,7 @@ namespace RvtMcp.Plugin.Failures
         internal static readonly UserDialogBuffer UserDialogs = new UserDialogBuffer();
         // Set by revit_show_message around its own dialog: that dialog is the agent's message, not a Revit condition.
         internal static bool OwnDialogPending;
+        internal static DialogDocumentContext DialogContext { get; private set; }
 
         internal static void Initialize(UIControlledApplication application) => Initialize(application, null);
 
@@ -75,6 +76,9 @@ namespace RvtMcp.Plugin.Failures
                 _storageError = "FAILURE_STORAGE_FAILED";
                 App.DebugLog("Failure ledger initialization failed: " + ex.GetType().Name + ": " + ex.Message);
             }
+
+            try { DialogContext = new DialogDocumentContext(AuthToken.TargetId); }
+            catch (Exception ex) { App.DebugLog("Dialog declarations unavailable: " + ex.Message); }
 
             var controlled = application.ControlledApplication;
             controlled.FailuresProcessing += OnFailuresProcessing;
@@ -117,6 +121,8 @@ namespace RvtMcp.Plugin.Failures
             application.ViewActivated -= OnViewActivated;
             application.ApplicationClosing -= OnApplicationClosing;
             _subscribed = false;
+            DialogContext?.Dispose();
+            DialogContext = null;
             StopWindowProbe();
             PendingRequestLifecycle.SetHostBusy(false);
         }
@@ -127,7 +133,11 @@ namespace RvtMcp.Plugin.Failures
             PendingRequestLifecycle.SetHostBusy(false);
             _applicationClosing = false; // A cancelled application exit has returned to a live idle UI.
             ManualOpening.Clear(); // Opening is modal; an idle UI has none in progress.
-            if (application != null) _mainWindow = application.MainWindowHandle;
+            if (application != null)
+            {
+                _mainWindow = application.MainWindowHandle;
+                ObserveDialogDocument(application.ActiveUIDocument?.Document);
+            }
             RevitMessageCatalog.EnsureLoaded(application);
             if (application != null) RefreshContext(application);
             if (_blockedSave != null && DateTimeOffset.UtcNow - _blockedSave.Time > TimeSpan.FromMinutes(2))
@@ -228,11 +238,28 @@ namespace RvtMcp.Plugin.Failures
             catch { if (Active != null) { Active.Operation.Complete = false; Active.NativeOutcome = "unknown"; } }
         }
 
+        internal static void ObserveDialogDocument(Document doc, bool opened = false)
+        {
+            if (DialogContext == null) return;
+            try
+            {
+                if (!opened) DialogContext.Observe(DocumentTargetGuard.GetOrCreateToken(doc));
+                else if (doc != null && !doc.IsLinked) DialogContext.Invalidate();
+            }
+            catch (Exception ex)
+            {
+                DialogContext.Dispose();
+                DialogContext = null;
+                App.DebugLog("Dialog declarations disabled after document observation failed: " + ex.Message);
+            }
+        }
+
         private static void OnViewActivated(object sender, ViewActivatedEventArgs args)
         {
             BumpContextGeneration();
             try
             {
+                ObserveDialogDocument(args.CurrentActiveView?.Document);
                 var previous = args.PreviousActiveView?.Document;
                 var current = args.CurrentActiveView?.Document;
                 if (previous != null && previous.IsValidObject) Invalidate(State(previous));
@@ -302,6 +329,7 @@ namespace RvtMcp.Plugin.Failures
 
         private static void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
+            if (args.Status == RevitAPIEventStatus.Succeeded) ObserveDialogDocument(args.Document, opened: true);
             if (!Scoped()) { ManualOpened(args); return; }
             try
             {
@@ -618,7 +646,7 @@ namespace RvtMcp.Plugin.Failures
         {
             PendingRequestLifecycle.SetHostBusy(true);
             // The window this event shows is not reported again by the window probe; an answered one never shows.
-            var answeredTicket = WindowTracker.NoteEvent(DateTimeOffset.UtcNow);
+            var answeredTicket = WindowTracker.NoteEvent(DateTimeOffset.UtcNow, args is TaskDialogShowingEventArgs);
             var application = sender as UIApplication;
             RevitMessageCatalog.EnsureLoaded(application);
             var task = args.GetType() == typeof(TaskDialogShowingEventArgs) ? (TaskDialogShowingEventArgs)args : null;
@@ -751,6 +779,12 @@ namespace RvtMcp.Plugin.Failures
             {
                 Active.StorageFailure(); Active.Operation.Execution = "waiting_for_user";
                 Active.Lifecycle.EmitDialogWait(new JObject { ["manual"] = true, ["message"] = "Revit is waiting for a user action; recording the dialog failed." });
+            }
+            finally
+            {
+                // A scoped manual wait is now owned by its request lifecycle. In particular,
+                // closing a subsequent Win32 window must not leave the earlier event's busy flag set.
+                PendingRequestLifecycle.SetHostBusy(false);
             }
         }
 

@@ -103,17 +103,19 @@ namespace RvtMcp.Tests
         [Fact]
         public void Next_and_session_are_bound_to_target_generation_and_writes()
         {
+            var target = Guid.NewGuid().ToString("N");
+            using var context = new DialogDocumentContext(target);
             var session = new DialogAnswerSession();
-            session.Set("a", 1, "next", Answer());
-            Assert.Null(session.ForWrite("a", 1, false));
-            Assert.NotNull(session.ForWrite("a", 1, true)); // observing or a pre-send rejection does not consume
-            session.Sending(); Assert.Null(session.ForWrite("a", 1, true));
-            session.Set("a", 1, "session", Answer()); session.Sending();
-            Assert.NotNull(session.ForWrite("a", 1, true));
-            Assert.Null(session.ForWrite("a", 2, true)); // same PID/id, new process/binding generation
-            session.Set("a", 2, "session", Answer());
-            Assert.Null(session.ForWrite("b", 3, false)); Assert.Null(session.ForWrite("a", 2, true));
-            session.Set("a", 2, "session", Answer()); session.Clear(); Assert.Null(session.ForWrite("a", 2, true));
+            session.Set(target, 1, "next", Answer(), context.Stamp);
+            Assert.Null(session.ForWrite(target, 1, false));
+            Assert.NotNull(session.ForWrite(target, 1, true)); // observing or a pre-send rejection does not consume
+            session.Sending(); Assert.Null(session.ForWrite(target, 1, true));
+            session.Set(target, 1, "session", Answer(), context.Stamp); session.Sending();
+            Assert.NotNull(session.ForWrite(target, 1, true));
+            Assert.Null(session.ForWrite(target, 2, true)); // same PID/id, new process/binding generation
+            session.Set(target, 2, "session", Answer(), context.Stamp);
+            Assert.Null(session.ForWrite("b", 3, false)); Assert.Null(session.ForWrite(target, 2, true));
+            session.Set(target, 2, "session", Answer(), context.Stamp); session.Clear(); Assert.Null(session.ForWrite(target, 2, true));
         }
 
         [Fact]

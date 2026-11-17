@@ -15,6 +15,18 @@ namespace RvtMcp.Server
         private volatile bool _waitingForUser;
         internal bool WaitingForUser => _waitingForUser;
         private JObject _dialog;
+        private bool _hasDialogEvent;
+        private string _pendingExecution;
+
+        internal void AddLiveStatus(JObject status)
+        {
+            lock (_gate)
+            {
+                if (_pendingExecution != null) status["execution"] = _pendingExecution;
+                if (_waitingForUser && _dialog?.Value<string>("kind") == "window")
+                    status["windowDialog"] = _dialog.DeepClone();
+            }
+        }
         /// <summary>The dialog this request waits on, as the add-in reported it; null when unknown.</summary>
         internal JObject Dialog { get { lock (_gate) return (JObject)_dialog?.DeepClone(); } }
         internal RvtMcp.Plugin.ChangeHistoryRequest History { get; }
@@ -49,15 +61,22 @@ namespace RvtMcp.Server
                         if (frame.Value<string>("event") == "dialog_wait")
                         {
                             _waitingForUser = true;
+                            _hasDialogEvent = true;
+                            _pendingExecution = "waiting_for_user";
                             var receipt = Pending("waiting_for_user");
                             if (frame["_operation"] != null) receipt["_operation"] = frame["_operation"].DeepClone();
                             var dialog = receipt["_operation"]?["dialog"] as JObject ?? frame["payload"]?["dialog"] as JObject;
-                            if (dialog != null)
-                            {
-                                _dialog = (JObject)dialog.DeepClone();
-                                if (receipt["_operation"] is JObject operation) operation["dialog"] = dialog.DeepClone();
-                            }
+                            _dialog = (JObject)dialog?.DeepClone();
+                            if (dialog != null && receipt["_operation"] is JObject operation)
+                                operation["dialog"] = dialog.DeepClone();
                             Caller.TrySetResult(receipt.ToString(Formatting.None));
+                        }
+                        else if (frame.Value<string>("event") == "window_closed" && frame.Value<string>("appearanceId") is string closed
+                            && _dialog?.Value<string>("appearanceId") == closed)
+                        {
+                            _dialog = null;
+                            _waitingForUser = false;
+                            _pendingExecution = "running";
                         }
                         return false;
                     }
@@ -65,7 +84,14 @@ namespace RvtMcp.Server
                     if (execution == "waiting_for_user" || execution == "timed_out_running" || execution == "running" || execution == "queued")
                     {
                         if (_script != null && frame["_script"] == null) ScriptTelemetry.AttachPending(frame, _script);
-                        _waitingForUser = execution == "waiting_for_user";
+                        // A timer snapshot can be queued after a newer window event. Once the
+                        // add-in reports a transition, follow its ordered events until final.
+                        if (!_hasDialogEvent)
+                        {
+                            _waitingForUser = execution == "waiting_for_user";
+                            _pendingExecution = execution;
+                            if (!_waitingForUser) _dialog = null;
+                        }
                         Caller.TrySetResult(frame.ToString(Formatting.None));
                         return false;
                     }

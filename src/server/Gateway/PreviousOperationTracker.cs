@@ -19,19 +19,22 @@ namespace RvtMcp.Server
             internal string OperationId, Tool, PendingExecution;
             internal bool IsRead, Delivered;
             internal Task<string> Execution;
+            internal GatewayPendingRequest Pending;
         }
 
         private readonly object _gate = new object();
         private readonly List<Entry> _entries = new List<Entry>();
 
-        internal void Remember(string operationId, string tool, Task<string> execution, string pendingExecution = "running", bool isRead = false)
+        internal void Remember(string operationId, string tool, Task<string> execution, string pendingExecution = "running", bool isRead = false,
+            GatewayPendingRequest pending = null)
         {
             if (string.IsNullOrEmpty(operationId) || execution == null) return;
             lock (_gate)
             {
                 if (_entries.Any(e => e.OperationId == operationId)) return;
                 if (_entries.Count >= MaxTracked) _entries.Remove(_entries.FirstOrDefault(e => e.Delivered) ?? _entries[0]);
-                _entries.Add(new Entry { OperationId = operationId, Tool = tool, Execution = execution, PendingExecution = pendingExecution, IsRead = isRead });
+                _entries.Add(new Entry { OperationId = operationId, Tool = tool, Execution = execution, PendingExecution = pendingExecution,
+                    IsRead = isRead, Pending = pending });
             }
         }
 
@@ -75,6 +78,7 @@ namespace RvtMcp.Server
             {
                 // A lost connection ends the wait without a result.
                 status["execution"] = execution.IsCompleted ? "interrupted_unknown" : entry.PendingExecution;
+                if (!execution.IsCompleted) entry.Pending?.AddLiveStatus(status);
                 status["complete"] = false;
                 status["note"] = "No durable record: this server session tracks the request until its result arrives. Do not retry unchanged.";
                 return status;

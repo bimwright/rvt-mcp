@@ -20,6 +20,7 @@ namespace RvtMcp.Plugin
         private readonly TaskCompletionSource<string> _execution;
         private readonly TaskCompletionSource<string> _caller = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _state; // 0 queued, 1 running, 2 cancelled before start, 3 completed
+        private string _waitingWindow;
         private bool _waiting;
         private Action<string> _emit;
         public string RequestId { get; private set; }
@@ -170,6 +171,7 @@ namespace RvtMcp.Plugin
             lock (_sync)
             {
                 if (_state != 1) return;
+                _waitingWindow = safePayload?["dialog"]?.Value<string>("appearanceId");
                 if (!_waiting) { _waiting = true; Interlocked.Increment(ref _modalCount); }
                 var pending = Pending("REVIT_OPERATION_REQUIRES_USER", "waiting_for_user", "unknown");
                 if (safePayload?["dialog"] is JObject dialog && pending["_operation"] is JObject operation)
@@ -186,6 +188,21 @@ namespace RvtMcp.Plugin
                 // The transport callback only enqueues immutable JSON; it never waits for the wire.
                 _emit?.Invoke(frame.ToString(Formatting.None));
                 _caller.TrySetResult(pending.ToString(Formatting.None));
+            }
+        }
+
+        public void WindowClosed(string appearanceId)
+        {
+            lock (_sync)
+            {
+                if (_state != 1 || !_waiting || appearanceId == null || appearanceId != _waitingWindow) return;
+                _waitingWindow = null;
+                _waiting = false;
+                Interlocked.Decrement(ref _modalCount);
+                _emit?.Invoke(new JObject
+                {
+                    ["frame"] = "event", ["event"] = "window_closed", ["id"] = RequestId, ["appearanceId"] = appearanceId
+                }.ToString(Formatting.None));
             }
         }
 
