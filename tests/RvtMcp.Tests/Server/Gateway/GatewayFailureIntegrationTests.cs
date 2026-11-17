@@ -474,6 +474,17 @@ namespace RvtMcp.Tests
             finally { ToolGateway.CloseConnection(); transport.Stop(); PluginAuthToken.RevitVersion = oldYear; }
         }
 
+        private sealed class InterruptedRequestWriter : StreamWriter
+        {
+            public InterruptedRequestWriter(Stream stream) : base(stream, new UTF8Encoding(false), 1024, leaveOpen: true) { }
+            public override void WriteLine(string value)
+            {
+                Write(value.Substring(0, value.Length / 2));
+                Flush();
+                throw new IOException("Fixture interrupted a partially written request.");
+            }
+        }
+
         [Fact]
         public async Task Dialog_next_is_not_replayed_after_unknown_wire_failure()
         {
@@ -482,7 +493,9 @@ namespace RvtMcp.Tests
             ToolGateway.BeforeWriteForTests = () => {
                 ToolGateway.BeforeWriteForTests = null;
                 var conn = typeof(ToolGateway).GetField("_conn", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
-                ((StreamWriter)conn.GetType().GetField("Writer").GetValue(conn)).Dispose();
+                var field = conn.GetType().GetField("Writer");
+                var writer = (StreamWriter)field.GetValue(conn);
+                field.SetValue(conn, new InterruptedRequestWriter(writer.BaseStream));
             };
             var error = await Assert.ThrowsAsync<TargetException>(() => Send("open_model"));
             Assert.Equal("interrupted_unknown", error.Operation.Value<string>("execution"));
