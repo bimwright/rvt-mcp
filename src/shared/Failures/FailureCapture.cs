@@ -130,14 +130,23 @@ namespace RvtMcp.Failures
         public const string TimedOutNextStep = "Revit has not finished this request within the timeout and reported no dialog; it may still be running. "
             + "Call revit_get_operation_status with this operationId and waitSeconds (up to 90) to wait for the result. Do not retry unchanged.";
 
+        // Issue-16 phase C: a window shown without a Revit event (add-in MessageBox, file dialog). It has no code and no declared answer.
+        public const string WindowWaitingNextStep = "Revit is showing a window without a dialog code (_operation.dialog.kind=window) and waits for the user. "
+            + "It cannot be answered by revit_set_dialog_answers or looked up. Tell the user what the window says and that it needs them in Revit. "
+            + "Call revit_get_operation_status with waitSeconds (up to 90) to wait for the result. Do not retry unchanged.";
+
+        public const string WindowBlockedNextStep = "Not started: a window is open in Revit and waits for the user (_operation.window.title), so nothing ran and nothing changed. "
+            + "Ask the user to close it in Revit, then send the request again.";
+
         public const string NotStartedNextStep = "Not started: Revit was busy (another request was running, or Revit was not idle), so this request never ran and nothing changed. "
             + "Send it again once Revit is free.";
 
         // Written for the agent: it cannot act in Revit UI, but it can read, resurvey and revise its plan.
-        public static string NextStep(string errorCode, bool reviewRequired, bool acceptedWarnings, string warningPolicy = WarningPolicyModes.Rollback)
+        public static string NextStep(string errorCode, bool reviewRequired, bool acceptedWarnings, string warningPolicy = WarningPolicyModes.Rollback,
+            bool acceptedDialogs = false)
         {
             const string records = "Read the incidents with revit_get_failure_records (includeDetails=true)";
-            const string review = "The user can review it in Revit (History > Issues).";
+            const string review = "The user can review it in Revit (History > Issues); revit_show_issue opens it on an incident.";
             const string admission = "Previous Issues do not block subsequent MCP commands or repeated requests. ";
             switch (errorCode)
             {
@@ -166,17 +175,33 @@ namespace RvtMcp.Failures
                 return "Warnings were accepted and recorded under the user's accept-and-log policy. Check the recorded outcome; acceptance does not certify model correctness or repair earlier operations.";
             if (acceptedWarnings)
                 return "Committed with warnings the user accepted by rule or one-use grant (see the incident). The warnings remain in the model; this does not certify design quality.";
+            if (acceptedDialogs)
+                return "Committed after a user rule or one-use grant answered a Revit dialog (see _failure.groups[].answer and the incident). This does not certify the model is correct.";
             return "Revit reported conditions during this operation. " + records + " before relying on the result.";
         }
 
-        // Who closed a dialog group: a rule answer is kept per occurrence, the rest of the count was closed by the user.
-        // One answer stands for the group only when a rule gave it to every occurrence.
-        public static void DescribeAnswers(JObject group, IReadOnlyList<JObject> ruleAnswers)
+        // Successful automatic answers are kept per occurrence; other occurrences were handled by the user.
+        public static void DescribeAnswers(JObject group, IReadOnlyList<JObject> answers)
         {
-            int byRule = ruleAnswers?.Count ?? 0, byUser = Math.Max(0, (group.Value<int?>("count") ?? 0) - byRule);
-            group["answeredBy"] = byRule == 0 ? "user" : byUser == 0 ? "rule" : "mixed";
-            if (byRule > 0 && byUser > 0) group["answeredCount"] = new JObject { ["rule"] = byRule, ["user"] = byUser };
-            if (byRule > 0 && byUser == 0 && ruleAnswers.Distinct(JToken.EqualityComparer).Count() == 1) group["answer"] = ruleAnswers[0].DeepClone();
+            int byAgent = answers?.Count(a => a.Value<string>("by") == "agent") ?? 0;
+            int byRule = (answers?.Count ?? 0) - byAgent, byUser = Math.Max(0, (group.Value<int?>("count") ?? 0) - byRule - byAgent);
+            int actors = (byAgent > 0 ? 1 : 0) + (byRule > 0 ? 1 : 0) + (byUser > 0 ? 1 : 0);
+            group["answeredBy"] = actors > 1 ? "mixed" : byAgent > 0 ? "agent" : byRule > 0 ? "rule" : "user";
+            if (actors > 1) group["answeredCount"] = new JObject { ["rule"] = byRule, ["agent"] = byAgent, ["user"] = byUser };
+            if (answers?.Count > 0 && byUser == 0)
+            {
+                var choices = answers.Select(a => { var choice = (JObject)a.DeepClone(); choice.Remove("by"); return choice; }).ToList();
+                if (choices.Select(a => a.Value<string>("button")).Distinct(StringComparer.Ordinal).Count() == 1) group["answer"] = choices[0];
+            }
+            // A user rule or grant wins over the agent's declaration; say so instead of leaving the agent to infer it.
+            var skipped = answers?.Select(a => a["agentDeclarationNotUsed"]).OfType<JObject>().FirstOrDefault();
+            if (skipped != null)
+            {
+                var notice = (JObject)skipped.DeepClone();
+                notice["reason"] = "A user rule or one-use grant answered this dialog first; user choices take priority. A scope=next declaration was still spent by this write.";
+                group["agentDeclarationNotUsed"] = notice;
+                if (group["answer"] is JObject answer) answer.Remove("agentDeclarationNotUsed");
+            }
         }
 
         public static JObject Summary(FailureIncident incident, bool? mutationApplied, string gate)

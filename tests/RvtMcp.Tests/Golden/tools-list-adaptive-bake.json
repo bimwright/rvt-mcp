@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 256,
+  "tool_count": 258,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -7298,6 +7298,34 @@
       }
     },
     {
+      "name": "revit_set_dialog_answers",
+      "description_hash": "sha256:a1dc74a746e7003a29b29797a618229c37ed04525930420b57e38d84c8d8c77b",
+      "inputSchema": {
+        "properties": {
+          "answers": {
+            "description": "",
+            "type": "String"
+          },
+          "clear": {
+            "description": "",
+            "type": "Boolean"
+          },
+          "scope": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "revit_set_element_parameter_values",
       "description_hash": "sha256:338c1af9601ecd928fef15f4ede64b51e64e01bc2c56ffafc9bead9cbed518ed",
       "inputSchema": {
@@ -8161,6 +8189,32 @@
         },
         "required": [
           "element_ids"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "revit_show_issue",
+      "description_hash": "sha256:aa819daec8b03a8478041bdfe159815de7d5c1ef9708cc8e1d8b43e0481a5554",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "",
+            "type": "String"
+          },
+          "incidentId": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "incidentId"
         ],
         "type": "object"
       },

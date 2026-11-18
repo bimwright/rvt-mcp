@@ -116,7 +116,7 @@ namespace RvtMcp.Server
             // Finished pending operations are attached by RuntimeToolFilter, to the response the agent receives.
             var execution = (response["_operation"] as JObject)?.Value<string>("execution");
             if (execution == "waiting_for_user" || execution == "timed_out_running" || execution == "running" || execution == "queued")
-                PreviousOperations.Remember(pending.OperationId, "revit_" + command, pending.Execution.Task, execution, ToolReadPolicy.IsReadOnly(command));
+                PreviousOperations.Remember(pending.OperationId, "revit_" + command, pending.Execution.Task, execution, ToolReadPolicy.IsReadOnly(command), pending);
             return result;
         }
 

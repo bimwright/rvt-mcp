@@ -32,9 +32,10 @@ namespace RvtMcp.Plugin.Presentation.Issues
             if (!string.IsNullOrEmpty(incident.NativeAction))
             {
                 text.AppendLine(incident.NativeAction);
-                text.AppendLine(incident.NativeContextDescription);
                 text.AppendLine("Context fingerprint: " + incident.NativeContextHash);
             }
+            // Dialog answers also have context, but no guarded native Save/Sync action.
+            if (!string.IsNullOrEmpty(incident.NativeContextDescription)) text.AppendLine(incident.NativeContextDescription);
             var messages = incident.Messages ?? new List<FailureMessage>();
             foreach (var message in messages)
             {

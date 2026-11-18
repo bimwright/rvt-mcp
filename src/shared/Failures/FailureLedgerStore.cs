@@ -500,6 +500,7 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
             FailureCapture.RequireKey(incident.OperationId, "operation ID");
             FailureCapture.RequireKey(incident.ModelScopeKey, "model scope key");
             var bounded = FailureCapture.Bound(incident);
+            var agentAuthorization = bounded.State == "answered_by_agent" && bounded.Action == "dialog_answer_authorized";
             bounded.NativeContextDescription = FailureCapture.SafeText(bounded.NativeContextDescription, 512);
             var grants = (matchedGrantIds ?? bounded.GrantIds).Distinct().ToList();
             var acceptedByPolicy = bounded.State == "accepted_by_policy";
@@ -507,12 +508,13 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
             {
                 // A callback may repeat. The initial event and grant consumption are one durable transaction.
                 if (Scalar(c, tx, "SELECT 1 FROM incidents WHERE id=$i;", "$i", bounded.IncidentId) != null) return;
+                if (agentAuthorization && !bounded.Complete) throw new InvalidOperationException("Agent authorization capture is incomplete.");
                 var priorBytes = Convert.ToInt64(Scalar(c, tx, "SELECT COALESCE(SUM(length(CAST(payload AS BLOB))),0) FROM incidents WHERE operation_id=$o;", "$o", bounded.OperationId));
                 if (priorBytes + Encoding.UTF8.GetByteCount(FailureJson.Serialize(bounded)) > FailureCapture.MaxOperationBytes)
                 {
                     bounded.OmittedMessageCount += bounded.Messages.Count; bounded.Messages.Clear(); bounded.Complete = false;
                     bounded.CountKind = "at_least"; bounded.State = "open"; bounded.Action = "capture_incomplete";
-                    if (acceptedByPolicy || grants.Count > 0 || bounded.RuleIds.Count > 0) throw new InvalidOperationException("Acceptance capture limit exceeded.");
+                    if (acceptedByPolicy || grants.Count > 0 || bounded.RuleIds.Count > 0 || agentAuthorization) throw new InvalidOperationException("Acceptance capture limit exceeded.");
                 }
                 if (acceptedByPolicy)
                 {
@@ -558,6 +560,68 @@ ON CONFLICT(id) DO UPDATE SET execution=$e,outcome=$o,review_required=$r,updated
             foreach (var id in incident.Messages.SelectMany(m => m.FailingElementIds.Concat(m.AdditionalElementIds)).Distinct())
                 Execute(c, tx, "INSERT OR IGNORE INTO failure_elements(incident_id,element_id) VALUES($i,$e);", "$i", incident.IncidentId, "$e", id);
             Execute(c, tx, "UPDATE models SET revision=revision+1 WHERE scope=$s;", "$s", incident.ModelScopeKey);
+        }
+
+        // Issue-16 phase C. Written from the window probe thread, never from the operation's own UI-thread object:
+        // a conditional update of one live row. Best effort: a failure only means the status shows no window.
+        public bool MarkWindowWait(string operationId, JObject dialog)
+        {
+            var appearanceId = dialog?.Value<string>("appearanceId");
+            if (string.IsNullOrEmpty(appearanceId)) return false;
+            return UpdateWindowWait(operationId, op =>
+            {
+                if (op.Execution != "running" && op.Execution != "waiting_for_user") return false;
+                op.Execution = "waiting_for_user";
+                op.WindowDialog = (JObject)dialog.DeepClone();
+                return true;
+            });
+        }
+
+        // Only the appearance that set the wait can clear it; an event dialog or a newer window keeps its own state.
+        public bool ClearWindowWait(string operationId, string appearanceId)
+        {
+            if (string.IsNullOrEmpty(appearanceId)) return false;
+            return UpdateWindowWait(operationId, op =>
+            {
+                if (op.Execution != "waiting_for_user" || op.WindowDialog?.Value<string>("appearanceId") != appearanceId) return false;
+                op.Execution = "running";
+                op.WindowDialog = null;
+                return true;
+            });
+        }
+
+        private bool UpdateWindowWait(string operationId, Func<FailureOperation, bool> change)
+        {
+            try
+            {
+                FailureCapture.RequireKey(operationId, "operation ID");
+                using (BeginActivity())
+                {
+                    Writer();
+                    if (!File.Exists(DatabasePath)) return false;
+                    using (var c = Open(true))
+                    using (var tx = c.BeginTransaction())
+                    {
+                        var stamp = Scalar(c, tx, "SELECT updated FROM operations WHERE id=$i;", "$i", operationId) as string;
+                        var op = stamp == null ? null : ReadPayload<FailureOperation>(c, tx, "operations", operationId);
+                        if (op == null || !change(op)) return false;
+                        // The observation keeps the row's timestamp and applies only to the row it read: any save by the
+                        // operation itself, even one prepared earlier (its final result), still wins over the probe.
+                        int changed;
+                        using (var command = Command(c, tx, "UPDATE operations SET execution=$e,payload=$p WHERE id=$i AND updated=$u;",
+                            "$e", op.Execution, "$p", FailureJson.Serialize(op), "$i", operationId, "$u", stamp))
+                            changed = command.ExecuteNonQuery();
+                        if (changed != 1) return false;
+                        tx.Commit();
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Diagnostic?.Invoke("Failure ledger window update failed: " + ex.GetType().Name + ": " + ex.Message);
+                return false;
+            }
         }
 
         public FailureOperation GetOperation(string operationId)
@@ -665,7 +729,7 @@ AND ($e IS NULL OR EXISTS(SELECT 1 FROM failure_elements f WHERE f.incident_id=i
 
         private static void ValidateState(string state)
         {
-            if (state != null && !new[] { "observed", "open", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule", "accepted_by_policy" }.Contains(state))
+            if (state != null && !new[] { "observed", "open", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule", "accepted_by_policy", "answered_by_agent" }.Contains(state))
                 throw new ArgumentException("Invalid incident state.");
         }
 

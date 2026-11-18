@@ -19,7 +19,9 @@ namespace RvtMcp.Plugin.Presentation.Issues
         private RuleRow _selectedRule;
         private FailureIncident _incident;
         private FailureOperation _operation;
-        private string _state = "open", _search = "", _reason = "", _lastScope;
+        private string _state = "", _search = "", _reason = "", _lastScope;
+        private string _focusId, _suggestedFor, _suggested;
+        private FailureIncident _focusTarget;
         private bool _verified, _consent, _loading, _disposed, _active, _hasActivated;
         private bool _resetting;
         private UiTone _bannerTone;
@@ -81,6 +83,24 @@ namespace RvtMcp.Plugin.Presentation.Issues
             get => _selectedRule;
             set { if (!_loading && !_resetting && SetProperty(ref _selectedRule, value)) RefreshActions(); }
         }
+        /// <summary>Agent request (show_issue): open on one incident and mark the suggested action. Nothing is decided here.</summary>
+        public void FocusIncident(string incidentId, string action)
+        {
+            if (_disposed || string.IsNullOrEmpty(incidentId)) return;
+            _focusId = incidentId; _suggestedFor = incidentId; _suggested = action;
+            if (_active) ApplyFocus();
+        }
+        /// <summary>The suggested action while its incident is the one shown; cleared when the user picks another.</summary>
+        public string SuggestedAction => _suggested != null && _incident != null && _incident.IncidentId == _suggestedFor ? _suggested : null;
+        private void ApplyFocus()
+        {
+            var id = _focusId; _focusId = null;
+            try { _focusTarget = _runtime.Query(new FailureRecordQuery { IncidentId = id, Limit = 1 }).Records.FirstOrDefault(); }
+            catch { _focusTarget = null; }
+            if (_state.Length != 0) { _state = ""; OnPropertyChanged(nameof(State)); }
+            if (_focusTarget != null) SearchText = "";
+            try { Refresh(); } finally { _focusTarget = null; }
+        }
         public void Activate(bool refresh = true)
         {
             if (_active || _disposed) return;
@@ -88,7 +108,11 @@ namespace RvtMcp.Plugin.Presentation.Issues
             _active = true;
             _hasActivated = true;
             _runtime.Activate();
-            if (refresh || firstActivation) Refresh();
+            // Every opening starts from all states, whatever filter the view was closed with.
+            var filterReset = _state.Length != 0;
+            if (filterReset) { _state = ""; OnPropertyChanged(nameof(State)); }
+            if (_focusId != null) ApplyFocus();
+            else if (refresh || firstActivation || filterReset) Refresh();
             else
             {
                 // Hide/Show resumes observation without discarding the existing review.
@@ -123,7 +147,9 @@ namespace RvtMcp.Plugin.Presentation.Issues
                 foreach (var model in models) model.UpdateSearch(SearchText);
                 Models = OrderModels(models);
                 OnPropertyChanged(nameof(Models));
-                _selectedModel = kept == null ? null : Models.FirstOrDefault(m => SameModel(m, kept));
+                var focus = _focusTarget;
+                _selectedModel = focus != null ? Models.FirstOrDefault(m => m.ModelScopeKey == focus.ModelScopeKey && m.RevitYear == focus.RevitYear) : null;
+                if (_selectedModel == null) _selectedModel = kept == null ? null : Models.FirstOrDefault(m => SameModel(m, kept));
                 if (_selectedModel == null)
                 {
                     var preferred = FailureIssuesPresentation.PreferredIssueModel(Models.Select(m => m.Source).ToList(), context.IsAvailable ? context.ModelScopeKey : null, context.RevitYear);
@@ -187,7 +213,14 @@ namespace RvtMcp.Plugin.Presentation.Issues
                         operations[incident.OperationId] = operation = _runtime.Operation(incident.OperationId);
                     rows.Add(new IssueRow(incident, operation) { Number = rows.Count + 1 });
                 }
-                var selectedId = _incident?.IncidentId;
+                var focus = _focusTarget != null && _focusTarget.ModelScopeKey == model.ModelScopeKey && _focusTarget.RevitYear == model.RevitYear ? _focusTarget : null;
+                if (focus != null && !rows.Any(row => row.Incident.IncidentId == focus.IncidentId))
+                {
+                    // Older than the newest rows shown: keep the requested incident visible at the top.
+                    rows.Insert(0, new IssueRow(focus, focus.OperationId == null ? null : _runtime.Operation(focus.OperationId)));
+                    for (var i = 0; i < rows.Count; i++) rows[i].Number = i + 1;
+                }
+                var selectedId = focus?.IncidentId ?? _incident?.IncidentId;
                 _loading = true;
                 try
                 {
@@ -267,8 +300,16 @@ namespace RvtMcp.Plugin.Presentation.Issues
             PageStatus = text ?? ""; _bannerTone = tone;
             OnPropertyChanged(nameof(PageStatus)); PublishStatus();
         }
-        private void PublishStatus() => SetStatus(string.Join(" · ", new[] { PageStatus, DecisionHint }.Where(text => !string.IsNullOrWhiteSpace(text)).Select(text => text.Trim())),
-            _bannerTone == UiTone.Error ? UiTone.Error : string.IsNullOrWhiteSpace(DecisionHint) ? _bannerTone : UiTone.Review);
+        private string SuggestionHint()
+        {
+            var action = SuggestedAction;
+            if (action == null) return "";
+            var key = action == "create_rule" ? "failure.action.addRule" : action == "native_grant" ? "failure.action.allowNative"
+                : action == "accept_once" ? (HasDialog ? "failure.action.allowOnce" : "failure.action.acceptOnce") : "failure.action." + action;
+            return L.T("failure.agentSuggestion", ("action", L.T(key)));
+        }
+        private void PublishStatus() => SetStatus(string.Join(" · ", new[] { PageStatus, DecisionHint, SuggestionHint() }.Where(text => !string.IsNullOrWhiteSpace(text)).Select(text => text.Trim())),
+            _bannerTone == UiTone.Error ? UiTone.Error : string.IsNullOrWhiteSpace(DecisionHint) && SuggestedAction == null ? _bannerTone : UiTone.Review);
         public override void Dispose()
         {
             if (_disposed) return;

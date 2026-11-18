@@ -141,6 +141,21 @@ namespace RvtMcp.Plugin
                         ["correlatedOperationId"] = correlated["operationId"],
                         ["modelScopeKey"] = correlated["modelScopeKey"]
                     };
+                // A window without a Revit event (issue-16 phase C): only its title is reported, by owner decision.
+                var window = correlated == null ? PendingRequestLifecycle.WindowModal : null;
+                if (window != null)
+                    busy["_operation"] = new JObject
+                    {
+                        ["operationId"] = request["operation_id"]?.DeepClone(),
+                        ["execution"] = "completed",
+                        ["outcome"] = "not_started",
+                        ["mutationApplied"] = false,
+                        ["complete"] = true,
+                        ["hostBusy"] = true,
+                        ["blockedByWindow"] = true,
+                        ["window"] = window,
+                        ["nextStep"] = RvtMcp.Failures.FailureCapture.WindowBlockedNextStep
+                    };
                 WriteLine(busy.ToString(Formatting.None));
                 return;
             }

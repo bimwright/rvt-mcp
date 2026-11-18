@@ -33,7 +33,7 @@ Discovery file format (`schema_version=3`):
   "port": 49891,
   "pipe_name": null,
   "auth_token": "...",
-  "capabilities": ["tool_catalog", "controlled_failures_v1"]
+  "capabilities": ["tool_catalog", "controlled_failures_v1", "dialog_answers_v2"]
 }
 ```
 
@@ -128,7 +128,7 @@ MCP Server runs from `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`.
 
 ### Controlled failures (warnings and dialogs)
 - Warnings, errors and dialogs raised during an MCP call are handled in `src/shared/Failures/`. By default an unapproved warning or error rolls the current change back, records an incident in the local ledger and returns `_failure` / `_operation` receipts. Historical Issues and uncertainty remain review evidence, not a persistent write gate; current-operation, live reservation, capture/storage and native-action checks still apply. Details: [docs/controlled-failures.md](docs/controlled-failures.md).
-- Never add code that dismisses Revit dialogs or deletes warnings just so a call passes. Complete warnings may be acknowledged only after durable recording under the owner's explicit `accept-and-log` warning policy or matching model-specific rules/grants. Error, corruption and incomplete capture still roll back. Warning policy does not authorize answering native dialogs; those need their separate supported UI decisions, otherwise they stay with the user.
+- Never add code that dismisses Revit dialogs or deletes warnings just so a call passes. Complete warnings may be acknowledged only after durable recording under the owner's explicit `accept-and-log` warning policy or matching model-specific rules/grants. Error, corruption and incomplete capture still roll back. Warning policy does not authorize answering native dialogs; those need their separate supported UI decisions, otherwise they stay with the user. A TaskDialog can also use a permitted answer explicitly declared before the write through `revit_set_dialog_answers`; the add-in records authorization before applying it and reports the native outcome. User rules/grants take priority; undeclared or denied choices stay with the user. See `docs/dialog-answer-policy.md`.
 - A call that waits on a dialog or outlives its timeout returns a pending receipt with an `operationId` (`waiting_for_user`, `timed_out_running`). The result arrives later through `revit_get_operation_status` (its `waitSeconds` waits on the server) or once as `_previousOperation`. Never resend the request unchanged.
 - Dialogs and warnings from the user's own work in Revit stay as Revit shows them; the add-in only notes them and reports them once (`_userDialogs`).
 - Non-read commands require a matching gateway and add-in (`controlled_failures_v1`); update both together.

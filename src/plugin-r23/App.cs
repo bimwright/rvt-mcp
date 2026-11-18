@@ -165,6 +165,8 @@ namespace RvtMcp.Plugin
                     FromMcp = true,
                     ExpectedDocumentId = request.Value<string>("expected_document_id"),
                     DocumentProtocol = request.Value<int?>("document_protocol") >= 1,
+                    DialogAnswerContext = request.Value<long?>("dialog_answer_context"),
+                    DialogAnswers = request["dialog_answers"] as Newtonsoft.Json.Linq.JArray,
                     Tcs = tcs
                 };
 
@@ -208,6 +210,15 @@ namespace RvtMcp.Plugin
         {
             ShowOrFocusHistoryWindow();
             _historyWindow?.ShowIssues();
+        }
+
+        /// <summary>revit_show_issue: open History → Issues on one incident for the user to decide.</summary>
+        public void FocusIssue(string incidentId, string action)
+        {
+            ShowOrFocusHistoryWindow();
+            if (_historyWindow.WindowState == System.Windows.WindowState.Minimized)
+                _historyWindow.WindowState = System.Windows.WindowState.Normal;
+            _historyWindow.FocusIssue(incidentId, action);
         }
 
         public void ShowOrFocusSettingsWindow(SettingsTab initialTab = SettingsTab.General)

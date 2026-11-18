@@ -106,6 +106,9 @@ namespace RvtMcp.Tests
             Assert.Equal(FailureCapture.NotStartedNextStep, FailureCapture.NextStep("REVIT_BUSY", false, false));
             var accepted = FailureCapture.NextStep(null, false, true);
             Assert.Contains("user accepted", accepted); Assert.Contains("remain in the model", accepted);
+            var dialog = FailureCapture.NextStep(null, false, false, acceptedDialogs: true);
+            Assert.Contains("answered a Revit dialog", dialog); Assert.DoesNotContain("warnings", dialog);
+            Assert.Equal(accepted, FailureCapture.NextStep(null, false, true, acceptedDialogs: true));
             var summary = FailureCapture.Summary(new FailureIncident { OperationId = "op", ModelScopeKey = "model_a", Messages = { Warning() } }, false, "open");
             Assert.Equal(rolledBack, summary.Value<string>("nextStep"));
             var advisory = FailureCapture.Summary(new FailureIncident { OperationId = "op", ModelScopeKey = "model_a", Complete = false }, null, "blocked");

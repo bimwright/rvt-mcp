@@ -20,7 +20,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-253%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-255%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -96,12 +96,12 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
-| 全新安装 | **253** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
-| 裸 `rvt-mcp.exe` | **59** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **253** | 完整目录 |
-| `all` + adaptive bake | **256** | 再加 3 个 suggestion 生命周期工具 |
+| 全新安装 | **255** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
+| 裸 `rvt-mcp.exe` | **61** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **255** | 完整目录 |
+| `all` + adaptive bake | **258** | 再加 3 个 suggestion 生命周期工具 |
 
-数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 59 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除；agent 报告只写入用户自己的报告数据，因此允许使用。
+数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 61 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除；agent 报告只写入用户自己的报告数据，因此允许使用。
 
 | Toolset | 覆盖 |
 |---------|------|
@@ -343,6 +343,7 @@ Annotations 描述每个工具对文档和文件的影响。临时 selection、a
       "mcp__rvt-mcp__revit_get_report_history",
       "mcp__rvt-mcp__revit_select_elements",
       "mcp__rvt-mcp__revit_show_element_in_view",
+      "mcp__rvt-mcp__revit_show_issue",
       "mcp__rvt-mcp__revit_show_message",
       "mcp__rvt-mcp__revit_suggest_view_name_corrections",
       "mcp__rvt-mcp__revit_survey_change_impact",

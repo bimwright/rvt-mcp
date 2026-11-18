@@ -104,9 +104,9 @@ namespace RvtMcp.Plugin.Views
             _models.Margin = new Thickness(0, 0, 8, 0);
             filters.Children.Add(_models);
             filters.Children.Add(Label("failure.filter.state"));
-            foreach (var state in new[] { "", "open", "observed", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule", "accepted_by_policy" })
+            foreach (var state in new[] { "", "open", "observed", "resolved_rework", "resolved_abandoned", "accepted_once", "accepted_by_rule", "accepted_by_policy", "answered_by_agent" })
                 _states.Items.Add(new ComboBoxItem { Tag = state, Content = state.Length == 0 ? L.T("failure.filter.all") : L.T("failure.state." + state) });
-            _states.SelectedIndex = 1;
+            _states.SelectedIndex = 0;
             _states.Margin = new Thickness(0, 0, 8, 0);
             filters.Children.Add(_states);
             DockPanel.SetDock(filters, Dock.Left);
@@ -368,6 +368,13 @@ namespace RvtMcp.Plugin.Views
             _dialogConsent.Visibility = dialog ? Visibility.Visible : Visibility.Collapsed;
             _dialogConsent.Content = dialog ? L.T("security.failure.dialogChoice", ("semantic", IssuesText.DialogSemantic(FailureIssuesPresentation.DialogAdapter(_incident)))) : "";
             _native.Visibility = _vm.HasNativeAction ? Visibility.Visible : Visibility.Collapsed;
+            // The action an agent suggested through show_issue stands out; the user still reviews and clicks it.
+            var suggested = _vm.SuggestedAction;
+            foreach (var (action, button) in new[] { ("rework", _rework), ("abandon", _abandon), ("accept_once", _accept), ("create_rule", _createRule), ("native_grant", _native) })
+            {
+                if (action == suggested) button.Style = (Style)BimwrightStyles.Dictionary[BimwrightStyles.PrimaryButtonKey];
+                else button.ClearValue(StyleProperty);
+            }
         }
 
         private void ApplyLocalization()

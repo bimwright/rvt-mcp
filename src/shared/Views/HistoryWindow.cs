@@ -84,6 +84,12 @@ namespace RvtMcp.Plugin.Views
             }
             else _vm.SelectedTab = HistoryTab.Issues;
         }
+        /// <summary>Agent request (show_issue): select one incident on the Issues tab and mark the suggested action.</summary>
+        public void FocusIssue(string incidentId, string action)
+        {
+            _issuesView.ViewModel.FocusIncident(incidentId, action);
+            if (_vm.SelectedTab != HistoryTab.Issues) _vm.SelectedTab = HistoryTab.Issues;
+        }
         private void OnActivitiesChanged(object sender, PropertyChangedEventArgs e)
         {
             if (!_disposed && e.PropertyName == nameof(ActivityHistoryViewModel.LanguageVersion)) ApplyLocalization();

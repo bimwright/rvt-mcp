@@ -13,6 +13,7 @@ using RvtMcp.Plugin; // RvtMcpConfig, ChangeHistoryRequest
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RvtMcp.Scripting;
+using RvtMcp.Failures;
 
 namespace RvtMcp.Server
 {
@@ -45,6 +46,7 @@ namespace RvtMcp.Server
             public bool ScriptProtocol;
             public bool AgentReports;
             public bool ReportProvenance;
+            public bool DialogAnswersProtocol;
             /// <summary>
             /// Serializes wire writes on this connection so a blocked writer (plugin
             /// not reading) stalls only this call — never <c>_connectLock</c>, so
@@ -72,6 +74,42 @@ namespace RvtMcp.Server
         private static string _busyIdentity;
         private static long _busyUntil;
         internal static Action BeforeWriteForTests;
+        private static readonly DialogAnswerSession DialogAnswers = new DialogAnswerSession();
+
+        internal static JObject ConfigureDialogAnswers(JArray answers, string scope, bool clear)
+        {
+            lock (_connectLock)
+            {
+                if (clear) { DialogAnswers.Clear(); return new JObject { ["success"] = true, ["cleared"] = true }; }
+                var snap = RevitTargetBinding.Snapshot();
+                if (snap.State != BindingState.Bound || snap.Record == null)
+                    return new JObject { ["success"] = false, ["error"] = "TARGET_NOT_BOUND", ["message"] = "Bind a Revit target before declaring dialog answers." };
+                var call = TargetCallContext.Current;
+                var pinned = call?.InToolCall == true ? call.PinnedGeneration : snap.Generation;
+                if (!RevitTargetBinding.Binding.CanSend(pinned, Array.Empty<TargetCandidate>(), out var failure))
+                    throw new TargetException(failure);
+                var record = snap.Record;
+                var descriptor = AuthToken.ReadDescriptorFor(record.Pid, record.HostYear);
+                if (descriptor?.TargetId != record.TargetId || descriptor.Capabilities?.Contains("dialog_answers_v2", StringComparer.OrdinalIgnoreCase) != true
+                    || (_conn is { Alive: true } c && c.Generation == snap.Generation && !c.DialogAnswersProtocol))
+                    return new JObject { ["success"] = false, ["error"] = "PAIRING_REQUIRED", ["message"] = "The bound add-in must support dialog_answers_v2; update gateway and add-in together." };
+                var catalog = FailureTools.Catalog(record.HostYear);
+                if (catalog == null || catalog.RevitYear != record.HostYear || catalog.TaskDialogError != null)
+                    return new JObject { ["success"] = false, ["error"] = "CATALOG_UNAVAILABLE", ["message"] = "No complete TaskDialog catalogue for the bound Revit year is available." };
+                var accepted = DialogAnswerPolicy.Validate(answers, catalog);
+                var stamp = DialogDocumentContext.Read(record.TargetId);
+                if (!stamp.HasValue)
+                    return new JObject { ["success"] = false, ["error"] = "DIALOG_CONTEXT_UNAVAILABLE", ["message"] = "The add-in has no live document context for dialog answers." };
+                DialogAnswers.Set(record.TargetId, snap.Generation, scope, accepted, stamp.Value);
+                return new JObject { ["success"] = true, ["answers"] = accepted, ["scope"] = scope, ["target_id"] = record.TargetId,
+                    ["appliesTo"] = scope == "next" ? "next dispatched write (unknown delivery consumes it)" : "subsequent writes until cleared, or until the target or its active document changes" };
+            }
+        }
+
+        /// <summary>Once-only notice that a declaration was dropped by a target or document change; null when none.</summary>
+        internal static JObject TakeDialogAnswerNotice() { lock (_connectLock) return DialogAnswers.TakeNotice(); }
+
+        internal static void ReturnDialogAnswerNotice(JObject notice) { lock (_connectLock) DialogAnswers.ReturnNotice(notice); }
 
         /// <summary>Target id of the instance the open connection serves, or null.</summary>
         internal static string ConnectedTargetId => _conn is { Alive: true } c ? c.TargetId : null;
@@ -307,6 +345,7 @@ namespace RvtMcp.Server
                 var result = RevitTargetBinding.Switch(selector, live, rebind, expectedDocumentId);
                 if (result.Ok && RevitTargetBinding.CaptureGeneration() != before.Generation)
                 {
+                    DialogAnswers.Drop();
                     var conn = _conn;
                     _conn = null;
                     CloseConnLocked(conn); // pending requests end as TARGET_INTERRUPTED
@@ -509,6 +548,7 @@ namespace RvtMcp.Server
                 ScriptProtocol = desc.Capabilities?.Any(c => string.Equals(c, RvtMcp.Scripting.ScriptProtocol.Capability, StringComparison.OrdinalIgnoreCase)) == true,
                 AgentReports = desc.Capabilities?.Any(c => string.Equals(c, "agent_reports_v1", StringComparison.OrdinalIgnoreCase)) == true,
                 ReportProvenance = desc.Capabilities?.Any(c => string.Equals(c, "agent_report_provenance_v1", StringComparison.OrdinalIgnoreCase)) == true,
+                DialogAnswersProtocol = desc.Capabilities?.Any(c => string.Equals(c, "dialog_answers_v2", StringComparison.OrdinalIgnoreCase)) == true,
             };
             if (transport is TcpClient tcp)
             {
@@ -606,7 +646,7 @@ namespace RvtMcp.Server
             var binding = RevitTargetBinding.Binding;
             for (var attempt = 0; ; attempt++)
             {
-                var request = JsonConvert.SerializeObject(new
+                var requestObject = JObject.FromObject(new
                 {
                     id,
                     command,
@@ -623,7 +663,8 @@ namespace RvtMcp.Server
                     expected_document_id = binding.Snapshot().Record?.DocumentId,
                     script_protocol = script == null ? (int?)null : ScriptLimits.ProtocolVersion,
                     script
-                }, RequestJsonSettings);
+                }, JsonSerializer.Create(RequestJsonSettings));
+                var request = requestObject.ToString(Formatting.None);
                 var current = false;
                 var scriptReceipt = script == null ? null : ScriptTelemetry.Create(JObject.FromObject(script),
                     parameters == null ? null : JsonConvert.SerializeObject(parameters, RequestJsonSettings));
@@ -641,6 +682,14 @@ namespace RvtMcp.Server
                         {
                             string rejection = null;
                             GatewayPendingRequest blocking = null;
+                            var declared = DialogAnswers.ForWrite(conn.TargetId, effectiveGeneration, !ToolReadPolicy.IsReadOnly(command));
+                            if (declared != null)
+                            {
+                                requestObject["dialog_answer_context"] = DialogAnswers.DocumentStamp;
+                                requestObject["dialog_answers"] = declared;
+                                request = requestObject.ToString(Formatting.None);
+                                if (scriptReceipt != null) scriptReceipt["wire_request_bytes"] = ScriptIdentity.Utf8Bytes(request);
+                            }
                             if (script != null)
                             {
                                 if (!conn.ScriptProtocol)
@@ -659,6 +708,8 @@ namespace RvtMcp.Server
                                 // Send-code also supports Home; the add-in checks the actual document at execution.
                                 && !binding.CanWrite(effectiveGeneration, command != "open_model" && command != "send_code_to_revit", out var writeFailure))
                                 throw new TargetException(writeFailure);
+                            else if (rejection == null && declared != null && !conn.DialogAnswersProtocol)
+                                rejection = "PAIRING_REQUIRED: the bound add-in does not support dialog_answers_v2. Clear declarations or update the add-in.";
                             else if (rejection == null && command != "health"
                                 && (blocking = _pending.Values.FirstOrDefault(value => value.ConnectionId == conn.Epoch && value.WaitingForUser)) != null)
                                 rejection = "REVIT_BUSY: Revit is waiting for native user input. _operation.blockedBy names the waiting operation and its dialog. Use the local failure or operation queries.";
@@ -678,6 +729,8 @@ namespace RvtMcp.Server
                                         final["_script"]["telemetry_status"] = "write_failed";
                                 });
                             _pending[id] = pending;
+                            // From here a write may partially reach Revit. Never replay a next declaration.
+                            if (declared != null) DialogAnswers.Sending();
                             current = true;
                         }
                     }
@@ -785,6 +838,7 @@ namespace RvtMcp.Server
             lock (_connectLock) { _busyIdentity = null; _busyUntil = 0; }
             lock (_connectLock)
             {
+                DialogAnswers.Clear();
                 var conn = _conn;
                 _conn = null;
                 CloseConnLocked(conn);

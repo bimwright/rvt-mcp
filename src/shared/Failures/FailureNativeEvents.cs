@@ -45,6 +45,7 @@ namespace RvtMcp.Plugin.Failures
         internal static readonly UserDialogBuffer UserDialogs = new UserDialogBuffer();
         // Set by revit_show_message around its own dialog: that dialog is the agent's message, not a Revit condition.
         internal static bool OwnDialogPending;
+        internal static DialogDocumentContext DialogContext { get; private set; }
 
         internal static void Initialize(UIControlledApplication application) => Initialize(application, null);
 
@@ -76,6 +77,9 @@ namespace RvtMcp.Plugin.Failures
                 App.DebugLog("Failure ledger initialization failed: " + ex.GetType().Name + ": " + ex.Message);
             }
 
+            try { DialogContext = new DialogDocumentContext(AuthToken.TargetId); }
+            catch (Exception ex) { App.DebugLog("Dialog declarations unavailable: " + ex.Message); }
+
             var controlled = application.ControlledApplication;
             controlled.FailuresProcessing += OnFailuresProcessing;
             controlled.DocumentChanged += OnDocumentChanged;
@@ -93,6 +97,7 @@ namespace RvtMcp.Plugin.Failures
             application.ViewActivated += OnViewActivated;
             application.ApplicationClosing += OnApplicationClosing;
             _subscribed = true;
+            StartWindowProbe(application.MainWindowHandle);
         }
 
         internal static void Shutdown(UIControlledApplication application)
@@ -116,6 +121,9 @@ namespace RvtMcp.Plugin.Failures
             application.ViewActivated -= OnViewActivated;
             application.ApplicationClosing -= OnApplicationClosing;
             _subscribed = false;
+            DialogContext?.Dispose();
+            DialogContext = null;
+            StopWindowProbe();
             PendingRequestLifecycle.SetHostBusy(false);
         }
 
@@ -125,6 +133,11 @@ namespace RvtMcp.Plugin.Failures
             PendingRequestLifecycle.SetHostBusy(false);
             _applicationClosing = false; // A cancelled application exit has returned to a live idle UI.
             ManualOpening.Clear(); // Opening is modal; an idle UI has none in progress.
+            if (application != null)
+            {
+                _mainWindow = application.MainWindowHandle;
+                ObserveDialogDocument(application.ActiveUIDocument?.Document);
+            }
             RevitMessageCatalog.EnsureLoaded(application);
             if (application != null) RefreshContext(application);
             if (_blockedSave != null && DateTimeOffset.UtcNow - _blockedSave.Time > TimeSpan.FromMinutes(2))
@@ -225,10 +238,28 @@ namespace RvtMcp.Plugin.Failures
             catch { if (Active != null) { Active.Operation.Complete = false; Active.NativeOutcome = "unknown"; } }
         }
 
-        private static void OnViewActivated(object sender, ViewActivatedEventArgs args)
+        internal static void ObserveDialogDocument(Document doc, bool opened = false)
         {
+            if (DialogContext == null) return;
             try
             {
+                if (!opened) DialogContext.Observe(DocumentTargetGuard.GetOrCreateToken(doc));
+                else if (doc != null && !doc.IsLinked) DialogContext.Invalidate();
+            }
+            catch (Exception ex)
+            {
+                DialogContext.Dispose();
+                DialogContext = null;
+                App.DebugLog("Dialog declarations disabled after document observation failed: " + ex.Message);
+            }
+        }
+
+        private static void OnViewActivated(object sender, ViewActivatedEventArgs args)
+        {
+            BumpContextGeneration();
+            try
+            {
+                ObserveDialogDocument(args.CurrentActiveView?.Document);
                 var previous = args.PreviousActiveView?.Document;
                 var current = args.CurrentActiveView?.Document;
                 if (previous != null && previous.IsValidObject) Invalidate(State(previous));
@@ -264,6 +295,7 @@ namespace RvtMcp.Plugin.Failures
 
         private static void OnDocumentOpening(object sender, DocumentOpeningEventArgs args)
         {
+            BumpContextGeneration();
             if (!Scoped()) { ManualOpening.Add(args.PathName ?? ""); return; }
             try
             {
@@ -297,6 +329,7 @@ namespace RvtMcp.Plugin.Failures
 
         private static void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
+            if (args.Status == RevitAPIEventStatus.Succeeded) ObserveDialogDocument(args.Document, opened: true);
             if (!Scoped()) { ManualOpened(args); return; }
             try
             {
@@ -420,6 +453,7 @@ namespace RvtMcp.Plugin.Failures
 
         private static void OnDocumentClosing(object sender, DocumentClosingEventArgs args)
         {
+            BumpContextGeneration();
             DocumentState state = null;
             try
             {
@@ -611,6 +645,8 @@ namespace RvtMcp.Plugin.Failures
         private static void OnDialogBoxShowing(object sender, DialogBoxShowingEventArgs args)
         {
             PendingRequestLifecycle.SetHostBusy(true);
+            // The window this event shows is not reported again by the window probe; an answered one never shows.
+            var answeredTicket = WindowTracker.NoteEvent(DateTimeOffset.UtcNow, args is TaskDialogShowingEventArgs);
             var application = sender as UIApplication;
             RevitMessageCatalog.EnsureLoaded(application);
             var task = args.GetType() == typeof(TaskDialogShowingEventArgs) ? (TaskDialogShowingEventArgs)args : null;
@@ -631,7 +667,7 @@ namespace RvtMcp.Plugin.Failures
             try
             {
                 var dialog = RevitMessageLookup.DialogInfo(args.DialogId, kind, text, RevitMessageCatalog.FindDialog(args.DialogId));
-                if (OwnDialogPending && string.IsNullOrEmpty(args.DialogId))
+                if (OwnDialogPending)
                 {
                     // revit_show_message waits for its own dialog: report the wait, but it is not a Revit condition.
                     dialog["kind"] = "agent_message";
@@ -670,7 +706,12 @@ namespace RvtMcp.Plugin.Failures
                         incident.State = policy.GrantIds.Count == 0 ? "accepted_by_rule" : "accepted_once";
                         incident.Action = "dialog_answer_authorized"; incident.RuleIds = policy.RuleIds; incident.GrantIds = policy.GrantIds;
                     }
-                    Active.SaveOperation(); Active.Record(incident, policy?.GrantIds);
+                    var agentAnswer = task == null || Active.IsRead ? null : DialogAnswerPolicy.Select(Active.Request.DialogAnswers,
+                        RevitMessageCatalog.Current, args.DialogId, policy?.Action == "continue", Active.Stopped, Active.StorageFailed);
+                    TaskDialogResult agentResult;
+                    if (agentAnswer != null && !Enum.TryParse(agentAnswer.Value<string>("button"), out agentResult)) agentAnswer = null;
+                    Active.SaveOperation();
+                    if (agentAnswer == null) Active.Record(incident, policy?.GrantIds);
                     // Exact type/id/year/context semantics only. DocWarnDialog never has an adapter.
                     if (policy?.Action == "continue" && !Active.StorageFailed && adapter != null)
                     {
@@ -687,7 +728,42 @@ namespace RvtMcp.Plugin.Failures
                         {
                             if (!Active.DialogAnswers.TryGetValue(args.DialogId ?? "", out var answers))
                                 Active.DialogAnswers[args.DialogId ?? ""] = answers = new List<JObject>();
-                            answers.Add(new JObject { ["button"] = adapter.Result.ToString(), ["meaning"] = adapter.ButtonSemantic });
+                            var ruleAnswer = new JObject { ["button"] = adapter.Result.ToString(), ["meaning"] = adapter.ButtonSemantic, ["by"] = "rule" };
+                            // What the agent had declared for this dialog, if anything: reported as not used.
+                            var declared = task == null || Active.IsRead ? null : DialogAnswerPolicy.Select(Active.Request.DialogAnswers,
+                                RevitMessageCatalog.Current, args.DialogId, false, false, false);
+                            if (declared != null) ruleAnswer["agentDeclarationNotUsed"] = new JObject { ["button"] = declared["button"], ["text"] = declared["text"] };
+                            answers.Add(ruleAnswer);
+                            answeredTicket();
+                            PendingRequestLifecycle.SetHostBusy(false);
+                            return;
+                        }
+                    }
+                    if (agentAnswer != null)
+                    {
+                        Enum.TryParse(agentAnswer.Value<string>("button"), out agentResult);
+                        incident.State = "answered_by_agent";
+                        incident.Action = "dialog_answer_authorized";
+                        incident.NativeContextDescription = "Agent authorized " + args.DialogId + " -> " + agentAnswer.Value<string>("button")
+                            + " (" + agentAnswer.Value<string>("text") + "). Authorization only; see dialog_result for the native outcome.";
+                        var applied = DialogAnswerPolicy.ApplyRecorded(
+                            () => { Active.Record(incident); return !Active.StorageFailed && !Active.Stopped; },
+                            () => task.OverrideResult((int)agentResult),
+                            accepted => {
+                                var receipt = Active.NewIncident(state, "dialog_result", args.DialogId, "observed",
+                                    accepted ? "dialog_answered" : "dialog_answer_not_applied");
+                                receipt.ModelScopeKey = model.ModelScopeKey; receipt.ModelTitle = model.Title;
+                                receipt.DocumentRevision = incident.DocumentRevision; receipt.OperationContext = incident.OperationContext;
+                                receipt.NativeContextDescription = "Agent answer " + agentAnswer.Value<string>("button") + " ("
+                                    + agentAnswer.Value<string>("text") + "); native OverrideResult accepted=" + accepted + ".";
+                                Active.Record(receipt);
+                            });
+                        if (applied)
+                        {
+                            if (!Active.DialogAnswers.TryGetValue(args.DialogId, out var answers))
+                                Active.DialogAnswers[args.DialogId] = answers = new List<JObject>();
+                            answers.Add(new JObject { ["button"] = agentAnswer["button"], ["text"] = agentAnswer["text"], ["by"] = "agent" });
+                            answeredTicket();
                             PendingRequestLifecycle.SetHostBusy(false);
                             return;
                         }
@@ -703,6 +779,12 @@ namespace RvtMcp.Plugin.Failures
             {
                 Active.StorageFailure(); Active.Operation.Execution = "waiting_for_user";
                 Active.Lifecycle.EmitDialogWait(new JObject { ["manual"] = true, ["message"] = "Revit is waiting for a user action; recording the dialog failed." });
+            }
+            finally
+            {
+                // A scoped manual wait is now owned by its request lifecycle. In particular,
+                // closing a subsequent Win32 window must not leave the earlier event's busy flag set.
+                PendingRequestLifecycle.SetHostBusy(false);
             }
         }
 

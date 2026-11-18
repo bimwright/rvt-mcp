@@ -141,6 +141,7 @@ readonly DialogBuffer UserDialogs=new DialogBuffer();
 int _capturedMessages,_capturedReferences,_capturedBytes,_cycle;
 const int Year=2027; const string HostInstanceId="fixture-host";
 bool Stopped,StorageFailed,Persisted,IsRead;
+int OmittedWindows; readonly List<JObject> WindowsWithoutModel=new List<JObject>();
 string OpenPath,ErrorCode,FailureModelKey,_userDialogKey;
 DocumentState State(Document doc)=>_state;
 void Attach(DocumentState state){}

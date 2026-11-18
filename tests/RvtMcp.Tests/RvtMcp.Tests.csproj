@@ -50,6 +50,7 @@
     <Compile Include="..\..\src\shared\Handlers\Documents\OpenModelLocalPolicy.cs" Link="Shared\Handlers\Documents\OpenModelLocalPolicy.cs" />
     <Compile Include="..\..\src\shared\Handlers\Geometry\MeshShapeFile.cs" Link="Shared\Handlers\Geometry\MeshShapeFile.cs" />
     <Compile Include="..\..\src\shared\Failures\UserDialogBuffer.cs" Link="Shared\Failures\UserDialogBuffer.cs" />
+    <Compile Include="..\..\src\shared\Failures\WindowModalTracker.cs" Link="Shared\Failures\WindowModalTracker.cs" />
     <Compile Include="..\..\src\shared\Failures\CommittedTransactionLog.cs" Link="Shared\Failures\CommittedTransactionLog.cs" />
     <Compile Include="..\..\src\shared\Handlers\Sheets\ViewportLayoutMath.cs" Link="Shared\Handlers\Sheets\ViewportLayoutMath.cs" />
     <Compile Include="..\..\src\shared\Handlers\Views\ViewOrientationMath.cs" Link="Shared\Handlers\Views\ViewOrientationMath.cs" />

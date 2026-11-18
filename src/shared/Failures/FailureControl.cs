@@ -124,6 +124,7 @@ namespace RvtMcp.Plugin.Failures
                 DocumentState state = null;
                 if (resolveIdentity) state = State(doc);
                 else if (doc != null) Documents.TryGetValue(doc, out state);
+                UpdateContextSnapshot(doc, state?.Model?.ModelScopeKey);
                 var open = new HashSet<string>(StringComparer.Ordinal);
                 foreach (Document document in app.Application.Documents)
                 {
@@ -336,16 +337,20 @@ namespace RvtMcp.Plugin.Failures
                 RefreshContext(app, !ToolReadPolicy.IsReadOnly(request.CommandName));
                 var scope = new Scope(app, request, warningPolicy) { Activity = activity, ActivityFailed = activityFailed };
                 Active = scope;
+                scope.Window = BeginWindowTarget(scope);
                 scope.Start();
                 return scope;
             }
-            catch { Active = null; activity?.Dispose(); throw; }
+            catch { EndWindowTarget(Active?.Window); Active = null; activity?.Dispose(); throw; }
         }
 
         internal sealed class Scope : IDisposable
         {
             internal IDisposable Activity;
             internal bool ActivityFailed;
+            internal WindowTarget Window;
+            internal int OmittedWindows;
+            internal readonly List<JObject> WindowsWithoutModel = new List<JObject>();
             internal readonly UIApplication Application;
             internal readonly PendingRequest Request;
             internal readonly PendingRequestLifecycle Lifecycle;
@@ -363,7 +368,7 @@ namespace RvtMcp.Plugin.Failures
             internal readonly Stack<bool> GroupStates = new Stack<bool>();
             internal readonly CommittedTransactionLog CommittedLog = new CommittedTransactionLog();
             internal readonly HashSet<string> OpeningPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            // One entry per occurrence a rule answered: the same dialog can appear again in this operation and be closed by the user.
+            // One entry per occurrence a rule or agent answered: the same dialog can appear again in this operation and be closed by the user.
             internal readonly Dictionary<string, List<JObject>> DialogAnswers = new Dictionary<string, List<JObject>>(StringComparer.Ordinal);
             private string _userDialogKey;
             private int _capturedMessages, _capturedReferences, _capturedBytes;
@@ -666,6 +671,7 @@ namespace RvtMcp.Plugin.Failures
             {
                 if (_finished) return;
                 _finished = true;
+                RecordWindowIncidents(this);
                 Operation.Execution = "completed";
                 bool activeDocumentAfterObserved = false;
                 try
@@ -713,10 +719,17 @@ namespace RvtMcp.Plugin.Failures
                     bool needsReview = Operation.RequiresReview || StorageFailed
                         || ErrorCode == "FAILURE_STORAGE_FAILED" || ErrorCode == "FAILURE_CAPTURE_INCOMPLETE"
                         || own.Any(i => i.State == "open" && !((i.Action == "rolled_back" || i.Action == "cancelled") && i.Complete));
-                    var groups = new JArray(messages.GroupBy(m => new { m.DefinitionId, m.Severity }).Take(20).Select(g => new JObject
-                    { ["failureDefinitionId"] = g.Key.DefinitionId, ["severity"] = g.Key.Severity, ["count"] = g.Count(),
-                        ["description"] = (g.First().Description ?? "").Substring(0, Math.Min(320, (g.First().Description ?? "").Length)),
-                        ["sampleElementIds"] = new JArray(g.SelectMany(m => m.FailingElementIds).Distinct().Take(20)), ["resolutionsApplied"] = false }));
+                    // Windows without a Revit event share no code: each distinct window is its own group.
+                    var groups = new JArray(messages.GroupBy(m => new { m.DefinitionId, m.Severity,
+                        Window = m.Severity == "Window" ? m.TransactionKey + "|" + m.Description : null }).Take(20).Select(g =>
+                    {
+                        var group = new JObject
+                        { ["failureDefinitionId"] = g.Key.DefinitionId, ["severity"] = g.Key.Severity, ["count"] = g.Count(),
+                            ["description"] = (g.First().Description ?? "").Substring(0, Math.Min(320, (g.First().Description ?? "").Length)),
+                            ["sampleElementIds"] = new JArray(g.SelectMany(m => m.FailingElementIds).Distinct().Take(20)), ["resolutionsApplied"] = false };
+                        if (g.Key.Window != null) { group["kind"] = "window"; group["title"] = g.First().TransactionKey; group["answeredBy"] = "user"; }
+                        return group;
+                    }));
                     foreach (var group in groups.OfType<JObject>()) DescribeDialog(group);
                     envelope["_failure"] = new JObject
                     {
@@ -733,11 +746,13 @@ namespace RvtMcp.Plugin.Failures
                         ["captureErrors"] = new JArray(own.Where(i => i.Action == "capture_failed").Take(10).Select(i => new JObject
                         { ["incidentId"] = i.IncidentId, ["description"] = FailureCapture.SafeText(i.NativeContextDescription, 512) })),
                         ["nextStep"] = FailureCapture.NextStep(Stopped ? ErrorCode ?? "REVIT_FAILURE_ROLLED_BACK" : null, needsReview,
-                            own.Any(i => i.State == "accepted_by_rule" || i.State == "accepted_once" || i.State == "accepted_by_policy"),
-                            own.Any(i => i.State == "accepted_by_policy") ? WarningPolicyModes.AcceptAndLog : WarningPolicyModes.Rollback)
+                            own.Any(i => i.Source != "dialog" && (i.State == "accepted_by_rule" || i.State == "accepted_once" || i.State == "accepted_by_policy")),
+                            own.Any(i => i.State == "accepted_by_policy") ? WarningPolicyModes.AcceptAndLog : WarningPolicyModes.Rollback,
+                            own.Any(i => i.Source == "dialog" && (i.State == "accepted_by_rule" || i.State == "accepted_once")))
                     };
                 }
-                if (!IsRead || Persisted || Stopped)
+                bool windowExtras = WindowsWithoutModel.Count > 0 || OmittedWindows > 0;
+                if (!IsRead || Persisted || Stopped || windowExtras)
                     envelope["_operation"] = new JObject { ["operationId"] = Operation.OperationId,
                         ["hostInstanceId"] = HostInstanceId,
                         ["execution"] = Operation.Execution, ["outcome"] = Operation.Outcome, ["mutationApplied"] = Operation.MutationApplied,
@@ -747,6 +762,16 @@ namespace RvtMcp.Plugin.Failures
                         ["observationCoverage"] = Operation.ObservationCoverage };
                 if (baselineIds.Count > 0 && envelope["_operation"] is JObject operation)
                     operation["baselineIncidentId"] = baselineIds.First();
+                // Windows without a Revit event that have no incident: model not certain, or past the per-operation cap.
+                if (windowExtras && envelope["_operation"] is JObject windowReceipt)
+                {
+                    if (WindowsWithoutModel.Count > 0) windowReceipt["windowDialogsWithoutModel"] = new JArray(WindowsWithoutModel.Select(w => w.DeepClone()));
+                    if (OmittedWindows > 0)
+                    {
+                        windowReceipt["omittedWindowDialogs"] = OmittedWindows;
+                        windowReceipt["windowDialogsComplete"] = false;
+                    }
+                }
                 // An error without a receipt reaches the agent as plain text, so the report would be lost: keep it for the next call.
                 if (_userDialogKey != null && envelope["_userDialogs"] == null
                     && (envelope.Value<bool?>("success") == true || envelope["_operation"] != null))
@@ -792,10 +817,11 @@ namespace RvtMcp.Plugin.Failures
                 try
                 {
                     if (!_finished) Complete(null);
+                    EndWindowTarget(Window);
                     if (ReferenceEquals(Active, this)) Active = null;
                     RefreshContext(Application, !IsRead);
                 }
-                finally { if (ReferenceEquals(Active, this)) Active = null; Activity?.Dispose(); Activity = null; }
+                finally { EndWindowTarget(Window); if (ReferenceEquals(Active, this)) Active = null; Activity?.Dispose(); Activity = null; }
             }
         }
 

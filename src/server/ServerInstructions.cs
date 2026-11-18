@@ -38,7 +38,7 @@ Tools (prefix revit_<verb>_<noun>, lengths in mm):
 - workflows: workflow_model_audit
 - documents: save_document, save_checkpoint
 - structural: create_structural_column, create_rebar_set
-- meta: open_model, send_code_to_revit, batch_execute
+- meta: open_model, send_code_to_revit, set_dialog_answers
 - lint: find_untagged_elements, get_model_warnings_summary
 - toolbaker: list_baked_tools, run_baked_tool";
     }
