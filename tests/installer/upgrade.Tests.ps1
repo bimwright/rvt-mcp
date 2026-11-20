@@ -28,6 +28,21 @@ if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
 foreach ($fn in $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
     . ([scriptblock]::Create($fn.Extent.Text))
 }
+# Real client CLIs find their config through the OS profile folder, not the
+# redirected USERPROFILE: a real `codex mcp add rvt-mcp -- x` from a direct
+# Invoke-McpClientWiring call rewrote the user's own ~/.codex/config.toml.
+# Hide them for the whole run and record any call instead; the FakeCli stubs
+# inside Invoke-FixtureSetup still shadow these for tests that opt in.
+$savedCodexHome = $env:CODEX_HOME
+$env:CODEX_HOME = Join-Path $sandboxUserProfile '.codex'
+$realCliCalls = New-Object System.Collections.Generic.List[string]
+function Get-Command { param($Name, $ErrorAction)
+    if ($Name -in @('claude', 'codex', 'grok')) { return }
+    Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+}
+function claude { $realCliCalls.Add('claude ' + ($args -join ' ')) }
+function codex { $realCliCalls.Add('codex ' + ($args -join ' ')) }
+function grok { $realCliCalls.Add('grok ' + ($args -join ' ')) }
 $results = New-Object System.Collections.Generic.List[object]
 function Assert($Condition, [string]$Message) { if (-not $Condition) { throw $Message } }
 function Test([string]$Name, [scriptblock]$Body) {
@@ -586,6 +601,19 @@ try {
         Assert (-not $d.mcpServers.PSObject.Properties['rvt-mcp']) 'uninstall left the entry'
         Assert ($d.coworkUserFilesPath -eq 'C:\Users\Cowork\Claude') 'uninstall lost cowork keys'
     }
+    Test 'Client wiring: direct calls never reach the real client CLIs' {
+        # Regression: these calls run outside Invoke-FixtureSetup, so only the
+        # run-wide guards stand between them and the user's real codex config.
+        $realCliCalls.Clear()
+        Assert ($env:CODEX_HOME -eq (Join-Path $sandboxUserProfile '.codex')) "CODEX_HOME not sandboxed: $env:CODEX_HOME"
+        $res = Invoke-McpClientWiring -Clients 'claude', 'codex', 'grok' -Exe 'x' -Mode Add
+        foreach ($cli in 'claude', 'codex', 'grok') {
+            Assert ($res -match "^${cli}: $cli CLI not on PATH") "real $cli CLI was visible to the installer: $res"
+        }
+        Assert ($realCliCalls.Count -eq 0) "client CLI invoked: $($realCliCalls -join '; ')"
+        $null = Invoke-ClientCli codex @('mcp', 'list')
+        Assert ($realCliCalls -contains 'codex mcp list') 'a direct CLI call escaped the run-wide stub'
+    }
     Test 'Client wiring: claude-desktop prefers the MSIX package cache over a stray Roaming dir' {
         # Regression: %APPDATA%\Claude exists (native leftovers) but the app is
         # MSIX and only reads its package LocalCache - and the package family
@@ -927,6 +955,7 @@ try {
     $env:USERPROFILE = $savedUserProfile
     $env:APPDATA = $savedAppData
     $env:LOCALAPPDATA = $savedLocalAppData
+    $env:CODEX_HOME = $savedCodexHome
     $report = [ordered]@{powershell=$PSVersionTable.PSVersion.ToString();installerSha256=(Get-FileHash $installer -Algorithm SHA256).Hash;results=@($results.ToArray())}
     if ($ResultPath) { $report | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $ResultPath -Encoding UTF8 }
     # Only remove the uniquely created test directory under the resolved temp root.
