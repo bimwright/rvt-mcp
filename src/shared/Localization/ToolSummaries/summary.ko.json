@@ -4,7 +4,7 @@
   },
   "revit_get_current_view_info": "Get active view info. Returns viewName, viewType (FloorPlan/Section/3D/Sheet), level, scale, detailLevel, displayStyle. Call before creating elements to know a…",
   "revit_get_selected_elements": "Get currently selected Revit elements with paging. Use startIndex + maxResults (default 200, hard max 1000).",
-  "revit_get_available_family_types": "List loadable family types. Returns {familyName, typeName, typeId} grouped by category. Optional: filter by category (e.g. 'Walls', 'Doors', 'Pipes' — NOT 'OST…",
+  "revit_get_available_family_types": "List loadable family types (doors, windows, furniture) with their typeId, grouped by category. System types such as walls are not listed.",
   "revit_ai_element_filter": "Filter elements by category + parameter. Numeric values in mm (auto-converted). category uses human name ('Pipes', NOT 'OST_Pipes'). Operators: equals/contains…",
   "revit_analyze_model_statistics": "Count elements grouped by category (Walls, Doors, Pipes, etc.). Call to understand project scope before detailed queries.",
   "revit_get_material_quantities": "Sum material quantities (area m², volume m³) by category. Narrow with materialNameFilter and page with startIndex + maxResults (hard max 1000).",
