@@ -110,6 +110,7 @@ namespace RvtMcp.Plugin.Handlers
             var resolvedRefsInfo = new JArray();
             var failedRefsInfo = new JArray();
             var resolvedElements = new List<Element>();
+            var resolvedLines = new List<Line>(); // the referenced line in model space, null when unknown
 
             for (int i = 0; i < referencesToken.Count; i++)
             {
@@ -146,6 +147,7 @@ namespace RvtMcp.Plugin.Handlers
                 try
                 {
                     Reference revitRef = null;
+                    Line refLine = null;
                     if (string.Equals(mode, "explicit_reference_stable", StringComparison.OrdinalIgnoreCase))
                     {
                         if (string.IsNullOrEmpty(stableRef))
@@ -162,6 +164,7 @@ namespace RvtMcp.Plugin.Handlers
                             throw new Exception("Element is not a Grid.");
                         }
                         revitRef = new Reference(grid);
+                        refLine = grid.Curve as Line;
                     }
                     else if (string.Equals(mode, "wall_centerline", StringComparison.OrdinalIgnoreCase))
                     {
@@ -170,7 +173,8 @@ namespace RvtMcp.Plugin.Handlers
                         {
                             throw new Exception("Element is not a Wall.");
                         }
-                        revitRef = GetWallLocationLineReference(wall, view);
+                        refLine = GetWallLocationLine(wall, view);
+                        revitRef = refLine.Reference;
                     }
                     else
                     {
@@ -181,6 +185,7 @@ namespace RvtMcp.Plugin.Handlers
                     {
                         refArray.Append(revitRef);
                         resolvedElements.Add(elem);
+                        resolvedLines.Add(refLine);
                         resolvedRefsInfo.Add(new JObject
                         {
                             ["mode"] = mode,
@@ -240,6 +245,26 @@ namespace RvtMcp.Plugin.Handlers
                 }
             }
 
+            // Parallel reference lines in a plan view: dimension across them, perpendicular and at one
+            // elevation. Bounding-box centres of walls differ in height and along the wall, which made
+            // Revit refuse the inferred direction.
+            if (line == null && resolvedLines.Count >= 2 && resolvedLines.All(l => l != null)
+                && Math.Abs(view.ViewDirection.DotProduct(XYZ.BasisZ)) > 0.9)
+            {
+                var first = resolvedLines[0];
+                var dir = new XYZ(first.Direction.X, first.Direction.Y, 0);
+                if (dir.GetLength() > 1e-9 && resolvedLines.All(l => Math.Abs(new XYZ(l.Direction.X, l.Direction.Y, 0).Normalize().DotProduct(dir.Normalize())) > 0.9999))
+                {
+                    var across = new XYZ(-dir.Y, dir.X, 0).Normalize();
+                    var origin = (first.GetEndPoint(0) + first.GetEndPoint(1)) * 0.5;
+                    var offsets = resolvedLines.Select(l => (((l.GetEndPoint(0) + l.GetEndPoint(1)) * 0.5) - origin).DotProduct(across)).ToList();
+                    var min = offsets.Min();
+                    var max = offsets.Max();
+                    if (max - min > 0.001)
+                        line = Line.CreateBound(origin + across * min, origin + across * max);
+                }
+            }
+
             if (line == null && resolvedElements.Count >= 2)
             {
                 try
@@ -250,6 +275,7 @@ namespace RvtMcp.Plugin.Handlers
                     {
                         var c1 = (bbox1.Min + bbox1.Max) * 0.5;
                         var c2 = (bbox2.Min + bbox2.Max) * 0.5;
+                        c2 = new XYZ(c2.X, c2.Y, c1.Z); // one elevation for the dimension line
 
                         var dir = (c2 - c1);
                         if (dir.GetLength() > 0.001)
@@ -340,7 +366,7 @@ namespace RvtMcp.Plugin.Handlers
         /// wall geometry (computed references, non-visible objects): the referenced line parallel to
         /// the location line and nearest to it in plan.
         /// </summary>
-        private static Reference GetWallLocationLineReference(Wall wall, View view)
+        private static Line GetWallLocationLine(Wall wall, View view)
         {
             var lc = wall.Location as LocationCurve;
             if (lc == null || lc.Curve == null)
@@ -370,7 +396,7 @@ namespace RvtMcp.Plugin.Handlers
             }
             if (best == null)
                 throw new Exception("Revit did not expose a location-line Reference for this wall in this view.");
-            return best.Reference;
+            return best;
         }
 
         private static XYZ Midpoint(Line line) => (line.GetEndPoint(0) + line.GetEndPoint(1)) * 0.5;
