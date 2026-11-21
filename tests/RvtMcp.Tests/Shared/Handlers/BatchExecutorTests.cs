@@ -104,6 +104,29 @@ namespace RvtMcp.Tests
             Assert.True(outcome.ShouldRollBack(false));
         }
 
+        // FC-B-04 (b): each step's result, including why a failed step failed.
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Failed_command_keeps_its_data_in_the_step_result(bool continueOnError)
+        {
+            var outcome = BatchExecutor.Run(Cmds(("create_dimensions", null)), continueOnError, (name, _) =>
+                BatchExecutor.InvokeResult.Fail("Fewer than two valid references were successfully resolved. See failed_references.",
+                    new JObject { ["created"] = false, ["failed_references"] = new JArray(new JObject { ["element_id"] = 999, ["error"] = "Element not found." }) }));
+
+            var step = JArray.FromObject(outcome.Results)[0];
+            Assert.False(step.Value<bool>("ok"));
+            Assert.Equal(999, step["data"]!["failed_references"]![0]!.Value<long>("element_id"));
+            Assert.Equal(!continueOnError, outcome.ShouldRollBack(continueOnError));
+        }
+
+        [Fact]
+        public void Failed_command_without_data_keeps_the_old_step_shape()
+        {
+            var outcome = BatchExecutor.Run(Cmds(("bad", null)), false, (name, _) => BatchExecutor.InvokeResult.Fail("invalid argument"));
+            Assert.Null(JArray.FromObject(outcome.Results)[0]["data"]);
+        }
+
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
