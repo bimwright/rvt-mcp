@@ -183,7 +183,7 @@ namespace RvtMcp.Plugin.Handlers
                     }
                     else
                     {
-                        throw new Exception("Unsupported reference mode: " + mode);
+                        throw new Exception("Unsupported reference mode: '" + mode + "'. Use wall_centerline, grid_curve or explicit_reference_stable (with stable_reference).");
                     }
 
                     if (revitRef != null)
@@ -211,13 +211,19 @@ namespace RvtMcp.Plugin.Handlers
 
             if (refArray.Size < 2)
             {
-                return CommandResult.Ok(new JObject
+                const string tooFew = "Fewer than two valid references were successfully resolved. See failed_references.";
+                return new CommandResult
                 {
-                    ["created"] = false,
-                    ["resolved_references"] = resolvedRefsInfo,
-                    ["failed_references"] = failedRefsInfo,
-                    ["error"] = "Fewer than two valid references were successfully resolved."
-                });
+                    Success = false,
+                    Error = tooFew,
+                    Data = new JObject
+                    {
+                        ["created"] = false,
+                        ["resolved_references"] = resolvedRefsInfo,
+                        ["failed_references"] = failedRefsInfo,
+                        ["error"] = tooFew
+                    }
+                };
             }
 
             // Resolve / Infer Line
