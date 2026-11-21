@@ -87,6 +87,8 @@ public class TagHandlerTests
         var result = Run(scenario);
         Assert.False(result.Value<bool>("success"));
         Assert.Contains("is a sheet", result.Value<string>("error"));
+        // tag_all_walls has no viewId parameter: it must ask for the view to be activated.
+        Assert.Contains(scenario == "walls:sheet" ? "revit_activate_view" : "pass the viewId", result.Value<string>("error"));
         Assert.Contains("Level 1 (viewId 100)", result.Value<string>("error"));
         Assert.Equal(0, result.Value<int>("transactions"));
     }

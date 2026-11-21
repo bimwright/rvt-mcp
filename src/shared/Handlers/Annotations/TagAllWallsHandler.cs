@@ -21,7 +21,7 @@ namespace RvtMcp.Plugin.Handlers
             var view = doc.ActiveView;
             if (view == null)
                 return CommandResult.Fail("No active view.");
-            var sheetError = TagScan.SheetRefusal(doc, view);
+            var sheetError = TagScan.SheetRefusal(doc, view, usesActiveView: true);
             if (sheetError != null)
                 return CommandResult.Fail(sheetError);
 

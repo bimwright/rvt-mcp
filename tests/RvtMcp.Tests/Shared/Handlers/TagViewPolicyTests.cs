@@ -25,6 +25,18 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void A_tool_without_viewId_is_told_to_activate_a_placed_view()
+        {
+            var placed = new[] { new KeyValuePair<long, string>(312, "Level 1") };
+
+            Assert.Contains("pass the viewId", TagViewPolicy.SheetRefusal("DrawingSheet", "A102", placed));
+            var activeViewError = TagViewPolicy.SheetRefusal("DrawingSheet", "A102", placed, usesActiveView: true);
+            Assert.Contains("activate a view placed on it (revit_activate_view)", activeViewError);
+            Assert.DoesNotContain("pass the viewId", activeViewError);
+            Assert.Contains("Level 1 (viewId 312)", activeViewError);
+        }
+
+        [Fact]
         public void Sheet_without_viewports_is_refused_and_says_no_view_is_placed()
         {
             var error = TagViewPolicy.SheetRefusal("DrawingSheet", "Title Sheet", new KeyValuePair<long, string>[0]);

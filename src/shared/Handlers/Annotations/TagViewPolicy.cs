@@ -12,8 +12,11 @@ namespace RvtMcp.Plugin.Handlers
     {
         public const string SheetViewType = "DrawingSheet";
 
-        /// <summary>Returns the refusal for a sheet view, or null when the view type may be tagged.</summary>
-        public static string SheetRefusal(string viewType, string sheetName, IEnumerable<KeyValuePair<long, string>> placedViews)
+        /// <summary>
+        /// Returns the refusal for a sheet view, or null when the view type may be tagged. A tool that
+        /// tags the active view (it takes no viewId) tells the caller to activate a placed view instead.
+        /// </summary>
+        public static string SheetRefusal(string viewType, string sheetName, IEnumerable<KeyValuePair<long, string>> placedViews, bool usesActiveView = false)
         {
             if (!string.Equals(viewType, SheetViewType, StringComparison.Ordinal))
                 return null;
@@ -24,7 +27,10 @@ namespace RvtMcp.Plugin.Handlers
             var placed = views.Count == 0
                 ? " No model view is placed on it."
                 : " Views placed on it: " + string.Join(", ", views) + ".";
-            return "View '" + sheetName + "' is a sheet. Tags go in a model view, not on the sheet; pass the viewId of the view placed on it." + placed;
+            var next = usesActiveView
+                ? "this tool tags the active view, so activate a view placed on it (revit_activate_view) and call again."
+                : "pass the viewId of the view placed on it.";
+            return "View '" + sheetName + "' is a sheet. Tags go in a model view, not on the sheet; " + next + placed;
         }
     }
 }
