@@ -21,6 +21,8 @@ namespace RvtMcp.Plugin.Handlers
             var view = doc.ActiveView;
             if (view == null)
                 return CommandResult.Fail("No active view.");
+            if (view is ViewSheet sheet)
+                return CommandResult.Fail(SheetTagGuard.Error(doc, sheet));
 
             var walls = new FilteredElementCollector(doc, view.Id)
                 .OfCategory(BuiltInCategory.OST_Walls)

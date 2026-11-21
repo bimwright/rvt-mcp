@@ -88,6 +88,8 @@ namespace RvtMcp.Plugin.Handlers
 
             if (!EnsureViewCanHostAnnotation(view, out var viewError))
                 return CommandResult.Fail(viewError);
+            if (view is ViewSheet sheet)
+                return CommandResult.Fail(SheetTagGuard.Error(doc, sheet));
 
             // Resolve Tag Type
             FamilySymbol tagType = null;
