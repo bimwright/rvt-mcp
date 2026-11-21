@@ -62,6 +62,18 @@ namespace RvtMcp.Tests
             Assert.Equal(22, json.Value<long>("sheetId"));
             Assert.Equal("A1", json.Value<string>("sheetNumber"));
             Assert.Equal("S", json.Value<string>("sheetName"));
+            Assert.Null(json["xMm"]);
+            Assert.Null(json["yMm"]);
+        }
+
+        [Fact]
+        public async Task Place_view_on_sheet_sends_sheet_position_in_mm()
+        {
+            var sent = await Capture.Send(() => ViewTools.PlaceViewOnSheet(11, 22, xMm: 420, yMm: 297.5));
+
+            var json = sent.Json();
+            Assert.Equal(420, json.Value<double>("xMm"));
+            Assert.Equal(297.5, json.Value<double>("yMm"));
         }
 
         [Fact]

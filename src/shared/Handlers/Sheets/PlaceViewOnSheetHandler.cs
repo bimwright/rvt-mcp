@@ -10,7 +10,7 @@ namespace RvtMcp.Plugin.Handlers
     {
         public string Name => "place_view_on_sheet";
         public string Description => "Create a sheet and place a view on it, or place a view on an existing sheet";
-        public string ParametersSchema => @"{""type"":""object"",""properties"":{""viewId"":{""type"":""integer""},""sheetId"":{""type"":""integer""},""sheetNumber"":{""type"":""string""},""sheetName"":{""type"":""string""}},""required"":[""viewId""]}";
+        public string ParametersSchema => @"{""type"":""object"",""properties"":{""viewId"":{""type"":""integer""},""sheetId"":{""type"":""integer""},""sheetNumber"":{""type"":""string""},""sheetName"":{""type"":""string""},""xMm"":{""type"":""number""},""yMm"":{""type"":""number""}},""required"":[""viewId""]}";
 
         public CommandResult Execute(UIApplication app, string paramsJson)
         {
@@ -23,6 +23,12 @@ namespace RvtMcp.Plugin.Handlers
             var sheetId = request.Value<long?>("sheetId");
             var sheetNumber = request.Value<string>("sheetNumber");
             var sheetName = request.Value<string>("sheetName") ?? "MCP Generated Sheet";
+            var xMm = request.Value<double?>("xMm");
+            var yMm = request.Value<double?>("yMm");
+            if (xMm.HasValue != yMm.HasValue)
+                return CommandResult.Fail("Pass both xMm and yMm, or neither.");
+            if (xMm.HasValue && (double.IsNaN(xMm.Value) || double.IsInfinity(xMm.Value) || double.IsNaN(yMm.Value) || double.IsInfinity(yMm.Value)))
+                return CommandResult.Fail("xMm and yMm must be finite numbers.");
 
             var view = doc.GetElement(RevitCompat.ToElementId(viewId)) as View;
             if (view == null)
@@ -66,9 +72,14 @@ namespace RvtMcp.Plugin.Handlers
                         sheet.Name = sheetName;
                     }
 
-                    // Place view at center of sheet
-                    var center = new XYZ(1.0, 0.75, 0); // approximately center of A3/A4 in feet
+                    // Without coordinates keep the historical point, roughly the center of an A3/A4 in feet.
+                    var center = xMm.HasValue
+                        ? new XYZ(xMm.Value / 304.8, yMm.Value / 304.8, 0)
+                        : new XYZ(1.0, 0.75, 0);
                     var viewport = Viewport.Create(doc, sheet.Id, view.Id, center);
+                    // The viewport outline is computed on regeneration; without one, report the requested point.
+                    doc.Regenerate();
+                    var placed = viewport.GetBoxCenter() ?? center;
 
                     if (tx.Commit() != TransactionStatus.Committed)
                         return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
@@ -79,7 +90,8 @@ namespace RvtMcp.Plugin.Handlers
                         sheetName = sheet.Name,
                         viewportId = RevitCompat.GetId(viewport.Id),
                         viewId = RevitCompat.GetId(view.Id),
-                        viewName = view.Name
+                        viewName = view.Name,
+                        center = new { xMm = Math.Round(placed.X * 304.8, 1), yMm = Math.Round(placed.Y * 304.8, 1) }
                     });
                 }
                 catch (Exception ex)

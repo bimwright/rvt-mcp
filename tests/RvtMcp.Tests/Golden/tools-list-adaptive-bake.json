@@ -6454,7 +6454,7 @@
     },
     {
       "name": "revit_place_view_on_sheet",
-      "description_hash": "sha256:2c11b569992843606315544996d4fa0db28fbc10916ea2ca7bd92a80b841c578",
+      "description_hash": "sha256:7fc1797fad4940b90228e169811291170b064127b73ab7117b76733798c45cdd",
       "inputSchema": {
         "properties": {
           "sheetId": {
@@ -6472,6 +6472,14 @@
           "viewId": {
             "description": "",
             "type": "Int64"
+          },
+          "xMm": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "yMm": {
+            "description": "",
+            "type": "Nullable`1"
           }
         },
         "required": [
