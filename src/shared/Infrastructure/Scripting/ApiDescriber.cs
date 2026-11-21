@@ -95,12 +95,15 @@ namespace RvtMcp.Plugin
         private static Type[] Types(Assembly[] assemblies)
         {
             var key = string.Join("|", assemblies.Select(a => a.FullName + "#" + a.ManifestModule.ModuleVersionId).OrderBy(s => s, StringComparer.Ordinal));
-            return TypeCache.GetOrAdd(key, _ => assemblies.SelectMany(a =>
+            if (TypeCache.TryGetValue(key, out var cached)) return cached;
+            var types = assemblies.SelectMany(a =>
             {
                 try { return a.GetExportedTypes(); }
-                catch (ReflectionTypeLoadException ex) { return ex.Types.Where(t => t != null && t.IsPublic || t?.IsNestedPublic == true).ToArray(); }
-                catch { return new Type[0]; }
-            }).Where(IsApi).ToArray());
+                catch (ReflectionTypeLoadException ex) { return ex.Types.Where(t => t != null && (t.IsPublic || t.IsNestedPublic)).ToArray(); }
+            }).Where(IsApi).ToArray();
+            // Only a usable list is kept; a failed read is retried on the next call instead of answering TYPE_NOT_FOUND all session.
+            if (types.Length > 0) TypeCache[key] = types;
+            return types;
         }
 
         /// <summary>The type and its base types inside the Revit API, nearest first.</summary>

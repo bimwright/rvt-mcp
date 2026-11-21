@@ -14,16 +14,10 @@ namespace RvtMcp.Server
             "Reads no document and changes nothing. type is a short or full name; member keeps members whose name contains it. " +
             "Example: type=\"FamilyManager\", member=\"Parameter\".")]
         public static async Task<string> DescribeApi(string type, string? member = null)
-        {
-            var result = await ToolGateway.CallWithParamsAsync("describe_api", () =>
+            => await ToolGateway.CallWithParamsAsync("describe_api", () =>
             {
                 if (string.IsNullOrWhiteSpace(type)) throw new System.ArgumentException("type is required, e.g. \"Wall\" or \"Autodesk.Revit.DB.Wall\".");
                 return new { type, member };
             });
-            // An add-in older than this gateway does not know the command.
-            return result.Contains("Unknown command: describe_api")
-                ? "Error: CAPABILITY_REQUIRED: the Revit add-in predates revit_describe_api. Update the gateway and Revit add-in together, then restart Revit."
-                : result;
-        }
     }
 }

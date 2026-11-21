@@ -47,6 +47,7 @@ namespace RvtMcp.Server
             public bool AgentReports;
             public bool ReportProvenance;
             public bool DialogAnswersProtocol;
+            public bool DescribeApi;
             /// <summary>
             /// Serializes wire writes on this connection so a blocked writer (plugin
             /// not reading) stalls only this call — never <c>_connectLock</c>, so
@@ -549,6 +550,7 @@ namespace RvtMcp.Server
                 AgentReports = desc.Capabilities?.Any(c => string.Equals(c, "agent_reports_v1", StringComparison.OrdinalIgnoreCase)) == true,
                 ReportProvenance = desc.Capabilities?.Any(c => string.Equals(c, "agent_report_provenance_v1", StringComparison.OrdinalIgnoreCase)) == true,
                 DialogAnswersProtocol = desc.Capabilities?.Any(c => string.Equals(c, "dialog_answers_v2", StringComparison.OrdinalIgnoreCase)) == true,
+                DescribeApi = desc.Capabilities?.Any(c => string.Equals(c, "describe_api_v1", StringComparison.OrdinalIgnoreCase)) == true,
             };
             if (transport is TcpClient tcp)
             {
@@ -699,6 +701,9 @@ namespace RvtMcp.Server
                             }
                             if (rejection == null && string.Equals(command, "report_task_result", StringComparison.OrdinalIgnoreCase) && !conn.AgentReports)
                                 rejection = "AGENT_REPORTS_CAPABILITY_REQUIRED: The pinned Revit add-in does not support agent reports. Update the gateway and Revit add-in together from the same rvt-mcp Setup release, restart Revit, and reconnect/restart the MCP client.";
+                            // An older add-in treats describe_api as a write it does not know; refuse it here with a clear reason.
+                            if (rejection == null && string.Equals(command, "describe_api", StringComparison.Ordinal) && !conn.DescribeApi)
+                                rejection = "CAPABILITY_REQUIRED: the pinned Revit add-in predates revit_describe_api. Update the gateway and Revit add-in together from the same rvt-mcp Setup release, then restart Revit.";
                             if (rejection == null && command == "report_task_result" && parameters != null
                                 && JObject.FromObject(parameters)["call_ids"]?.Type == JTokenType.String && !conn.ReportProvenance)
                                 rejection = "AGENT_REPORT_PROVENANCE_REQUIRED: Explicit call selection requires a matching gateway and Revit add-in with provenance support.";
