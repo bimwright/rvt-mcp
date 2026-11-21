@@ -12,9 +12,9 @@ namespace RvtMcp.Server
         public static async Task<string> CreateView(string viewType, string level = "", string name = "")
             => await ToolGateway.CallAsync("create_view", new { viewType, level, name });
 
-        [McpServerTool(Name = "revit_place_view_on_sheet", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Place a view on a sheet. Auto-creates sheet if sheetId omitted. Params: viewId (required), sheetId (optional), sheetNumber (optional), sheetName (optional).")]
-        public static async Task<string> PlaceViewOnSheet(long viewId, long? sheetId = null, string sheetNumber = "", string sheetName = "MCP Generated Sheet")
-            => await ToolGateway.CallAsync("place_view_on_sheet", new { viewId, sheetId, sheetNumber, sheetName });
+        [McpServerTool(Name = "revit_place_view_on_sheet", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Place a view on a sheet. Auto-creates sheet if sheetId omitted. Params: viewId (required), sheetId (optional), sheetNumber (optional), sheetName (optional), xMm/yMm (optional viewport center in sheet paper mm; both or neither; omitted = 304.8, 228.6). Returns the center in mm.")]
+        public static async Task<string> PlaceViewOnSheet(long viewId, long? sheetId = null, string sheetNumber = "", string sheetName = "MCP Generated Sheet", double? xMm = null, double? yMm = null)
+            => await ToolGateway.CallAsync("place_view_on_sheet", new { viewId, sheetId, sheetNumber, sheetName, xMm, yMm });
 
         [McpServerTool(Name = "revit_analyze_sheet_layout", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Analyze title block and a bounded viewport page in mm. Use startViewport + maxViewports (hard max 500).")]
         public static async Task<string> AnalyzeSheetLayout(string sheetNumber = "", long? sheetId = null, int startViewport = 0, int maxViewports = 100)
