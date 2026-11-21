@@ -78,6 +78,8 @@ namespace RvtMcp.Plugin.Handlers
 
             if (!EnsureViewCanHostAnnotation(view, out var viewError))
                 return CommandResult.Fail(viewError);
+            if (view is ViewSheet sheet)
+                return CommandResult.Fail(SheetTagGuard.Error(doc, sheet));
 
             // Resolve Category
             var cat = ResolveCategory(doc, categoryInput);
@@ -145,7 +147,10 @@ namespace RvtMcp.Plugin.Handlers
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                return CommandResult.Fail("Failed to scan existing tags in view: " + ex.Message);
+            }
 
             // Filter candidates
             var candidates = new List<Element>();
@@ -293,6 +298,7 @@ namespace RvtMcp.Plugin.Handlers
                 ["created"] = createdCount,
                 ["tags"] = createdTags,
                 ["failed"] = failedElements,
+                ["failed_count"] = failedElements.Count,
                 ["truncated"] = truncated,
                 ["error"] = null
             };

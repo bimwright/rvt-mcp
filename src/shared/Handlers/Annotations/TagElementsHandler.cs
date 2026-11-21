@@ -88,6 +88,8 @@ namespace RvtMcp.Plugin.Handlers
 
             if (!EnsureViewCanHostAnnotation(view, out var viewError))
                 return CommandResult.Fail(viewError);
+            if (view is ViewSheet sheet)
+                return CommandResult.Fail(SheetTagGuard.Error(doc, sheet));
 
             // Resolve Tag Type
             FamilySymbol tagType = null;
@@ -113,7 +115,10 @@ namespace RvtMcp.Plugin.Handlers
                     visibleIds.Add(RevitCompat.GetId(id));
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                return CommandResult.Fail("Failed to collect visible elements: " + ex.Message);
+            }
 
             var createdTags = new JArray();
             var failedElements = new JArray();
@@ -278,6 +283,7 @@ namespace RvtMcp.Plugin.Handlers
                 ["created"] = createdCount,
                 ["tags"] = createdTags,
                 ["failed"] = failedElements,
+                ["failed_count"] = failedElements.Count,
                 ["error"] = null
             };
             if (createdCount == 0 && failedElements.Count > 0)

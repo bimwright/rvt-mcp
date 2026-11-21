@@ -28,7 +28,7 @@ namespace RvtMcp.Server
         public static async Task<string> CreateTextNote(string text, double x, double y, long? viewId = null, long? textTypeId = null, double width = 0, double rotationDeg = 0)
             => await ToolGateway.CallAsync("create_text_note", new { text, x, y, view_id = viewId, text_type_id = textTypeId, width, rotation_deg = rotationDeg });
 
-        [McpServerTool(Name = "revit_create_dimensions", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a dimension element in a view. references: array of Revit element-reference objects.")]
+        [McpServerTool(Name = "revit_create_dimensions", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a dimension element in a view. references: at least two {mode, element_id} objects. mode: wall_centerline (wall id), grid_curve (grid id) or explicit_reference_stable (also needs stable_reference). Fails when fewer than two references resolve; failed_references says why.")]
         public static async Task<string> CreateDimensions(object[] references, long? viewId = null, long? dimensionTypeId = null, object line = null)
             => await ToolGateway.CallWithParamsAsync("create_dimensions", () =>
             {

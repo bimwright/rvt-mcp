@@ -81,7 +81,7 @@
   "revit_tag_elements": "Tag one or more elements in a view.",
   "revit_tag_all_by_category": "Tag all elements of a specific category in a view.",
   "revit_create_text_note": "Create a text note element in a view.",
-  "revit_create_dimensions": "Create a dimension element in a view. references: array of Revit element-reference objects.",
+  "revit_create_dimensions": "Create a dimension element in a view from at least two wall, grid or stable references.",
   "revit_create_filled_region": "Create a filled region element in a view. points: array of {x,y,z} point objects (mm).",
   "revit_create_detail_line": "Create a detail line element in a view.",
   "revit_create_callout_view": "Create a callout view in a parent view.",

@@ -278,6 +278,50 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void Run_SuccessPayloadWithSnakeCaseFailedCount_StopsAndFlags_ForRollback()
+        {
+            var dispatch = Dispatch(new Dictionary<string, Func<string, BatchExecutor.InvokeResult>>
+            {
+                ["tag_elements"] = _ => BatchExecutor.InvokeResult.Ok(new JObject
+                {
+                    ["created"] = 1,
+                    ["failed_count"] = 1
+                }),
+                ["create_grid"] = _ => BatchExecutor.InvokeResult.Ok(new { elementId = 3 }),
+            });
+
+            var cmds = Cmds(
+                ("tag_elements", null),
+                ("create_grid", null));
+
+            var outcome = BatchExecutor.Run(cmds, continueOnError: false, dispatch);
+
+            Assert.True(outcome.AnyFailed);
+            Assert.Single(outcome.Results);
+            var result = JObject.FromObject(outcome.Results[0]);
+            Assert.False(result.Value<bool>("ok"));
+            Assert.Contains("1 partial failure", result.Value<string>("error"));
+        }
+
+        [Fact]
+        public void Run_SuccessPayloadWithZeroSnakeCaseFailedCount_IsOk()
+        {
+            var dispatch = Dispatch(new Dictionary<string, Func<string, BatchExecutor.InvokeResult>>
+            {
+                ["tag_elements"] = _ => BatchExecutor.InvokeResult.Ok(new JObject
+                {
+                    ["created"] = 2,
+                    ["failed_count"] = 0
+                }),
+            });
+
+            var outcome = BatchExecutor.Run(Cmds(("tag_elements", null)), continueOnError: false, dispatch);
+
+            Assert.False(outcome.AnyFailed);
+            Assert.True(JObject.FromObject(outcome.Results[0]).Value<bool>("ok"));
+        }
+
+        [Fact]
         public void Run_SuccessPayloadWithFailedCount_ContinueOnErrorTrue_AttemptsRemaining()
         {
             var dispatch = Dispatch(new Dictionary<string, Func<string, BatchExecutor.InvokeResult>>

@@ -224,7 +224,8 @@ namespace RvtMcp.Plugin.Handlers
             try
             {
                 var obj = data as JObject ?? JObject.FromObject(data);
-                var token = obj["failedCount"];
+                // Handlers with snake_case payloads report the same count as failed_count.
+                var token = obj["failedCount"] ?? obj["failed_count"];
                 if (token == null || token.Type != JTokenType.Integer)
                     return false;
 

@@ -1444,7 +1444,7 @@
     },
     {
       "name": "revit_create_dimensions",
-      "description_hash": "sha256:69fe28d45a86d389caf050023df4a3f643ad99025dfa9b982551c12e9a19ef75",
+      "description_hash": "sha256:c184985d97dd9843515b278fcf447722ab7ec33791442878fb62da0dfed163ad",
       "inputSchema": {
         "properties": {
           "dimensionTypeId": {
