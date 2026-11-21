@@ -13,8 +13,12 @@ namespace RvtMcp.Plugin.Handlers
     /// </summary>
     internal static class TagScan
     {
-        /// <summary>Ids of the host elements tagged in the view by element, room and area tags.</summary>
-        public static HashSet<long> CollectTaggedElementIds(Document doc, View view)
+        /// <summary>
+        /// Ids of the host elements tagged in the view by element, room and area tags. With
+        /// <paramref name="elementTagCategory"/> only element tags of that category count (so a
+        /// keynote or material tag does not make a wall "tagged").
+        /// </summary>
+        public static HashSet<long> CollectTaggedElementIds(Document doc, View view, BuiltInCategory? elementTagCategory = null)
         {
             var ids = new HashSet<long>();
 
@@ -22,6 +26,9 @@ namespace RvtMcp.Plugin.Handlers
                 .OfClass(typeof(IndependentTag))
                 .Cast<IndependentTag>())
             {
+                if (elementTagCategory.HasValue
+                    && (tag.Category == null || RevitCompat.GetId(tag.Category.Id) != (long)elementTagCategory.Value))
+                    continue;
                 foreach (var id in GetTaggedElementIds(tag))
                     ids.Add(id);
             }
