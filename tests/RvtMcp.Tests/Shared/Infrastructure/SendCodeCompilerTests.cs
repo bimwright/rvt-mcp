@@ -60,6 +60,51 @@ namespace Autodesk.Revit.UI {
             finally { AppDomain.CurrentDomain.AssemblyResolve -= resolve; }
         }
 
+        [Theory]
+        [InlineData("var doc = app.ActiveUIDocument?.Document; return doc == null && uidoc == null;")]
+        [InlineData("var uidoc = app.ActiveUIDocument; return doc == null && uidoc == null;")]
+        [InlineData("var uidoc = app.ActiveUIDocument; var doc = uidoc?.Document; return doc == null;")]
+        [InlineData("var app = \"mine\"; return app == \"mine\" && doc == null && uidoc == null;")]
+        [InlineData("Autodesk.Revit.DB.Document doc = null, other = null; return doc == other;")]
+        public void Body_that_declares_its_own_app_uidoc_or_doc_keeps_its_own(string code)
+        {
+            Assert.Equal(true, Run(Compile(new ScriptInput(code))));
+            Assert.Equal(true, Run(Compile(new ScriptInput(code, ScriptData.FromJson("{}"))), "{}"));
+        }
+
+        [Fact]
+        public void Body_that_redeclares_doc_in_a_nested_scope_still_fails_to_compile()
+        {
+            var result = Compile(new ScriptInput("if (doc == null) { var doc = 1; return doc; } return 0;"));
+            Assert.Contains(result.Diagnostics, d => d.DiagnosticId == "CS0136");
+        }
+
+        [Fact]
+        public void Full_source_without_any_using_gets_the_default_imports()
+        {
+            var bare = "public static class McpDynamicScript { public static object Run(UIApplication app, JObject data)" +
+                       " { var seen = new List<Document>(); return seen.Count + (int)data[\"n\"]; } }";
+            Assert.Equal(7, Run(Compile(new ScriptInput(bare, ScriptData.FromJson("{\"n\":7}"))), "{\"n\":7}"));
+        }
+
+        [Fact]
+        public void Full_source_with_its_own_usings_gets_no_import_added()
+        {
+            var own = "using System;\npublic static class McpDynamicScript { public static object Run(UIApplication app) { return 1; } }";
+            Assert.Contains(Compile(new ScriptInput(own)).Diagnostics, d => d.DiagnosticId == "CS0246" && d.Message.Contains("UIApplication"));
+        }
+
+        [Fact]
+        public void Body_that_closes_Run_itself_gets_the_shape_hint_and_other_errors_do_not()
+        {
+            var closed = Compile(new ScriptInput("return 1;\n}\nclass Helper {\n int n;"));
+            Assert.Equal(SendCodeCompiler.StrayBraceHint, closed.Hint);
+            Assert.Contains(closed.Diagnostics, d => d.DiagnosticId == "CS1022");
+
+            Assert.Null(Compile(new ScriptInput("return missingName;")).Hint);
+            Assert.Null(Compile(new ScriptInput("return 1;\nclass Helper { int n; }")).Hint);
+        }
+
         [Fact]
         public void Data_is_bound_as_json_text_without_changing_script_source()
         {

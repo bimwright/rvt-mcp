@@ -23,6 +23,8 @@ namespace RvtMcp.Plugin
         public bool Success { get; set; }
         public string ErrorCode { get; set; }
         public ScriptCompileDiagnostic[] Diagnostics { get; set; } = Array.Empty<ScriptCompileDiagnostic>();
+        /// <summary>One line on how to fix the script's shape, shown before the diagnostics; null when there is none.</summary>
+        public string Hint { get; set; }
         public byte[] AssemblyBytes { get; set; }
         public Dictionary<string, string[]> ModuleSignatures { get; set; } = new Dictionary<string, string[]>(StringComparer.Ordinal);
         public const string EntryType = "__RvtMcpSendCodeEntry";
@@ -99,9 +101,14 @@ namespace RvtMcp.Plugin
             }
         }
 
+        // CS1022 in the script is a '}' with nothing to close: almost always a body that closes Run itself.
+        internal const string StrayBraceHint = "Hint: a '}' in the script closes nothing. Send statements only " +
+            "(they become the body of Run; do not close it), then complete helper types after them, each with its own closing '}'.";
+
         private static ScriptCompileResult Diagnostics(IEnumerable<Diagnostic> diagnostics)
             => new ScriptCompileResult {
                 ErrorCode = ScriptErrorCodes.CompileFailed,
+                Hint = diagnostics.Any(d => d.Id == "CS1022" && d.Location.GetMappedLineSpan().Path == "script") ? StrayBraceHint : null,
                 Diagnostics = diagnostics.Take(20).Select(d => {
                     var span = d.Location.GetMappedLineSpan();
                     return new ScriptCompileDiagnostic { Source = span.Path, Line = span.StartLinePosition.Line + 1,

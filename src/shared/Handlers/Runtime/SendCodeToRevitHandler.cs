@@ -134,7 +134,7 @@ namespace RvtMcp.Plugin.Handlers
                     state?.Failed();
                     Failures.FailureControl.NotifyCompileFailed();
                     return new CommandResult { Success = false,
-                        Error = compiled.ErrorCode + ": " + string.Join("\n", compiled.Diagnostics.Select(d =>
+                        Error = compiled.ErrorCode + ": " + (compiled.Hint == null ? "" : compiled.Hint + "\n") + string.Join("\n", compiled.Diagnostics.Select(d =>
                             McpResponsePrivacy.RedactErrorForResponse(d.Source + ":" + d.Line + ":" + d.Column + " " + d.DiagnosticId + " " + d.Message)))
                             + SkippedNote(skipped),
                         Data = new { compiled = false, compile_only = input.CompileOnly, executed = false,

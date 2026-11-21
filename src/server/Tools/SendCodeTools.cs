@@ -11,7 +11,7 @@ namespace RvtMcp.Server
     {
         [McpServerTool(Name = "revit_send_code_to_revit"), System.ComponentModel.Description(
             "Full-trust C#; confirm edits, prefer typed tools. app, nullable doc/uidoc. " +
-            "Body with return (helper types allowed), or public static McpDynamicScript.Run(UIApplication[, JObject]). " +
+            "Body with return (no closing }) + types, or public static McpDynamicScript.Run(UIApplication[, JObject]). " +
             "Use data for literals/coordinates/lists, modules for repeated helpers, compile_only to validate; result_contract=task_v1 uses McpTaskResult.Pass/Fail. " +
             "Imports: System/Linq/Collections.Generic, Autodesk.Revit.DB/UI. " +
             "Use RvtMcp.Plugin.SafeFailuresPreprocessor for transactions/StairsEditScope; unapproved failures roll back. " +
