@@ -18,7 +18,8 @@ namespace RvtMcp.Plugin.Handlers
         /// <paramref name="elementTagCategories"/> only element tags of those categories count (so a
         /// keynote or material tag does not make a wall "tagged"). Tags are read as the elements the
         /// view owns: a view-scoped collector left out tags the view owns and shows (seen in Revit 2022
-        /// on a large plan), so a second tagging pass tagged those walls again.
+        /// on a large plan), so a second tagging pass tagged those walls again. A tag hidden in the view
+        /// (Hide in View) still counts, so its element is not tagged a second time (owner decision).
         /// </summary>
         public static HashSet<long> CollectTaggedElementIds(Document doc, View view, params BuiltInCategory[] elementTagCategories)
         {

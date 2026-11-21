@@ -50,7 +50,8 @@ public class TagHandlerTests
     }
 
     // Seen live in Revit 2022: FilteredElementCollector(doc, viewId) left out 81 of 158 tags a plan
-    // owned, so tag_all_walls tagged 42 walls again on its second call.
+    // owned, so tag_all_walls tagged 42 walls again on its second call. It also leaves out a tag hidden
+    // in the view; such a tag still counts (owner decision), which these cases cover.
     [Fact]
     public void Tag_all_walls_sees_a_tag_a_view_scoped_collector_misses()
     {
