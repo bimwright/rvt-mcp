@@ -48,6 +48,22 @@ namespace RvtMcp.Plugin.Handlers
             return ids;
         }
 
+        /// <summary>The refusal for a sheet, naming the model views placed on it; null for any other view.</summary>
+        public static string SheetRefusal(Document doc, View view)
+        {
+            if (!(view is ViewSheet sheet))
+                return null;
+
+            var placed = sheet.GetAllViewports()
+                .Select(id => doc.GetElement(id) as Viewport)
+                .Where(vp => vp != null)
+                .Select(vp => doc.GetElement(vp.ViewId) as View)
+                .Where(v => v != null)
+                .Select(v => new KeyValuePair<long, string>(RevitCompat.GetId(v.Id), v.Name))
+                .ToList();
+            return TagViewPolicy.SheetRefusal(view.ViewType.ToString(), view.Name, placed);
+        }
+
         /// <summary>
         /// Host ids tagged by one tag. An empty result means the tag tags nothing (an empty tag);
         /// when no API strategy can be read at all the scan is incomplete and this throws.
