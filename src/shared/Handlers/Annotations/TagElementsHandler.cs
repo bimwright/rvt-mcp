@@ -113,7 +113,10 @@ namespace RvtMcp.Plugin.Handlers
                     visibleIds.Add(RevitCompat.GetId(id));
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                return CommandResult.Fail("Failed to collect visible elements: " + ex.Message);
+            }
 
             var createdTags = new JArray();
             var failedElements = new JArray();

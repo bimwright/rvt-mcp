@@ -107,21 +107,29 @@ namespace RvtMcp.Plugin.Handlers
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                return CommandResult.Fail("Failed to scan element tags in view: " + ex.Message);
+            }
 
-            // 2. Collect RoomTag tagged elements (for OST_Rooms)
+            // 2. Collect RoomTag tagged elements (for OST_Rooms).
+            // ElementClassFilter does not support RoomTag, so collect by category.
             try
             {
                 var roomTags = new FilteredElementCollector(doc, view.Id)
-                    .OfClass(typeof(RoomTag))
-                    .Cast<RoomTag>();
+                    .OfCategory(BuiltInCategory.OST_RoomTags)
+                    .WhereElementIsNotElementType()
+                    .OfType<RoomTag>();
                 foreach (var rt in roomTags)
                 {
-                    if (rt.Room != null)
+                    if (!rt.IsTaggingLink && rt.Room != null)
                         taggedElementIds.Add(RevitCompat.GetId(rt.Room.Id));
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                return CommandResult.Fail("Failed to scan room tags in view: " + ex.Message);
+            }
 
             // 3. Collect AreaTag tagged elements (for OST_Areas)
             try
@@ -140,7 +148,10 @@ namespace RvtMcp.Plugin.Handlers
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                return CommandResult.Fail("Failed to scan area tags in view: " + ex.Message);
+            }
 
             // Subtract tagged from visible
             var untagged = new List<Element>();

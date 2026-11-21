@@ -145,7 +145,10 @@ namespace RvtMcp.Plugin.Handlers
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                return CommandResult.Fail("Failed to scan existing tags in view: " + ex.Message);
+            }
 
             // Filter candidates
             var candidates = new List<Element>();
