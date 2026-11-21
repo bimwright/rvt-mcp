@@ -29,7 +29,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## v3.0.1 (unreleased)
 
-- Development source counts: `--toolsets all` **256**, adaptive bake **259**, and bare defaults **62**.
+- Development source counts: `--toolsets all` **257**, adaptive bake **260**, and bare defaults **63**.
 
 ### Controlled failures and Issues
 
@@ -40,6 +40,13 @@ Install the 3.0.1 gateway and add-ins together. TaskDialog declarations require 
 - History → Issues opens on **All states** every time, so models whose only incidents are observed (user-answered dialogs) stay listed.
 - When a user rule or grant answers a dialog the agent had declared, `_failure.groups[]` now says so with `agentDeclarationNotUsed`, and the `nextStep` for a rule-answered dialog no longer talks about warnings.
 - **Windows without a Revit dialog event** (an add-in's MessageBox, a file dialog): a read-only background probe in the add-in now notices a window that blocks Revit and waits for the user. During an MCP call the pending receipt says `REVIT_OPERATION_REQUIRES_USER` after about 2 seconds with `_operation.dialog.kind=window` (title, text and button labels), instead of waiting for the timeout; `revit_get_operation_status` reports the same window while it is open, and the final `_failure.groups[]` lists it with `answeredBy=user` (a window whose model is not certain goes to `_operation.windowDialogsWithoutModel` instead; past 20 per operation, `omittedWindowDialogs` counts the rest). A window left open outside MCP refuses new calls at once with `REVIT_BUSY` and `_operation.window` (its title only), queued calls return `REVIT_REQUEST_NOT_STARTED` at once, and `revit_health` reports `waiting_for_user`. The probe never clicks or closes anything; `BIMWRIGHT_RVT_WINDOW_PROBE=0` turns it off. See [controlled failures](docs/controlled-failures.md#windows-without-a-revit-dialog-event).
+
+### Capture output folders
+
+- `revit_capture_view_image` can write into folders you allow beside `%TEMP%` and the captures folder: list them in `captureRoots` in `rvtmcp.config.json` (an array, or one string separated by `;`) or in `BIMWRIGHT_CAPTURE_ROOTS` in the Revit process environment. Only absolute local folders count; nothing is added by default.
+- The captures folder is now bounded: after a capture is saved there, captures with a generated name (`capture-<date>-<time>-<id>…`) older than 30 days are deleted, then the oldest until the rest fits 200 MB. A file you named yourself, a subfolder, `%TEMP%` and your `captureRoots` folders are never cleaned.
+- `revit_capture_view_image` accepts an `output_path` in the user's own `%TEMP%` folder. Revit runs with `TEMP` set to a per-session subfolder, so such a path was refused although the message named `%TEMP%`.
+- A refused `output_path` returns the allowed folders as `allowed_roots` (the paths in the error text are masked) and the next step: omit `output_path` and copy the saved file, or ask the user to allow the folder.
 
 ### Document lifecycle
 
@@ -72,6 +79,16 @@ Install the 3.0.1 gateway and add-ins together. TaskDialog declarations require 
 
 ### Send code and baked tools
 
+- `revit_send_code_to_revit` compile errors carry a `hint` computed from the Revit API the script was compiled against (in the error text and in `diagnostics[].hint`):
+  - A missing member (`CS1061`, `CS0117`) names where it really is: a subtype to check and cast to, a property that leads to it (`x.Application.FamilyTemplatePath`), the types that have it, or that no API type has it. The closest members of the type follow.
+  - A wrong call (`CS1503`, `CS1501`, `CS7036`, `CS1620`, `CS1615`, `CS1729`) shows the real signatures, the overload that accepts the named argument first. A type with no public constructor lists its static factories (`Plane.Create…`).
+  - An unknown type or name (`CS0246`, `CS0103`) names the `using` to add: a Revit namespace, or the namespace of another referenced assembly (`Regex` → `System.Text.RegularExpressions`).
+  - A hint is given once per compile. The first one builds a name index of the loaded Revit API (about 0.3 s, 4 MB, once per Revit session).
+- New read-only tool `revit_describe_api` (in `meta`; also with `--read-only` and `--disable-send-code`) lists one Revit API type as loaded in the running Revit: constructors and static factories, properties with get/set, methods with parameter types, operators, enum values, obsolete marks with their replacement text, base types and direct subtypes. Inherited members are grouped by the API type that declares them; `member` narrows the list, which is capped at 200 lines. It reads no document. The add-in advertises `describe_api_v1`; with an older add-in the gateway refuses the call with `CAPABILITY_REQUIRED` before sending it.
+- `revit_send_code_to_revit` accepts more of the script shapes agents write:
+  - A body that declares its own `app`, `uidoc` or `doc` at the top level keeps its own; the generated one of that name is left out instead of failing with `CS0128` / `CS0136`.
+  - A full `McpDynamicScript` source without any `using` gets the default imports. A source with its own usings is compiled as written.
+  - A body that closes `Run` itself and leaves its last helper type or method open is repaired before compiling: the stray `}` is dropped in place (line and column numbers stay yours) and the missing one is added at the end. The response says so in `script_repair`. Only that exact shape is repaired; any other stray `}` (`CS1022`) is refused with a hint on the expected shape.
 - A DLL loaded in Revit whose metadata the C# compiler cannot read (for example a protected assembly from another add-in) no longer makes every `revit_send_code_to_revit` and baked-tool compile fail with `CS0009`. The file is left out of the compile references and written to the diagnostic log. Send-code results then include `skipped_references` (`name`, `reason`), and compile errors list the skipped names. Fixes [#38](https://github.com/bimwright/rvt-mcp/issues/38).
 
 ### Server memory

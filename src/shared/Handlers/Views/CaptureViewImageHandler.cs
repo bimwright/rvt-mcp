@@ -10,8 +10,8 @@ namespace RvtMcp.Plugin.Handlers
     public class CaptureViewImageHandler : IRevitCommand
     {
         public string Name => "capture_view_image";
-        public string Description => "Export a view to a raster image (png/jpeg). output_path is optional; if provided it must be absolute and inside %TEMP% or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\. Returns saved path + pixel size.";
-        public string ParametersSchema => @"{""type"":""object"",""properties"":{""view_id"":{""type"":""integer""},""output_path"":{""type"":""string"",""description"":""Optional absolute path inside %TEMP% or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\. Defaults to a generated name under captures.""},""pixel_size"":{""type"":""integer"",""default"":1600},""image_format"":{""type"":""string"",""enum"":[""png"",""jpeg""],""default"":""png""}},""required"":[]}";
+        public string Description => "Export a view to a raster image (png/jpeg). output_path is optional; if provided it must be absolute and inside %TEMP%, %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\ or a folder the user allowed (captureRoots). Returns saved path + pixel size.";
+        public string ParametersSchema => @"{""type"":""object"",""properties"":{""view_id"":{""type"":""integer""},""output_path"":{""type"":""string"",""description"":""Optional absolute path inside %TEMP%, %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\ or a folder the user allowed (captureRoots). Defaults to a generated name under captures.""},""pixel_size"":{""type"":""integer"",""default"":1600},""image_format"":{""type"":""string"",""enum"":[""png"",""jpeg""],""default"":""png""}},""required"":[]}";
 
         public CommandResult Execute(UIApplication app, string paramsJson)
         {
@@ -30,7 +30,8 @@ namespace RvtMcp.Plugin.Handlers
 
             var outputPath = CaptureOutputPath.NormalizeOrDefault(rawOutputPath, imageFormat);
             var pathError = CaptureOutputPath.Validate(outputPath);
-            if (pathError != null) return CommandResult.Fail(pathError);
+            if (pathError != null)
+                return new CommandResult { Success = false, Error = pathError, Data = new { allowed_roots = CaptureOutputPath.AllowedRoots() } };
 
             var view = viewIdParam.HasValue
                 ? doc.GetElement(RevitCompat.ToElementId(viewIdParam.Value)) as View
@@ -72,6 +73,9 @@ namespace RvtMcp.Plugin.Handlers
                     return CommandResult.Fail($"ExportImage failed: {exportError}");
                 return CommandResult.Fail("ExportImage completed but output file was not found.");
             }
+
+            if (PathAllowlist.IsUnderRoot(actualPath, PathAllowlist.CapturesDirectory))
+                CaptureOutputPath.PruneGenerated(PathAllowlist.CapturesDirectory, actualPath, DateTime.UtcNow);
 
             return CommandResult.Ok(new
             {

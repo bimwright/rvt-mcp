@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 259,
+  "tool_count": 260,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -842,7 +842,7 @@
     },
     {
       "name": "revit_capture_view_image",
-      "description_hash": "sha256:22bc590d8e4ee15e0a51fe2d66798a6a3944847552632a9146bf1609458a2370",
+      "description_hash": "sha256:31e09cdddf8c61fde4e5e50fab5a47024268419606fd1c8d089bee140e46b438",
       "inputSchema": {
         "properties": {
           "image_format": {
@@ -3119,6 +3119,32 @@
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_describe_api",
+      "description_hash": "sha256:42c0b9fe55ecba0cd0648a70c453a656d50674dd795e19eda0dca141ca3a5538",
+      "inputSchema": {
+        "properties": {
+          "member": {
+            "description": "",
+            "type": "String"
+          },
+          "type": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -7232,7 +7258,7 @@
     },
     {
       "name": "revit_send_code_to_revit",
-      "description_hash": "sha256:de5fa80d0bdbbe5f8d3c615b940b3095939d0b785e29690866f8c2d49a0cf051",
+      "description_hash": "sha256:d5e77b0242da65c295477fb2db068b65343dd42fd77e5675a8ab22748f1de795",
       "inputSchema": {
         "properties": {
           "code": {

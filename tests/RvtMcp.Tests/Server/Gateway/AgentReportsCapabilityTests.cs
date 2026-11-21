@@ -62,6 +62,22 @@ namespace RvtMcp.Tests
             }
         }
 
+        [Theory]
+        [InlineData(true)] [InlineData(false)]
+        public async Task Describe_api_needs_an_addin_that_advertises_it_with_or_without_a_document(bool confirmDocument)
+        {
+            using (var old = new ReportTestWire(agentReports: true, confirmDocument: confirmDocument))
+            {
+                var refused = await old.Send("describe_api", new { type = "Wall" });
+                Assert.StartsWith("CAPABILITY_REQUIRED: the pinned Revit add-in predates revit_describe_api.", refused.Value<string>("error"));
+                Assert.Empty(old.Requests);
+            }
+            using var current = new ReportTestWire(agentReports: true, confirmDocument: confirmDocument, describeApi: true);
+            var result = await current.Send("describe_api", new { type = "Wall" });
+            Assert.True(result.Value<bool>("ok"));
+            Assert.Equal("describe_api", Assert.Single(current.Requests).Value<string>("command"));
+        }
+
         [Fact]
         public async Task Fake_host_diagnostics_are_written_only_to_the_test_directory()
         {
@@ -88,7 +104,7 @@ namespace RvtMcp.Tests
         private TcpClient _client;
         public ConcurrentQueue<JObject> Requests { get; } = new ConcurrentQueue<JObject>();
 
-        public ReportTestWire(bool agentReports, bool readOnly = false, bool confirmDocument = true, bool provenance = false)
+        public ReportTestWire(bool agentReports, bool readOnly = false, bool confirmDocument = true, bool provenance = false, bool describeApi = false)
         {
             Directory.CreateDirectory(_root);
             _listener.Start();
@@ -97,6 +113,7 @@ namespace RvtMcp.Tests
             var capabilities = new JArray("tool_catalog", "controlled_failures_v1", "document_target_v1");
             if (agentReports) capabilities.Add("agent_reports_v1");
             if (provenance) capabilities.Add("agent_report_provenance_v1");
+            if (describeApi) capabilities.Add("describe_api_v1");
             var descriptor = new JObject
             {
                 ["schema_version"] = 3, ["host_app"] = "revit", ["host_year"] = 2024,
@@ -145,10 +162,13 @@ namespace RvtMcp.Tests
             catch (ObjectDisposedException) { }
         }
 
-        public async Task<JObject> Send(object parameters = null)
+        public Task<JObject> Send(object parameters = null) =>
+            Send("report_task_result", parameters ?? new { task_id = "job-1", outcome = "completed", summary = "Done" });
+
+        public async Task<JObject> Send(string command, object parameters)
         {
             var context = TargetCallContext.Begin();
-            try { return await ToolGateway.SendToRevit("report_task_result", parameters ?? new { task_id = "job-1", outcome = "completed", summary = "Done" }); }
+            try { return await ToolGateway.SendToRevit(command, parameters); }
             finally { TargetCallContext.End(context); }
         }
 

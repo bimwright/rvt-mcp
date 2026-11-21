@@ -60,6 +60,84 @@ namespace Autodesk.Revit.UI {
             finally { AppDomain.CurrentDomain.AssemblyResolve -= resolve; }
         }
 
+        [Theory]
+        [InlineData("var doc = app.ActiveUIDocument?.Document; return doc == null && uidoc == null;")]
+        [InlineData("var uidoc = app.ActiveUIDocument; return doc == null && uidoc == null;")]
+        [InlineData("var uidoc = app.ActiveUIDocument; var doc = uidoc?.Document; return doc == null;")]
+        [InlineData("var app = \"mine\"; return app == \"mine\" && doc == null && uidoc == null;")]
+        [InlineData("Autodesk.Revit.DB.Document doc = null, other = null; return doc == other;")]
+        public void Body_that_declares_its_own_app_uidoc_or_doc_keeps_its_own(string code)
+        {
+            Assert.Equal(true, Run(Compile(new ScriptInput(code))));
+            Assert.Equal(true, Run(Compile(new ScriptInput(code, ScriptData.FromJson("{}"))), "{}"));
+        }
+
+        [Fact]
+        public void Body_that_redeclares_doc_in_a_nested_scope_still_fails_to_compile()
+        {
+            var result = Compile(new ScriptInput("if (doc == null) { var doc = 1; return doc; } return 0;"));
+            Assert.Contains(result.Diagnostics, d => d.DiagnosticId == "CS0136");
+        }
+
+        [Fact]
+        public void Full_source_without_any_using_gets_the_default_imports()
+        {
+            var bare = "public static class McpDynamicScript { public static object Run(UIApplication app, JObject data)" +
+                       " { var seen = new List<Document>(); return seen.Count + (int)data[\"n\"]; } }";
+            Assert.Equal(7, Run(Compile(new ScriptInput(bare, ScriptData.FromJson("{\"n\":7}"))), "{\"n\":7}"));
+        }
+
+        [Fact]
+        public void Full_source_with_its_own_usings_gets_no_import_added()
+        {
+            var own = "using System;\npublic static class McpDynamicScript { public static object Run(UIApplication app) { return 1; } }";
+            Assert.Contains(Compile(new ScriptInput(own)).Diagnostics, d => d.DiagnosticId == "CS0246" && d.Message.Contains("UIApplication"));
+        }
+
+        [Fact]
+        public void Body_that_closes_Run_itself_gets_the_shape_hint_and_other_errors_do_not()
+        {
+            // Two stray braces is not the one shape that is repaired.
+            var closed = Compile(new ScriptInput("return 1;\n}\n}\nclass Helper {\n int n;"));
+            Assert.Equal(SendCodeCompiler.StrayBraceHint, closed.Hint);
+            Assert.Contains(closed.Diagnostics, d => d.DiagnosticId == "CS1022");
+            Assert.Null(closed.Repair);
+
+            Assert.Null(Compile(new ScriptInput("return missingName;")).Hint);
+            Assert.Null(Compile(new ScriptInput("return 1;\nclass Helper { int n; }")).Hint);
+        }
+
+        [Theory]
+        [InlineData("return Helper.Two();\n}\nclass Helper {\n public static int Two() => 2;")]
+        [InlineData("return Two();\n}\nstatic int Two() {\n return 2;")]
+        public void Body_that_closes_Run_and_leaves_the_last_declaration_open_is_repaired_and_says_so(string code)
+        {
+            var result = Compile(new ScriptInput(code));
+            Assert.Equal(2, Run(result));
+            Assert.Contains("line 2", result.Repair);
+        }
+
+        [Fact]
+        public void Repaired_body_keeps_the_callers_line_and_column_numbers()
+        {
+            var result = Compile(new ScriptInput("return 1;\n} class Helper {\n int n = missingName;"));
+            var error = Assert.Single(result.Diagnostics);
+            Assert.Equal("CS0103", error.DiagnosticId);
+            Assert.Equal(3, error.Line);
+            Assert.Equal(10, error.Column);
+            Assert.Null(result.Hint);
+        }
+
+        [Theory]
+        [InlineData("return 1;\nclass Helper { int n; }")]
+        [InlineData("return 1;\n}")]
+        [InlineData("if (doc == null) { return 1;")]
+        public void Script_of_any_other_shape_is_compiled_as_sent(string code)
+        {
+            Assert.Equal(code, SendCodeSourceBuilder.RepairSelfClosedBody(code, out var line));
+            Assert.Equal(0, line);
+        }
+
         [Fact]
         public void Data_is_bound_as_json_text_without_changing_script_source()
         {

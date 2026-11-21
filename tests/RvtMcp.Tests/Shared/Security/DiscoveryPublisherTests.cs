@@ -42,6 +42,7 @@ namespace RvtMcp.Tests
             var descriptor = JObject.Parse(File.ReadAllText(Path.Combine(_dir, publisher.FileName)));
 
             Assert.Contains((JArray)descriptor["capabilities"], value => value.Value<string>() == "agent_reports_v1");
+            Assert.Contains((JArray)descriptor["capabilities"], value => value.Value<string>() == "describe_api_v1");
         }
 
         [Fact]

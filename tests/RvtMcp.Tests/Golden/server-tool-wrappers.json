@@ -1693,6 +1693,28 @@
       "result": "Error: golden probe failure"
     }
   },
+  "revit_describe_api": {
+    "success": {
+      "calls": [
+        {
+          "command": "describe_api",
+          "params": "{\"type\":\"Wall\",\"member\":null}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "describe_api",
+          "params": "{\"type\":\"Wall\",\"member\":null}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
   "revit_detect_firm_profile": {
     "success": {
       "calls": [

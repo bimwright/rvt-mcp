@@ -133,6 +133,12 @@ public class McpDynamicScript
 
 The language remains C#. TypeScript or Python payloads are not supported by this Roslyn-based endpoint. A different language engine would still need to respect Revit API transactions, interface implementations, and failure handling.
 
+## Compile errors and the Revit API
+
+A failed compile returns `SCRIPT_COMPILE_FAILED` with the diagnostics. When the Revit API of this Revit explains the error, the diagnostic carries a `hint` (also printed under it in the error text): where a missing member really is (a subtype to cast to, a property that leads to it, or the closest member names), the real signatures of a wrongly called method or constructor (the overload that accepts the named argument first; static factories for types without a public constructor), or the namespace of an unknown type. Hints are advisory and come only from the API the script was compiled against.
+
+`revit_describe_api(type, member)` lists one API type of the running Revit without a document: constructors and static factories, members with C# types, enum values, obsolete marks, base types and direct subtypes. Use it before writing a script against an unfamiliar type, for example `type="FamilyManager", member="Parameter"`. Named indexed properties appear as the `get_Name(...)` calls C# needs.
+
 ## Stairs and failure handling
 
 For a stair creation request, start with the [stairs conversation workflow](stairs-workflow.md). It explains execution safeguards and provides questions for unresolved design choices. Use it to agree the layout and railing intent before adapting the technical pattern below; a dedicated `create_stairs` tool is deferred.

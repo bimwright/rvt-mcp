@@ -134,13 +134,15 @@ namespace RvtMcp.Plugin.Handlers
                     state?.Failed();
                     Failures.FailureControl.NotifyCompileFailed();
                     return new CommandResult { Success = false,
-                        Error = compiled.ErrorCode + ": " + string.Join("\n", compiled.Diagnostics.Select(d =>
-                            McpResponsePrivacy.RedactErrorForResponse(d.Source + ":" + d.Line + ":" + d.Column + " " + d.DiagnosticId + " " + d.Message)))
+                        Error = compiled.ErrorCode + ": " + (compiled.Hint == null ? "" : compiled.Hint + "\n") + string.Join("\n", compiled.Diagnostics.Select(d =>
+                            McpResponsePrivacy.RedactErrorForResponse(d.Source + ":" + d.Line + ":" + d.Column + " " + d.DiagnosticId + " " + d.Message
+                                + (d.Hint == null ? "" : "\n  hint: " + d.Hint))))
                             + SkippedNote(skipped),
                         Data = new { compiled = false, compile_only = input.CompileOnly, executed = false,
                             diagnostics = compiled.Diagnostics.Select(d => new {
                                 source = McpResponsePrivacy.RedactErrorForResponse(d.Source), line = d.Line, column = d.Column,
-                                diagnostic_id = d.DiagnosticId, message = McpResponsePrivacy.RedactErrorForResponse(d.Message) }).ToArray() } };
+                                diagnostic_id = d.DiagnosticId, message = McpResponsePrivacy.RedactErrorForResponse(d.Message),
+                                hint = d.Hint == null ? null : McpResponsePrivacy.RedactErrorForResponse(d.Hint) }).ToArray() } };
                 }
                 if (input.CompileOnly)
                 {
@@ -156,6 +158,12 @@ namespace RvtMcp.Plugin.Handlers
                 state?.Invoking();
                 using (McpDocument.Begin(app)) output = method.Invoke(null, new object[] { app, input.Data.Json });
                 output = state == null ? output : state.Complete(output);
+                if (compiled.Repair != null)
+                {
+                    var repairedResult = new System.Collections.Generic.Dictionary<string, object> { ["executed"] = true, ["result"] = output, ["script_repair"] = compiled.Repair };
+                    if (skipped.Length != 0) repairedResult["skipped_references"] = SkippedDto(skipped);
+                    return CommandResult.Ok(repairedResult);
+                }
                 if (skipped.Length != 0)
                     return CommandResult.Ok(new { executed = true, result = output, skipped_references = SkippedDto(skipped) });
                 return CommandResult.Ok(new { executed = true, result = output });

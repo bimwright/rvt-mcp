@@ -19,6 +19,31 @@ namespace RvtMcp.Plugin
             "Autodesk.Revit.DB.Plumbing", "Autodesk.Revit.DB.Structure", "Autodesk.Revit.UI"
         };
 
+        /// <summary>
+        /// A body written as if it were pasted inside Run: statements, a '}' that "closes Run", then a helper type or
+        /// method left open for the wrapper to close. Exactly that shape (one stray '}', one missing at the end, nothing
+        /// else wrong) is moved into the supported one: the stray brace is blanked in place, so line and column numbers
+        /// stay the caller's, and the missing one is appended. Anything else is returned unchanged.
+        /// </summary>
+        internal static string RepairSelfClosedBody(string code, out int repairedLine)
+        {
+            repairedLine = 0;
+            if (string.IsNullOrEmpty(code)) return code;
+            var tree = CSharpSyntaxTree.ParseText(code);
+            var errors = tree.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToArray();
+            if (errors.Length != 2) return code;
+            var stray = errors.FirstOrDefault(d => d.Id == "CS1022");
+            var missing = errors.FirstOrDefault(d => d.Id == "CS1513");
+            if (stray == null || missing == null) return code;
+            var at = stray.Location.SourceSpan.Start;
+            if (at >= code.Length || code[at] != '}' || missing.Location.SourceSpan.Start < code.TrimEnd().Length) return code;
+
+            var repaired = code.Substring(0, at) + " " + code.Substring(at + 1) + "\n}";
+            if (CSharpSyntaxTree.ParseText(repaired).GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error)) return code;
+            repairedLine = stray.Location.GetLineSpan().StartLinePosition.Line + 1;
+            return repaired;
+        }
+
         internal static string BuildEnhanced(string code, bool hasData, bool taskContract)
         {
             var root = CSharpSyntaxTree.ParseText(code).GetCompilationUnitRoot();
@@ -37,11 +62,14 @@ namespace RvtMcp.Plugin
             imports.AddRange(root.Externs.Select(Mapped));
             // Generated imports follow the caller's: global usings must precede ordinary ones.
             imports.AddRange(root.Usings.Select(Mapped));
-            if (!fullSource)
+            // A full source without a single using cannot name a Revit type yet, so the defaults can only help it;
+            // one that brings its own usings keeps exactly those.
+            var defaults = !fullSource || root.Usings.Count == 0;
+            if (defaults)
                 foreach (var name in DefaultImports)
                     if (!root.Usings.Any(u => u.Alias == null && u.StaticKeyword.IsKind(SyntaxKind.None) && u.Name.ToString() == name))
                         imports.Add("using " + name + ";\n");
-            if (hasData && !fullSource && !root.Usings.Any(u => u.Name.ToString() == "Newtonsoft.Json.Linq" && u.Alias == null))
+            if (hasData && defaults && !root.Usings.Any(u => u.Name.ToString() == "Newtonsoft.Json.Linq" && u.Alias == null))
                 imports.Add("using Newtonsoft.Json.Linq;\n");
             if (taskContract && !root.Usings.Any(u => u.Name.ToString() == "RvtMcp.Plugin" && u.Alias == null))
                 imports.Add("using RvtMcp.Plugin;\n");
@@ -49,14 +77,19 @@ namespace RvtMcp.Plugin
             var ending = root.EndOfFileToken.LeadingTrivia.ToFullString();
             if (fullSource)
                 return "#line hidden\n" + symbols + string.Concat(imports) + string.Concat(root.Members.Select(Mapped)) + ending;
+            // A body that declares its own app, uidoc or doc at the top level means that one; the generated local of the
+            // same name would only turn the script into CS0128/CS0136.
+            var own = new HashSet<string>(statements.Select(s => s.Statement).OfType<LocalDeclarationStatementSyntax>()
+                .SelectMany(d => d.Declaration.Variables).Select(v => v.Identifier.ValueText));
+            var app = own.Contains("app") ? "__mcpApp" : "app";
+            var prelude = (own.Contains("uidoc") ? "" : "  var uidoc = " + app + ".ActiveUIDocument;\n")
+                + (own.Contains("doc") ? "" : "  var doc = " + app + ".ActiveUIDocument?.Document;\n");
             // global:: keeps caller aliases such as "using Autodesk = ..." from capturing generated references.
             return "#line hidden\n" + symbols + string.Concat(imports) + @"
 #line hidden
 public class McpDynamicScript {
- public static object Run(global::Autodesk.Revit.UI.UIApplication app" + (hasData ? ", global::Newtonsoft.Json.Linq.JObject data" : "") + @") {
-  var uidoc = app.ActiveUIDocument;
-  var doc = uidoc?.Document;
-" + string.Concat(statements.Select(Mapped)) + @"
+ public static object Run(global::Autodesk.Revit.UI.UIApplication " + app + (hasData ? ", global::Newtonsoft.Json.Linq.JObject data" : "") + @") {
+" + prelude + string.Concat(statements.Select(Mapped)) + @"
 #line hidden
  }
 }

@@ -91,5 +91,108 @@ namespace RvtMcp.Tests
             var validCaptures = Path.Combine(PathAllowlist.CapturesDirectory, "test.jpg");
             Assert.Null(CaptureOutputPath.Validate(validCaptures));
         }
+
+        [Fact]
+        public void PruneGenerated_drops_old_then_oldest_generated_captures_and_nothing_else()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "rvtmcp-capture-prune-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(Path.Combine(folder, "sub"));
+            var now = new DateTime(2026, 11, 21, 0, 0, 0, DateTimeKind.Utc);
+            string Make(string name, int ageDays, int bytes)
+            {
+                var path = Path.Combine(folder, name);
+                File.WriteAllBytes(path, new byte[bytes]);
+                File.SetLastWriteTimeUtc(path, now.AddDays(-ageDays));
+                return path;
+            }
+            try
+            {
+                var expired = Make("capture-20261001-101010-0123abcd - 3D View - A.png", 40, 10);
+                var oldest = Make("capture-20261101-101010-0123abcd.png", 20, 400);
+                var middle = Make("capture-20261110-101010-0123abcd.jpg", 11, 400);
+                var newest = Make("capture-20261120-101010-0123abcd.png", 1, 400);
+                var named = Make("before-fix - 3D View - A.png", 90, 400);
+                var lookalike = Make("capture-notes.png", 90, 400);
+                var nested = Make(Path.Combine("sub", "capture-20261001-101010-0123abcd.png"), 90, 400);
+
+                // Budget 900: the expired file goes by age, then the oldest until the rest fits.
+                Assert.Equal(2, CaptureOutputPath.PruneGenerated(folder, newest, now, days: 30, budget: 900));
+                Assert.False(File.Exists(expired));
+                Assert.False(File.Exists(oldest));
+                foreach (var kept in new[] { middle, newest, named, lookalike, nested }) Assert.True(File.Exists(kept), kept);
+
+                // The file just written survives even when it alone exceeds the budget.
+                Assert.Equal(1, CaptureOutputPath.PruneGenerated(folder, newest, now, days: 30, budget: 100));
+                Assert.True(File.Exists(newest));
+                Assert.False(File.Exists(middle));
+
+                Assert.Equal(0, CaptureOutputPath.PruneGenerated(Path.Combine(folder, "missing"), null, now));
+            }
+            finally { Directory.Delete(folder, true); }
+        }
+
+        [Fact]
+        public void Validate_path_under_an_extra_root_is_accepted_and_a_sibling_folder_is_not()
+        {
+            var roots = new[] { @"Q:\Out" };
+            Assert.Null(CaptureOutputPath.Validate(@"Q:\Out\views\plan.png", roots));
+
+            var err = CaptureOutputPath.Validate(@"Q:\OutEvil\plan.png", roots);
+            Assert.Contains("must be inside %TEMP%", err);
+        }
+
+        [Fact]
+        public void Validate_extra_root_keeps_the_traversal_and_canonical_checks()
+        {
+            var roots = new[] { @"Q:\Out" };
+            Assert.Contains("cannot contain '..'", CaptureOutputPath.Validate(@"Q:\Out\..\Windows\plan.png", roots));
+            Assert.Contains("must be canonical", CaptureOutputPath.Validate(@"Q:\Out\\plan.png", roots));
+        }
+
+        [Fact]
+        public void Validate_rejection_lists_every_allowed_folder_and_names_the_setting()
+        {
+            var err = CaptureOutputPath.Validate(@"Q:\Elsewhere\plan.png", new[] { @"Q:\Out" });
+            Assert.Contains(PathAllowlist.TempDirectory, err);
+            Assert.Contains(PathAllowlist.CapturesDirectory, err);
+            Assert.Contains(@"Q:\Out", err);
+            Assert.Contains("Omit output_path", err);
+            Assert.Contains("captureRoots", err);
+            Assert.Contains(RvtMcpConfig.EnvCaptureRoots, err);
+        }
+
+        [Fact]
+        public void CaptureRoots_reads_an_array_or_a_semicolon_string_and_drops_what_is_not_an_absolute_local_folder()
+        {
+            var entries = new Newtonsoft.Json.Linq.JArray(
+                @"Q:\Out", @"relative\folder", "Q:drive-relative", @"\\server\share", @"%NOT_A_REAL_VARIABLE%\x", 7, @"q:\out");
+            Assert.Equal(new[] { @"Q:\Out" }, RvtMcpConfig.ReadCaptureRoots(entries));
+
+            var fromText = RvtMcpConfig.ReadCaptureRoots(new Newtonsoft.Json.Linq.JValue(@" Q:\Out ; R:\Shots ;; "));
+            Assert.Equal(new[] { @"Q:\Out", @"R:\Shots" }, fromText);
+
+            Assert.Empty(RvtMcpConfig.ReadCaptureRoots(null));
+            Assert.Empty(RvtMcpConfig.ReadCaptureRoots(new Newtonsoft.Json.Linq.JObject()));
+        }
+
+        [Fact]
+        public void CaptureRoots_come_from_the_config_file_and_the_environment_overrides_it()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "rvtmcp-capture-roots-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            try
+            {
+                var file = Path.Combine(folder, "config.json");
+                File.WriteAllText(file, new Newtonsoft.Json.Linq.JObject
+                {
+                    ["captureRoots"] = new Newtonsoft.Json.Linq.JArray(@"Q:\Out")
+                }.ToString());
+
+                Assert.Equal(new[] { @"Q:\Out" }, RvtMcpConfig.LoadReadOnly(file, _ => null).CaptureRootsOrEmpty);
+                Assert.Equal(new[] { @"R:\Shots" }, RvtMcpConfig.LoadReadOnly(file,
+                    name => name == RvtMcpConfig.EnvCaptureRoots ? @"R:\Shots" : null).CaptureRootsOrEmpty);
+            }
+            finally { Directory.Delete(folder, true); }
+        }
     }
 }

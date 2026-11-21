@@ -313,7 +313,8 @@ namespace RvtMcp.Plugin.Views.Toast
             return string.Join(" · ", parts);
         }
 
-        internal static bool IsSafeImagePath(string path, string tempDirectory = null, string capturesDirectory = null)
+        internal static bool IsSafeImagePath(string path, string tempDirectory = null, string capturesDirectory = null,
+            System.Collections.Generic.IReadOnlyList<string> extraRoots = null)
         {
             if (string.IsNullOrWhiteSpace(path))
                 return false;
@@ -331,8 +332,19 @@ namespace RvtMcp.Plugin.Views.Toast
                 if (ext != ".png" && ext != ".jpg" && ext != ".jpeg")
                     return false;
 
-                return PathAllowlist.IsUnderTempOrCaptures(full, tempDirectory ?? PathAllowlist.TempDirectory,
-                    capturesDirectory ?? PathAllowlist.CapturesDirectory);
+                if (PathAllowlist.IsUnderTempOrCaptures(full, tempDirectory ?? PathAllowlist.TempDirectory,
+                    capturesDirectory ?? PathAllowlist.CapturesDirectory))
+                    return true;
+                if (tempDirectory == null && PathAllowlist.IsUnderRoot(full, PathAllowlist.UserTempDirectory))
+                    return true;
+
+                // A capture written to a folder the owner allowed shows its thumbnail too.
+                if (extraRoots == null && tempDirectory == null && capturesDirectory == null)
+                    extraRoots = CaptureOutputPath.ConfiguredRoots();
+                if (extraRoots != null)
+                    foreach (var root in extraRoots)
+                        if (PathAllowlist.IsUnderRoot(full, root)) return true;
+                return false;
             }
             catch
             {

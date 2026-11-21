@@ -20,7 +20,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-256%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-257%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -96,10 +96,10 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
-| 全新安装 | **256** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
-| 裸 `rvt-mcp.exe` | **62** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **256** | 完整目录 |
-| `all` + adaptive bake | **259** | 再加 3 个 suggestion 生命周期工具 |
+| 全新安装 | **257** | `install.ps1` 在 `rvtmcp.config.json` 中写入 `"toolsets": ["all"]` |
+| 裸 `rvt-mcp.exe` | **63** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **257** | 完整目录 |
+| `all` + adaptive bake | **260** | 再加 3 个 suggestion 生命周期工具 |
 
 数量不含个人 baked 工具。只有当 `rvtmcp.config.json` 尚未设置 `toolsets` 时安装器才会写入默认值——你的自定义列表在升级时保留；删除该键（或设置自己的 CSV）则裸服务器回到 62 个工具。Read-only 按 `ReadOnly=true` 逐个筛选工具，因此混合 toolset 中的读取工具仍可用。即使默认 output 是 inline，能写文件的工具也会被排除；agent 报告只写入用户自己的报告数据，因此允许使用。
 
@@ -212,6 +212,7 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 | spill 文件保留时间（默认 36 小时） | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
 | Agent 报告保留时间（默认 30 天） | — | — | `reportRetentionDays` |
 | LAN 绑定（插件） | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
+| `revit_capture_view_image` 的额外输出文件夹（插件；默认无） | — | `BIMWRIGHT_CAPTURE_ROOTS=D:\Out;E:\Shots` | `captureRoots` |
 | ToolBaker 表面 | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
 | Adaptive bake | `--enable-adaptive-bake` / `--disable-adaptive-bake` | `BIMWRIGHT_ENABLE_ADAPTIVE_BAKE=1` | `enableAdaptiveBake` |
 | 缓存 send_code 正文（bake 聚类） | `--cache-send-code-bodies` / `--no-…` | `BIMWRIGHT_CACHE_SEND_CODE_BODIES=1` | `cacheSendCodeBodies` |
@@ -260,6 +261,7 @@ Annotations 描述每个工具对文档和文件的影响。临时 selection、a
       "mcp__rvt-mcp__revit_compute_element_volume",
       "mcp__rvt-mcp__revit_detect_firm_profile",
       "mcp__rvt-mcp__revit_detect_system_elements",
+      "mcp__rvt-mcp__revit_describe_api",
       "mcp__rvt-mcp__revit_find_elements_in_volume",
       "mcp__rvt-mcp__revit_find_mep_disconnects",
       "mcp__rvt-mcp__revit_find_overlapping_elements",
