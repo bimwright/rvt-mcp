@@ -126,7 +126,17 @@ public class TagHandlerTests
         // tag_all_walls has no viewId parameter: it must ask for the view to be activated.
         Assert.Contains(scenario == "walls:sheet" ? "revit_activate_view" : "pass the viewId", result.Value<string>("error"));
         Assert.Contains("Level 1 (viewId 100)", result.Value<string>("error"));
+        Assert.DoesNotContain("Approach", result.Value<string>("error")); // a rendering cannot hold tags
         Assert.Equal(0, result.Value<int>("transactions"));
+    }
+
+    [Fact]
+    public void A_sheet_holding_only_images_says_no_model_view_is_placed()
+    {
+        var result = Run("walls:image_sheet");
+        Assert.False(result.Value<bool>("success"));
+        Assert.Contains("No model view is placed on it.", result.Value<string>("error"));
+        Assert.DoesNotContain("Approach", result.Value<string>("error"));
     }
 
     [Theory]
@@ -232,7 +242,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 namespace Autodesk.Revit.DB {
  public enum BuiltInCategory { INVALID=-1,OST_Walls=-2000011,OST_Doors=-2000023,OST_Rooms=-2000160,OST_Areas=-2003200,OST_WallTags=-2000220,OST_DoorTags=-2000460,OST_RoomTags=-2000480,OST_AreaTags=-2005020,OST_KeynoteTags=-2005008,OST_MultiCategoryTags=-2008032 }
- public enum ViewType { FloorPlan,AreaPlan,DrawingSheet,Schedule,ColumnSchedule,ProjectBrowser,SystemBrowser,Legend }
+ public enum ViewType { FloorPlan,AreaPlan,Rendering,DrawingSheet,Schedule,ColumnSchedule,ProjectBrowser,SystemBrowser,Legend }
  public enum TagMode { TM_ADDBY_CATEGORY }
  public enum TagOrientation { Horizontal,Vertical }
  public enum SpatialElementTagOrientation { Horizontal,Vertical }
@@ -335,7 +345,12 @@ public static class Probe {
   var plan=doc.Add(new ViewPlan{Id=new ElementId(100),Name="Level 1",ViewType=ViewType.FloorPlan});
   var sheet=doc.Add(new ViewSheet{Id=new ElementId(200),Name="Sheet A",ViewType=ViewType.DrawingSheet,InViews=new int[0]});
   doc.Add(new Viewport{Id=new ElementId(201),ViewId=plan.Id,InViews=new[]{200}}); sheet.Viewports.Add(new ElementId(201));
-  doc.ActiveView=kase=="sheet"?(View)sheet:plan;
+  // A rendering (an image) on the sheet is not suggested as a place for tags.
+  var image=doc.Add(new View{Id=new ElementId(400),Name="Approach",ViewType=ViewType.Rendering,InViews=new int[0]});
+  doc.Add(new Viewport{Id=new ElementId(202),ViewId=image.Id,InViews=new[]{200}}); sheet.Viewports.Add(new ElementId(202));
+  var imageSheet=doc.Add(new ViewSheet{Id=new ElementId(210),Name="Image Sheet",ViewType=ViewType.DrawingSheet,InViews=new int[0]});
+  doc.Add(new Viewport{Id=new ElementId(211),ViewId=image.Id,InViews=new[]{210}}); imageSheet.Viewports.Add(new ElementId(211));
+  doc.ActiveView=kase=="sheet"?(View)sheet:kase=="image_sheet"?imageSheet:plan;
   Line L(double x)=>new Line{A=new XYZ(x,0,0),B=new XYZ(x,10,0)};
   var w1=doc.Add(new Wall{Id=new ElementId(1),Category=Cat(doc,BuiltInCategory.OST_Walls),Location=new LocationCurve{Curve=L(0)}});
   doc.Add(new Wall{Id=new ElementId(2),Category=Cat(doc,BuiltInCategory.OST_Walls),Location=new LocationCurve{Curve=L(5)}});

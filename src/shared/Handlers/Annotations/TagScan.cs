@@ -60,7 +60,10 @@ namespace RvtMcp.Plugin.Handlers
             return ids;
         }
 
-        /// <summary>The refusal for a sheet, naming the model views placed on it; null for any other view.</summary>
+        /// <summary>
+        /// The refusal for a sheet, naming the views placed on it that can hold tags (not renderings,
+        /// legends or drafting views); null for any other view.
+        /// </summary>
         public static string SheetRefusal(Document doc, View view, bool usesActiveView = false)
         {
             if (!(view is ViewSheet sheet))
@@ -70,7 +73,7 @@ namespace RvtMcp.Plugin.Handlers
                 .Select(id => doc.GetElement(id) as Viewport)
                 .Where(vp => vp != null)
                 .Select(vp => doc.GetElement(vp.ViewId) as View)
-                .Where(v => v != null)
+                .Where(v => v != null && TagViewPolicy.IsTaggableViewType(v.ViewType.ToString()))
                 .Select(v => new KeyValuePair<long, string>(RevitCompat.GetId(v.Id), v.Name))
                 .ToList();
             return TagViewPolicy.SheetRefusal(view.ViewType.ToString(), view.Name, placed, usesActiveView);

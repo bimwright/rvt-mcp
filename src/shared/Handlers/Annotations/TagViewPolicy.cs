@@ -12,6 +12,16 @@ namespace RvtMcp.Plugin.Handlers
     {
         public const string SheetViewType = "DrawingSheet";
 
+        // Views that show model elements and can hold their tags. A rendering (an image), a legend,
+        // a schedule or a drafting view placed on a sheet cannot.
+        private static readonly HashSet<string> TaggableViewTypes = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "FloorPlan", "CeilingPlan", "EngineeringPlan", "AreaPlan", "Section", "Elevation", "Detail", "ThreeD",
+        };
+
+        /// <summary>True when a view of this ViewType name can hold tags of model elements.</summary>
+        public static bool IsTaggableViewType(string viewType) => viewType != null && TaggableViewTypes.Contains(viewType);
+
         /// <summary>
         /// Returns the refusal for a sheet view, or null when the view type may be tagged. A tool that
         /// tags the active view (it takes no viewId) tells the caller to activate a placed view instead.

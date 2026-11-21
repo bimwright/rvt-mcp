@@ -46,6 +46,20 @@ namespace RvtMcp.Tests
         }
 
         [Theory]
+        [InlineData("FloorPlan", true)]
+        [InlineData("AreaPlan", true)]
+        [InlineData("Section", true)]
+        [InlineData("ThreeD", true)]
+        [InlineData("Rendering", false)] // an image: seen live as the only views on a sample title sheet
+        [InlineData("Legend", false)]
+        [InlineData("DraftingView", false)]
+        [InlineData("Schedule", false)]
+        public void Only_views_that_show_model_elements_are_suggested(string viewType, bool taggable)
+        {
+            Assert.Equal(taggable, TagViewPolicy.IsTaggableViewType(viewType));
+        }
+
+        [Theory]
         [InlineData("FloorPlan")]
         [InlineData("Section")]
         [InlineData("ThreeD")]
