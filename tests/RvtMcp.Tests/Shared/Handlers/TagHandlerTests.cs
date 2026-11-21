@@ -86,6 +86,7 @@ public class TagHandlerTests
     [InlineData("walls:unreadable")]
     [InlineData("find:unreadable")]
     [InlineData("category:unreadable")]
+    [InlineData("walls:interrupted")] // one host read, then the read fails: the partial set is not used
     public void A_tag_that_cannot_be_read_fails_the_call_instead_of_counting_as_no_tag(string scenario)
     {
         var result = Run(scenario);
@@ -226,6 +227,9 @@ namespace Autodesk.Revit.DB {
  public class TagLegacyProperty:IndependentTag { public ElementId TaggedLocalElementId=>Host.Id; }
  public class TagLocalIds:IndependentTag { public ICollection<ElementId> GetTaggedLocalElementIds()=>new List<ElementId>{Host.Id}; }
  public class TagUnreadable:IndependentTag {}
+ public class TagInterrupted:IndependentTag {
+  public IEnumerable<LinkElementId> GetTaggedElementIds(){ yield return new LinkElementId(Host.Id); throw new InvalidOperationException("read stopped"); }
+  public ICollection<ElementId> GetTaggedLocalElementIds()=>throw new InvalidOperationException("read stopped"); }
  public class ItemFactory { public Document Doc;
   public AreaTag NewAreaTag(ViewPlan view,Area area,UV point){ if(Doc.CreateFails)throw new InvalidOperationException("cannot tag");
    return Doc.Add(new AreaTag{Area=area,Category=Category.GetCategory(Doc,BuiltInCategory.OST_AreaTags),InViews=new[]{view.Id.IntegerValue}}); }
@@ -306,6 +310,7 @@ public static class Probe {
   doc.Add(new RoomTag{Id=new ElementId(33),Room=rooms[2],IsTaggingLink=true,Category=Cat(doc,BuiltInCategory.OST_RoomTags),InViews=v});
   doc.Add(new AreaTag{Id=new ElementId(51),Area=areas[0],Category=Cat(doc,BuiltInCategory.OST_AreaTags),InViews=new[]{100,300}});
   if(kase=="keynote")doc.Add(new TagV2022{Id=new ElementId(81),Host=w1,Category=Cat(doc,BuiltInCategory.OST_KeynoteTags),InViews=v});
+  if(kase=="interrupted")doc.Add(new TagInterrupted{Id=new ElementId(92),Host=w1,Category=Cat(doc,BuiltInCategory.OST_WallTags),InViews=v});
   if(kase=="unreadable")doc.Add(new TagUnreadable{Id=new ElementId(91),Host=w1,Category=Cat(doc,BuiltInCategory.OST_WallTags),InViews=v});
   if(kase=="all_fail"||kase=="doors_fail")doc.CreateFails=true;
   if(kase=="visible_fail")doc.VisibleScanFails=true;

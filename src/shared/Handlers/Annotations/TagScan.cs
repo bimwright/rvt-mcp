@@ -72,13 +72,13 @@ namespace RvtMcp.Plugin.Handlers
         }
 
         /// <summary>
-        /// Host ids tagged by one tag. An empty result means the tag tags nothing (an empty tag);
-        /// when no API strategy can be read at all the scan is incomplete and this throws.
+        /// Host ids tagged by one tag. A strategy's ids are used only after it has read to the end;
+        /// an empty result means the tag tags nothing (an empty tag). When no strategy completes a
+        /// read the scan is incomplete and this throws.
         /// </summary>
         public static HashSet<long> GetTaggedElementIds(IndependentTag tag)
         {
-            var ids = new HashSet<long>();
-            if (tag == null) return ids;
+            if (tag == null) return new HashSet<long>();
             var anyRead = false;
             Exception lastError = null;
 
@@ -86,24 +86,17 @@ namespace RvtMcp.Plugin.Handlers
             try
             {
                 var method = tag.GetType().GetMethod("GetTaggedElementIds");
-                if (method != null)
+                if (method != null && method.Invoke(tag, null) is System.Collections.IEnumerable refs)
                 {
-                    var refs = method.Invoke(tag, null) as System.Collections.IEnumerable;
-                    if (refs != null)
+                    var read = new HashSet<long>();
+                    foreach (var linkId in refs)
                     {
-                        anyRead = true;
-                        foreach (var linkId in refs)
-                        {
-                            var hostIdProp = linkId.GetType().GetProperty("HostElementId");
-                            if (hostIdProp != null)
-                            {
-                                var hostId = hostIdProp.GetValue(linkId) as ElementId;
-                                if (hostId != null && hostId != ElementId.InvalidElementId)
-                                    ids.Add(RevitCompat.GetId(hostId));
-                            }
-                        }
-                        if (ids.Count > 0) return ids;
+                        var hostIdProp = linkId.GetType().GetProperty("HostElementId");
+                        if (hostIdProp != null && hostIdProp.GetValue(linkId) is ElementId hostId && hostId != ElementId.InvalidElementId)
+                            read.Add(RevitCompat.GetId(hostId));
                     }
+                    anyRead = true;
+                    if (read.Count > 0) return read;
                 }
             }
             catch (Exception ex) { lastError = ex; }
@@ -114,13 +107,10 @@ namespace RvtMcp.Plugin.Handlers
                 var prop = tag.GetType().GetProperty("TaggedLocalElementId");
                 if (prop != null)
                 {
-                    anyRead = true;
                     var val = prop.GetValue(tag) as ElementId;
+                    anyRead = true;
                     if (val != null && val != ElementId.InvalidElementId)
-                    {
-                        ids.Add(RevitCompat.GetId(val));
-                        return ids;
-                    }
+                        return new HashSet<long> { RevitCompat.GetId(val) };
                 }
             }
             catch (Exception ex) { lastError = ex; }
@@ -129,19 +119,15 @@ namespace RvtMcp.Plugin.Handlers
             try
             {
                 var method = tag.GetType().GetMethod("GetTaggedLocalElementIds");
-                if (method != null)
+                if (method != null && method.Invoke(tag, null) is ICollection<ElementId> localIds)
                 {
-                    var localIds = method.Invoke(tag, null) as ICollection<ElementId>;
-                    if (localIds != null)
+                    var read = new HashSet<long>();
+                    foreach (var lid in localIds)
                     {
-                        anyRead = true;
-                        foreach (var lid in localIds)
-                        {
-                            if (lid != ElementId.InvalidElementId)
-                                ids.Add(RevitCompat.GetId(lid));
-                        }
-                        return ids;
+                        if (lid != ElementId.InvalidElementId)
+                            read.Add(RevitCompat.GetId(lid));
                     }
+                    return read;
                 }
             }
             catch (Exception ex) { lastError = ex; }
@@ -149,7 +135,7 @@ namespace RvtMcp.Plugin.Handlers
             if (!anyRead)
                 throw new InvalidOperationException("Could not read the elements tagged by tag " + RevitCompat.GetId(tag.Id)
                     + (lastError == null ? "." : ": " + (lastError.InnerException ?? lastError).Message));
-            return ids;
+            return new HashSet<long>();
         }
     }
 }
