@@ -382,7 +382,7 @@ namespace RvtMcp.Plugin
             return index.TypesByName.TryGetValue(t.Name, out var all) && all.Count > 1 ? t.ToDisplayString() : shortName;
         };
 
-        private static string[] Nearest(IEnumerable<string> names, string wanted, int count, int minShared = 0) =>
+        internal static string[] Nearest(IEnumerable<string> names, string wanted, int count, int minShared = 0) =>
             names.Distinct(StringComparer.Ordinal)
                 .Select(n => (n, d: Distance(n.ToLowerInvariant(), wanted.ToLowerInvariant()), s: Shared(n, wanted)))
                 .Where(x => x.s >= minShared)

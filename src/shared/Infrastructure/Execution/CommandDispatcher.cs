@@ -16,6 +16,7 @@ namespace RvtMcp.Plugin
             Register(new Handlers.ShowIssueHandler());
             Register(new Handlers.ReportTaskResultHandler());
             Register(new Handlers.ShowReportHandler());
+            Register(new Handlers.DescribeApiHandler());
             Register(new Handlers.GetCurrentViewHandler());
             Register(new Handlers.GetChangeHistoryContextHandler());
             Register(new Handlers.GetSelectedElementsHandler());

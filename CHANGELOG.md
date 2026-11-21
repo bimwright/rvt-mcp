@@ -29,7 +29,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## v3.0.1 (unreleased)
 
-- Development source counts: `--toolsets all` **256**, adaptive bake **259**, and bare defaults **62**.
+- Development source counts: `--toolsets all` **257**, adaptive bake **260**, and bare defaults **63**.
 
 ### Controlled failures and Issues
 
@@ -84,6 +84,7 @@ Install the 3.0.1 gateway and add-ins together. TaskDialog declarations require 
   - A wrong call (`CS1503`, `CS1501`, `CS7036`, `CS1620`, `CS1615`, `CS1729`) shows the real signatures, the overload that accepts the named argument first. A type with no public constructor lists its static factories (`Plane.Create…`).
   - An unknown type (`CS0246`) that exists in another Revit namespace names the `using` to add.
   - A hint is given once per compile. The first one builds a name index of the loaded Revit API (about 0.3 s, 4 MB, once per Revit session).
+- New read-only tool `revit_describe_api` (in `meta`; also with `--read-only` and `--disable-send-code`) lists one Revit API type as loaded in the running Revit: constructors and static factories, properties with get/set, methods with parameter types, enum values, obsolete marks with their replacement text, base types and direct subtypes. Inherited members are grouped by the API type that declares them; `member` narrows the list, which is capped at 200 lines. It reads no document. An add-in older than the gateway answers `CAPABILITY_REQUIRED`.
 - `revit_send_code_to_revit` accepts more of the script shapes agents write:
   - A body that declares its own `app`, `uidoc` or `doc` at the top level keeps its own; the generated one of that name is left out instead of failing with `CS0128` / `CS0136`.
   - A full `McpDynamicScript` source without any `using` gets the default imports. A source with its own usings is compiled as written.

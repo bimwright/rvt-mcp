@@ -106,6 +106,7 @@ namespace RvtMcp.Server
             if (IncludeSendCode(enabled, config)) types.Add(typeof(SendCodeTools));
             if (enabled.Contains("meta"))       types.Add(typeof(MetaTools));
             if (enabled.Contains("meta"))       types.Add(typeof(ReportTools));
+            if (enabled.Contains("meta"))       types.Add(typeof(ApiTools));
             if (enabled.Contains("meta"))       types.Add(typeof(HealthTools));
             if (enabled.Contains("meta"))       types.Add(typeof(ChangeHistoryTools));
             if (enabled.Contains("meta"))       types.Add(typeof(FailureTools));

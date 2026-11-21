@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 256,
+  "tool_count": 257,
   "tools": [
     {
       "name": "revit_acquire_coordinates_from_link",
@@ -3084,6 +3084,32 @@
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
+      }
+    },
+    {
+      "name": "revit_describe_api",
+      "description_hash": "sha256:42c0b9fe55ecba0cd0648a70c453a656d50674dd795e19eda0dca141ca3a5538",
+      "inputSchema": {
+        "properties": {
+          "member": {
+            "description": "",
+            "type": "String"
+          },
+          "type": {
+            "description": "",
+            "type": "String"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {

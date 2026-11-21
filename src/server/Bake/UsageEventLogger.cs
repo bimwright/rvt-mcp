@@ -28,6 +28,7 @@ namespace RvtMcp.Server.Bake
             "show_message",
             "show_issue",
             "show_report",
+            "describe_api",
             "report_task_result",
             "batch_execute"
         };

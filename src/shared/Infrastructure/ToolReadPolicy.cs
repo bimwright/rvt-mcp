@@ -114,6 +114,7 @@ namespace RvtMcp.Plugin
             "show_issue",
             "show_message",
             "show_report",
+            "describe_api",
             "suggest_view_name_corrections",
             "survey_change_impact",
             "workflow_model_audit",
