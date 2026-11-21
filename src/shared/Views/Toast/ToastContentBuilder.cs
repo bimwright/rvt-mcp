@@ -317,7 +317,7 @@ namespace RvtMcp.Plugin.Views.Toast
         /// The capture folders the owner allowed (captureRoots). The add-in sets it when the toast starts, so this file
         /// does not load the configuration itself and stays usable without it (the toast harness).
         /// </summary>
-        internal static Func<System.Collections.Generic.IReadOnlyList<string>> CaptureRootsProvider;
+        internal static Func<System.Collections.Generic.IReadOnlyList<string>> CaptureRootsProvider { get; set; }
 
         internal static bool IsSafeImagePath(string path, string tempDirectory = null, string capturesDirectory = null,
             System.Collections.Generic.IReadOnlyList<string> extraRoots = null)
