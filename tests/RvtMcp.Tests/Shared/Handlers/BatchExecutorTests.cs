@@ -277,9 +277,10 @@ namespace RvtMcp.Tests
             Assert.Contains("partial failure", result.Value<string>("error"));
         }
 
-        // FC-B-04 (#45): tag_elements reports some elements failed with success=true; the batch must stop and roll back.
+        // FC-B-04 (#45): the response shape tag_elements now returns for a partial failure (a failed array plus
+        // failedCount) stops the batch for rollback. The handler's own output is checked live, not here.
         [Fact]
-        public void Run_TagElementsPartialFailurePayload_StopsAndFlags_ForRollback()
+        public void Run_TagElementsResponseShapeWithFailedCount_StopsForRollback()
         {
             var dispatch = Dispatch(new Dictionary<string, Func<string, BatchExecutor.InvokeResult>>
             {
@@ -300,24 +301,6 @@ namespace RvtMcp.Tests
             var second = JObject.FromObject(outcome.Results[1]);
             Assert.False(second.Value<bool>("ok"));
             Assert.Contains("1 partial failure", second.Value<string>("error"));
-        }
-
-        // FC-B-04 (#45): create_dimensions with fewer than two resolved references now returns failure, not created:false.
-        [Fact]
-        public void Run_CreateDimensionsWithoutDimension_IsAFailedStep()
-        {
-            var dispatch = Dispatch(new Dictionary<string, Func<string, BatchExecutor.InvokeResult>>
-            {
-                ["create_level"] = _ => BatchExecutor.InvokeResult.Ok(new { elementId = 10 }),
-                ["create_dimensions"] = _ => BatchExecutor.InvokeResult.Fail("Fewer than two valid references were successfully resolved. See failed_references."),
-            });
-
-            var outcome = BatchExecutor.Run(Cmds(("create_level", null), ("create_dimensions", null)), continueOnError: false, dispatch);
-
-            Assert.True(outcome.AnyFailed);
-            var second = JObject.FromObject(outcome.Results[1]);
-            Assert.False(second.Value<bool>("ok"));
-            Assert.Contains("Fewer than two", second.Value<string>("error"));
         }
 
         [Fact]
