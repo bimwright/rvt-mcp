@@ -23,7 +23,7 @@ namespace RvtMcp.Server
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            // On .NET 8 StartAsync executes until the first await: never put file I/O on startup.
+            // Never put file I/O on the host startup path; yield before the first cleanup.
             await Task.Yield();
             using var timer = new PeriodicTimer(_interval);
             try

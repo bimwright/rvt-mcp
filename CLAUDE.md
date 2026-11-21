@@ -79,8 +79,8 @@ src/
 ├── plugin-r22/               # Revit 2022 shell (.NET 4.8, TCP)
 ├── plugin-r23/               # Revit 2023 shell (.NET 4.8, TCP)
 ├── plugin-r24/               # Revit 2024 shell (.NET 4.8, TCP)
-├── plugin-r25/               # Revit 2025 shell (.NET 8, Named Pipe)
-├── plugin-r26/               # Revit 2026 shell (.NET 8, Named Pipe)
+├── plugin-r25/               # Revit 2025 shell (.NET 8 target; 2025.5 runs it on .NET 10), Named Pipe
+├── plugin-r26/               # Revit 2026 shell (.NET 8 target; 2026.5 runs it on .NET 10), Named Pipe
 └── plugin-r27/               # Revit 2027 shell (.NET 10, Named Pipe)
 ```
 
@@ -142,7 +142,7 @@ MCP Server runs from `src/server/bin/Debug/net10.0/RvtMcp.Server.exe`.
 - Parameter types: ForgeTypeId via `GetDataType()` / `SpecTypeId`
 - Unit detection: `SpecTypeId.Length`, `SpecTypeId.PipeSize`, etc.
 - Newtonsoft.Json 13.0.3 (Revit ships 12.x — binding redirect handles it)
-- Roslyn: Microsoft.CodeAnalysis.CSharp 4.8.0, use AppDomain.GetAssemblies() for refs
+- Roslyn: Microsoft.CodeAnalysis.CSharp 4.13.0 (4.14+ needs System.Collections.Immutable 9.0, which the .NET 8 hosts of Revit 2025/2026 do not provide), use AppDomain.GetAssemblies() for refs
 
 ## Multi-Version Architecture
 

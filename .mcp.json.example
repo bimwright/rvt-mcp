@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "rvt-mcp": {
-      "command": "<ABSOLUTE_PATH_TO_REPO>/src/server/bin/Debug/net8.0/RvtMcp.Server.exe",
+      "command": "<ABSOLUTE_PATH_TO_REPO>/src/server/bin/Debug/net10.0/RvtMcp.Server.exe",
       "args": []
     }
   }

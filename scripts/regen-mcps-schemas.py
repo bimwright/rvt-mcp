@@ -16,7 +16,7 @@ import sys
 import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT_EXE = os.path.join(REPO, "src", "server", "bin", "Release", "net8.0",
+DEFAULT_EXE = os.path.join(REPO, "src", "server", "bin", "Release", "net10.0",
                            "RvtMcp.Server.exe")
 DEFAULT_OUT = os.path.join(REPO, "..", "mcps", "rvt-mcp", "tools")
 
