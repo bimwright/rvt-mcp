@@ -81,7 +81,7 @@ Install the 3.0.1 gateway and add-ins together. TaskDialog declarations require 
 - `revit_send_code_to_revit` accepts more of the script shapes agents write:
   - A body that declares its own `app`, `uidoc` or `doc` at the top level keeps its own; the generated one of that name is left out instead of failing with `CS0128` / `CS0136`.
   - A full `McpDynamicScript` source without any `using` gets the default imports. A source with its own usings is compiled as written.
-  - A body that closes `Run` itself (`CS1022`) is still refused, and the error now starts with a hint on the expected shape.
+  - A body that closes `Run` itself and leaves its last helper type or method open is repaired before compiling: the stray `}` is dropped in place (line and column numbers stay yours) and the missing one is added at the end. The response says so in `script_repair`. Only that exact shape is repaired; any other stray `}` (`CS1022`) is refused with a hint on the expected shape.
 - A DLL loaded in Revit whose metadata the C# compiler cannot read (for example a protected assembly from another add-in) no longer makes every `revit_send_code_to_revit` and baked-tool compile fail with `CS0009`. The file is left out of the compile references and written to the diagnostic log. Send-code results then include `skipped_references` (`name`, `reason`), and compile errors list the skipped names. Fixes [#38](https://github.com/bimwright/rvt-mcp/issues/38).
 
 ### Server memory

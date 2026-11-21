@@ -19,6 +19,31 @@ namespace RvtMcp.Plugin
             "Autodesk.Revit.DB.Plumbing", "Autodesk.Revit.DB.Structure", "Autodesk.Revit.UI"
         };
 
+        /// <summary>
+        /// A body written as if it were pasted inside Run: statements, a '}' that "closes Run", then a helper type or
+        /// method left open for the wrapper to close. Exactly that shape (one stray '}', one missing at the end, nothing
+        /// else wrong) is moved into the supported one: the stray brace is blanked in place, so line and column numbers
+        /// stay the caller's, and the missing one is appended. Anything else is returned unchanged.
+        /// </summary>
+        internal static string RepairSelfClosedBody(string code, out int repairedLine)
+        {
+            repairedLine = 0;
+            if (string.IsNullOrEmpty(code)) return code;
+            var tree = CSharpSyntaxTree.ParseText(code);
+            var errors = tree.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToArray();
+            if (errors.Length != 2) return code;
+            var stray = errors.FirstOrDefault(d => d.Id == "CS1022");
+            var missing = errors.FirstOrDefault(d => d.Id == "CS1513");
+            if (stray == null || missing == null) return code;
+            var at = stray.Location.SourceSpan.Start;
+            if (at >= code.Length || code[at] != '}' || missing.Location.SourceSpan.Start < code.TrimEnd().Length) return code;
+
+            var repaired = code.Substring(0, at) + " " + code.Substring(at + 1) + "\n}";
+            if (CSharpSyntaxTree.ParseText(repaired).GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error)) return code;
+            repairedLine = stray.Location.GetLineSpan().StartLinePosition.Line + 1;
+            return repaired;
+        }
+
         internal static string BuildEnhanced(string code, bool hasData, bool taskContract)
         {
             var root = CSharpSyntaxTree.ParseText(code).GetCompilationUnitRoot();

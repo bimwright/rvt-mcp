@@ -25,6 +25,8 @@ namespace RvtMcp.Plugin
         public ScriptCompileDiagnostic[] Diagnostics { get; set; } = Array.Empty<ScriptCompileDiagnostic>();
         /// <summary>One line on how to fix the script's shape, shown before the diagnostics; null when there is none.</summary>
         public string Hint { get; set; }
+        /// <summary>What was changed in the script's shape before compiling; null when it was compiled as sent.</summary>
+        public string Repair { get; set; }
         public byte[] AssemblyBytes { get; set; }
         public Dictionary<string, string[]> ModuleSignatures { get; set; } = new Dictionary<string, string[]>(StringComparer.Ordinal);
         public const string EntryType = "__RvtMcpSendCodeEntry";
@@ -52,7 +54,10 @@ namespace RvtMcp.Plugin
                 }
                 trees.Add(tree);
             }
-            trees.Add(CSharpSyntaxTree.ParseText(SendCodeSourceBuilder.BuildEnhanced(input.Code, input.Data.IsProvided,
+            var code = SendCodeSourceBuilder.RepairSelfClosedBody(input.Code, out var repairedLine);
+            var repair = repairedLine == 0 ? null : "The '}' on line " + repairedLine + " closed nothing and was dropped; the last declaration was closed " +
+                "at the end. Send statements only (do not close the body), then complete helper types.";
+            trees.Add(CSharpSyntaxTree.ParseText(SendCodeSourceBuilder.BuildEnhanced(code, input.Data.IsProvided,
                 input.ResultContract == ScriptModes.TaskV1), path: "script"));
             var compilation = CSharpCompilation.Create("McpDynamic_" + Guid.NewGuid().ToString("N"), trees, references,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
@@ -97,7 +102,7 @@ namespace RvtMcp.Plugin
             {
                 var emitted = compilation.Emit(bytes);
                 if (!emitted.Success) return Diagnostics(emitted.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
-                return new ScriptCompileResult { Success = true, AssemblyBytes = input.CompileOnly ? null : bytes.ToArray(), ModuleSignatures = signatures };
+                return new ScriptCompileResult { Success = true, AssemblyBytes = input.CompileOnly ? null : bytes.ToArray(), ModuleSignatures = signatures, Repair = repair };
             }
         }
 

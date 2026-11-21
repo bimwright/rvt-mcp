@@ -97,12 +97,45 @@ namespace Autodesk.Revit.UI {
         [Fact]
         public void Body_that_closes_Run_itself_gets_the_shape_hint_and_other_errors_do_not()
         {
-            var closed = Compile(new ScriptInput("return 1;\n}\nclass Helper {\n int n;"));
+            // Two stray braces is not the one shape that is repaired.
+            var closed = Compile(new ScriptInput("return 1;\n}\n}\nclass Helper {\n int n;"));
             Assert.Equal(SendCodeCompiler.StrayBraceHint, closed.Hint);
             Assert.Contains(closed.Diagnostics, d => d.DiagnosticId == "CS1022");
+            Assert.Null(closed.Repair);
 
             Assert.Null(Compile(new ScriptInput("return missingName;")).Hint);
             Assert.Null(Compile(new ScriptInput("return 1;\nclass Helper { int n; }")).Hint);
+        }
+
+        [Theory]
+        [InlineData("return Helper.Two();\n}\nclass Helper {\n public static int Two() => 2;")]
+        [InlineData("return Two();\n}\nstatic int Two() {\n return 2;")]
+        public void Body_that_closes_Run_and_leaves_the_last_declaration_open_is_repaired_and_says_so(string code)
+        {
+            var result = Compile(new ScriptInput(code));
+            Assert.Equal(2, Run(result));
+            Assert.Contains("line 2", result.Repair);
+        }
+
+        [Fact]
+        public void Repaired_body_keeps_the_callers_line_and_column_numbers()
+        {
+            var result = Compile(new ScriptInput("return 1;\n} class Helper {\n int n = missingName;"));
+            var error = Assert.Single(result.Diagnostics);
+            Assert.Equal("CS0103", error.DiagnosticId);
+            Assert.Equal(3, error.Line);
+            Assert.Equal(10, error.Column);
+            Assert.Null(result.Hint);
+        }
+
+        [Theory]
+        [InlineData("return 1;\nclass Helper { int n; }")]
+        [InlineData("return 1;\n}")]
+        [InlineData("if (doc == null) { return 1;")]
+        public void Script_of_any_other_shape_is_compiled_as_sent(string code)
+        {
+            Assert.Equal(code, SendCodeSourceBuilder.RepairSelfClosedBody(code, out var line));
+            Assert.Equal(0, line);
         }
 
         [Fact]

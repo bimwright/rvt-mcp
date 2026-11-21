@@ -156,6 +156,12 @@ namespace RvtMcp.Plugin.Handlers
                 state?.Invoking();
                 using (McpDocument.Begin(app)) output = method.Invoke(null, new object[] { app, input.Data.Json });
                 output = state == null ? output : state.Complete(output);
+                if (compiled.Repair != null)
+                {
+                    var repairedResult = new System.Collections.Generic.Dictionary<string, object> { ["executed"] = true, ["result"] = output, ["script_repair"] = compiled.Repair };
+                    if (skipped.Length != 0) repairedResult["skipped_references"] = SkippedDto(skipped);
+                    return CommandResult.Ok(repairedResult);
+                }
                 if (skipped.Length != 0)
                     return CommandResult.Ok(new { executed = true, result = output, skipped_references = SkippedDto(skipped) });
                 return CommandResult.Ok(new { executed = true, result = output });
