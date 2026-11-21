@@ -27,7 +27,7 @@ namespace RvtMcp.Plugin.Views.Toast
             // Thumbnails of captures saved in an owner-allowed folder (captureRoots) are shown too.
             ToastContentBuilder.CaptureRootsProvider = CaptureOutputPath.ConfiguredRoots;
             _host.SetFrameUsableProvider(IsOwnerFrameUsable);
-            _host.SetSnoozeHandler(() => PauseForToday());
+            _host.SetPauseHandlers(ToastSnooze.IsActive, SetPausedFromCard);
             _host.SetActivityClickHandler(cardId =>
             {
                 try
@@ -76,7 +76,7 @@ namespace RvtMcp.Plugin.Views.Toast
         public void SetAgent(string clientName) => _host.SetAgentName(AgentDisplayName.For(clientName));
 
         /// <summary>
-        /// The expanded card's "Pause for today": saved for every Revit on this machine; this card closes now.
+        /// Settings' "Pause for today": saved for every Revit on this machine; the open card closes now.
         /// </summary>
         public bool PauseForToday()
         {
@@ -86,6 +86,18 @@ namespace RvtMcp.Plugin.Views.Toast
             if (_activity.Reset())
                 _host.Post(manager => manager.Render());
             return saved;
+        }
+
+        /// <summary>
+        /// The expanded card's Pause / Resume: saved for every Revit on this machine. The open card stays, so a
+        /// mis-click can be undone with Resume; while paused, new results do not reach it. Returns the resulting state.
+        /// </summary>
+        private bool SetPausedFromCard(bool paused)
+        {
+            string error;
+            var saved = paused ? ToastSnooze.PauseForToday(out error) : ToastSnooze.Resume(out error);
+            if (!saved) App.DebugLog("Toast pause could not be saved: " + error);
+            return ToastSnooze.IsActive();
         }
 
         /// <summary>Ends a pause early (Settings, or the ribbon toggle while paused).</summary>

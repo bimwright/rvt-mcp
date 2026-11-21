@@ -295,6 +295,8 @@
   "settings.toast.snooze.help": "Verbergt activiteitsmeldingen in elke Revit op deze computer tot middernacht. Zet uit om ze nu weer te tonen.",
   "toast.snooze.today": "Voor vandaag pauzeren",
   "toast.snooze.today.help": "Verbergt activiteitsmeldingen in elke Revit tot middernacht. Zet ze weer aan in Instellingen of met de meldingsknop.",
+  "toast.snooze.resume": "Hervatten",
+  "toast.snooze.resume.help": "Meldingen zijn in elke Revit gepauzeerd tot middernacht. Klik om ze nu weer te tonen.",
   "settings.toast.horizontal": "Horizontale uitlijning",
   "settings.toast.vertical": "Verticale uitlijning",
   "settings.toast.left": "Links",

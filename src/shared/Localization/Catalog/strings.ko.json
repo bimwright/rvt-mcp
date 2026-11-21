@@ -295,6 +295,8 @@
   "settings.toast.snooze.help": "자정까지 이 컴퓨터의 모든 Revit에서 활동 알림을 숨깁니다. 끄면 바로 다시 표시됩니다.",
   "toast.snooze.today": "오늘은 일시 중지",
   "toast.snooze.today.help": "자정까지 모든 Revit에서 활동 알림을 숨깁니다. 설정 또는 알림 버튼으로 다시 켤 수 있습니다.",
+  "toast.snooze.resume": "다시 시작",
+  "toast.snooze.resume.help": "자정까지 모든 Revit에서 알림이 일시 중지되었습니다. 클릭하면 바로 다시 표시됩니다.",
   "settings.toast.horizontal": "가로 정렬",
   "settings.toast.vertical": "세로 정렬",
   "settings.toast.left": "왼쪽",

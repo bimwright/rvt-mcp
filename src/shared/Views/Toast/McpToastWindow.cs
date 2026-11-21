@@ -58,7 +58,12 @@ namespace RvtMcp.Plugin.Views.Toast
         private bool _pidShown;
         private readonly DockPanel _detailsBody;
         private readonly Border _snoozeButton;
-        private readonly Action _snoozeRequested;
+        // Pause toggles in place: the card stays open and the button offers Resume, so a mis-click is undone at once.
+        private readonly Func<bool> _isPaused;
+        private readonly Func<bool, bool> _setPaused;
+        private readonly Run _pauseIcon = new Run();
+        private readonly Run _pauseText = new Run();
+        private bool _pauseShown;
         private MouseButtonEventHandler _snoozeUpHandler;
         private readonly TextBlock _toolText;
         private readonly TextBlock _bodyText;
@@ -157,7 +162,8 @@ namespace RvtMcp.Plugin.Views.Toast
             Func<Point> cursorPosition = null,
             Func<bool> motionEnabled = null,
             string instanceIdentity = null,
-            Action onSnooze = null)
+            Func<bool> isPaused = null,
+            Func<bool, bool> setPaused = null)
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
             var identityTitle = string.IsNullOrWhiteSpace(instanceIdentity) ? BrandAssets.ProductName : instanceIdentity;
@@ -165,7 +171,8 @@ namespace RvtMcp.Plugin.Views.Toast
             using (var process = Process.GetCurrentProcess()) _titlePidRun = new Run(" · PID " + process.Id);
             _pidBrush = new SolidColorBrush(McpToastTheme.Text.Color) { Opacity = 0 };
             _titlePidRun.Foreground = _pidBrush;
-            _snoozeRequested = onSnooze;
+            _isPaused = isPaused;
+            _setPaused = setPaused;
             _card = new ToastCardViewModel(snapshot, identityTitle, onDismiss, onClick);
             DataContext = _card;
             _activityClosed = onClosed;
@@ -836,12 +843,16 @@ namespace RvtMcp.Plugin.Views.Toast
             _pidRevealTimer = null;
         }
 
-        /// <summary>"Pause for today" at the foot of the expanded card; absent when no handler was given.</summary>
+        /// <summary>
+        /// "Pause for today" / "Resume" at the foot of the expanded card; absent when no handler was given.
+        /// </summary>
         private Border CreateSnoozeButton()
         {
             var text = new TextBlock { FontSize = 11, Foreground = McpToastTheme.TextSecondary, VerticalAlignment = VerticalAlignment.Center };
-            text.Inlines.Add(new Run("\uE708") { FontFamily = McpToastTheme.IconFont, FontSize = 11 });
-            text.Inlines.Add(new Run("  " + Localized("toast.snooze.today", "Pause for today")));
+            _pauseIcon.FontFamily = McpToastTheme.IconFont;
+            _pauseIcon.FontSize = 11;
+            text.Inlines.Add(_pauseIcon);
+            text.Inlines.Add(_pauseText);
             var button = new Border
             {
                 Height = SnoozeRowHeight - 4,
@@ -852,24 +863,35 @@ namespace RvtMcp.Plugin.Views.Toast
                 HorizontalAlignment = HorizontalAlignment.Right,
                 Cursor = Cursors.Hand,
                 Child = text,
-                ToolTip = Localized("toast.snooze.today.help",
-                    "Hide activity notifications in every Revit until midnight. Turn them back on in Settings or with the toast button."),
-                Visibility = _snoozeRequested == null ? Visibility.Collapsed : Visibility.Visible
+                Visibility = _setPaused == null ? Visibility.Collapsed : Visibility.Visible
             };
-            System.Windows.Automation.AutomationProperties.SetName(button, Localized("toast.snooze.today", "Pause for today"));
-            if (_snoozeRequested != null)
+            ShowPauseState(button, paused: false);
+            if (_setPaused != null)
             {
                 _snoozeUpHandler = (_, e) =>
                 {
-                    // The card's own click opens History; this click only pauses.
+                    // The card's own click opens History; this click only pauses or resumes, and the card stays.
                     e.Handled = true;
-                    if (!_isClosing && !_closedCallbackRaised) _snoozeRequested();
+                    if (!_isClosing && !_closedCallbackRaised) ShowPauseState(button, _setPaused(!_pauseShown));
                 };
                 button.MouseLeftButtonUp += _snoozeUpHandler;
                 button.MouseEnter += (_, __) => button.Background = McpToastTheme.ThumbnailBackground;
                 button.MouseLeave += (_, __) => button.Background = Brushes.Transparent;
             }
             return button;
+        }
+
+        private void ShowPauseState(Border button, bool paused)
+        {
+            _pauseShown = paused;
+            _pauseIcon.Text = paused ? "\uE768" : "\uE708";
+            var label = paused ? Localized("toast.snooze.resume", "Resume") : Localized("toast.snooze.today", "Pause for today");
+            _pauseText.Text = "  " + label;
+            button.ToolTip = paused
+                ? Localized("toast.snooze.resume.help", "Notifications are paused in every Revit until midnight. Click to show them again now.")
+                : Localized("toast.snooze.today.help",
+                    "Hide activity notifications in every Revit until midnight. Turn them back on in Settings or with the toast button.");
+            System.Windows.Automation.AutomationProperties.SetName(button, label);
         }
 
         private static string Localized(string key, string fallback)
@@ -921,6 +943,8 @@ namespace RvtMcp.Plugin.Views.Toast
                 PrepareExpansion?.Invoke(DetailsExpansionHeight + (_snoozeButton.Visibility == Visibility.Visible ? SnoozeRowHeight : 0));
                 _detailsShift.Y = _growUp ? 6 : -6;
                 _detailsPanel.SetEntries(_card.RecentEntries);
+                // A pause set elsewhere (Settings, another Revit) shows as Resume here.
+                if (_isPaused != null && _setPaused != null) ShowPauseState(_snoozeButton, _isPaused());
             }
             // New results refresh this view separately. A reversal/height retarget must
             // preserve its scroll position; only a genuinely new hover starts at the tail.
