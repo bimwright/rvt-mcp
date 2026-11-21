@@ -238,8 +238,21 @@ namespace RvtMcp.Server
                     SafetyResponseMetadata.Attach(data, response);
                     return data;
                 }
-                throw new InvalidOperationException(UnknownCommandGuidance(error, CurrentRevitVersion) ?? error);
+                throw new InvalidOperationException(UnknownCommandGuidance(error, CurrentRevitVersion) ?? WithGuidance(error, response));
             }
+        }
+
+        /// <summary>
+        /// The add-in's parameter validation answers with a suggestion and a hint that lists what the schema
+        /// allows; keep both in the error text the agent receives.
+        /// </summary>
+        private static string WithGuidance(string error, JObject response)
+        {
+            var suggestion = response.Value<string>("suggestion");
+            var hint = response.Value<string>("hint");
+            if (!string.IsNullOrWhiteSpace(suggestion)) error += "\nSuggestion: " + suggestion;
+            if (!string.IsNullOrWhiteSpace(hint)) error += "\nHint: " + hint;
+            return error;
         }
 
         internal static bool IsFailureOrPending(JObject response) => response != null
