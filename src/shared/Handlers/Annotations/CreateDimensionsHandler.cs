@@ -207,19 +207,7 @@ namespace RvtMcp.Plugin.Handlers
 
             if (refArray.Size < 2)
             {
-                const string tooFew = "Fewer than two valid references were successfully resolved. See failed_references.";
-                return new CommandResult
-                {
-                    Success = false,
-                    Error = tooFew,
-                    Data = new JObject
-                    {
-                        ["created"] = false,
-                        ["resolved_references"] = resolvedRefsInfo,
-                        ["failed_references"] = failedRefsInfo,
-                        ["error"] = tooFew
-                    }
-                };
+                return NotCreated("Fewer than two valid references were successfully resolved. See failed_references.", resolvedRefsInfo, failedRefsInfo);
             }
 
             // Resolve / Infer Line
@@ -305,7 +293,7 @@ namespace RvtMcp.Plugin.Handlers
 
             if (line == null)
             {
-                return CommandResult.Fail("Could not infer a valid dimension line. Please specify the 'line' parameter.");
+                return NotCreated("Could not infer a valid dimension line. Please specify the 'line' parameter.", resolvedRefsInfo, failedRefsInfo);
             }
 
             Dimension dimension = null;
@@ -325,12 +313,12 @@ namespace RvtMcp.Plugin.Handlers
 
                     var status = tx.Commit();
                     if (status != TransactionStatus.Committed)
-                        return CommandResult.Fail("Create dimensions transaction did not commit. Status: " + status);
+                        return NotCreated("Create dimensions transaction did not commit. Status: " + status, resolvedRefsInfo, failedRefsInfo);
                 }
                 catch (Exception ex)
                 {
                     if (tx.HasStarted()) tx.RollBack();
-                    return CommandResult.Fail("Failed to create dimension: " + ex.Message);
+                    return NotCreated("Failed to create dimension: " + ex.Message, resolvedRefsInfo, failedRefsInfo);
                 }
             }
 
@@ -404,6 +392,21 @@ namespace RvtMcp.Plugin.Handlers
                 throw new Exception("Revit did not expose a Reference on this wall's location line in this view; pass explicit_reference_stable references instead.");
             return best;
         }
+
+        /// <summary>No dimension was created: a failure that keeps the per-reference results in its data.</summary>
+        private static CommandResult NotCreated(string error, JArray resolved, JArray failed) => new CommandResult
+        {
+            Success = false,
+            Error = error,
+            Data = new JObject
+            {
+                ["created"] = false,
+                ["resolved_references"] = resolved,
+                ["failed_references"] = failed,
+                ["failedCount"] = failed.Count,
+                ["error"] = error
+            }
+        };
 
         private static XYZ Midpoint(Line line) => (line.GetEndPoint(0) + line.GetEndPoint(1)) * 0.5;
 

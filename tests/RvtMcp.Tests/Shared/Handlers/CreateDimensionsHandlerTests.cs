@@ -45,6 +45,19 @@ public class CreateDimensionsHandlerTests
         Assert.Equal(0, result["data"]!.Value<int>("failedCount"));
     }
 
+    // Seen live: NewDimension refused an explicit line ("The direction of dimension is invalid")
+    // and the answer lost failed_references.
+    [Fact]
+    public void A_refused_dimension_keeps_failed_references()
+    {
+        var result = Probe.Value("refused_line");
+        Assert.False(result.Value<bool>("success"));
+        Assert.Contains("The direction of dimension is invalid", result.Value<string>("error"));
+        Assert.False(result["data"]!.Value<bool>("created"));
+        Assert.Equal(999, result["data"]!["failed_references"]![0]!.Value<long>("element_id"));
+        Assert.Equal(1, result["data"]!.Value<int>("failedCount"));
+    }
+
     [Fact]
     public void Bounding_box_fallback_keeps_the_line_at_one_elevation()
     {
@@ -164,6 +177,7 @@ public static class Probe {
   switch(scenario){
    case "section_vertical": refs=new JArray(new JObject{["mode"]="explicit_reference_stable",["element_id"]=31,["stable_reference"]="31"},new JObject{["mode"]="explicit_reference_stable",["element_id"]=32,["stable_reference"]="32"}); break;
    case "no_axis": refs=new JArray(new JObject{["mode"]="wall_centerline",["element_id"]=1},new JObject{["mode"]="wall_centerline",["element_id"]=2}); break;
+   case "refused_line": refs=new JArray(new JObject{["mode"]="wall_centerline",["element_id"]=1},new JObject{["mode"]="wall_centerline",["element_id"]=2},new JObject{["mode"]="wall_centerline",["element_id"]=999}); break;
    case "missing_mode": refs=new JArray(new JObject{["element_id"]=1},new JObject{["element_id"]=2}); break;
    case "one_resolved": refs=new JArray(new JObject{["mode"]="wall_centerline",["element_id"]=1},new JObject{["mode"]="wall_centerline",["element_id"]=999}); break;
    case "curved_wall": refs=new JArray(new JObject{["mode"]="wall_centerline",["element_id"]=1},new JObject{["mode"]="wall_centerline",["element_id"]=3}); break;
@@ -172,7 +186,10 @@ public static class Probe {
    default: refs=new JArray(new JObject{["mode"]="wall_centerline",["element_id"]=1},new JObject{["mode"]="wall_centerline",["element_id"]=2}); break;
   }
   var app=new UIApplication{ActiveUIDocument=new UIDocument{Document=doc}};
-  var r=new RvtMcp.Plugin.Handlers.CreateDimensionsHandler().Execute(app,new JObject{["references"]=refs,["view_id"]=100}.ToString());
+  var request=new JObject{["references"]=refs,["view_id"]=100};
+  // An explicit line along the walls: NewDimension refuses it.
+  if(scenario=="refused_line")request["line"]=new JObject{["start"]=new JObject{["x"]=0,["y"]=0,["z"]=0},["end"]=new JObject{["x"]=0,["y"]=3000,["z"]=0}};
+  var r=new RvtMcp.Plugin.Handlers.CreateDimensionsHandler().Execute(app,request.ToString());
   var result=JObject.FromObject(new{success=r.Success,error=r.Error,data=r.Data});
   result["transactions"]=doc.Transactions;
   return result.ToString();
