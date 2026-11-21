@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -41,29 +42,53 @@ namespace RvtMcp.Plugin.Handlers
             if (tagType == null)
                 return CommandResult.Fail("No wall tag family loaded in the project.");
 
+            HashSet<long> alreadyTagged;
+            try
+            {
+                alreadyTagged = TagScan.CollectTaggedElementIds(doc, view);
+            }
+            catch (Exception ex)
+            {
+                return CommandResult.Fail("Failed to read existing tags in view: " + ex.Message);
+            }
+
+            var untagged = walls.Where(w => !alreadyTagged.Contains(RevitCompat.GetId(w.Id))).ToList();
+            var alreadyTaggedCount = walls.Count - untagged.Count;
+            if (untagged.Count == 0)
+                return CommandResult.Ok(new { tagged = 0, totalWalls = walls.Count, alreadyTagged = alreadyTaggedCount, message = "All walls in current view are already tagged." });
+
             int tagged = 0;
+            var tagIds = new List<long>();
+            var failed = new List<object>();
             using (var tx = new Transaction(doc, "MCP: Tag all walls"))
             {
                 tx.Start();
-                foreach (var wall in walls)
+                foreach (var wall in untagged)
                 {
                     try
                     {
                         var location = wall.Location as LocationCurve;
-                        if (location == null) continue;
+                        if (location == null) throw new InvalidOperationException("Wall has no location curve.");
 
                         var midpoint = location.Curve.Evaluate(0.5, true);
-                        var tagRef = new Reference(wall);
-                        IndependentTag.Create(doc, view.Id, tagRef, false, TagMode.TM_ADDBY_CATEGORY, TagOrientation.Horizontal, midpoint);
+                        var tag = IndependentTag.Create(doc, view.Id, new Reference(wall), false, TagMode.TM_ADDBY_CATEGORY, TagOrientation.Horizontal, midpoint);
+                        if (tag == null) throw new InvalidOperationException("IndependentTag.Create returned null.");
+                        tagIds.Add(RevitCompat.GetId(tag.Id));
                         tagged++;
                     }
-                    catch { }
+                    catch (Exception ex) { failed.Add(new { wallId = RevitCompat.GetId(wall.Id), error = ex.Message }); }
+                }
+                if (tagged == 0)
+                {
+                    tx.RollBack();
+                    return new CommandResult { Success = false, Error = "No walls could be tagged. See failed for individual errors.",
+                        Data = new { tagged, totalWalls = walls.Count, alreadyTagged = alreadyTaggedCount, failed, failedCount = failed.Count } };
                 }
                 if (tx.Commit() != TransactionStatus.Committed)
                     return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
             }
 
-            return CommandResult.Ok(new { tagged, totalWalls = walls.Count });
+            return CommandResult.Ok(new { tagged, totalWalls = walls.Count, alreadyTagged = alreadyTaggedCount, tagIds, failed, failedCount = failed.Count });
         }
     }
 }
