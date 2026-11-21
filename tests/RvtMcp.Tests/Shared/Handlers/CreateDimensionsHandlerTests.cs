@@ -19,6 +19,7 @@ public class CreateDimensionsHandlerTests
     [InlineData("missing_mode", "Use wall_centerline, grid_curve or explicit_reference_stable")]
     [InlineData("one_resolved", "Element not found.")]
     [InlineData("curved_wall", "supports straight walls only")]
+    [InlineData("no_axis", "did not expose a Reference on this wall's location line")] // faces only: never dimension a face
     public void Fewer_than_two_references_fails_with_created_false(string scenario, string referenceError)
     {
         var result = Probe.Value(scenario);
@@ -31,6 +32,7 @@ public class CreateDimensionsHandlerTests
 
     [Theory]
     [InlineData("walls", 6096.0)] // different lengths, elevations and thicknesses: location lines, not faces
+    [InlineData("short_axis", 6096.0)] // the on-axis reference is short; a face midpoint is nearer but off the axis
     [InlineData("grids", 3000.0)]
     public void Infers_a_line_across_parallel_references_at_one_elevation(string scenario, double spacing)
     {
@@ -52,10 +54,21 @@ public class CreateDimensionsHandlerTests
         Assert.Equal(line["start"]!.Value<double>("z"), line["end"]!.Value<double>("z"));
     }
 
+    [Fact]
+    public void Bounding_box_fallback_dimensions_a_vertical_spacing_in_a_section()
+    {
+        var result = Probe.Value("section_vertical");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        var line = result["data"]!["line"]!;
+        Assert.Equal(3000.0, Math.Abs(line["end"]!.Value<double>("z") - line["start"]!.Value<double>("z")), 1);
+        Assert.Equal(line["start"]!.Value<double>("x"), line["end"]!.Value<double>("x"));
+        Assert.Equal(line["start"]!.Value<double>("y"), line["end"]!.Value<double>("y"));
+    }
+
     // Vector math is real so the inferred line is computed, not stubbed. Encoded Revit facts seen
     // live: LocationCurve.Curve.Reference is null; a wall's geometry (computed references) holds a
-    // referenced line on the location line; NewDimension refuses a line that is not level or not
-    // perpendicular to the referenced lines ("The direction of dimension is invalid").
+    // referenced line on the location line; in a plan view NewDimension refuses a line that is not
+    // level or not perpendicular to the referenced lines ("The direction of dimension is invalid").
     private const string Seam = """
 using System;
 using System.Collections;
@@ -100,7 +113,7 @@ namespace Autodesk.Revit.DB {
  public class ReferenceArray { public List<Reference> Items=new List<Reference>(); public void Append(Reference r){Items.Add(r);} public int Size=>Items.Count; }
  public class ItemFactory { public Document Doc;
   public Dimension NewDimension(View view,Line line,ReferenceArray refs){
-   if(Math.Abs(line.A.Z-line.B.Z)>1e-9)throw new ArgumentException("The direction of dimension is invalid.");
+   if(Math.Abs(view.ViewDirection.Z)>0.9&&Math.Abs(line.A.Z-line.B.Z)>1e-9)throw new ArgumentException("The direction of dimension is invalid.");
    foreach(var r in refs.Items) if(r.Line!=null&&Math.Abs(r.Line.Direction.DotProduct(line.Direction))>1e-6)throw new ArgumentException("The direction of dimension is invalid.");
    return Doc.Add(new Dimension()); } }
  public class Document { public Dictionary<int,Element> Items=new Dictionary<int,Element>(); public View ActiveView; public ItemFactory Create; public int Transactions,NextId=1000;
@@ -129,21 +142,28 @@ public static class Probe {
  static XYZ P(double x,double y,double z)=>new XYZ(x/304.8,y/304.8,z/304.8);
  // A straight wall along Y at x: its location curve has no Reference; its geometry holds two face
  // lines (± half the thickness) and the referenced location line, plus an end line across the wall.
- static Wall StraightWall(Document doc,int id,double x,double y0,double y1,double z,double half){
+ // axis: the on-axis line's length in mm from y0 (null = full length, 0 = none).
+ static Wall StraightWall(Document doc,int id,double x,double y0,double y1,double z,double half,double? axis=null){
   var w=doc.Add(new Wall{Id=new ElementId(id),Location=new LocationCurve{Curve=new Line{A=P(x,y0,0),B=P(x,y1,0)}},Box=new BoundingBoxXYZ{Min=P(x-half,y0,z),Max=P(x+half,y1,z+3000)}});
-  foreach(var dx in new[]{-half,0.0,half}){ var l=new Line{A=P(x+dx,y0,z),B=P(x+dx,y1,z)}; l.Reference=new Reference(w){Line=l}; w.Geometry.Add(l); }
+  foreach(var dx in new[]{-half,0.0,half}){
+   if(dx==0&&axis==0)continue;
+   var l=new Line{A=P(x+dx,y0,z),B=P(x+dx,dx==0&&axis.HasValue?y0+axis.Value:y1,z)}; l.Reference=new Reference(w){Line=l}; w.Geometry.Add(l); }
   var end=new Line{A=P(x-half,y0,z),B=P(x+half,y0,z)}; end.Reference=new Reference(w){Line=end}; w.Geometry.Add(end);
   return w; }
  public static string Run(string scenario){
   var doc=new Document();
-  doc.ActiveView=doc.Add(new View{Id=new ElementId(100),Name="Level 1"});
-  StraightWall(doc,1,0,0,3048,0,100);
+  doc.ActiveView=doc.Add(new View{Id=new ElementId(100),Name="Level 1",ViewDirection=scenario=="section_vertical"?new XYZ(0,-1,0):new XYZ(0,0,1)});
+  StraightWall(doc,1,0,0,3048,0,100,scenario=="short_axis"?100:scenario=="no_axis"?0:(double?)null);
   StraightWall(doc,2,6096,600,1800,3000,150);
   doc.Add(new Wall{Id=new ElementId(3),Location=new LocationCurve{Curve=new Arc()}});
   foreach(var g in new[]{(11,0.0),(12,3000.0)}){ var c=new Line{A=P(g.Item2,-5000,0),B=P(g.Item2,5000,0)}; var grid=doc.Add(new Grid{Id=new ElementId(g.Item1),Curve=c}); }
+  doc.Add(new Element{Id=new ElementId(31),Box=new BoundingBoxXYZ{Min=P(1000,1000,0),Max=P(1200,1200,200)}});
+  doc.Add(new Element{Id=new ElementId(32),Box=new BoundingBoxXYZ{Min=P(1000,1000,3000),Max=P(1200,1200,3200)}});
   doc.Add(new Element{Id=new ElementId(21),Box=new BoundingBoxXYZ{Min=P(3000,1000,5000),Max=P(3200,2000,9000)}});
   JArray refs;
   switch(scenario){
+   case "section_vertical": refs=new JArray(new JObject{["mode"]="explicit_reference_stable",["element_id"]=31,["stable_reference"]="31"},new JObject{["mode"]="explicit_reference_stable",["element_id"]=32,["stable_reference"]="32"}); break;
+   case "no_axis": refs=new JArray(new JObject{["mode"]="wall_centerline",["element_id"]=1},new JObject{["mode"]="wall_centerline",["element_id"]=2}); break;
    case "missing_mode": refs=new JArray(new JObject{["element_id"]=1},new JObject{["element_id"]=2}); break;
    case "one_resolved": refs=new JArray(new JObject{["mode"]="wall_centerline",["element_id"]=1},new JObject{["mode"]="wall_centerline",["element_id"]=999}); break;
    case "curved_wall": refs=new JArray(new JObject{["mode"]="wall_centerline",["element_id"]=1},new JObject{["mode"]="wall_centerline",["element_id"]=3}); break;

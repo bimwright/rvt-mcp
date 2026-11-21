@@ -275,7 +275,10 @@ namespace RvtMcp.Plugin.Handlers
                     {
                         var c1 = (bbox1.Min + bbox1.Max) * 0.5;
                         var c2 = (bbox2.Min + bbox2.Max) * 0.5;
-                        c2 = new XYZ(c2.X, c2.Y, c1.Z); // one elevation for the dimension line
+                        // In a plan view the line stays at one elevation; in a section or elevation the
+                        // vertical difference is what is being dimensioned.
+                        if (Math.Abs(view.ViewDirection.DotProduct(XYZ.BasisZ)) > 0.9)
+                            c2 = new XYZ(c2.X, c2.Y, c1.Z);
 
                         var dir = (c2 - c1);
                         if (dir.GetLength() > 0.001)
@@ -363,8 +366,9 @@ namespace RvtMcp.Plugin.Handlers
 
         /// <summary>
         /// A LocationCurve's curve carries no Reference, so a wall's location line is read from the
-        /// wall geometry (computed references, non-visible objects): the referenced line parallel to
-        /// the location line and nearest to it in plan.
+        /// wall geometry (computed references, non-visible objects): a referenced line parallel to the
+        /// location line and on it in plan (perpendicular distance within 1 mm). A face or other
+        /// parallel line off the axis is never used, even when its midpoint is closer.
         /// </summary>
         private static Line GetWallLocationLine(Wall wall, View view)
         {
@@ -374,9 +378,11 @@ namespace RvtMcp.Plugin.Handlers
             if (!(lc.Curve is Line locationLine))
                 throw new Exception("wall_centerline supports straight walls only; this wall's location curve is " + lc.Curve.GetType().Name + ".");
 
+            const double toleranceFt = 1.0 / 304.8;
             var options = new Options { ComputeReferences = true, IncludeNonVisibleObjects = true, View = view };
             var geometry = wall.get_Geometry(options);
-            var target = Midpoint(locationLine);
+            var origin = locationLine.GetEndPoint(0);
+            var axis = new XYZ(locationLine.Direction.X, locationLine.Direction.Y, 0).Normalize();
             Line best = null;
             var bestDistance = double.MaxValue;
             if (geometry != null)
@@ -385,9 +391,9 @@ namespace RvtMcp.Plugin.Handlers
                 {
                     if (!(obj is Line candidate) || candidate.Reference == null) continue;
                     if (Math.Abs(candidate.Direction.DotProduct(locationLine.Direction)) < 0.9999) continue;
-                    var mid = Midpoint(candidate);
-                    var distance = Math.Sqrt((mid.X - target.X) * (mid.X - target.X) + (mid.Y - target.Y) * (mid.Y - target.Y));
-                    if (distance < bestDistance)
+                    var offset = Midpoint(candidate) - origin;
+                    var distance = Math.Abs(offset.X * axis.Y - offset.Y * axis.X); // perpendicular, in plan
+                    if (distance <= toleranceFt && distance < bestDistance)
                     {
                         best = candidate;
                         bestDistance = distance;
@@ -395,7 +401,7 @@ namespace RvtMcp.Plugin.Handlers
                 }
             }
             if (best == null)
-                throw new Exception("Revit did not expose a location-line Reference for this wall in this view.");
+                throw new Exception("Revit did not expose a Reference on this wall's location line in this view; pass explicit_reference_stable references instead.");
             return best;
         }
 
