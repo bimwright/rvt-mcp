@@ -73,6 +73,8 @@ namespace RvtMcp.Plugin
                     continue;
 
                 var sw = Stopwatch.StartNew();
+                // Toast title names the agent of this call; History replays keep the last one.
+                if (request.FromMcp) _toastNotifier?.SetAgent(request.ReportContext?.ClientName);
                 var runtimeConfig = new RvtMcpConfig();
                 JObject changes = null;
                 JObject history = null;

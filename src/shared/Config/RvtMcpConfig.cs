@@ -178,6 +178,13 @@ namespace RvtMcp.Plugin
         [JsonProperty("showBranding")]
         public bool? ShowBranding { get; set; }
 
+        /// <summary>
+        /// Local date ("yyyy-MM-dd") on which the owner paused activity toasts for the rest of the day. Every Revit on
+        /// the machine reads it; toasts return at the next local midnight (ToastSnooze in the add-in).
+        /// </summary>
+        [JsonProperty("toastSnoozedDate")]
+        public string ToastSnoozedDate { get; set; }
+
         /// <summary>Toast corner, horizontal: "left" (default) or "right". Unknown values mean left.</summary>
         [JsonProperty("toastHorizontalAlign")]
         public JToken ToastHorizontalAlign { get; set; }
@@ -784,6 +791,16 @@ namespace RvtMcp.Plugin
         public static bool TrySaveShowBranding(bool show, out string error, string configFilePath = null)
         {
             return TryUpdateConfig(configFilePath, root => root["showBranding"] = show, out error);
+        }
+
+        /// <summary>Saves the pause date, or removes the key when <paramref name="date"/> is null.</summary>
+        public static bool TrySaveToastSnoozedDate(string date, out string error, string configFilePath = null)
+        {
+            return TryUpdateConfig(configFilePath, root =>
+            {
+                if (date == null) root.Remove("toastSnoozedDate");
+                else root["toastSnoozedDate"] = date;
+            }, out error);
         }
 
         /// <summary>

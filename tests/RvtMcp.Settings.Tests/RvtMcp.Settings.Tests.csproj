@@ -38,6 +38,7 @@
     <Compile Include="../../src/shared/Presentation/Common/RelayCommand.cs" Link="Presentation/RelayCommand.cs" />
     <Compile Include="../../src/shared/Presentation/Settings/ISettingsRuntime.cs" Link="Presentation/ISettingsRuntime.cs" />
     <Compile Include="../../src/shared/Infrastructure/UI/SettingsRuntime.cs" Link="Presentation/SettingsRuntime.cs" />
+    <Compile Include="../../src/shared/Views/Toast/ToastSnooze.cs" Link="Presentation/ToastSnooze.cs" />
     <Compile Include="../../src/shared/Config/PreferenceValues.cs" Link="PreferenceValues.cs" />
     <Compile Include="../../src/shared/Views/HistoryWindow.cs" Link="HistoryWindow.cs" />
     <Compile Include="../../src/shared/Views/HistoryChrome.cs" Link="HistoryChrome.cs" />

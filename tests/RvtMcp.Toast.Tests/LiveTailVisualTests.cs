@@ -124,7 +124,10 @@ internal static class LiveTailVisualTests
             window.CapturePointerBaseline(); window.Show(); window.PlayEnterAnimation();
             var compactHeight = window.ActualHeight;
             var panel = Children<ToastActivityPanel>(window).Single();
-            var row = (Border)VisualTreeHelper.GetParent(panel);
+            // The clipped details row is the panel's nearest Border ancestor (the pause button shares the row).
+            DependencyObject ancestor = VisualTreeHelper.GetParent(panel);
+            while (!(ancestor is Border)) ancestor = VisualTreeHelper.GetParent(ancestor);
+            var row = (Border)ancestor;
             cursor = new Point(20, 10); Enter(window);
             WaitForFrame(() => row.Height > 0 && row.HasAnimatedProperties, "first row opening");
             var list = Children<ListBox>(window).Single(); var viewer = Children<ScrollViewer>(list).Single();

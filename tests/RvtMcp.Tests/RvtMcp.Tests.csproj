@@ -35,6 +35,8 @@
     <Compile Include="../../src/shared/Handlers/Schedules/ScheduleSortInput.cs" Link="Shared/Handlers/Schedules/ScheduleSortInput.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastActivityLog.cs" Link="Shared/Views/Toast/ToastActivityLog.cs" />
     <Compile Include="../../src/shared/Views/Toast/ToastPlacement.cs" Link="Shared/Views/Toast/ToastPlacement.cs" />
+    <Compile Include="../../src/shared/Views/Toast/AgentDisplayName.cs" Link="Shared/Views/Toast/AgentDisplayName.cs" />
+    <Compile Include="../../src/shared/Views/Toast/ToastSnooze.cs" Link="Shared/Views/Toast/ToastSnooze.cs" />
     <Compile Include="../../src/shared/Reports/Views/ReportsWindowPlacement.cs" Link="Shared/Reports/Views/ReportsWindowPlacement.cs" />
     <Compile Include="../../src/shared/Views/FailureIssuesContext.cs" Link="Shared/Views/FailureIssuesContext.cs" />
     <Compile Include="../../src/shared/Views/FailureIssuesPresentation.cs" Link="Shared/Views/FailureIssuesPresentation.cs" />

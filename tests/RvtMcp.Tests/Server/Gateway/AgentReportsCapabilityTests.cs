@@ -63,6 +63,23 @@ namespace RvtMcp.Tests
         }
 
         [Theory]
+        [InlineData("claude-code")] [InlineData(null)]
+        public async Task The_agent_name_reaches_the_addin_only_when_the_client_sent_one(string clientName)
+        {
+            var previous = ToolGateway.ClientName;
+            ToolGateway.ClientName = clientName;
+            try
+            {
+                using var wire = new ReportTestWire(agentReports: true);
+                await wire.Send();
+                var context = (JObject)Assert.Single(wire.Requests)["report_context"];
+                Assert.Equal(clientName, context.Value<string>("client_name"));
+                Assert.Equal(clientName != null, context.ContainsKey("client_name"));
+            }
+            finally { ToolGateway.ClientName = previous; }
+        }
+
+        [Theory]
         [InlineData(true)] [InlineData(false)]
         public async Task Describe_api_needs_an_addin_that_advertises_it_with_or_without_a_document(bool confirmDocument)
         {

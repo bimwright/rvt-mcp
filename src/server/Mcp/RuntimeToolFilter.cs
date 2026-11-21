@@ -20,6 +20,9 @@ namespace RvtMcp.Server
             => mcp.WithRequestFilters(filters => filters.AddCallToolFilter(next => async (request, ct) =>
             {
                 var clock = System.Diagnostics.Stopwatch.StartNew();
+                // The toast names the agent; one gateway process serves one client.
+                var clientName = request.Server?.ClientInfo?.Name;
+                if (!string.IsNullOrWhiteSpace(clientName)) ToolGateway.ClientName = clientName;
                 // Pin the binding generation at call entry (spec §6.6/§8). When the
                 // binding layer produced a §6.10 payload the tool result is replaced
                 // with the target envelope — regardless of how the tool formatted it.

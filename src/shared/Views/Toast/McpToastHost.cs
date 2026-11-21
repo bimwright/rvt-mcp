@@ -35,6 +35,8 @@ namespace RvtMcp.Plugin.Views.Toast
         private volatile bool _showBranding;
         private volatile ToastPositionOptions _positionOptions = new ToastPositionOptions();
         private volatile string _instanceIdentity;
+        private volatile string _agentName;
+        private volatile Action _snooze;
 
         /// <summary>Raised on the toast thread after a drag release was saved; the argument is the save result.</summary>
         public event Action<bool> PositionSaved;
@@ -79,6 +81,29 @@ namespace RvtMcp.Plugin.Views.Toast
             _instanceIdentity = string.IsNullOrWhiteSpace(identity) ? null : identity;
         }
 
+        /// <summary>
+        /// Agent of the latest MCP call ("Claude"), or null when the gateway did not name one. The open card's title
+        /// follows it on the next render.
+        /// </summary>
+        public void SetAgentName(string agent)
+        {
+            _agentName = string.IsNullOrWhiteSpace(agent) ? null : agent;
+        }
+
+        /// <summary>"rvt-mcp 2027 · Claude"; null leaves the card's own product-name fallback.</summary>
+        private string IdentityTitle()
+        {
+            var identity = _instanceIdentity;
+            var agent = _agentName;
+            if (agent == null) return identity;
+            return (identity ?? Views.BrandAssets.ProductName) + " · " + agent;
+        }
+
+        internal void SetSnoozeHandler(Action handler)
+        {
+            _snooze = handler;
+        }
+
         internal void SetFrameUsableProvider(Func<bool> provider)
         {
             _frameUsable = provider ?? (() => true);
@@ -117,8 +142,9 @@ namespace RvtMcp.Plugin.Views.Toast
                 if (hostDispatcher != null)
                 {
                     _dispatcher = hostDispatcher;
-                    _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding, () => _instanceIdentity,
-                        positionOptions: () => _positionOptions, positionChanged: SaveDraggedPosition);
+                    _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding, IdentityTitle,
+                        positionOptions: () => _positionOptions, positionChanged: SaveDraggedPosition,
+                        snooze: () => _snooze?.Invoke());
                     if (_ownerHandle != IntPtr.Zero)
                         _manager.SetOwnerHandle(_ownerHandle);
                     _usesDedicatedThread = false;
@@ -142,8 +168,9 @@ namespace RvtMcp.Plugin.Views.Toast
                         }
 
                         _dispatcher = Dispatcher.CurrentDispatcher;
-                        _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding, () => _instanceIdentity,
-                        positionOptions: () => _positionOptions, positionChanged: SaveDraggedPosition);
+                        _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding, IdentityTitle,
+                        positionOptions: () => _positionOptions, positionChanged: SaveDraggedPosition,
+                        snooze: () => _snooze?.Invoke());
                         if (_ownerHandle != IntPtr.Zero)
                             _manager.SetOwnerHandle(_ownerHandle);
                     }

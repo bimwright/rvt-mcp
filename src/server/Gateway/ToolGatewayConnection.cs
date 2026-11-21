@@ -657,7 +657,8 @@ namespace RvtMcp.Server
                     timeout_seconds = timeoutSeconds,
                     runtime = config.ToRuntimeOptions(),
                     history,
-                    report_context = new ReportCallContext { CallId = operationId, Session = HistorySession, HistoryRequested = history != null },
+                    report_context = new ReportCallContext { CallId = operationId, Session = HistorySession, HistoryRequested = history != null,
+                        ClientName = ClientName },
                     operation_id = operationId,
                     failure_protocol = 1,
                     // Lets the add-in tell an unconfirmed document from a gateway that predates confirmation.

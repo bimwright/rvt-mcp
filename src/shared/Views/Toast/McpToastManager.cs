@@ -30,6 +30,7 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly Action<ToastPositionOptions> _positionChanged;
         private readonly Func<Tuple<ToastBounds, ToastBounds>> _geometry;
         private readonly Func<Point> _cursorPosition;
+        private readonly Action _snooze;
         private double _compactHeight;
         private bool _growUp;
 
@@ -40,8 +41,11 @@ namespace RvtMcp.Plugin.Views.Toast
         /// </param>
         /// <param name="instanceIdentity">
         /// Card title identifying this Revit instance so cards from parallel
-        /// Revit processes can be told apart. Evaluated when each card is
-        /// created; null/empty falls back to the product name.
+        /// Revit processes can be told apart, plus the agent of the latest call.
+        /// Evaluated when a card is created or updated; null/empty falls back to the product name.
+        /// </param>
+        /// <param name="snooze">
+        /// "Pause for today" from the expanded card; null hides the button.
         /// </param>
         /// <param name="motionEnabled">
         /// Passed to each card window; null follows the Windows animation setting.
@@ -57,7 +61,8 @@ namespace RvtMcp.Plugin.Views.Toast
             Func<ToastPositionOptions> positionOptions = null,
             Action<ToastPositionOptions> positionChanged = null,
             Func<Tuple<ToastBounds, ToastBounds>> geometry = null,
-            Func<Point> cursorPosition = null)
+            Func<Point> cursorPosition = null,
+            Action snooze = null)
         {
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             _aggregator = aggregator ?? throw new ArgumentNullException(nameof(aggregator));
@@ -70,6 +75,7 @@ namespace RvtMcp.Plugin.Views.Toast
             _positionChanged = positionChanged;
             _geometry = geometry;
             _cursorPosition = cursorPosition;
+            _snooze = snooze;
 
             _timer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
             {
@@ -196,6 +202,8 @@ namespace RvtMcp.Plugin.Views.Toast
                 // Updating an existing card must not replay its enter/brand animation or
                 // alter its measured height.
                 _window.Update(card);
+                // The latest call may come from another agent.
+                _window.SetIdentityTitle(_instanceIdentity());
                 EnsureTimer();
                 return;
             }
@@ -242,7 +250,8 @@ namespace RvtMcp.Plugin.Views.Toast
                 OnPointerLeft,
                 motionEnabled: _motionEnabled,
                 cursorPosition: _cursorPosition,
-                instanceIdentity: _instanceIdentity());
+                instanceIdentity: _instanceIdentity(),
+                onSnooze: _snooze);
 
             _window = window;
             window.SetShowBranding(_showBranding());

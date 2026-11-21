@@ -59,7 +59,9 @@ namespace RvtMcp.Plugin.Handlers
             catch (IOException ex) { return CommandResult.Fail("REPORT_SAVE_FAILED: " + ex.Message + "; resend with the same task_id."); }
             catch (UnauthorizedAccessException ex) { return CommandResult.Fail("REPORT_SAVE_FAILED: " + ex.Message + "; resend with the same task_id."); }
 
-            return CommandResult.Ok(ReportBuilder.CreateResponse(result, result.Saved, RvtMcpConfig.LoadReadOnly().EnableToastOrDefault));
+            var config = RvtMcpConfig.LoadReadOnly();
+            var toastShown = config.EnableToastOrDefault && !Views.Toast.ToastSnooze.IsActive(config);
+            return CommandResult.Ok(ReportBuilder.CreateResponse(result, result.Saved, toastShown));
         }
     }
 }

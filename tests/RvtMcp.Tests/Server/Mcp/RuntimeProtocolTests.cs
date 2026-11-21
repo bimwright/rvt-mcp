@@ -71,6 +71,41 @@ namespace RvtMcp.Tests
             }
         }
 
+        [Fact]
+        public async Task MCP_filter_records_the_client_name_sent_at_initialize()
+        {
+            var original = ServerState.Config; var originalSend = ToolGateway.SendOverride; var originalName = ToolGateway.ClientName;
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var pipe = "rvt-client-name-" + Guid.NewGuid().ToString("N");
+            using var input = new NamedPipeServerStream(pipe, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+            using var output = new NamedPipeClientStream(".", pipe, PipeDirection.InOut, PipeOptions.Asynchronous);
+            await Task.WhenAll(input.WaitForConnectionAsync(deadline.Token), output.ConnectAsync(deadline.Token));
+            try
+            {
+                var config = new RvtMcpConfig { Toolsets = new List<string> { "query" } };
+                ServerState.Config = config; ToolGateway.ClientName = null;
+                ToolGateway.SendOverride = (command, args, timeout) =>
+                    Task.FromResult(ToolGateway.InterpretResponse(new JObject { ["success"] = true, ["data"] = new JObject { ["view_name"] = "Sample" } }));
+                var builder = Host.CreateApplicationBuilder(); builder.Logging.ClearProviders();
+                var mcp = builder.Services.AddMcpServer().WithStreamServerTransport(input, input);
+                mcp = RuntimeToolFilter.Register(mcp, config, new SessionContext(false, Path.GetTempPath()));
+                Program.RegisterToolsets(mcp, ToolsetFilter.Resolve(config), config);
+                using var host = builder.Build(); await host.StartAsync(deadline.Token);
+                await using var client = await McpClient.CreateAsync(new StreamClientTransport(output, output),
+                    new McpClientOptions { ClientInfo = new Implementation { Name = "claude-code", Version = "2.1.330" } },
+                    cancellationToken: deadline.Token);
+                Assert.Null(ToolGateway.ClientName);
+                var response = await client.CallToolAsync("revit_get_current_view_info", cancellationToken: deadline.Token);
+                Assert.False(response.IsError == true);
+                Assert.Equal("claude-code", ToolGateway.ClientName);
+                await client.DisposeAsync(); await host.StopAsync(deadline.Token);
+            }
+            finally
+            {
+                ServerState.Config = original; ToolGateway.SendOverride = originalSend; ToolGateway.ClientName = originalName;
+            }
+        }
+
         [Theory]
         [InlineData(false)]
         [InlineData(true)]

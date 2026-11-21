@@ -21,10 +21,13 @@ namespace RvtMcp.Plugin.Views.Toast
         {
             _host = host ?? throw new ArgumentNullException(nameof(host));
             _activity = host.Aggregator;
-            _isEnabled = isEnabled ?? throw new ArgumentNullException(nameof(isEnabled));
+            if (isEnabled == null) throw new ArgumentNullException(nameof(isEnabled));
+            // "Pause for today" silences every card, errors included, until local midnight.
+            _isEnabled = () => isEnabled() && !ToastSnooze.IsActive();
             // Thumbnails of captures saved in an owner-allowed folder (captureRoots) are shown too.
             ToastContentBuilder.CaptureRootsProvider = CaptureOutputPath.ConfiguredRoots;
             _host.SetFrameUsableProvider(IsOwnerFrameUsable);
+            _host.SetSnoozeHandler(() => PauseForToday());
             _host.SetActivityClickHandler(cardId =>
             {
                 try
@@ -65,6 +68,35 @@ namespace RvtMcp.Plugin.Views.Toast
         /// distinguishes toasts when several Revit processes serve different agents.
         /// </summary>
         public void SetInstanceInfo(string info) => _host.SetInstanceIdentity(info);
+
+        /// <summary>
+        /// Agent of the MCP call about to run, from the gateway's clientInfo.name ("claude-code" -> "Claude").
+        /// A gateway that sends no name clears it, so the title never shows a stale agent.
+        /// </summary>
+        public void SetAgent(string clientName) => _host.SetAgentName(AgentDisplayName.For(clientName));
+
+        /// <summary>
+        /// The expanded card's "Pause for today": saved for every Revit on this machine; this card closes now.
+        /// </summary>
+        public bool PauseForToday()
+        {
+            string error;
+            var saved = ToastSnooze.PauseForToday(out error);
+            if (!saved) App.DebugLog("Toast pause could not be saved: " + error);
+            if (_activity.Reset())
+                _host.Post(manager => manager.Render());
+            return saved;
+        }
+
+        /// <summary>Ends a pause early (Settings, or the ribbon toggle while paused).</summary>
+        public bool ResumeFromPause()
+        {
+            string error;
+            var saved = ToastSnooze.Resume(out error);
+            if (!saved) App.DebugLog("Toast resume could not be saved: " + error);
+            OnToastEnabledChanged(true, saved);
+            return saved;
+        }
 
         public void SetHostDispatcher(System.Windows.Threading.Dispatcher dispatcher) =>
             _host.SetHostDispatcher(dispatcher);

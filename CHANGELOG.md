@@ -48,6 +48,14 @@ Install the 3.0.1 gateway and add-ins together. TaskDialog declarations require 
 - `revit_capture_view_image` accepts an `output_path` in the user's own `%TEMP%` folder. Revit runs with `TEMP` set to a per-session subfolder, so such a path was refused although the message named `%TEMP%`.
 - A refused `output_path` returns the allowed folders as `allowed_roots` (the paths in the error text are masked) and the next step: omit `output_path` and copy the saved file, or ask the user to allow the folder.
 
+### Toast
+
+Update the gateway and add-ins together to see the agent name; an older gateway leaves it out.
+
+- The card title names the agent of the latest call from its MCP client name: `rvt-mcp 2027 · Claude` (Claude, Codex, Cline, Cursor, Windsurf, Antigravity, Gemini, Copilot, VS Code; any other client shows its own name, cleaned and capped at 20 characters). The gateway sends the name with each call; it is display text only.
+- The Revit process ID (`· PID 30476`) fades in when you point at the card and fades out when you leave, with or without branding. It no longer shows all the time.
+- **Pause for today**: a button at the foot of the expanded card, and a switch in Settings → Toast, hide every card (errors included) in every Revit on this computer until local midnight. The choice is saved as the local date in `toastSnoozedDate`. Turn the switch off, or press the ribbon **Toast** button, to show cards again now; turning toasts on from the ribbon or Settings also ends the pause. While paused, `revit_report_task_result` reports `toast: "disabled"`.
+
 ### Build/deployment dependencies
 
 - Move the standalone MCP server and its unit tests to .NET 10; require SDK 10.0.404 or a later patch in the same feature band. Revit 2022–2024 plugins retain .NET Framework 4.8.

@@ -12,6 +12,8 @@ namespace RvtMcp.Plugin
         [JsonProperty("call_id")] public string CallId { get; set; }
         [JsonProperty("client_session")] public string Session { get; set; }
         [JsonProperty("history_requested")] public bool HistoryRequested { get; set; }
+        /// <summary>clientInfo.name of the agent's MCP client, for the toast title only. Client-declared: display, never trust.</summary>
+        [JsonProperty("client_name", NullValueHandling = NullValueHandling.Ignore)] public string ClientName { get; set; }
         [JsonIgnore] public bool IsValid => IsId(CallId) && IsId(Session);
         public static bool IsId(string value) => value?.Length == 32 && Guid.TryParseExact(value, "N", out _);
         public static IReadOnlyList<string> ParseCallIds(string json)

@@ -16,6 +16,7 @@ namespace RvtMcp.Plugin.Views.Settings
         private readonly ISettingsRuntime _runtime;
         private bool _toastEnabled;
         private bool _showBranding;
+        private bool _toastSnoozed;
         private ToastPositionOptions _toastPosition = new ToastPositionOptions();
         private int _toastIdleSeconds;
         private bool _persistSendCodeBodies;
@@ -50,6 +51,7 @@ namespace RvtMcp.Plugin.Views.Settings
             _runtime.LanguageChanged += OnLanguageChanged;
             _runtime.ConnectionChanged += OnConnectionChanged;
             _runtime.ToastEnabledChanged += OnToastEnabledChanged;
+            _runtime.ToastSnoozeChanged += OnToastSnoozeChanged;
             _runtime.PositionSaved += OnToastPositionSaved;
         }
 
@@ -62,6 +64,7 @@ namespace RvtMcp.Plugin.Views.Settings
         public bool IsLanguageWriteDisabled => HasEnvironmentLanguageOverride;
         public bool ToastEnabled { get => _toastEnabled; set { if (value != _toastEnabled) SetToastEnabled(value); } }
         public bool ShowBranding { get => _showBranding; set { if (value != _showBranding) SetShowBranding(value); } }
+        public bool ToastSnoozed { get => _toastSnoozed; set { if (value != _toastSnoozed) SetToastSnoozed(value); } }
         public ToastPositionOptions ToastPosition => _toastPosition;
         public bool ToastRight { get => ToastPosition.Right; set { if (value != ToastRight) SetToastPosition(ToastPosition.WithCorner(value, ToastBottom)); } }
         public bool ToastBottom { get => ToastPosition.Bottom; set { if (value != ToastBottom) SetToastPosition(ToastPosition.WithCorner(ToastRight, value)); } }
@@ -127,6 +130,7 @@ namespace RvtMcp.Plugin.Views.Settings
             Snapshot = values.Snapshot;
             _toastEnabled = values.ToastEnabled;
             _showBranding = values.ShowBranding;
+            _toastSnoozed = values.ToastSnoozed;
             _toastPosition = values.ToastPosition;
             _toastIdleSeconds = _baselineToastIdleSeconds = values.ToastIdleSeconds;
             _persistSendCodeBodies = _baselinePersistSendCodeBodies = values.PersistSendCodeBodies;
@@ -202,6 +206,15 @@ namespace RvtMcp.Plugin.Views.Settings
             SetImmediateResult("enableToast", persisted);
             OnPropertyChanged(nameof(ToastEnabled));
             RefreshCommands();
+            OnPropertyChanged(nameof(ImmediateWarning));
+        }
+
+        public void SetToastSnoozed(bool snoozed)
+        {
+            _toastSnoozed = snoozed;
+            var persisted = _runtime.SetToastSnoozed(snoozed);
+            SetImmediateResult("toastSnoozedDate", persisted);
+            OnPropertyChanged(nameof(ToastSnoozed));
             OnPropertyChanged(nameof(ImmediateWarning));
         }
 
@@ -329,6 +342,13 @@ namespace RvtMcp.Plugin.Views.Settings
             LanguageChanged?.Invoke(this, EventArgs.Empty);
         }
 
+        private void OnToastSnoozeChanged(object sender, EventArgs e)
+        {
+            if (_disposed) return;
+            _toastSnoozed = _runtime.ToastSnoozed;
+            OnPropertyChanged(nameof(ToastSnoozed));
+        }
+
         private void OnToastEnabledChanged(object sender, EventArgs e)
         {
             if (_disposed) return;
@@ -390,6 +410,7 @@ namespace RvtMcp.Plugin.Views.Settings
             _runtime.LanguageChanged -= OnLanguageChanged;
             _runtime.ConnectionChanged -= OnConnectionChanged;
             _runtime.ToastEnabledChanged -= OnToastEnabledChanged;
+            _runtime.ToastSnoozeChanged -= OnToastSnoozeChanged;
             _runtime.PositionSaved -= OnToastPositionSaved;
             _runtime.Dispose();
             RefreshCommands();

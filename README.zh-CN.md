@@ -162,7 +162,7 @@ Toast 不只是装饰，而是工作反馈。它来自三个实际需求：
 
 Toast 报告的是 **单次工具的结果**，不是运行中工具的进度，也不表示整个任务已完成。连续的结果共用一张卡片；Revit 最小化或被模态对话框阻塞时，通知可能会等待。它们不能代替你检查代理的工作。
 
-每张卡片显示网关名称、Revit 年份及发送通知的 Revit 进程 PID（例如 `rvt-mcp 2022 · PID: 12345`）、最近一次工具，以及 Success · Failed · Capture 计数。捕获预览至少在卡片上停留 5 秒。
+每张卡片显示网关名称、Revit 年份及最近一次调用的智能体（例如 `rvt-mcp 2022 · Claude`；发送通知的 Revit 进程 PID `· PID 12345` 在指针移到卡片上时淡入）、最近一次工具，以及 Success · Failed · Capture 计数。捕获预览至少在卡片上停留 5 秒。
 
 有意悬停会打开活动时间线，显示最新三条结果及各自的本地完成时间（`HH:mm:ss`）。向上滚动可查看该卡片中更早的调用。新结果以简短的滑入动画跟随到底部（行向上移动，新行淡入，结果圆点弹出；开启减少动态效果时这些都不会出现）；阅读较早的调用时，位置保持不变。在时间线内点击可继续阅读而不关闭它；点击卡片其余部分会打开 History。关闭 branding 时同样可用。摘要有长度限制并已脱敏，只保存在内存中，卡片关闭后清除。脚本的对象/数组显示数量；不完整的调查会明确标注为不完整。仅在 server 端运行的工具不会因这次 UI 变更而获得 toast 覆盖。
 
@@ -220,6 +220,7 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 | Journal TTL（1h-14d） | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | 完成 toast（默认开启） | ribbon **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
 | toast branding（默认关闭，已保存） | Settings → Toast → **Show branding** | — | `showBranding` |
+| 今天暂停 toast（所有 Revit，至午夜） | toast 上的 **Pause for today**、Settings → Toast → **Pause for today** | — | `toastSnoozedDate` |
 | toast 空闲时长（默认 20 秒） | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
 | toast 位置（默认左上、不可拖动，已保存） | Settings → Toast → **Horizontal / Vertical alignment**、**Allow dragging the card**、**Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | 界面语言（插件） | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
