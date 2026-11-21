@@ -108,6 +108,23 @@ namespace RvtMcp.Tests.Shared.Reports
         }
 
         [Fact]
+        public void Exists_finds_only_saved_report_ids()
+        {
+            var store = new ReportStore(dir);
+            Assert.False(store.Exists(Guid.NewGuid().ToString("N")));
+            var report = Report("a");
+            store.Save(report);
+
+            Assert.True(store.Exists(report.ReportId));
+            Assert.False(store.Exists(Guid.NewGuid().ToString("N")));
+            Assert.False(store.Exists(null));
+            Assert.False(store.Exists("*"));
+            Assert.False(store.Exists(report.ReportId.ToUpperInvariant() + "0"));
+            store.Delete(report.ReportId);
+            Assert.False(store.Exists(report.ReportId));
+        }
+
+        [Fact]
         public void Delete_by_id_is_idempotent_even_after_external_delete()
         {
             var store = new ReportStore(dir);

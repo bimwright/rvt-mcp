@@ -66,10 +66,13 @@ namespace RvtMcp.Plugin.Reports.Revit
         }
 
         /// <summary>Open the window on <paramref name="reportId"/>; the filter switches to all models when needed.</summary>
-        internal static void ShowReport(string reportId)
+        /// <returns>False when the Reports module did not start, so no window can open.</returns>
+        internal static bool ShowReport(string reportId)
         {
+            if (_runtime == null) return false;
             ShowOrFocus();
             _viewModel?.ShowReport(reportId);
+            return true;
         }
 
         internal static void RefreshHostStatus() => _runtime?.RefreshHostStatus();

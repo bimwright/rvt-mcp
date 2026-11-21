@@ -4817,6 +4817,28 @@
       "result": "Error: golden probe failure"
     }
   },
+  "revit_show_report": {
+    "success": {
+      "calls": [
+        {
+          "command": "show_report",
+          "params": "{\"report_id\":\"0123456789abcdef0123456789abcdef\"}",
+          "timeout": null
+        }
+      ],
+      "result": "{\r\n  \"golden_probe\": true,\r\n  \"items\": [\r\n    1,\r\n    2\r\n  ]\r\n}"
+    },
+    "failure": {
+      "calls": [
+        {
+          "command": "show_report",
+          "params": "{\"report_id\":\"0123456789abcdef0123456789abcdef\"}",
+          "timeout": null
+        }
+      ],
+      "result": "Error: golden probe failure"
+    }
+  },
   "revit_suggest_view_name_corrections": {
     "success": {
       "calls": [

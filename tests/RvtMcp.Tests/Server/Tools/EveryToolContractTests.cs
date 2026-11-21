@@ -48,6 +48,7 @@ namespace RvtMcp.Tests
         private static readonly Dictionary<string, object> Shaped = new Dictionary<string, object>
         {
             ["revit_report_task_result:outcome"] = "completed",
+            ["revit_show_report:report_id"] = "0123456789abcdef0123456789abcdef",
             ["revit_update_schedule_field:fieldRef"] = "{\"name\":\"Mark\"}",
             ["revit_update_schedule_field:changes"] = "{\"hidden\":true}",
             ["revit_create_schedule:fields"] = "[\"Mark\"]",

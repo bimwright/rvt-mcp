@@ -36,5 +36,18 @@ namespace RvtMcp.Server
                 ReportCallContext.ParseCallIds(call_ids);
                 return new { task_id, outcome, summary, body, call_ids };
             });
+
+        [McpServerTool(Name = "revit_show_report", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(
+            "Open the Reports window in Revit on one saved agent report, as a click on its toast does. Use it when the user asks to see a report, instead of telling them where to click; " +
+            "do not call it after every revit_report_task_result, because the toast already offers the report. Does not change the model. " +
+            "report_id is the 32-character hexadecimal report_id returned by revit_report_task_result. REPORT_NOT_FOUND means the user or retention deleted it. " +
+            "Example: report_id=\"0123456789abcdef0123456789abcdef\".")]
+        public static async Task<string> ShowReport(string report_id)
+            => await ToolGateway.CallWithParamsAsync("show_report", () =>
+            {
+                if (report_id?.Length != 32 || !Guid.TryParseExact(report_id, "N", out _))
+                    throw new ArgumentException("report_id must be the 32-character hexadecimal report_id returned by revit_report_task_result.");
+                return new { report_id = report_id.ToLowerInvariant() };
+            });
     }
 }
