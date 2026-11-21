@@ -55,7 +55,7 @@ namespace Autodesk.Revit.DB.Architecture { public class Room : Autodesk.Revit.DB
             return Assembly.Load(bytes.ToArray());
         }
 
-        private static Dictionary<string, object> Describe(string type, string? member = null)
+        private static Dictionary<string, object> Describe(string type, string member = null)
         {
             var result = ApiDescriber.Describe(Assemblies, type, member);
             Assert.Null(result.Error);
