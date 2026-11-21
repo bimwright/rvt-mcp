@@ -22,6 +22,7 @@ public class TagHandlerTests
         "src/shared/Handlers/Annotations/TagElementsHandler.cs",
         "src/shared/Handlers/Rooms/TagAllRoomsHandler.cs",
         "src/shared/Handlers/Rooms/TagAllAreasHandler.cs",
+        "src/shared/Handlers/Structural/TagStructuralFramingHandler.cs",
         "src/shared/Infrastructure/RevitCompat.cs",
     }));
 
@@ -118,6 +119,7 @@ public class TagHandlerTests
     [InlineData("find:sheet")]
     [InlineData("category:sheet")]
     [InlineData("elements:sheet")]
+    [InlineData("framing:sheet")] // seen live: answered success with 0 candidates on a sheet
     public void Tag_tools_refuse_a_sheet_and_name_the_views_on_it(string scenario)
     {
         var result = Run(scenario);
@@ -241,7 +243,7 @@ using Autodesk.Revit.UI;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 namespace Autodesk.Revit.DB {
- public enum BuiltInCategory { INVALID=-1,OST_Walls=-2000011,OST_Doors=-2000023,OST_Rooms=-2000160,OST_Areas=-2003200,OST_WallTags=-2000220,OST_DoorTags=-2000460,OST_RoomTags=-2000480,OST_AreaTags=-2005020,OST_KeynoteTags=-2005008,OST_MultiCategoryTags=-2008032 }
+ public enum BuiltInCategory { INVALID=-1,OST_Walls=-2000011,OST_Doors=-2000023,OST_Rooms=-2000160,OST_Areas=-2003200,OST_WallTags=-2000220,OST_DoorTags=-2000460,OST_RoomTags=-2000480,OST_AreaTags=-2005020,OST_KeynoteTags=-2005008,OST_MultiCategoryTags=-2008032,OST_StructuralFraming=-2001320,OST_StructuralFramingTags=-2005015 }
  public enum ViewType { FloorPlan,AreaPlan,Rendering,DrawingSheet,Schedule,ColumnSchedule,ProjectBrowser,SystemBrowser,Legend }
  public enum TagMode { TM_ADDBY_CATEGORY }
  public enum TagOrientation { Horizontal,Vertical }
@@ -340,7 +342,7 @@ public static class Probe {
  public static string Run(string scenario){
   var parts=scenario.Split(':'); var tool=parts[0]; var kase=parts[1];
   var doc=new Document();
-  foreach(var c in new[]{("Walls",BuiltInCategory.OST_Walls),("Doors",BuiltInCategory.OST_Doors),("Rooms",BuiltInCategory.OST_Rooms),("Areas",BuiltInCategory.OST_Areas),("Wall Tags",BuiltInCategory.OST_WallTags),("Door Tags",BuiltInCategory.OST_DoorTags),("Room Tags",BuiltInCategory.OST_RoomTags),("Area Tags",BuiltInCategory.OST_AreaTags),("Keynote Tags",BuiltInCategory.OST_KeynoteTags),("Multi-Category Tags",BuiltInCategory.OST_MultiCategoryTags)})
+  foreach(var c in new[]{("Walls",BuiltInCategory.OST_Walls),("Doors",BuiltInCategory.OST_Doors),("Rooms",BuiltInCategory.OST_Rooms),("Areas",BuiltInCategory.OST_Areas),("Wall Tags",BuiltInCategory.OST_WallTags),("Door Tags",BuiltInCategory.OST_DoorTags),("Room Tags",BuiltInCategory.OST_RoomTags),("Area Tags",BuiltInCategory.OST_AreaTags),("Keynote Tags",BuiltInCategory.OST_KeynoteTags),("Multi-Category Tags",BuiltInCategory.OST_MultiCategoryTags),("Structural Framing",BuiltInCategory.OST_StructuralFraming),("Structural Framing Tags",BuiltInCategory.OST_StructuralFramingTags)})
    doc.Settings.Categories.Add(new Category{Id=new ElementId((int)c.Item2),Name=c.Item1});
   var plan=doc.Add(new ViewPlan{Id=new ElementId(100),Name="Level 1",ViewType=ViewType.FloorPlan});
   var sheet=doc.Add(new ViewSheet{Id=new ElementId(200),Name="Sheet A",ViewType=ViewType.DrawingSheet,InViews=new int[0]});
@@ -364,6 +366,7 @@ public static class Probe {
   doc.Add(new FamilySymbol{Id=new ElementId(60),Category=Cat(doc,BuiltInCategory.OST_WallTags)});
   doc.Add(new FamilySymbol{Id=new ElementId(61),Category=Cat(doc,BuiltInCategory.OST_DoorTags)});
   doc.Add(new FamilySymbol{Id=new ElementId(62),Category=Cat(doc,BuiltInCategory.OST_RoomTags)});
+  doc.Add(new FamilySymbol{Id=new ElementId(63),Category=Cat(doc,BuiltInCategory.OST_StructuralFramingTags)});
   int[] v={100};
   doc.Add(new TagV2022{Id=new ElementId(71),Host=doors[0],Category=Cat(doc,BuiltInCategory.OST_DoorTags),InViews=v});
   doc.Add(new TagLegacyProperty{Id=new ElementId(72),Host=doors[1],Category=Cat(doc,BuiltInCategory.OST_DoorTags),InViews=v});
@@ -392,6 +395,7 @@ public static class Probe {
    switch(tool){
     case "walls": r=new RvtMcp.Plugin.Handlers.TagAllWallsHandler().Execute(app,"{}");break;
     case "find": r=new RvtMcp.Plugin.Handlers.FindUntaggedElementsHandler().Execute(app,new JObject{["category"]=kase=="areas"?"Areas":kase.EndsWith("doors")?"Doors":"Rooms",["view_id"]=viewId}.ToString());break;
+    case "framing": r=new RvtMcp.Plugin.Handlers.TagStructuralFramingHandler().Execute(app,new JObject{["view_id"]=viewId}.ToString());break;
     case "rooms": r=new RvtMcp.Plugin.Handlers.TagAllRoomsHandler().Execute(app,"{}");break;
     case "areas": r=new RvtMcp.Plugin.Handlers.TagAllAreasHandler().Execute(app,"{}");break;
     case "category": r=new RvtMcp.Plugin.Handlers.TagAllByCategoryHandler().Execute(app,new JObject{["category"]=kase=="doors_fail"?"Doors":"Rooms",["view_id"]=viewId}.ToString());break;
