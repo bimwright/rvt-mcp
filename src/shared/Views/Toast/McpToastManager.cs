@@ -30,7 +30,8 @@ namespace RvtMcp.Plugin.Views.Toast
         private readonly Action<ToastPositionOptions> _positionChanged;
         private readonly Func<Tuple<ToastBounds, ToastBounds>> _geometry;
         private readonly Func<Point> _cursorPosition;
-        private readonly Action _snooze;
+        private readonly Func<bool> _isPaused;
+        private readonly Func<bool, bool> _setPaused;
         private double _compactHeight;
         private bool _growUp;
 
@@ -44,8 +45,9 @@ namespace RvtMcp.Plugin.Views.Toast
         /// Revit processes can be told apart, plus the agent of the latest call.
         /// Evaluated when a card is created or updated; null/empty falls back to the product name.
         /// </param>
-        /// <param name="snooze">
-        /// "Pause for today" from the expanded card; null hides the button.
+        /// <param name="isPaused">Whether toasts are paused for today; the expanded card then offers Resume.</param>
+        /// <param name="setPaused">
+        /// Pause (true) or resume (false) from the expanded card; returns the resulting state. Null hides the button.
         /// </param>
         /// <param name="motionEnabled">
         /// Passed to each card window; null follows the Windows animation setting.
@@ -62,7 +64,8 @@ namespace RvtMcp.Plugin.Views.Toast
             Action<ToastPositionOptions> positionChanged = null,
             Func<Tuple<ToastBounds, ToastBounds>> geometry = null,
             Func<Point> cursorPosition = null,
-            Action snooze = null)
+            Func<bool> isPaused = null,
+            Func<bool, bool> setPaused = null)
         {
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             _aggregator = aggregator ?? throw new ArgumentNullException(nameof(aggregator));
@@ -75,7 +78,8 @@ namespace RvtMcp.Plugin.Views.Toast
             _positionChanged = positionChanged;
             _geometry = geometry;
             _cursorPosition = cursorPosition;
-            _snooze = snooze;
+            _isPaused = isPaused;
+            _setPaused = setPaused;
 
             _timer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
             {
@@ -251,7 +255,8 @@ namespace RvtMcp.Plugin.Views.Toast
                 motionEnabled: _motionEnabled,
                 cursorPosition: _cursorPosition,
                 instanceIdentity: _instanceIdentity(),
-                onSnooze: _snooze);
+                isPaused: _isPaused,
+                setPaused: _setPaused);
 
             _window = window;
             window.SetShowBranding(_showBranding());

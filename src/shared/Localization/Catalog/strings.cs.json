@@ -295,6 +295,8 @@
   "settings.toast.snooze.help": "Skryje oznámení o činnosti ve všech Revitech v tomto počítači do půlnoci. Vypnutím je znovu hned zobrazíte.",
   "toast.snooze.today": "Pozastavit na dnešek",
   "toast.snooze.today.help": "Skryje oznámení o činnosti ve všech Revitech do půlnoci. Znovu je zapnete v Nastavení nebo tlačítkem oznámení.",
+  "toast.snooze.resume": "Obnovit",
+  "toast.snooze.resume.help": "Oznámení jsou ve všech Revitech pozastavena do půlnoci. Kliknutím je hned znovu zobrazíte.",
   "settings.toast.horizontal": "Vodorovné zarovnání",
   "settings.toast.vertical": "Svislé zarovnání",
   "settings.toast.left": "Vlevo",

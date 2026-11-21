@@ -295,6 +295,8 @@
   "settings.toast.snooze.help": "在午夜前隱藏此電腦上所有 Revit 的活動通知。關閉此項可立即重新顯示。",
   "toast.snooze.today": "今天暫停",
   "toast.snooze.today.help": "在午夜前隱藏所有 Revit 的活動通知。可在設定中或用通知按鈕重新開啟。",
+  "toast.snooze.resume": "恢復",
+  "toast.snooze.resume.help": "所有 Revit 的通知已暫停至午夜。點擊可立即重新顯示。",
   "settings.toast.horizontal": "水平對齊",
   "settings.toast.vertical": "垂直對齊",
   "settings.toast.left": "左",

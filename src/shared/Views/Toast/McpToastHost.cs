@@ -36,7 +36,8 @@ namespace RvtMcp.Plugin.Views.Toast
         private volatile ToastPositionOptions _positionOptions = new ToastPositionOptions();
         private volatile string _instanceIdentity;
         private volatile string _agentName;
-        private volatile Action _snooze;
+        private volatile Func<bool> _isPaused;
+        private volatile Func<bool, bool> _setPaused;
 
         /// <summary>Raised on the toast thread after a drag release was saved; the argument is the save result.</summary>
         public event Action<bool> PositionSaved;
@@ -99,9 +100,10 @@ namespace RvtMcp.Plugin.Views.Toast
             return (identity ?? Views.BrandAssets.ProductName) + " · " + agent;
         }
 
-        internal void SetSnoozeHandler(Action handler)
+        internal void SetPauseHandlers(Func<bool> isPaused, Func<bool, bool> setPaused)
         {
-            _snooze = handler;
+            _isPaused = isPaused;
+            _setPaused = setPaused;
         }
 
         internal void SetFrameUsableProvider(Func<bool> provider)
@@ -144,7 +146,8 @@ namespace RvtMcp.Plugin.Views.Toast
                     _dispatcher = hostDispatcher;
                     _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding, IdentityTitle,
                         positionOptions: () => _positionOptions, positionChanged: SaveDraggedPosition,
-                        snooze: () => _snooze?.Invoke());
+                        isPaused: () => _isPaused?.Invoke() ?? false,
+                        setPaused: paused => _setPaused?.Invoke(paused) ?? false);
                     if (_ownerHandle != IntPtr.Zero)
                         _manager.SetOwnerHandle(_ownerHandle);
                     _usesDedicatedThread = false;
@@ -170,7 +173,8 @@ namespace RvtMcp.Plugin.Views.Toast
                         _dispatcher = Dispatcher.CurrentDispatcher;
                         _manager = new McpToastManager(_dispatcher, Aggregator, () => _frameUsable(), id => _activityClick(id), () => _showBranding, IdentityTitle,
                         positionOptions: () => _positionOptions, positionChanged: SaveDraggedPosition,
-                        snooze: () => _snooze?.Invoke());
+                        isPaused: () => _isPaused?.Invoke() ?? false,
+                        setPaused: paused => _setPaused?.Invoke(paused) ?? false);
                         if (_ownerHandle != IntPtr.Zero)
                             _manager.SetOwnerHandle(_ownerHandle);
                     }

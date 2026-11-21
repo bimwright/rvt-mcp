@@ -314,6 +314,8 @@
   "settings.toast.snooze.help": "Hides activity notifications in every Revit on this computer until midnight. Turn off to show them again now.",
   "toast.snooze.today": "Pause for today",
   "toast.snooze.today.help": "Hide activity notifications in every Revit until midnight. Turn them back on in Settings or with the toast button.",
+  "toast.snooze.resume": "Resume",
+  "toast.snooze.resume.help": "Notifications are paused in every Revit until midnight. Click to show them again now.",
   "settings.toast.horizontal": "Horizontal alignment",
   "settings.toast.vertical": "Vertical alignment",
   "settings.toast.left": "Left",

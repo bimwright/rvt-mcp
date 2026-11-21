@@ -295,6 +295,8 @@
   "settings.toast.snooze.help": "Masque les notifications d'activité dans tous les Revit de cet ordinateur jusqu'à minuit. Désactivez pour les réafficher immédiatement.",
   "toast.snooze.today": "Suspendre pour aujourd'hui",
   "toast.snooze.today.help": "Masque les notifications d'activité dans tous les Revit jusqu'à minuit. Réactivez-les dans les Paramètres ou avec le bouton des notifications.",
+  "toast.snooze.resume": "Reprendre",
+  "toast.snooze.resume.help": "Les notifications sont suspendues dans tous les Revit jusqu'à minuit. Cliquez pour les réafficher maintenant.",
   "settings.toast.horizontal": "Alignement horizontal",
   "settings.toast.vertical": "Alignement vertical",
   "settings.toast.left": "Gauche",

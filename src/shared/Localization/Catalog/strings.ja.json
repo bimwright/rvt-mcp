@@ -295,6 +295,8 @@
   "settings.toast.snooze.help": "このコンピューターのすべての Revit で、真夜中までアクティビティ通知を非表示にします。オフにするとすぐに再表示されます。",
   "toast.snooze.today": "今日は一時停止",
   "toast.snooze.today.help": "真夜中まで、すべての Revit でアクティビティ通知を非表示にします。設定または通知ボタンで再表示できます。",
+  "toast.snooze.resume": "再開",
+  "toast.snooze.resume.help": "すべての Revit で真夜中まで通知が一時停止されています。クリックするとすぐに再表示されます。",
   "settings.toast.horizontal": "水平方向の配置",
   "settings.toast.vertical": "垂直方向の配置",
   "settings.toast.left": "左",

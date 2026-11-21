@@ -295,6 +295,8 @@
   "settings.toast.snooze.help": "Ukrywa powiadomienia o aktywności we wszystkich Revitach na tym komputerze do północy. Wyłącz, aby od razu znów je pokazać.",
   "toast.snooze.today": "Wstrzymaj na dziś",
   "toast.snooze.today.help": "Ukrywa powiadomienia o aktywności we wszystkich Revitach do północy. Włącz je ponownie w Ustawieniach lub przyciskiem powiadomień.",
+  "toast.snooze.resume": "Wznów",
+  "toast.snooze.resume.help": "Powiadomienia są wstrzymane we wszystkich Revitach do północy. Kliknij, aby od razu znów je pokazać.",
   "settings.toast.horizontal": "Wyrównanie poziome",
   "settings.toast.vertical": "Wyrównanie pionowe",
   "settings.toast.left": "Lewo",

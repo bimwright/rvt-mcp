@@ -295,6 +295,8 @@
   "settings.toast.snooze.help": "Blendet Aktivitätsbenachrichtigungen in jedem Revit auf diesem Computer bis Mitternacht aus. Ausschalten, um sie sofort wieder anzuzeigen.",
   "toast.snooze.today": "Für heute pausieren",
   "toast.snooze.today.help": "Blendet Aktivitätsbenachrichtigungen in jedem Revit bis Mitternacht aus. In den Einstellungen oder mit der Toast-Schaltfläche wieder einschalten.",
+  "toast.snooze.resume": "Fortsetzen",
+  "toast.snooze.resume.help": "Benachrichtigungen sind in jedem Revit bis Mitternacht pausiert. Klicken, um sie sofort wieder anzuzeigen.",
   "settings.toast.horizontal": "Horizontale Ausrichtung",
   "settings.toast.vertical": "Vertikale Ausrichtung",
   "settings.toast.left": "Links",

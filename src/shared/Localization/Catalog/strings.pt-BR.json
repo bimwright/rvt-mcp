@@ -295,6 +295,8 @@
   "settings.toast.snooze.help": "Oculta as notificações de atividade em todos os Revit deste computador até a meia-noite. Desative para mostrá-las novamente agora.",
   "toast.snooze.today": "Pausar por hoje",
   "toast.snooze.today.help": "Oculta as notificações de atividade em todos os Revit até a meia-noite. Reative-as nas Configurações ou com o botão de notificações.",
+  "toast.snooze.resume": "Retomar",
+  "toast.snooze.resume.help": "As notificações estão pausadas em todos os Revit até a meia-noite. Clique para mostrá-las novamente agora.",
   "settings.toast.horizontal": "Alinhamento horizontal",
   "settings.toast.vertical": "Alinhamento vertical",
   "settings.toast.left": "Esquerda",

@@ -33,9 +33,9 @@ internal static class RecentActivityVisualTests
     private static void CheckAgentTitlePidAndPause()
     {
         var cursor = new Point(10, 10);
-        var clicks = 0; var pauses = 0;
+        var clicks = 0; var pauses = 0; var paused = false;
         var window = new McpToastWindow(Snapshot(), null, null, _ => clicks++, null, null,
-            () => cursor, () => true, "rvt-mcp 2027 · Claude", () => pauses++);
+            () => cursor, () => true, "rvt-mcp 2027 · Claude", () => paused, value => { pauses++; paused = value; return paused; });
         try
         {
             window.SetShowBranding(false);
@@ -73,8 +73,16 @@ internal static class RecentActivityVisualTests
             var click = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
                 { RoutedEvent = UIElement.MouseLeftButtonUpEvent };
             pause.RaiseEvent(click);
-            if (!click.Handled || pauses != 1 || clicks != 0)
+            var label = Field<System.Windows.Documents.Run>(window, "_pauseText");
+            if (!click.Handled || pauses != 1 || !paused || clicks != 0)
                 throw new Exception("The pause button must pause once and must not open History.");
+            if (!label.Text.Contains("Resume") || row.Visibility != Visibility.Visible || !window.IsVisible)
+                throw new Exception("After pausing, the card must stay open and offer Resume: " + label.Text);
+            var undo = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                { RoutedEvent = UIElement.MouseLeftButtonUpEvent };
+            pause.RaiseEvent(undo);
+            if (!undo.Handled || pauses != 2 || paused || !label.Text.Contains("Pause for today") || clicks != 0)
+                throw new Exception("Resume must undo the pause in place: " + label.Text);
 
             window.SetIdentityTitle("rvt-mcp 2027 · Codex");
             if (Program.PlainText(title) != "rvt-mcp 2027 · Codex · PID " + processId)

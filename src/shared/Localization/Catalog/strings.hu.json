@@ -295,6 +295,8 @@
   "settings.toast.snooze.help": "Éjfélig elrejti a tevékenységi értesítéseket a számítógép minden Revitjében. Kapcsolja ki, hogy most újra megjelenjenek.",
   "toast.snooze.today": "Szüneteltetés mára",
   "toast.snooze.today.help": "Éjfélig elrejti a tevékenységi értesítéseket minden Revitben. A Beállításokban vagy az értesítés gombbal kapcsolhatja vissza.",
+  "toast.snooze.resume": "Folytatás",
+  "toast.snooze.resume.help": "Az értesítések éjfélig szünetelnek minden Revitben. Kattintson, hogy most újra megjelenjenek.",
   "settings.toast.horizontal": "Vízszintes igazítás",
   "settings.toast.vertical": "Függőleges igazítás",
   "settings.toast.left": "Balra",

@@ -54,7 +54,7 @@ Update the gateway and add-ins together to see the agent name; an older gateway 
 
 - The card title names the agent of the latest call from its MCP client name: `rvt-mcp 2027 · Claude` (Claude, Codex, Cline, Cursor, Windsurf, Antigravity, Gemini, Copilot, VS Code; any other client shows its own name, cleaned and capped at 20 characters). The gateway sends the name with each call; it is display text only.
 - The Revit process ID (`· PID 30476`) fades in when you point at the card and fades out when you leave, with or without branding. It no longer shows all the time.
-- **Pause for today**: a button at the foot of the expanded card, and a switch in Settings → Toast, hide every card (errors included) in every Revit on this computer until local midnight. The choice is saved as the local date in `toastSnoozedDate`. Turn the switch off, or press the ribbon **Toast** button, to show cards again now; turning toasts on from the ribbon or Settings also ends the pause. While paused, `revit_report_task_result` reports `toast: "disabled"`.
+- **Pause for today**: a button at the foot of the expanded card, and a switch in Settings → Toast, hide every card (errors included) in every Revit on this computer until local midnight. Pressed on the card, the card stays open and the button turns into **Resume**, so a mis-click is undone at once. The choice is saved as the local date in `toastSnoozedDate`. Turn the switch off, or press the ribbon **Toast** button, to show cards again now; turning toasts on from the ribbon or Settings also ends the pause. While paused, `revit_report_task_result` reports `toast: "disabled"`.
 
 ### Build/deployment dependencies
 
