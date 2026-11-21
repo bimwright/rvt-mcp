@@ -28,6 +28,8 @@ namespace RvtMcp.Plugin.Handlers
                 ? doc.GetElement(RevitCompat.ToElementId(viewIdParam.Value)) as View
                 : uidoc.ActiveView;
             if (view == null) return CommandResult.Fail("Could not resolve view.");
+            var sheetError = TagScan.SheetRefusal(doc, view);
+            if (sheetError != null) return CommandResult.Fail(sheetError);
 
             FamilySymbol tagType;
             if (tagTypeIdParam.HasValue)

@@ -135,7 +135,7 @@
     },
     {
       "name": "revit_ai_element_filter",
-      "description_hash": "sha256:f94f7ccce36f8263303f2fdf81c64c26471f78587572e7d25f60ba4c92c5715f",
+      "description_hash": "sha256:a90ee523afeb8c564398e0eee782f9247ff7563c2437ba621573b8fac556279b",
       "inputSchema": {
         "properties": {
           "category": {
@@ -1479,7 +1479,7 @@
     },
     {
       "name": "revit_create_dimensions",
-      "description_hash": "sha256:69fe28d45a86d389caf050023df4a3f643ad99025dfa9b982551c12e9a19ef75",
+      "description_hash": "sha256:03dc82dc32359ecb67d9faf263fb5357573681621a8efe5d86ea4b7c9f8d94da",
       "inputSchema": {
         "properties": {
           "dimensionTypeId": {
@@ -1837,7 +1837,7 @@
     },
     {
       "name": "revit_create_line_based_element",
-      "description_hash": "sha256:3b4508c6232114145d52a877cf3f7d1d0525cb2056b8183f111c126d95f492c7",
+      "description_hash": "sha256:8e284db35c140e33e2f159548f371ef203d066156daf4bdce7b9d3506f12a135",
       "inputSchema": {
         "properties": {
           "elementType": {
@@ -2100,7 +2100,7 @@
     },
     {
       "name": "revit_create_point_based_element",
-      "description_hash": "sha256:a8f332b24132839ceb99e038ce05bb8a353155ae8b5cda3924fa143f04bacbc7",
+      "description_hash": "sha256:bca6104d60cd8e11cee3962c2e78baf0ee92a3141efb1bb61cf37a614d5dcfc5",
       "inputSchema": {
         "properties": {
           "host_id": {
@@ -3039,7 +3039,7 @@
     },
     {
       "name": "revit_delete_element",
-      "description_hash": "sha256:f8f74c803fb2713c171d09fa89b3e286cef7f45ac2a852a7ccc40490c9be4665",
+      "description_hash": "sha256:3a26ed432dbaceac8112acdfec46a5dac1574a64bcf3a6d4659f4f152f8afde0",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -4028,7 +4028,7 @@
     },
     {
       "name": "revit_get_available_family_types",
-      "description_hash": "sha256:7d0ab84af905a6af87653134cd861d5b23624b8ef266099231a13dc2ccdd2769",
+      "description_hash": "sha256:4eaabc3c965944f4fe91542ed2721efdeac18547b35bbc9c5a6a22e2e1608a59",
       "inputSchema": {
         "properties": {
           "category": {
@@ -5454,7 +5454,7 @@
     },
     {
       "name": "revit_list_family_types_in_family",
-      "description_hash": "sha256:cb0c846ca828a9de6a8d419fcb207ac5303e22ab83324bdd66e518e6a8dad5d2",
+      "description_hash": "sha256:fe6e26c341104a2c9e9c0a3c4b1f6549300b067e1e858b64996e9ac8ee7eafbc",
       "inputSchema": {
         "properties": {
           "familyId": {
@@ -5598,7 +5598,7 @@
     },
     {
       "name": "revit_list_loaded_families",
-      "description_hash": "sha256:99285045276af46d56471b56fbd8796eeb0d571b02fce3faa62a16650f04db25",
+      "description_hash": "sha256:c3ef4cf9ed82f60043e653434ed3ae8dae44b16830bc8e19fdb228db861b9277",
       "inputSchema": {
         "properties": {
           "categoryFilter": {
@@ -6480,7 +6480,7 @@
     },
     {
       "name": "revit_place_view_on_sheet",
-      "description_hash": "sha256:2c11b569992843606315544996d4fa0db28fbc10916ea2ca7bd92a80b841c578",
+      "description_hash": "sha256:0e9622216bd325c69acc39d76824c06aa1d2e045c7c57ff08144d9d21eb6fe88",
       "inputSchema": {
         "properties": {
           "sheetId": {
@@ -6498,6 +6498,14 @@
           "viewId": {
             "description": "",
             "type": "Int64"
+          },
+          "xMm": {
+            "description": "",
+            "type": "Nullable`1"
+          },
+          "yMm": {
+            "description": "",
+            "type": "Nullable`1"
           }
         },
         "required": [

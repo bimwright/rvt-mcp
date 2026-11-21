@@ -8,7 +8,7 @@ namespace RvtMcp.Server
     [McpServerToolType, Toolset("families")]
     public class FamiliesTools
     {
-        [McpServerTool(Name = "revit_list_loaded_families", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List all loaded families (loadable + in-place + system) in the active document grouped by category. Returns id, name, category, kind (system|loadable|inplace), type_count, optional instance_count, and is_editable. Filter via categoryFilter (case-insensitive substring) and kindFilter (all|system|loadable|inplace).")]
+        [McpServerTool(Name = "revit_list_loaded_families", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List all loaded families (loadable + in-place + system) in the active document grouped by category. Returns id, name, category, kind (system|loadable|inplace), type_count, optional instance_count, and is_editable. Filter via categoryFilter (case-insensitive substring) and kindFilter (all|system|loadable|inplace). A system family's id is system:<typeId>; pass it to revit_list_family_types_in_family for the id of each of its types.")]
         public static async Task<string> ListLoadedFamilies(string categoryFilter = "", string kindFilter = "all", bool includeInstanceCount = false, int limit = 1000)
             => await ToolGateway.CallAsync("list_loaded_families", new { category_filter = categoryFilter, kind_filter = kindFilter, include_instance_count = includeInstanceCount, limit });
 
@@ -49,7 +49,9 @@ namespace RvtMcp.Server
         public static async Task<string> GetFamilyInstances(string familyId = "", string familyName = "", string typeName = "", bool viewOnly = false, int limit = 1000)
             => await ToolGateway.CallAsync("get_family_instances", new { family_id = familyId, family_name = familyName, type_name = typeName, view_only = viewOnly, limit });
 
-        [McpServerTool(Name = "revit_list_family_types_in_family", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List a bounded page of types in one family. Use parameterNames to return only needed values; maxTypes hard max 500.")]
+        [McpServerTool(Name = "revit_list_family_types_in_family", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List a bounded page of types in one family. Use parameterNames to return only needed values; maxTypes hard max 500. " +
+            "familyId is a numeric Family id, or a system:<typeId> id from revit_list_loaded_families to list every type of a system family. " +
+            "Example: familyId='system:1234', includeParameterValues=false returns the id and name of each wall type in that family, for revit_create_line_based_element typeId.")]
         public static async Task<string> ListFamilyTypesInFamily(string familyId = "", string familyName = "", bool includeParameterValues = true, bool includeBuiltInOnly = false, int startIndex = 0, int maxTypes = 100, string[] parameterNames = null)
             => await ToolGateway.CallAsync("list_family_types_in_family", new { family_id = familyId, family_name = familyName, include_parameter_values = includeParameterValues, include_built_in_only = includeBuiltInOnly, start_index = startIndex, max_types = maxTypes, parameter_names = parameterNames });
 

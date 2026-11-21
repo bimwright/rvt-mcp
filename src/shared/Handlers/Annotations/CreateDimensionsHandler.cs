@@ -110,6 +110,7 @@ namespace RvtMcp.Plugin.Handlers
             var resolvedRefsInfo = new JArray();
             var failedRefsInfo = new JArray();
             var resolvedElements = new List<Element>();
+            var resolvedLines = new List<Line>(); // the referenced line in model space, null when unknown
 
             for (int i = 0; i < referencesToken.Count; i++)
             {
@@ -146,6 +147,7 @@ namespace RvtMcp.Plugin.Handlers
                 try
                 {
                     Reference revitRef = null;
+                    Line refLine = null;
                     if (string.Equals(mode, "explicit_reference_stable", StringComparison.OrdinalIgnoreCase))
                     {
                         if (string.IsNullOrEmpty(stableRef))
@@ -162,6 +164,7 @@ namespace RvtMcp.Plugin.Handlers
                             throw new Exception("Element is not a Grid.");
                         }
                         revitRef = new Reference(grid);
+                        refLine = grid.Curve as Line;
                     }
                     else if (string.Equals(mode, "wall_centerline", StringComparison.OrdinalIgnoreCase))
                     {
@@ -170,26 +173,19 @@ namespace RvtMcp.Plugin.Handlers
                         {
                             throw new Exception("Element is not a Wall.");
                         }
-                        var lc = wall.Location as LocationCurve;
-                        if (lc == null || lc.Curve == null)
-                        {
-                            throw new Exception("Wall location curve is not available.");
-                        }
-                        revitRef = lc.Curve.Reference;
-                        if (revitRef == null)
-                        {
-                            throw new Exception("Revit did not expose a valid centerline Reference for this wall.");
-                        }
+                        refLine = GetWallLocationLine(wall, view);
+                        revitRef = refLine.Reference;
                     }
                     else
                     {
-                        throw new Exception("Unsupported reference mode: " + mode);
+                        throw new Exception("Unsupported reference mode: '" + mode + "'. Use wall_centerline, grid_curve or explicit_reference_stable (with stable_reference).");
                     }
 
                     if (revitRef != null)
                     {
                         refArray.Append(revitRef);
                         resolvedElements.Add(elem);
+                        resolvedLines.Add(refLine);
                         resolvedRefsInfo.Add(new JObject
                         {
                             ["mode"] = mode,
@@ -211,13 +207,7 @@ namespace RvtMcp.Plugin.Handlers
 
             if (refArray.Size < 2)
             {
-                return CommandResult.Ok(new JObject
-                {
-                    ["created"] = false,
-                    ["resolved_references"] = resolvedRefsInfo,
-                    ["failed_references"] = failedRefsInfo,
-                    ["error"] = "Fewer than two valid references were successfully resolved."
-                });
+                return NotCreated("Fewer than two valid references were successfully resolved. See failed_references.", resolvedRefsInfo, failedRefsInfo);
             }
 
             // Resolve / Infer Line
@@ -243,6 +233,26 @@ namespace RvtMcp.Plugin.Handlers
                 }
             }
 
+            // Parallel reference lines in a plan view: dimension across them, perpendicular and at one
+            // elevation. Bounding-box centres of walls differ in height and along the wall, which made
+            // Revit refuse the inferred direction.
+            if (line == null && resolvedLines.Count >= 2 && resolvedLines.All(l => l != null)
+                && Math.Abs(view.ViewDirection.DotProduct(XYZ.BasisZ)) > 0.9)
+            {
+                var first = resolvedLines[0];
+                var dir = new XYZ(first.Direction.X, first.Direction.Y, 0);
+                if (dir.GetLength() > 1e-9 && resolvedLines.All(l => Math.Abs(new XYZ(l.Direction.X, l.Direction.Y, 0).Normalize().DotProduct(dir.Normalize())) > 0.9999))
+                {
+                    var across = new XYZ(-dir.Y, dir.X, 0).Normalize();
+                    var origin = (first.GetEndPoint(0) + first.GetEndPoint(1)) * 0.5;
+                    var offsets = resolvedLines.Select(l => (((l.GetEndPoint(0) + l.GetEndPoint(1)) * 0.5) - origin).DotProduct(across)).ToList();
+                    var min = offsets.Min();
+                    var max = offsets.Max();
+                    if (max - min > 0.001)
+                        line = Line.CreateBound(origin + across * min, origin + across * max);
+                }
+            }
+
             if (line == null && resolvedElements.Count >= 2)
             {
                 try
@@ -253,6 +263,10 @@ namespace RvtMcp.Plugin.Handlers
                     {
                         var c1 = (bbox1.Min + bbox1.Max) * 0.5;
                         var c2 = (bbox2.Min + bbox2.Max) * 0.5;
+                        // In a plan view the line stays at one elevation; in a section or elevation the
+                        // vertical difference is what is being dimensioned.
+                        if (Math.Abs(view.ViewDirection.DotProduct(XYZ.BasisZ)) > 0.9)
+                            c2 = new XYZ(c2.X, c2.Y, c1.Z);
 
                         var dir = (c2 - c1);
                         if (dir.GetLength() > 0.001)
@@ -279,7 +293,7 @@ namespace RvtMcp.Plugin.Handlers
 
             if (line == null)
             {
-                return CommandResult.Fail("Could not infer a valid dimension line. Please specify the 'line' parameter.");
+                return NotCreated("Could not infer a valid dimension line. Please specify the 'line' parameter.", resolvedRefsInfo, failedRefsInfo);
             }
 
             Dimension dimension = null;
@@ -299,12 +313,12 @@ namespace RvtMcp.Plugin.Handlers
 
                     var status = tx.Commit();
                     if (status != TransactionStatus.Committed)
-                        return CommandResult.Fail("Create dimensions transaction did not commit. Status: " + status);
+                        return NotCreated("Create dimensions transaction did not commit. Status: " + status, resolvedRefsInfo, failedRefsInfo);
                 }
                 catch (Exception ex)
                 {
                     if (tx.HasStarted()) tx.RollBack();
-                    return CommandResult.Fail("Failed to create dimension: " + ex.Message);
+                    return NotCreated("Failed to create dimension: " + ex.Message, resolvedRefsInfo, failedRefsInfo);
                 }
             }
 
@@ -333,9 +347,68 @@ namespace RvtMcp.Plugin.Handlers
                 },
                 ["resolved_references"] = resolvedRefsInfo,
                 ["failed_references"] = failedRefsInfo,
+                ["failedCount"] = failedRefsInfo.Count,
                 ["error"] = null
             });
         }
+
+        /// <summary>
+        /// A LocationCurve's curve carries no Reference, so a wall's location line is read from the
+        /// wall geometry (computed references, non-visible objects): a referenced line parallel to the
+        /// location line and on it in plan (perpendicular distance within 1 mm). A face or other
+        /// parallel line off the axis is never used, even when its midpoint is closer.
+        /// </summary>
+        private static Line GetWallLocationLine(Wall wall, View view)
+        {
+            var lc = wall.Location as LocationCurve;
+            if (lc == null || lc.Curve == null)
+                throw new Exception("Wall location curve is not available.");
+            if (!(lc.Curve is Line locationLine))
+                throw new Exception("wall_centerline supports straight walls only; this wall's location curve is " + lc.Curve.GetType().Name + ".");
+
+            const double toleranceFt = 1.0 / 304.8;
+            var options = new Options { ComputeReferences = true, IncludeNonVisibleObjects = true, View = view };
+            var geometry = wall.get_Geometry(options);
+            var origin = locationLine.GetEndPoint(0);
+            var axis = new XYZ(locationLine.Direction.X, locationLine.Direction.Y, 0).Normalize();
+            Line best = null;
+            var bestDistance = double.MaxValue;
+            if (geometry != null)
+            {
+                foreach (var obj in geometry)
+                {
+                    if (!(obj is Line candidate) || candidate.Reference == null) continue;
+                    if (Math.Abs(candidate.Direction.DotProduct(locationLine.Direction)) < 0.9999) continue;
+                    var offset = Midpoint(candidate) - origin;
+                    var distance = Math.Abs(offset.X * axis.Y - offset.Y * axis.X); // perpendicular, in plan
+                    if (distance <= toleranceFt && distance < bestDistance)
+                    {
+                        best = candidate;
+                        bestDistance = distance;
+                    }
+                }
+            }
+            if (best == null)
+                throw new Exception("Revit did not expose a Reference on this wall's location line in this view; pass explicit_reference_stable references instead.");
+            return best;
+        }
+
+        /// <summary>No dimension was created: a failure that keeps the per-reference results in its data.</summary>
+        private static CommandResult NotCreated(string error, JArray resolved, JArray failed) => new CommandResult
+        {
+            Success = false,
+            Error = error,
+            Data = new JObject
+            {
+                ["created"] = false,
+                ["resolved_references"] = resolved,
+                ["failed_references"] = failed,
+                ["failedCount"] = failed.Count,
+                ["error"] = error
+            }
+        };
+
+        private static XYZ Midpoint(Line line) => (line.GetEndPoint(0) + line.GetEndPoint(1)) * 0.5;
 
         private static bool EnsureViewCanHostAnnotation(View view, out string error)
         {

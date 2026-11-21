@@ -113,6 +113,54 @@ namespace RvtMcp.Tests
             Assert.NotNull(result.Suggestion);
         }
 
+        // Shape of create_dimensions' references (#43): array of objects with a required enum field.
+        private const string ReferencesSchema = @"{
+            ""type"":""object"",
+            ""required"":[""references""],
+            ""properties"":{
+                ""references"":{""type"":""array"",""items"":{
+                    ""type"":""object"",
+                    ""required"":[""mode"",""element_id""],
+                    ""properties"":{
+                        ""mode"":{""type"":""string"",""enum"":[""wall_centerline"",""grid_curve"",""explicit_reference_stable""]},
+                        ""element_id"":{""type"":""integer""},
+                        ""stable_reference"":{""type"":""string""}
+                    }}},
+                ""commands"":{""type"":""array"",""items"":{""type"":""object""}}
+            }
+        }";
+
+        [Theory]
+        [InlineData(@"{""references"":[{""element_id"":1},{""element_id"":2}]}", "'references[0].mode' is missing")]
+        [InlineData(@"{""references"":[{""mode"":""face"",""element_id"":1}]}", "'references[0].mode' = 'face' not in allowed values")]
+        [InlineData(@"{""references"":[{""mode"":""grid_curve"",""element_id"":""one""}]}", "'references[0].element_id' must be integer")]
+        [InlineData(@"{""references"":[""not-an-object""]}", "'references[0]' must be object")]
+        public void Object_items_are_checked_and_the_hint_lists_what_the_schema_allows(string parameters, string error)
+        {
+            var result = SchemaValidator.Validate(ReferencesSchema, parameters);
+
+            Assert.False(result.IsValid);
+            Assert.Contains(error, result.Error);
+            Assert.Contains("mode (required): one of [\"wall_centerline\", \"grid_curve\", \"explicit_reference_stable\"]", result.Hint);
+            Assert.Contains("element_id (required): integer", result.Hint);
+            Assert.DoesNotContain("Example section", result.Hint);
+        }
+
+        [Fact]
+        public void Valid_object_items_and_items_without_properties_pass()
+        {
+            var result = SchemaValidator.Validate(ReferencesSchema,
+                @"{""references"":[{""mode"":""wall_centerline"",""element_id"":1,""extra"":true},{""mode"":""grid_curve"",""element_id"":2}],""commands"":[{""anything"":1}]}");
+            Assert.True(result.IsValid, result.Error);
+        }
+
+        [Fact]
+        public void Enum_mismatch_hint_repeats_the_allowed_values()
+        {
+            var result = SchemaValidator.Validate(OperateSchema, @"{""operation"":""teleport"",""elementIds"":[1]}");
+            Assert.Contains("operation: one of [\"move\"", result.Hint);
+        }
+
         [Fact]
         public void Validate_MalformedSchema_FailsOpen()
         {

@@ -60,7 +60,7 @@ namespace RvtMcp.Plugin.Handlers
                     var r = handler.Execute(app, subParams);
                     return r.Success
                         ? BatchExecutor.InvokeResult.Ok(r.Data)
-                        : BatchExecutor.InvokeResult.Fail(r.Error);
+                        : BatchExecutor.InvokeResult.Fail(r.Error, r.Data);
                 }, _dispatcher.IsBakedCommand, () => FailureControl.IsStopped);
 
                 bool rolledBack;

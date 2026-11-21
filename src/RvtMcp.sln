@@ -75,6 +75,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Annotations", "Annotations"
 		shared\Handlers\Annotations\TagAllByCategoryHandler.cs = shared\Handlers\Annotations\TagAllByCategoryHandler.cs
 		shared\Handlers\Annotations\TagAllWallsHandler.cs = shared\Handlers\Annotations\TagAllWallsHandler.cs
 		shared\Handlers\Annotations\TagElementsHandler.cs = shared\Handlers\Annotations\TagElementsHandler.cs
+		shared\Handlers\Annotations\TagScan.cs = shared\Handlers\Annotations\TagScan.cs
+		shared\Handlers\Annotations\TagViewPolicy.cs = shared\Handlers\Annotations\TagViewPolicy.cs
 		shared\Handlers\Annotations\WipeEmptyTagsHandler.cs = shared\Handlers\Annotations\WipeEmptyTagsHandler.cs
 	EndProjectSection
 EndProject
@@ -325,6 +327,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sheets", "Sheets", "{67C0EE
 		shared\Handlers\Sheets\PlaceViewOnSheetHandler.cs = shared\Handlers\Sheets\PlaceViewOnSheetHandler.cs
 		shared\Handlers\Sheets\RenumberSheetsHandler.cs = shared\Handlers\Sheets\RenumberSheetsHandler.cs
 		shared\Handlers\Sheets\SetTitleblockParametersHandler.cs = shared\Handlers\Sheets\SetTitleblockParametersHandler.cs
+		shared\Handlers\Sheets\SheetPointInput.cs = shared\Handlers\Sheets\SheetPointInput.cs
 		shared\Handlers\Sheets\ViewportLayoutMath.cs = shared\Handlers\Sheets\ViewportLayoutMath.cs
 		shared\Handlers\Sheets\ViewportSheetSupport.cs = shared\Handlers\Sheets\ViewportSheetSupport.cs
 	EndProjectSection

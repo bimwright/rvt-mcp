@@ -28,7 +28,9 @@ namespace RvtMcp.Server
         public static async Task<string> CreateTextNote(string text, double x, double y, long? viewId = null, long? textTypeId = null, double width = 0, double rotationDeg = 0)
             => await ToolGateway.CallAsync("create_text_note", new { text, x, y, view_id = viewId, text_type_id = textTypeId, width, rotation_deg = rotationDeg });
 
-        [McpServerTool(Name = "revit_create_dimensions", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a dimension element in a view. references: array of Revit element-reference objects.")]
+        [McpServerTool(Name = "revit_create_dimensions", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create a dimension in a view between two or more references. references: array of {mode, element_id}; mode is wall_centerline (a wall's location line), grid_curve (a grid) or explicit_reference_stable (also pass stable_reference). " +
+            "Fails with failed_references when fewer than two resolve. Optional line {start:{x,y,z}, end:{x,y,z}} in mm places the dimension line; otherwise it is inferred. " +
+            "Example: references=[{mode:'grid_curve', element_id:195169}, {mode:'grid_curve', element_id:195239}], viewId=312.")]
         public static async Task<string> CreateDimensions(object[] references, long? viewId = null, long? dimensionTypeId = null, object line = null)
             => await ToolGateway.CallWithParamsAsync("create_dimensions", () =>
             {
