@@ -44,6 +44,9 @@ namespace RvtMcp.Plugin
             }
 
             var type = matches[0];
+            // A short name shared by several API types (ApplicationEntryPoint) is shown in full so the list stays unambiguous.
+            var shared = new HashSet<string>(types.GroupBy(t => ShortName(t)).Where(g => g.Count() > 1).Select(g => g.Key), StringComparer.Ordinal);
+            string Label(Type t) => shared.Contains(ShortName(t)) ? FullName(t) : ShortName(t);
             var filter = string.IsNullOrWhiteSpace(memberFilter) ? null : memberFilter.Trim();
             var groups = new List<KeyValuePair<string, List<string>>>();
             var lines = 0;
@@ -55,17 +58,17 @@ namespace RvtMcp.Plugin
                 var room = Math.Max(0, MaxLines - lines);
                 if (own.Count > room) own = own.Take(room).ToList();
                 lines += own.Count;
-                if (own.Count > 0) groups.Add(new KeyValuePair<string, List<string>>(owner == type ? "declared" : "from " + ShortName(owner), own));
+                if (own.Count > 0) groups.Add(new KeyValuePair<string, List<string>>(owner == type ? "declared" : "from " + Label(owner), own));
             }
 
-            var subtypes = types.Where(t => t.BaseType == type).Select(t => ShortName(t)).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+            var subtypes = types.Where(t => t.BaseType == type).Select(Label).OrderBy(n => n, StringComparer.Ordinal).ToArray();
             var value = new Dictionary<string, object>
             {
                 ["type"] = FullName(type),
                 ["kind"] = Kind(type),
-                ["base_types"] = Chain(type).Skip(1).Select(t => ShortName(t)).ToArray(),
+                ["base_types"] = Chain(type).Skip(1).Select(Label).ToArray(),
             };
-            var interfaces = type.GetInterfaces().Where(IsApi).Select(t => ShortName(t)).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+            var interfaces = type.GetInterfaces().Where(IsApi).Select(Label).OrderBy(n => n, StringComparer.Ordinal).ToArray();
             if (interfaces.Length > 0) value["interfaces"] = interfaces;
             if (subtypes.Length > 0) value["subtypes"] = subtypes.Take(MaxSubtypes).ToArray();
             if (subtypes.Length > MaxSubtypes) value["subtypes_total"] = subtypes.Length;
@@ -136,10 +139,12 @@ namespace RvtMcp.Plugin
                 var getter = p.GetGetMethod();
                 var setter = p.GetSetMethod();
                 var accessor = getter ?? setter;
-                // A named indexed property is called as get_Name(...) in C#, so a filter written that way finds it too.
-                if (accessor == null || !(Wanted(p.Name) || Wanted("get_" + p.Name) || Wanted("set_" + p.Name))) continue;
-                var stat = accessor.IsStatic ? "static " : "";
+                if (accessor == null) continue;
                 var index = p.GetIndexParameters();
+                // A named indexed property is called as get_Name(...) in C#, so a filter written that way finds it too.
+                var named = index.Length > 0 && p.Name != defaultMember;
+                if (!(Wanted(p.Name) || named && (Wanted("get_" + p.Name) || Wanted("set_" + p.Name)))) continue;
+                var stat = accessor.IsStatic ? "static " : "";
                 if (index.Length == 0)
                     lines.Add((accessor.IsStatic ? 1 : 2, p.Name, $"{stat}{p.Name}: {TypeName(p.PropertyType)} {{ {(getter != null ? "get; " : "")}{(setter != null ? "set; " : "")}}}{Obsolete(p)}"));
                 else if (p.Name == defaultMember)
@@ -155,6 +160,14 @@ namespace RvtMcp.Plugin
                 lines.Add((1, f.Name, $"{(f.IsLiteral ? "const " : f.IsStatic ? "static " : "")}{f.Name}: {TypeName(f.FieldType)}{Obsolete(f)}"));
             foreach (var e in owner.GetEvents(flags).Where(e => Wanted(e.Name)))
                 lines.Add((4, e.Name, $"event {e.Name}: {TypeName(e.EventHandlerType)}{Obsolete(e)}"));
+            foreach (var m in owner.GetMethods(flags).Where(m => m.IsSpecialName && m.Name.StartsWith("op_", StringComparison.Ordinal)))
+            {
+                // Operators: xyz1 + xyz2, id1 == id2. Shown so a script does not fall back to Add()/Equals() needlessly.
+                if (!Operators.TryGetValue(m.Name, out var symbol) || !Wanted(symbol) && !Wanted(m.Name)) continue;
+                lines.Add((5, m.Name, symbol == "implicit" || symbol == "explicit"
+                    ? $"{symbol} operator {TypeName(m.ReturnType)}({Parameters(m.GetParameters())})"
+                    : $"operator {symbol}({Parameters(m.GetParameters())}) -> {TypeName(m.ReturnType)}"));
+            }
             foreach (var m in owner.GetMethods(flags).Where(m => !m.IsSpecialName && Wanted(m.Name)))
             {
                 var generic = m.IsGenericMethodDefinition ? "<" + string.Join(", ", m.GetGenericArguments().Select(a => a.Name)) + ">" : "";
@@ -164,6 +177,14 @@ namespace RvtMcp.Plugin
             return lines.OrderBy(l => l.order).ThenBy(l => l.name, StringComparer.Ordinal).ThenBy(l => l.line, StringComparer.Ordinal)
                 .Select(l => l.line).Distinct();
         }
+
+        private static readonly Dictionary<string, string> Operators = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["op_Addition"] = "+", ["op_Subtraction"] = "-", ["op_Multiply"] = "*", ["op_Division"] = "/", ["op_Modulus"] = "%",
+            ["op_UnaryNegation"] = "-", ["op_UnaryPlus"] = "+", ["op_Equality"] = "==", ["op_Inequality"] = "!=",
+            ["op_LessThan"] = "<", ["op_GreaterThan"] = ">", ["op_LessThanOrEqual"] = "<=", ["op_GreaterThanOrEqual"] = ">=",
+            ["op_Implicit"] = "implicit", ["op_Explicit"] = "explicit",
+        };
 
         private static string Parameters(ParameterInfo[] parameters) =>
             string.Join(", ", parameters.Select(p =>

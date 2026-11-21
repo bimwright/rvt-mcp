@@ -94,6 +94,14 @@ namespace RvtMcp.Plugin
             var owners = index.Owners(member, compilation)
                 .Where(o => !SymbolEqualityComparer.Default.Equals(o, type) && !InheritsFrom(type, o)).ToArray();
             var parts = new List<string>();
+            // The script's own receiver when it is short (app, doc.Application), so the advice reads as code to paste.
+            var x = receiver is IdentifierNameSyntax || receiver is ThisExpressionSyntax
+                    || receiver is MemberAccessExpressionSyntax && !receiver.DescendantNodes().OfType<InvocationExpressionSyntax>().Any()
+                ? receiver.ToString() : "x";
+            if (x.Length > 40 || x.Contains("\n")) x = "x";
+            // Only names that share a real part with the missing one; an unrelated list is noise.
+            var near = Nearest(mine.Where(n => !n.Equals(member, StringComparison.Ordinal)), member, MaxNear, minShared: 4);
+            var closest = near.Length == 0 ? null : $"{shown(type)} members closest to '{member}': {string.Join(", ", near)}.";
 
             var subtypes = owners.Where(o => InheritsFrom(o, type))
                 .OrderBy(o => Depth(o, type)).ThenBy(o => o.Name.Length).ThenBy(o => o.Name, StringComparer.Ordinal)
@@ -104,18 +112,25 @@ namespace RvtMcp.Plugin
                 var first = shown(subtypes[0]);
                 parts.Add($"'{member}' is a member of {string.Join(", ", subtypes.Select(shown))} " +
                           $"({(subtypes.Length == 1 ? "a subtype" : "subtypes")} of {shown(type)}): check and cast, e.g. " +
-                          $"`if (x is {first} y) ... y.{member}`.");
+                          $"`if ({x} is {first} y) ... y.{member}`.");
+                if (closest != null) parts.Add(closest);
             }
             else if (via != null)
-                parts.Add($"'{member}' is a member of {shown(via.Value.Owner)}, not of {shown(type)}: use x.{via.Value.Property}.{member}.");
-            else if (owners.Length > 0 && owners.Length <= MaxOwners)
-                parts.Add($"'{member}' is a member of {string.Join(", ", owners.Select(shown))}, not of {shown(type)}.");
-            else if (owners.Length == 0)
-                parts.Add($"No Revit API type in this Revit version has a member '{member}'.");
-
-            var near = Nearest(mine.Where(n => !n.Equals(member, StringComparison.Ordinal)), member, MaxNear);
-            if (near.Length > 0) parts.Add($"{shown(type)} members closest to '{member}': {string.Join(", ", near)}.");
-            return parts.Count == 0 ? null : string.Join(" ", parts);
+            {
+                parts.Add($"'{member}' is a member of {shown(via.Value.Owner)}, not of {shown(type)}: use {x}.{via.Value.Property}.{member}.");
+                if (closest != null) parts.Add(closest);
+            }
+            else
+            {
+                // The member is on no related type (removed or renamed, e.g. ElementId.IntegerValue): the type's own close names lead.
+                parts.Add(owners.Length == 0
+                    ? $"No Revit API type in this Revit version has a member '{member}'."
+                    : $"{shown(type)} has no member '{member}' in this Revit version.");
+                if (closest != null) parts.Add(closest);
+                if (owners.Length > 0 && owners.Length <= MaxOwners)
+                    parts.Add($"Unrelated types that have it: {string.Join(", ", owners.Select(shown))}.");
+            }
+            return string.Join(" ", parts);
         }
 
         /// <summary>A property of <paramref name="type"/> (own or inherited) whose value has the member: UIApplication.Application.</summary>

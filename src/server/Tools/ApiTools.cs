@@ -16,7 +16,7 @@ namespace RvtMcp.Server
         public static async Task<string> DescribeApi(string type, string? member = null)
             => await ToolGateway.CallWithParamsAsync("describe_api", () =>
             {
-                if (string.IsNullOrWhiteSpace(type)) throw new System.ArgumentException("type is required, e.g. \"Wall\" or \"Autodesk.Revit.DB.Wall\".");
+                if (string.IsNullOrWhiteSpace(type)) throw new System.ArgumentException("INVALID_ARGUMENT: type is required, e.g. \"Wall\" or \"Autodesk.Revit.DB.Wall\".");
                 return new { type, member };
             });
     }

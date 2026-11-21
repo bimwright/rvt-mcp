@@ -15,7 +15,8 @@ namespace RvtMcp.Tests
     {
         private const string Api = @"
 namespace Autodesk.Revit.DB {
-  public class ElementId { }
+  public class ElementId { public long Value => 0; }
+  public class WorksetId { public int IntegerValue => 0; }
   public class Category { }
   public class Element { public ElementId Id => null; public Category Category => null; }
   public class CurveElement : Element { public string LineStyleName => """"; }
@@ -79,7 +80,8 @@ namespace Autodesk.Revit.UI {
         public void Missing_member_reached_through_a_property_names_the_path()
         {
             var hint = Hint("return app.FamilyTemplatePath;", "CS1061");
-            Assert.Contains("is a member of Application, not of UIApplication: use x.Application.FamilyTemplatePath.", hint);
+            Assert.Contains("is a member of Application, not of UIApplication: use app.Application.FamilyTemplatePath.", hint);
+            Assert.DoesNotContain("closest", hint); // no unrelated UIApplication names
         }
 
         [Fact]
@@ -87,14 +89,14 @@ namespace Autodesk.Revit.UI {
         {
             var hint = Hint("CurveElement c = null; return c.Subcategory;", "CS1061");
             Assert.Contains("'Subcategory' is a member of ModelCurve (a subtype of CurveElement)", hint);
-            Assert.Contains("if (x is ModelCurve y)", hint);
+            Assert.Contains("if (c is ModelCurve y)", hint);
         }
 
         [Fact]
         public void Missing_member_of_an_unrelated_type_is_not_advised_as_a_cast()
         {
             var hint = Hint("FamilyParameter p = null; return p.Name;", "CS1061");
-            Assert.Contains("use x.Definition.Name", hint);
+            Assert.Contains("use p.Definition.Name", hint);
             Assert.DoesNotContain("cast", hint);
         }
 
@@ -104,6 +106,14 @@ namespace Autodesk.Revit.UI {
             var hint = Hint("return DisplayStyle.ShadedWithEdges;", "CS0117");
             Assert.StartsWith("No Revit API type in this Revit version has a member 'ShadedWithEdges'.", hint);
             Assert.Contains("closest to 'ShadedWithEdges': ShadingWithEdges", hint);
+        }
+
+        [Fact]
+        public void Member_found_only_on_unrelated_types_leads_with_the_types_own_close_names()
+        {
+            var hint = Hint("ElementId id = null; return id.IntegerValue;", "CS1061");
+            Assert.Equal("ElementId has no member 'IntegerValue' in this Revit version. ElementId members closest to 'IntegerValue': Value. " +
+                         "Unrelated types that have it: WorksetId.", hint);
         }
 
         [Fact]

@@ -33,11 +33,12 @@ namespace Autodesk.Revit.DB {
     [Obsolete(""Use Length instead."")] public double GetLength() => 0;
     public bool TryGet(out double x, ref int y) { x = 0; return true; }
     public IList<ElementId> Ids(double? tolerance = null) => null;
+    public static XYZ operator +(XYZ left, XYZ right) => null;
   }
   public enum DisplayStyle { Shading, ShadingWithEdges, Wireframe }
   public class Document { }
 }
-namespace Autodesk.Revit.Creation { public class Document { } }
+namespace Autodesk.Revit.Creation { public class Document : Autodesk.Revit.DB.Element { } }
 namespace Autodesk.Revit.DB.Architecture { public class Room : Autodesk.Revit.DB.Element { } }";
 
         private static readonly Assembly[] Assemblies = { Compile() };
@@ -77,6 +78,7 @@ namespace Autodesk.Revit.DB.Architecture { public class Room : Autodesk.Revit.DB
                 "GetLength() -> double [obsolete: Use Length instead.]",
                 "Ids(double? tolerance = optional) -> IList<ElementId>",
                 "TryGet(out double x, ref int y) -> bool",
+                "operator +(XYZ left, XYZ right) -> XYZ",
             }, Group(value, "declared"));
         }
 
@@ -96,9 +98,17 @@ namespace Autodesk.Revit.DB.Architecture { public class Room : Autodesk.Revit.DB
         {
             Assert.Equal(new[] { "Id: ElementId { get; }", "static IsValid(ElementId id) -> bool" }.OrderBy(s => s),
                 Group(Describe("Element", "id"), "declared").OrderBy(s => s));
+            // get_ only finds named indexed properties (called as get_Name in C#), not plain ones.
+            Assert.Empty((Dictionary<string, object>)Describe("Element", "get_Id")["members"]);
             var none = Describe("Element", "Nothing");
             Assert.Empty((Dictionary<string, object>)none["members"]);
             Assert.Contains("has 'Nothing' in its name", (string)none["note"]);
+        }
+
+        [Fact]
+        public void A_short_name_shared_by_two_api_types_is_shown_in_full()
+        {
+            Assert.Equal(new[] { "Autodesk.Revit.Creation.Document", "CurveElement", "Room" }, Describe("Element")["subtypes"]);
         }
 
         [Fact]
