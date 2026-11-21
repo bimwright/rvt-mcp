@@ -15,19 +15,22 @@ namespace RvtMcp.Plugin.Handlers
     {
         /// <summary>
         /// Ids of the host elements tagged in the view by element, room and area tags. With
-        /// <paramref name="elementTagCategory"/> only element tags of that category count (so a
+        /// <paramref name="elementTagCategories"/> only element tags of those categories count (so a
         /// keynote or material tag does not make a wall "tagged").
         /// </summary>
-        public static HashSet<long> CollectTaggedElementIds(Document doc, View view, BuiltInCategory? elementTagCategory = null)
+        public static HashSet<long> CollectTaggedElementIds(Document doc, View view, params BuiltInCategory[] elementTagCategories)
         {
             var ids = new HashSet<long>();
+            var onlyCategories = elementTagCategories != null && elementTagCategories.Length > 0
+                ? new HashSet<long>(elementTagCategories.Select(c => (long)c))
+                : null;
 
             foreach (var tag in new FilteredElementCollector(doc, view.Id)
                 .OfClass(typeof(IndependentTag))
                 .Cast<IndependentTag>())
             {
-                if (elementTagCategory.HasValue
-                    && (tag.Category == null || RevitCompat.GetId(tag.Category.Id) != (long)elementTagCategory.Value))
+                if (onlyCategories != null
+                    && (tag.Category == null || !onlyCategories.Contains(RevitCompat.GetId(tag.Category.Id))))
                     continue;
                 foreach (var id in GetTaggedElementIds(tag))
                     ids.Add(id);

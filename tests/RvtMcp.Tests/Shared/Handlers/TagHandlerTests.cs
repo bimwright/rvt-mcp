@@ -49,6 +49,15 @@ public class TagHandlerTests
     }
 
     [Fact]
+    public void Tag_all_walls_counts_a_multi_category_tag_as_a_wall_tag()
+    {
+        var result = Run("walls:multi_category");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        Assert.Equal(1, result["data"]!.Value<int>("tagged"));
+        Assert.Equal(1, result["data"]!.Value<int>("alreadyTagged"));
+    }
+
+    [Fact]
     public void Tag_all_walls_skips_a_wall_without_location_curve_instead_of_failing_it()
     {
         var result = Run("walls:no_location");
@@ -184,7 +193,7 @@ using Autodesk.Revit.UI;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 namespace Autodesk.Revit.DB {
- public enum BuiltInCategory { INVALID=-1,OST_Walls=-2000011,OST_Doors=-2000023,OST_Rooms=-2000160,OST_Areas=-2003200,OST_WallTags=-2000220,OST_DoorTags=-2000460,OST_RoomTags=-2000480,OST_AreaTags=-2005020,OST_KeynoteTags=-2005008 }
+ public enum BuiltInCategory { INVALID=-1,OST_Walls=-2000011,OST_Doors=-2000023,OST_Rooms=-2000160,OST_Areas=-2003200,OST_WallTags=-2000220,OST_DoorTags=-2000460,OST_RoomTags=-2000480,OST_AreaTags=-2005020,OST_KeynoteTags=-2005008,OST_MultiCategoryTags=-2008032 }
  public enum ViewType { FloorPlan,AreaPlan,DrawingSheet,Schedule,ColumnSchedule,ProjectBrowser,SystemBrowser,Legend }
  public enum TagMode { TM_ADDBY_CATEGORY }
  public enum TagOrientation { Horizontal,Vertical }
@@ -282,7 +291,7 @@ public static class Probe {
  public static string Run(string scenario){
   var parts=scenario.Split(':'); var tool=parts[0]; var kase=parts[1];
   var doc=new Document();
-  foreach(var c in new[]{("Walls",BuiltInCategory.OST_Walls),("Doors",BuiltInCategory.OST_Doors),("Rooms",BuiltInCategory.OST_Rooms),("Areas",BuiltInCategory.OST_Areas),("Wall Tags",BuiltInCategory.OST_WallTags),("Door Tags",BuiltInCategory.OST_DoorTags),("Room Tags",BuiltInCategory.OST_RoomTags),("Area Tags",BuiltInCategory.OST_AreaTags),("Keynote Tags",BuiltInCategory.OST_KeynoteTags)})
+  foreach(var c in new[]{("Walls",BuiltInCategory.OST_Walls),("Doors",BuiltInCategory.OST_Doors),("Rooms",BuiltInCategory.OST_Rooms),("Areas",BuiltInCategory.OST_Areas),("Wall Tags",BuiltInCategory.OST_WallTags),("Door Tags",BuiltInCategory.OST_DoorTags),("Room Tags",BuiltInCategory.OST_RoomTags),("Area Tags",BuiltInCategory.OST_AreaTags),("Keynote Tags",BuiltInCategory.OST_KeynoteTags),("Multi-Category Tags",BuiltInCategory.OST_MultiCategoryTags)})
    doc.Settings.Categories.Add(new Category{Id=new ElementId((int)c.Item2),Name=c.Item1});
   var plan=doc.Add(new ViewPlan{Id=new ElementId(100),Name="Level 1",ViewType=ViewType.FloorPlan});
   var sheet=doc.Add(new ViewSheet{Id=new ElementId(200),Name="Sheet A",ViewType=ViewType.DrawingSheet,InViews=new int[0]});
@@ -309,6 +318,7 @@ public static class Probe {
   doc.Add(new RoomTag{Id=new ElementId(32),Room=rooms[1],Category=Cat(doc,BuiltInCategory.OST_RoomTags),InViews=v});
   doc.Add(new RoomTag{Id=new ElementId(33),Room=rooms[2],IsTaggingLink=true,Category=Cat(doc,BuiltInCategory.OST_RoomTags),InViews=v});
   doc.Add(new AreaTag{Id=new ElementId(51),Area=areas[0],Category=Cat(doc,BuiltInCategory.OST_AreaTags),InViews=new[]{100,300}});
+  if(kase=="multi_category")doc.Add(new TagV2022{Id=new ElementId(82),Host=w1,Category=Cat(doc,BuiltInCategory.OST_MultiCategoryTags),InViews=v});
   if(kase=="keynote")doc.Add(new TagV2022{Id=new ElementId(81),Host=w1,Category=Cat(doc,BuiltInCategory.OST_KeynoteTags),InViews=v});
   if(kase=="interrupted")doc.Add(new TagInterrupted{Id=new ElementId(92),Host=w1,Category=Cat(doc,BuiltInCategory.OST_WallTags),InViews=v});
   if(kase=="unreadable")doc.Add(new TagUnreadable{Id=new ElementId(91),Host=w1,Category=Cat(doc,BuiltInCategory.OST_WallTags),InViews=v});

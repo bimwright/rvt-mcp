@@ -45,7 +45,8 @@ namespace RvtMcp.Plugin.Handlers
             HashSet<long> alreadyTagged;
             try
             {
-                alreadyTagged = TagScan.CollectTaggedElementIds(doc, view, BuiltInCategory.OST_WallTags);
+                // A wall tag or a multi-category tag labels the wall; a keynote or material tag does not.
+                alreadyTagged = TagScan.CollectTaggedElementIds(doc, view, BuiltInCategory.OST_WallTags, BuiltInCategory.OST_MultiCategoryTags);
             }
             catch (Exception ex)
             {
