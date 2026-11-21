@@ -27,9 +27,19 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
-## Unreleased
+## v3.0.1 (unreleased)
 
 - Development source counts: `--toolsets all` **256**, adaptive bake **259**, and bare defaults **62**.
+
+### Controlled failures and Issues
+
+Install the 3.0.1 gateway and add-ins together. TaskDialog declarations require the matching gateway and add-in protocol, and expire even if you switch away from a document and back. If the document changes before a queued command starts, Revit rejects the command before it runs.
+
+- Advance TaskDialog answers: `revit_set_dialog_answers` validates exact permitted pairs, scopes declarations to the next write or gateway session (a target or active-document change drops them and reports `_dialogAnswers` once), requires `dialog_answers_v2`, and records authorization/native outcome in Issues. User choices retain priority; denied pairs and native failure guards remain enforced.
+- Open an issue for the user: `revit_show_issue` opens History → Issues in Revit on one recorded incident, with all states shown, its model and incident selected and an optional suggested action highlighted. It records nothing; the user still reviews, ticks the review box and clicks the action.
+- History → Issues opens on **All states** every time, so models whose only incidents are observed (user-answered dialogs) stay listed.
+- When a user rule or grant answers a dialog the agent had declared, `_failure.groups[]` now says so with `agentDeclarationNotUsed`, and the `nextStep` for a rule-answered dialog no longer talks about warnings.
+- **Windows without a Revit dialog event** (an add-in's MessageBox, a file dialog): a read-only background probe in the add-in now notices a window that blocks Revit and waits for the user. During an MCP call the pending receipt says `REVIT_OPERATION_REQUIRES_USER` after about 2 seconds with `_operation.dialog.kind=window` (title, text and button labels), instead of waiting for the timeout; `revit_get_operation_status` reports the same window while it is open, and the final `_failure.groups[]` lists it with `answeredBy=user` (a window whose model is not certain goes to `_operation.windowDialogsWithoutModel` instead; past 20 per operation, `omittedWindowDialogs` counts the rest). A window left open outside MCP refuses new calls at once with `REVIT_BUSY` and `_operation.window` (its title only), queued calls return `REVIT_REQUEST_NOT_STARTED` at once, and `revit_health` reports `waiting_for_user`. The probe never clicks or closes anything; `BIMWRIGHT_RVT_WINDOW_PROBE=0` turns it off. See [controlled failures](docs/controlled-failures.md#windows-without-a-revit-dialog-event).
 
 ### Document lifecycle
 
@@ -195,12 +205,6 @@ The [existing GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/
 
 - **Prompt request diagnostics.** Bounded diagnostics record each `prompts/get` request's prompt name, UTC time and session, including failed lookups, without recording prompt argument text.
 - `revit_health` provides offline-by-default startup diagnostics with loaded gateway/add-in identities, semantic-version and revision alignment, optional bounded stable-release checks, and state-gated update guidance. It replies from the authenticated listener while Revit is modal; document fields are explicitly dated UI snapshots. The MCP handshake retains the build revision and the health catalog entry carries runtime metadata for client-side reconnect verification.
-
-- Advance TaskDialog answers: `revit_set_dialog_answers` validates exact permitted pairs, scopes declarations to the next write or gateway session (a target or active-document change drops them and reports `_dialogAnswers` once), requires `dialog_answers_v2`, and records authorization/native outcome in Issues. User choices retain priority; denied pairs and native failure guards remain enforced.
-- Open an issue for the user: `revit_show_issue` opens History → Issues in Revit on one recorded incident, with all states shown, its model and incident selected and an optional suggested action highlighted. It records nothing; the user still reviews, ticks the review box and clicks the action.
-- History → Issues opens on **All states** every time, so models whose only incidents are observed (user-answered dialogs) stay listed.
-- When a user rule or grant answers a dialog the agent had declared, `_failure.groups[]` now says so with `agentDeclarationNotUsed`, and the `nextStep` for a rule-answered dialog no longer talks about warnings.
-- **Windows without a Revit dialog event** (an add-in's MessageBox, a file dialog): a read-only background probe in the add-in now notices a window that blocks Revit and waits for the user. During an MCP call the pending receipt says `REVIT_OPERATION_REQUIRES_USER` after about 2 seconds with `_operation.dialog.kind=window` (title, text and button labels), instead of waiting for the timeout; `revit_get_operation_status` reports the same window while it is open, and the final `_failure.groups[]` lists it with `answeredBy=user` (a window whose model is not certain goes to `_operation.windowDialogsWithoutModel` instead; past 20 per operation, `omittedWindowDialogs` counts the rest). A window left open outside MCP refuses new calls at once with `REVIT_BUSY` and `_operation.window` (its title only), queued calls return `REVIT_REQUEST_NOT_STARTED` at once, and `revit_health` reports `waiting_for_user`. The probe never clicks or closes anything; `BIMWRIGHT_RVT_WINDOW_PROBE=0` turns it off. See [controlled failures](docs/controlled-failures.md#windows-without-a-revit-dialog-event).
 
 - **History → Issues** for reviewing local incidents, Rework, Abandon, constrained Accept once, model rules/revocation and supported one-use native-operation grants. Decisions are recorded in Revit with an optional reason; no MCP approval or rule-mutation tool is exposed. Closing an issue never automatically retries, saves, discards or undoes earlier commits.
 - **`revit_get_failure_records` and `revit_get_operation_status`** in `meta`: bounded read-only local queries that work while Revit is modal and with send-code/history disabled. They use issued identifiers, preserve missing/incomplete evidence, and do not create a missing ledger. Development source counts: `--toolsets all` **237**, adaptive bake **240**, and bare defaults **50**.
