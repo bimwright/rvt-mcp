@@ -22,6 +22,8 @@ namespace RvtMcp.Plugin.Views.Toast
             _host = host ?? throw new ArgumentNullException(nameof(host));
             _activity = host.Aggregator;
             _isEnabled = isEnabled ?? throw new ArgumentNullException(nameof(isEnabled));
+            // Thumbnails of captures saved in an owner-allowed folder (captureRoots) are shown too.
+            ToastContentBuilder.CaptureRootsProvider = CaptureOutputPath.ConfiguredRoots;
             _host.SetFrameUsableProvider(IsOwnerFrameUsable);
             _host.SetActivityClickHandler(cardId =>
             {
