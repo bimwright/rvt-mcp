@@ -74,6 +74,9 @@ namespace RvtMcp.Plugin.Handlers
                 return CommandResult.Fail("ExportImage completed but output file was not found.");
             }
 
+            if (PathAllowlist.IsUnderRoot(actualPath, PathAllowlist.CapturesDirectory))
+                CaptureOutputPath.PruneGenerated(PathAllowlist.CapturesDirectory, actualPath, DateTime.UtcNow);
+
             return CommandResult.Ok(new
             {
                 view_id = RevitCompat.GetId(view.Id),

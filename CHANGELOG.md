@@ -44,6 +44,7 @@ Install the 3.0.1 gateway and add-ins together. TaskDialog declarations require 
 ### Capture output folders
 
 - `revit_capture_view_image` can write into folders you allow beside `%TEMP%` and the captures folder: list them in `captureRoots` in `rvtmcp.config.json` (an array, or one string separated by `;`) or in `BIMWRIGHT_CAPTURE_ROOTS` in the Revit process environment. Only absolute local folders count; nothing is added by default.
+- The captures folder is now bounded: after a capture is saved there, captures with a generated name (`capture-<date>-<time>-<id>…`) older than 30 days are deleted, then the oldest until the rest fits 200 MB. A file you named yourself, a subfolder, `%TEMP%` and your `captureRoots` folders are never cleaned.
 - `revit_capture_view_image` accepts an `output_path` in the user's own `%TEMP%` folder. Revit runs with `TEMP` set to a per-session subfolder, so such a path was refused although the message named `%TEMP%`.
 - A refused `output_path` returns the allowed folders as `allowed_roots` (the paths in the error text are masked) and the next step: omit `output_path` and copy the saved file, or ask the user to allow the folder.
 

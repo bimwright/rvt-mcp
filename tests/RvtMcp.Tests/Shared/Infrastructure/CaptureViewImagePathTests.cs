@@ -93,6 +93,45 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void PruneGenerated_drops_old_then_oldest_generated_captures_and_nothing_else()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "rvtmcp-capture-prune-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(Path.Combine(folder, "sub"));
+            var now = new DateTime(2026, 11, 21, 0, 0, 0, DateTimeKind.Utc);
+            string Make(string name, int ageDays, int bytes)
+            {
+                var path = Path.Combine(folder, name);
+                File.WriteAllBytes(path, new byte[bytes]);
+                File.SetLastWriteTimeUtc(path, now.AddDays(-ageDays));
+                return path;
+            }
+            try
+            {
+                var expired = Make("capture-20261001-101010-0123abcd - 3D View - A.png", 40, 10);
+                var oldest = Make("capture-20261101-101010-0123abcd.png", 20, 400);
+                var middle = Make("capture-20261110-101010-0123abcd.jpg", 11, 400);
+                var newest = Make("capture-20261120-101010-0123abcd.png", 1, 400);
+                var named = Make("before-fix - 3D View - A.png", 90, 400);
+                var lookalike = Make("capture-notes.png", 90, 400);
+                var nested = Make(Path.Combine("sub", "capture-20261001-101010-0123abcd.png"), 90, 400);
+
+                // Budget 900: the expired file goes by age, then the oldest until the rest fits.
+                Assert.Equal(2, CaptureOutputPath.PruneGenerated(folder, newest, now, days: 30, budget: 900));
+                Assert.False(File.Exists(expired));
+                Assert.False(File.Exists(oldest));
+                foreach (var kept in new[] { middle, newest, named, lookalike, nested }) Assert.True(File.Exists(kept), kept);
+
+                // The file just written survives even when it alone exceeds the budget.
+                Assert.Equal(1, CaptureOutputPath.PruneGenerated(folder, newest, now, days: 30, budget: 100));
+                Assert.True(File.Exists(newest));
+                Assert.False(File.Exists(middle));
+
+                Assert.Equal(0, CaptureOutputPath.PruneGenerated(Path.Combine(folder, "missing"), null, now));
+            }
+            finally { Directory.Delete(folder, true); }
+        }
+
+        [Fact]
         public void Validate_path_under_an_extra_root_is_accepted_and_a_sibling_folder_is_not()
         {
             var roots = new[] { @"Q:\Out" };

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace RvtMcp.Plugin
 {
@@ -24,6 +26,42 @@ namespace RvtMcp.Plugin
         {
             try { return RvtMcpConfig.LoadReadOnly().CaptureRootsOrEmpty; }
             catch { return new string[0]; }
+        }
+
+        public const int RetentionDays = 30;
+        public const long RetentionBytes = 200L * 1024 * 1024;
+
+        // The name NormalizeOrDefault generates, plus the view suffix Revit appends to it.
+        private static readonly Regex Generated = new Regex(@"^capture-\d{8}-\d{6}-[0-9a-f]{8}.*\.(png|jpg)$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Bounds the captures folder the way log groups are bounded: generated captures older than
+        /// <paramref name="days"/> go, then the oldest until the rest fits <paramref name="budget"/>. Only files
+        /// with a generated name directly in <paramref name="directory"/> are touched; a file the caller named
+        /// is never deleted. Never throws: a capture must not fail because an old one is locked.
+        /// </summary>
+        public static int PruneGenerated(string directory, string keep, DateTime utcNow, int days = RetentionDays, long budget = RetentionBytes)
+        {
+            var deleted = 0;
+            try
+            {
+                if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory)) return 0;
+                var files = new DirectoryInfo(directory).GetFiles("capture-*")
+                    .Where(f => Generated.IsMatch(f.Name) && (f.Attributes & FileAttributes.ReparsePoint) == 0)
+                    .OrderBy(f => f.LastWriteTimeUtc).ThenBy(f => f.Name, StringComparer.Ordinal).ToList();
+                var total = files.Sum(f => f.Length);
+                var cutoff = utcNow.AddDays(-days);
+                foreach (var file in files)
+                {
+                    if (string.Equals(file.FullName, keep, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (file.LastWriteTimeUtc >= cutoff && total <= budget) break;
+                    try { var length = file.Length; file.Delete(); total -= length; deleted++; }
+                    catch { }
+                }
+            }
+            catch { }
+            return deleted;
         }
 
         /// <summary>Every folder a capture may be written into, as full paths.</summary>
