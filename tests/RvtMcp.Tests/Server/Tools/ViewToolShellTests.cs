@@ -62,6 +62,18 @@ namespace RvtMcp.Tests
             Assert.Equal(22, json.Value<long>("sheetId"));
             Assert.Equal("A1", json.Value<string>("sheetNumber"));
             Assert.Equal("S", json.Value<string>("sheetName"));
+            Assert.True(json["x_mm"] == null || json["x_mm"].Type == Newtonsoft.Json.Linq.JTokenType.Null);
+        }
+
+        [Fact]
+        public async Task Place_view_on_sheet_sends_sheet_point_in_mm()
+        {
+            var sent = await Capture.Send(() => ViewTools.PlaceViewOnSheet(11, 22, "A1", "S", 420.5, 297));
+
+            Assert.Equal("place_view_on_sheet", sent.Command);
+            var json = sent.Json();
+            Assert.Equal(420.5, json.Value<double>("x_mm"));
+            Assert.Equal(297, json.Value<double>("y_mm"));
         }
 
         [Fact]
