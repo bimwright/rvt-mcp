@@ -41,6 +41,11 @@ Install the 3.0.1 gateway and add-ins together. TaskDialog declarations require 
 - When a user rule or grant answers a dialog the agent had declared, `_failure.groups[]` now says so with `agentDeclarationNotUsed`, and the `nextStep` for a rule-answered dialog no longer talks about warnings.
 - **Windows without a Revit dialog event** (an add-in's MessageBox, a file dialog): a read-only background probe in the add-in now notices a window that blocks Revit and waits for the user. During an MCP call the pending receipt says `REVIT_OPERATION_REQUIRES_USER` after about 2 seconds with `_operation.dialog.kind=window` (title, text and button labels), instead of waiting for the timeout; `revit_get_operation_status` reports the same window while it is open, and the final `_failure.groups[]` lists it with `answeredBy=user` (a window whose model is not certain goes to `_operation.windowDialogsWithoutModel` instead; past 20 per operation, `omittedWindowDialogs` counts the rest). A window left open outside MCP refuses new calls at once with `REVIT_BUSY` and `_operation.window` (its title only), queued calls return `REVIT_REQUEST_NOT_STARTED` at once, and `revit_health` reports `waiting_for_user`. The probe never clicks or closes anything; `BIMWRIGHT_RVT_WINDOW_PROBE=0` turns it off. See [controlled failures](docs/controlled-failures.md#windows-without-a-revit-dialog-event).
 
+### Capture output folders
+
+- `revit_capture_view_image` can write into folders you allow beside `%TEMP%` and the captures folder: list them in `captureRoots` in `rvtmcp.config.json` (an array, or one string separated by `;`) or in `BIMWRIGHT_CAPTURE_ROOTS` in the Revit process environment. Only absolute local folders count; nothing is added by default.
+- A refused `output_path` now lists every allowed folder and the next step: omit `output_path` and copy the saved file, or ask the user to allow the folder.
+
 ### Document lifecycle
 
 - Add `revit_get_document_state` to `meta` and the opt-in `documents` toolset with `revit_save_document`, `revit_save_checkpoint` and `revit_manage_checkpoints`. State reads exclude loaded links and report an unavailable or busy document index without losing other document results.

@@ -197,6 +197,28 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public void IsSafeImagePath_accepts_an_image_under_an_extra_capture_root_only()
+        {
+            var allowed = System.IO.Path.Combine(_root, "allowed");
+            System.IO.Directory.CreateDirectory(allowed);
+            var path = System.IO.Path.Combine(allowed, "view.png");
+            System.IO.File.WriteAllBytes(path, new byte[] { 0x89, 0x50, 0x4E, 0x47 });
+            var temp = System.IO.Path.Combine(_root, "temp");
+            var captures = System.IO.Path.Combine(_root, "captures");
+
+            try
+            {
+                Assert.True(ToastContentBuilder.IsSafeImagePath(path, temp, captures, new[] { allowed }));
+                Assert.False(ToastContentBuilder.IsSafeImagePath(path, temp, captures));
+                Assert.False(ToastContentBuilder.IsSafeImagePath(path, temp, captures, new[] { allowed + "Evil" }));
+            }
+            finally
+            {
+                try { System.IO.Directory.Delete(allowed, true); } catch { }
+            }
+        }
+
+        [Fact]
         public void BuildCompleted_send_code_shows_result_line()
         {
             var vm = ToastContentBuilder.BuildCompleted(

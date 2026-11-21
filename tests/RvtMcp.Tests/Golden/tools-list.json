@@ -807,7 +807,7 @@
     },
     {
       "name": "revit_capture_view_image",
-      "description_hash": "sha256:22bc590d8e4ee15e0a51fe2d66798a6a3944847552632a9146bf1609458a2370",
+      "description_hash": "sha256:31e09cdddf8c61fde4e5e50fab5a47024268419606fd1c8d089bee140e46b438",
       "inputSchema": {
         "properties": {
           "image_format": {

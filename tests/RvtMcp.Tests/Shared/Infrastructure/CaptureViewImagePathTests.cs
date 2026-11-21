@@ -91,5 +91,69 @@ namespace RvtMcp.Tests
             var validCaptures = Path.Combine(PathAllowlist.CapturesDirectory, "test.jpg");
             Assert.Null(CaptureOutputPath.Validate(validCaptures));
         }
+
+        [Fact]
+        public void Validate_path_under_an_extra_root_is_accepted_and_a_sibling_folder_is_not()
+        {
+            var roots = new[] { @"Q:\Out" };
+            Assert.Null(CaptureOutputPath.Validate(@"Q:\Out\views\plan.png", roots));
+
+            var err = CaptureOutputPath.Validate(@"Q:\OutEvil\plan.png", roots);
+            Assert.Contains("must be inside %TEMP%", err);
+        }
+
+        [Fact]
+        public void Validate_extra_root_keeps_the_traversal_and_canonical_checks()
+        {
+            var roots = new[] { @"Q:\Out" };
+            Assert.Contains("cannot contain '..'", CaptureOutputPath.Validate(@"Q:\Out\..\Windows\plan.png", roots));
+            Assert.Contains("must be canonical", CaptureOutputPath.Validate(@"Q:\Out\\plan.png", roots));
+        }
+
+        [Fact]
+        public void Validate_rejection_lists_every_allowed_folder_and_names_the_setting()
+        {
+            var err = CaptureOutputPath.Validate(@"Q:\Elsewhere\plan.png", new[] { @"Q:\Out" });
+            Assert.Contains(PathAllowlist.TempDirectory, err);
+            Assert.Contains(PathAllowlist.CapturesDirectory, err);
+            Assert.Contains(@"Q:\Out", err);
+            Assert.Contains("Omit output_path", err);
+            Assert.Contains("captureRoots", err);
+            Assert.Contains(RvtMcpConfig.EnvCaptureRoots, err);
+        }
+
+        [Fact]
+        public void CaptureRoots_reads_an_array_or_a_semicolon_string_and_drops_what_is_not_an_absolute_local_folder()
+        {
+            var entries = new Newtonsoft.Json.Linq.JArray(
+                @"Q:\Out", @"relative\folder", "Q:drive-relative", @"\\server\share", @"%NOT_A_REAL_VARIABLE%\x", 7, @"q:\out");
+            Assert.Equal(new[] { @"Q:\Out" }, RvtMcpConfig.ReadCaptureRoots(entries));
+
+            var fromText = RvtMcpConfig.ReadCaptureRoots(new Newtonsoft.Json.Linq.JValue(@" Q:\Out ; R:\Shots ;; "));
+            Assert.Equal(new[] { @"Q:\Out", @"R:\Shots" }, fromText);
+
+            Assert.Empty(RvtMcpConfig.ReadCaptureRoots(null));
+            Assert.Empty(RvtMcpConfig.ReadCaptureRoots(new Newtonsoft.Json.Linq.JObject()));
+        }
+
+        [Fact]
+        public void CaptureRoots_come_from_the_config_file_and_the_environment_overrides_it()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "rvtmcp-capture-roots-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            try
+            {
+                var file = Path.Combine(folder, "config.json");
+                File.WriteAllText(file, new Newtonsoft.Json.Linq.JObject
+                {
+                    ["captureRoots"] = new Newtonsoft.Json.Linq.JArray(@"Q:\Out")
+                }.ToString());
+
+                Assert.Equal(new[] { @"Q:\Out" }, RvtMcpConfig.LoadReadOnly(file, _ => null).CaptureRootsOrEmpty);
+                Assert.Equal(new[] { @"R:\Shots" }, RvtMcpConfig.LoadReadOnly(file,
+                    name => name == RvtMcpConfig.EnvCaptureRoots ? @"R:\Shots" : null).CaptureRootsOrEmpty);
+            }
+            finally { Directory.Delete(folder, true); }
+        }
     }
 }

@@ -33,6 +33,7 @@ namespace RvtMcp.Plugin
         public const string EnvPersistSendCodeBodies     = "BIMWRIGHT_PERSIST_SEND_CODE_BODIES";
         public const string EnvPersistSendCodeBodiesTtl  = "BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL";
         public const string EnvUiLanguage                = "BIMWRIGHT_UI_LANGUAGE";
+        public const string EnvCaptureRoots              = "BIMWRIGHT_CAPTURE_ROOTS";
         public const string EnvEnableSendCode = "BIMWRIGHT_ENABLE_SEND_CODE";
         public const string EnvEnableCallLog = "BIMWRIGHT_ENABLE_CALL_LOG";
         public const string EnvEnableChangeHistory = "BIMWRIGHT_ENABLE_CHANGE_HISTORY";
@@ -113,6 +114,46 @@ namespace RvtMcp.Plugin
         /// </summary>
         [JsonProperty("spillRetentionHours")]
         public JToken SpillRetentionHours { get; set; }
+
+        /// <summary>
+        /// Extra folders revit_capture_view_image may write into, beside %TEMP% and the captures
+        /// folder: an array of absolute folders, or one string separated by ';'. Read by the plugin
+        /// only, and leniently: an entry that is not an absolute local folder is dropped.
+        /// </summary>
+        [JsonProperty("captureRoots")]
+        public JToken CaptureRoots { get; set; }
+
+        [JsonIgnore]
+        public IReadOnlyList<string> CaptureRootsOrEmpty => ReadCaptureRoots(CaptureRoots);
+
+        internal static IReadOnlyList<string> ReadCaptureRoots(JToken value)
+        {
+            var roots = new List<string>();
+            if (value == null) return roots;
+            var entries = new List<string>();
+            if (value.Type == JTokenType.String)
+                entries.AddRange(((string)value ?? "").Split(';'));
+            else if (value.Type == JTokenType.Array)
+                foreach (var item in value)
+                    if (item.Type == JTokenType.String) entries.Add((string)item);
+
+            foreach (var entry in entries)
+            {
+                var text = Environment.ExpandEnvironmentVariables((entry ?? "").Trim());
+                // A drive-relative ("C:folder"), relative, UNC or still-unexpanded entry is not a folder
+                // the owner named unambiguously, so it grants nothing.
+                if (text.Length < 3 || text[1] != ':' || (text[2] != '\\' && text[2] != '/') || text.Contains("%"))
+                    continue;
+                try
+                {
+                    var full = Path.GetFullPath(text);
+                    if (!roots.Exists(r => string.Equals(r, full, StringComparison.OrdinalIgnoreCase)))
+                        roots.Add(full);
+                }
+                catch { }
+            }
+            return roots;
+        }
 
         [JsonProperty("allowLanBind")]
         public bool? AllowLanBind { get; set; }
@@ -452,6 +493,9 @@ namespace RvtMcp.Plugin
             // the env block in MCP client configs reaches the server, not the plugin.
             var uiLanguage = lookup(EnvUiLanguage);
             if (!string.IsNullOrWhiteSpace(uiLanguage)) config.UiLanguage = uiLanguage.Trim();
+
+            var captureRoots = lookup(EnvCaptureRoots);
+            if (!string.IsNullOrWhiteSpace(captureRoots)) config.CaptureRoots = new JValue(captureRoots);
 
             var persistEnv = lookup(EnvPersistSendCodeBodies);
             if (!string.IsNullOrWhiteSpace(persistEnv))

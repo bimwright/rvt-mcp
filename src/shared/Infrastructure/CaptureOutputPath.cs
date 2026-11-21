@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace RvtMcp.Plugin
@@ -18,7 +19,16 @@ namespace RvtMcp.Plugin
             return outputPath;
         }
 
-        public static string Validate(string path)
+        /// <summary>Folders the owner added with captureRoots / BIMWRIGHT_CAPTURE_ROOTS; empty when unset or unreadable.</summary>
+        public static IReadOnlyList<string> ConfiguredRoots()
+        {
+            try { return RvtMcpConfig.LoadReadOnly().CaptureRootsOrEmpty; }
+            catch { return new string[0]; }
+        }
+
+        public static string Validate(string path) => Validate(path, ConfiguredRoots());
+
+        internal static string Validate(string path, IReadOnlyList<string> extraRoots)
         {
             if (string.IsNullOrWhiteSpace(path))
                 return "output_path is required after normalization.";
@@ -46,8 +56,15 @@ namespace RvtMcp.Plugin
                 var captures = PathAllowlist.CapturesDirectory;
 
                 if (PathAllowlist.IsUnderTempOrCaptures(full)) return null;
+                foreach (var root in extraRoots)
+                    if (PathAllowlist.IsUnderRoot(full, root)) return null;
 
-                return $"output_path must be inside %TEMP% ({temp}) or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\ ({captures}).";
+                var allowed = $"output_path must be inside %TEMP% ({temp}) or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\ ({captures})";
+                foreach (var root in extraRoots) allowed += $" or {root}";
+                // What the agent can do itself comes first; the setting is the owner's to change.
+                return allowed + ". Omit output_path (the response returns saved_path) or use one of these folders, " +
+                       "then copy the file where it is needed. To allow another folder, the user adds it to captureRoots in " +
+                       $"rvtmcp.config.json or to {RvtMcpConfig.EnvCaptureRoots} (';' separated) in the Revit process environment.";
             }
             catch (Exception ex)
             {
