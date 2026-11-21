@@ -117,6 +117,18 @@ Update the gateway and add-ins together to see the agent name; an older gateway 
 
 - **`revit_show_report`** in `meta`: opens the Reports window on one saved report by its `report_id`, as a click on the report toast does, so the agent can show a report the user asks for instead of describing where to click. It does not change the model and stays available with `--read-only`. A deleted or expired report returns `REPORT_NOT_FOUND`. See [agent reports](docs/agent-reports.md#opening-a-report).
 
+### Tags, dimensions and sheets
+
+- `revit_tag_all_walls` skips walls that already have a tag, as its description said; a second call no longer tags every wall again. It returns the new tag ids, `alreadyTagged`, and walls that could not be tagged by id with `failedCount`. When no wall can be tagged the call fails and changes nothing. Fixes [#40](https://github.com/bimwright/rvt-mcp/issues/40).
+- The tag tools read existing tags the same way, with room tags collected by category. `revit_find_untagged_elements` no longer reports tagged rooms as untagged. A scan of existing or visible elements that cannot finish is now an error, instead of answering as if the view had no tags or the element were hidden. Fixes [#41](https://github.com/bimwright/rvt-mcp/issues/41).
+- `revit_tag_elements`, `revit_tag_all_by_category`, `revit_tag_all_walls` and `revit_find_untagged_elements` refuse a sheet and name the views placed on it with their ids. Text notes on sheets are unchanged. Fixes [#42](https://github.com/bimwright/rvt-mcp/issues/42).
+- `revit_create_dimensions` describes its references (`mode`, `element_id`, and `stable_reference` for `explicit_reference_stable`) with an example. When fewer than two references resolve it fails with `failed_references` in the data, instead of returning success with `created: false`. Fixes [#43](https://github.com/bimwright/rvt-mcp/issues/43).
+- `revit_create_dimensions` with `mode: wall_centerline` works: the reference now comes from the wall's location line in its geometry. Before, it failed for every wall. Curved walls are refused per reference.
+- `revit_batch_execute` rolls back when a tag or dimension step partly fails: `revit_tag_elements`, `revit_tag_all_by_category`, `revit_tag_all_rooms`, `revit_tag_all_areas` and `revit_create_dimensions` now report `failedCount`. Fixes [#45](https://github.com/bimwright/rvt-mcp/issues/45).
+- `revit_create_line_based_element` refuses a `typeId` that is not a wall type, instead of creating the wall with the default type; wall is its only `elementType`. `revit_get_available_family_types` no longer suggests system categories such as Walls or Pipes, and tool descriptions that pointed to other tools now use their `revit_` names. Fixes [#44](https://github.com/bimwright/rvt-mcp/issues/44).
+- `revit_ai_element_filter` without a parameter filter reads only `limit` elements and counts the category natively. With a filter it still tests every element so `totalFound` stays exact; the description says so. Fixes [#46](https://github.com/bimwright/rvt-mcp/issues/46).
+- `revit_place_view_on_sheet` takes optional `xMm`/`yMm` (both or neither) in sheet paper millimetres, like `revit_place_schedule_on_sheet`. Without them the viewport goes to the title block centre instead of a fixed point that sat in the lower left of large sheets. The response returns the placed `center` {`u`, `v`} in mm and `placement`. Fixes [#47](https://github.com/bimwright/rvt-mcp/issues/47).
+
 ## v1.2.2 — 2026-11-02
 
 Release assets include the Setup ZIP, optional Claude Desktop MCPB and server-only NuGet package, each with a SHA-256 sidecar. NuGet.org and MCP Registry publication are separate.
