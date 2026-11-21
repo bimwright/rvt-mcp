@@ -6,7 +6,7 @@
 MCP client (Claude Code / Cursor / …)
         │  stdio (NDJSON)
         ▼
-RvtMcp.Server  (.NET 8 console app, global tool)
+RvtMcp.Server  (.NET 10 console app, global tool)
         │  TCP (2022–2024)  OR  Named Pipe (2025–2027) — NDJSON + token auth
         ▼
 RvtMcp.Plugin  (Revit add-in DLL, one per year)
@@ -63,7 +63,7 @@ Six plugin shells share one source tree. Each csproj glob-includes `src/shared/*
 
 ```
 src/
-├── server/                # RvtMcp.Server (.NET 8)
+├── server/                # RvtMcp.Server (.NET 10)
 ├── shared/                # Handlers, CommandDispatcher, Transport, Logging, Security, ToolBaker
 │   ├── Handlers/          # per-command tool handlers, grouped by domain
 │   │   └── Runtime/       # BatchExecuteHandler, BatchExecutor

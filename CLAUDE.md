@@ -7,7 +7,7 @@ Open-source (Apache-2.0) MCP gateway that lets Claude Code (and any MCP-capable 
 Full C# stack. No TypeScript. Single language, single build system. Multi-version: one plugin shell per Revit 2022–2027.
 
 ```
-MCP client (Claude Code / Cursor / Cline / …) → stdio → C# MCP Server (.NET 8 Console App) → TCP or Named Pipe → per-version C# plugin shell → Revit 2022–2027 API
+MCP client (Claude Code / Cursor / Cline / …) → stdio → C# MCP Server (.NET 10 Console App) → TCP or Named Pipe → per-version C# plugin shell → Revit 2022–2027 API
 ```
 
 Two processes:
@@ -49,7 +49,7 @@ Other per-user data under the same root:
 src/
 ├── RvtMcp.sln         # Solution (Server + 6 plugin shells)
 │
-├── server/                   # MCP Server (Console App, .NET 8)
+├── server/                   # MCP Server (Console App, .NET 10)
 │   ├── RvtMcp.Server.csproj
 │   ├── Program*.cs           # Host startup, server options/instructions, toolset registration (partial class)
 │   ├── ToolGateway*.cs       # SendToRevit / CallAsync + transport client to plugin shells
@@ -79,8 +79,8 @@ src/
 ├── plugin-r22/               # Revit 2022 shell (.NET 4.8, TCP)
 ├── plugin-r23/               # Revit 2023 shell (.NET 4.8, TCP)
 ├── plugin-r24/               # Revit 2024 shell (.NET 4.8, TCP)
-├── plugin-r25/               # Revit 2025 shell (.NET 8, Named Pipe)
-├── plugin-r26/               # Revit 2026 shell (.NET 8, Named Pipe)
+├── plugin-r25/               # Revit 2025 shell (.NET 8 target; 2025.5 runs it on .NET 10), Named Pipe
+├── plugin-r26/               # Revit 2026 shell (.NET 8 target; 2026.5 runs it on .NET 10), Named Pipe
 └── plugin-r27/               # Revit 2027 shell (.NET 10, Named Pipe)
 ```
 
@@ -100,7 +100,7 @@ dotnet build src/plugin-r24/RvtMcp.Plugin.R24.csproj -c Release -p:RvtMcpSkipDep
 ```
 
 Each shell auto-deploys to `%APPDATA%\Autodesk\Revit\Addins\<year>\RvtMcp\` for its target year, plus a matching `RvtMcp.R<nn>.addin` manifest at the parent level.
-MCP Server runs from `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`.
+MCP Server runs from `src/server/bin/Debug/net10.0/RvtMcp.Server.exe`.
 
 ## Key Patterns
 
@@ -142,7 +142,7 @@ MCP Server runs from `src/server/bin/Debug/net8.0/RvtMcp.Server.exe`.
 - Parameter types: ForgeTypeId via `GetDataType()` / `SpecTypeId`
 - Unit detection: `SpecTypeId.Length`, `SpecTypeId.PipeSize`, etc.
 - Newtonsoft.Json 13.0.3 (Revit ships 12.x — binding redirect handles it)
-- Roslyn: Microsoft.CodeAnalysis.CSharp 4.8.0, use AppDomain.GetAssemblies() for refs
+- Roslyn: Microsoft.CodeAnalysis.CSharp 4.13.0 (4.14+ needs System.Collections.Immutable 9.0, which the .NET 8 hosts of Revit 2025/2026 do not provide), use AppDomain.GetAssemblies() for refs
 
 ## Multi-Version Architecture
 

@@ -31,7 +31,7 @@
 
 **An early all-C# MCP implementation for Revit — researched and implemented since March 2026.**
 
-`rvt-mcp` is a **local** bridge between an MCP client and a running Revit session. A .NET 8 server talks MCP over stdio; a thin add-in per Revit year (2022–2027) runs inside Revit and is reached over localhost TCP (≤2024) or a named pipe (≥2025). Nothing leaves the machine, it is C# end to end, and lengths are millimetres at the tool boundary. Details: [ARCHITECTURE.md](ARCHITECTURE.md).
+`rvt-mcp` is a **local** bridge between an MCP client and a running Revit session. A .NET 10 server talks MCP over stdio; a thin add-in per Revit year (2022–2027) runs inside Revit and is reached over localhost TCP (≤2024) or a named pipe (≥2025). Nothing leaves the machine, it is C# end to end, and lengths are millimetres at the tool boundary. Details: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Agents get a **typed tool surface** for common Revit work, a C# escape hatch for everything else, and an **optional** way to turn repeated patterns into personal tools (ToolBaker): start from a shared runtime and grow *your* tools on top. Family Editor authoring is out of scope for now.
 
@@ -378,6 +378,8 @@ The response guard defaults **on**: UTF-8 warnings at 65536 bytes, strong warnin
 | 2027 | .NET 10 (`net10.0-windows7.0`) | Named Pipe |
 
 Full Revit desktop only; Revit Viewer is not a supported target. CI builds all six add-ins, but runtime depth varies by year — recheck baked tools and custom C# on the years you use.
+
+The server runs separately from Revit, so its .NET 10 runtime does not change the Revit 2022–2024 add-ins' .NET Framework 4.8 requirement. Revit 2025.5 and 2026.5 use .NET 10; the corresponding plugin shells retain their .NET 8 target for earlier updates. Validate add-ins against the actual Revit update in use.
 
 ---
 

@@ -21,7 +21,7 @@ This file is the install protocol for an AI agent with permission to run PowerSh
 - Install Revit, manage Revit licensing, or launch Revit for the first time. If Revit 2022–2027 is not installed, stop and tell the user.
 - Install from unpublished tags or `RvtMcp.Setup-*.zip` URLs for v0.5.0 and earlier.
 - Use NuGet as the **client** installer. `Bimwright.Rvt.Server` (0.1–0.3) is obsolete. `RvtMcp.Server` is **server-only** (no Revit add-in). Only run `dotnet tool install -g RvtMcp.Server` if the user explicitly asked for a global .NET tool **and** plugins are already installed from the GitHub Release ZIP.
-- Install the .NET 8 SDK, clone the repo, restore NuGet packages, or build source for a **client** install. If the user did not explicitly ask for a developer setup, use the GitHub Release ZIP only.
+- Install the .NET 10 SDK, clone the repo, restore NuGet packages, or build source for a **client** install. If the user did not explicitly ask for a developer setup, use the GitHub Release ZIP only.
 
 ---
 
