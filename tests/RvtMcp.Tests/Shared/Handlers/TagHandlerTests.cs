@@ -20,6 +20,8 @@ public class TagHandlerTests
         "src/shared/Handlers/Annotations/FindUntaggedElementsHandler.cs",
         "src/shared/Handlers/Annotations/TagAllByCategoryHandler.cs",
         "src/shared/Handlers/Annotations/TagElementsHandler.cs",
+        "src/shared/Handlers/Rooms/TagAllRoomsHandler.cs",
+        "src/shared/Handlers/Rooms/TagAllAreasHandler.cs",
         "src/shared/Infrastructure/RevitCompat.cs",
     }));
 
@@ -123,6 +125,33 @@ public class TagHandlerTests
     }
 
     [Fact]
+    public void Tag_all_rooms_reports_failedCount_for_a_room_without_location()
+    {
+        var result = Run("rooms:partial");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        Assert.Equal(1, result["data"]!.Value<int>("tagged")); // room 23: its only tag tags a linked room
+        Assert.Equal(1, result["data"]!.Value<int>("failedCount"));
+    }
+
+    [Fact]
+    public void Tag_all_rooms_reports_failedCount_when_nothing_is_tagged()
+    {
+        var result = Run("rooms:all_fail");
+        Assert.False(result.Value<bool>("success"));
+        Assert.Equal(1, result["data"]!.Value<int>("failedCount"));
+    }
+
+    [Fact]
+    public void Tag_all_areas_reports_failedCount_next_to_failed_count()
+    {
+        var result = Run("areas:partial");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        Assert.Equal(1, result["data"]!.Value<int>("created_count")); // area 43; area 42 has no location
+        Assert.Equal(1, result["data"]!.Value<int>("failed_count"));
+        Assert.Equal(1, result["data"]!.Value<int>("failedCount"));
+    }
+
+    [Fact]
     public void Tag_elements_reports_failedCount_for_a_partial_failure()
     {
         var result = Run("elements:partial");
@@ -155,7 +184,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 namespace Autodesk.Revit.DB {
  public enum BuiltInCategory { INVALID=-1,OST_Walls=-2000011,OST_Doors=-2000023,OST_Rooms=-2000160,OST_Areas=-2003200,OST_WallTags=-2000220,OST_DoorTags=-2000460,OST_RoomTags=-2000480,OST_AreaTags=-2005020,OST_KeynoteTags=-2005008 }
- public enum ViewType { FloorPlan,DrawingSheet,Schedule,ColumnSchedule,ProjectBrowser,SystemBrowser,Legend }
+ public enum ViewType { FloorPlan,AreaPlan,DrawingSheet,Schedule,ColumnSchedule,ProjectBrowser,SystemBrowser,Legend }
  public enum TagMode { TM_ADDBY_CATEGORY }
  public enum TagOrientation { Horizontal,Vertical }
  public enum SpatialElementTagOrientation { Horizontal,Vertical }
@@ -184,7 +213,7 @@ namespace Autodesk.Revit.DB {
  public class Area:Element {}
  public class AreaTag:Element { public Area Area {get;set;} }
  public class View:Element { public ViewType ViewType; public bool IsTemplate; public XYZ RightDirection=new XYZ(1,0,0),UpDirection=new XYZ(0,1,0); }
- public class ViewPlan:View {}
+ public class ViewPlan:View { public Element AreaScheme; }
  public class ViewSheet:View { public List<ElementId> Viewports=new List<ElementId>(); public ICollection<ElementId> GetAllViewports()=>Viewports; }
  public class Viewport:Element { public ElementId ViewId; }
  public class Reference { public Element Element; public Reference(Element e){Element=e;} }
@@ -198,7 +227,9 @@ namespace Autodesk.Revit.DB {
  public class TagLocalIds:IndependentTag { public ICollection<ElementId> GetTaggedLocalElementIds()=>new List<ElementId>{Host.Id}; }
  public class TagUnreadable:IndependentTag {}
  public class ItemFactory { public Document Doc;
-  public RoomTag NewRoomTag(LinkElementId room,UV point,ElementId view)=>Doc.Add(new RoomTag{Room=(Room)Doc.GetElement(room.HostElementId),Category=Category.GetCategory(Doc,BuiltInCategory.OST_RoomTags),InViews=new[]{view.IntegerValue}}); }
+  public AreaTag NewAreaTag(ViewPlan view,Area area,UV point){ if(Doc.CreateFails)throw new InvalidOperationException("cannot tag");
+   return Doc.Add(new AreaTag{Area=area,Category=Category.GetCategory(Doc,BuiltInCategory.OST_AreaTags),InViews=new[]{view.Id.IntegerValue}}); }
+  public RoomTag NewRoomTag(LinkElementId room,UV point,ElementId view)=>Doc.CreateFails?throw new InvalidOperationException("cannot tag"):Doc.Add(new RoomTag{Room=(Room)Doc.GetElement(room.HostElementId),Category=Category.GetCategory(Doc,BuiltInCategory.OST_RoomTags),InViews=new[]{view.IntegerValue}}); }
  public class Document {
   public Dictionary<int,Element> Items=new Dictionary<int,Element>(); public Settings Settings=new Settings(); public View ActiveView; public ItemFactory Create;
   public int Transactions,Rollbacks,NextId=1000; public bool CreateFails,VisibleScanFails;
@@ -234,7 +265,7 @@ namespace Autodesk.Revit.DB.Architecture {
  public class Room:Element { public double Area=10; }
  public class RoomTag:Element { public Room Room; public bool IsTaggingLink; public bool HasLeader; public SpatialElementTagOrientation TagOrientation; public XYZ TagHeadPosition=XYZ.Zero; }
 }
-namespace Autodesk.Revit.UI { public class UIDocument { public Document Document; } public class UIApplication { public UIDocument ActiveUIDocument; } }
+namespace Autodesk.Revit.UI { public class UIDocument { public Document Document; public View ActiveView=>Document.ActiveView; } public class UIApplication { public UIDocument ActiveUIDocument; } }
 namespace RvtMcp.Plugin {
  public interface IRevitCommand {}
  public class CommandResult { public bool Success;public string Error;public object Data;
@@ -259,6 +290,9 @@ public static class Probe {
   if(kase=="no_location")doc.Add(new Wall{Id=new ElementId(3),Category=Cat(doc,BuiltInCategory.OST_Walls)});
   var doors=new[]{11,12,13,14}.Select(i=>doc.Add(new Element{Id=new ElementId(i),Category=Cat(doc,BuiltInCategory.OST_Doors),Location=new LocationPoint{Point=new XYZ(i,0,0)}})).ToArray();
   var rooms=new[]{21,22,23}.Select(i=>doc.Add(new Room{Id=new ElementId(i),Category=Cat(doc,BuiltInCategory.OST_Rooms),Location=new LocationPoint{Point=new XYZ(i,5,0)}})).ToArray();
+  if(tool=="rooms"&&kase=="partial")doc.Add(new Room{Id=new ElementId(24),Category=Cat(doc,BuiltInCategory.OST_Rooms)});
+  var areaPlan=doc.Add(new ViewPlan{Id=new ElementId(300),Name="Area plan",ViewType=ViewType.AreaPlan});
+  if(tool=="areas"){doc.ActiveView=areaPlan;doc.Add(new Area{Id=new ElementId(43),Category=Cat(doc,BuiltInCategory.OST_Areas),Location=new LocationPoint{Point=new XYZ(43,0,0)}});}
   var areas=new[]{41,42}.Select(i=>doc.Add(new Area{Id=new ElementId(i),Category=Cat(doc,BuiltInCategory.OST_Areas)})).ToArray();
   doc.Add(new FamilySymbol{Id=new ElementId(60),Category=Cat(doc,BuiltInCategory.OST_WallTags)});
   doc.Add(new FamilySymbol{Id=new ElementId(61),Category=Cat(doc,BuiltInCategory.OST_DoorTags)});
@@ -270,7 +304,7 @@ public static class Probe {
   doc.Add(new RoomTag{Id=new ElementId(31),Room=rooms[0],Category=Cat(doc,BuiltInCategory.OST_RoomTags),InViews=v});
   doc.Add(new RoomTag{Id=new ElementId(32),Room=rooms[1],Category=Cat(doc,BuiltInCategory.OST_RoomTags),InViews=v});
   doc.Add(new RoomTag{Id=new ElementId(33),Room=rooms[2],IsTaggingLink=true,Category=Cat(doc,BuiltInCategory.OST_RoomTags),InViews=v});
-  doc.Add(new AreaTag{Id=new ElementId(51),Area=areas[0],Category=Cat(doc,BuiltInCategory.OST_AreaTags),InViews=v});
+  doc.Add(new AreaTag{Id=new ElementId(51),Area=areas[0],Category=Cat(doc,BuiltInCategory.OST_AreaTags),InViews=new[]{100,300}});
   if(kase=="keynote")doc.Add(new TagV2022{Id=new ElementId(81),Host=w1,Category=Cat(doc,BuiltInCategory.OST_KeynoteTags),InViews=v});
   if(kase=="unreadable")doc.Add(new TagUnreadable{Id=new ElementId(91),Host=w1,Category=Cat(doc,BuiltInCategory.OST_WallTags),InViews=v});
   if(kase=="all_fail"||kase=="doors_fail")doc.CreateFails=true;
@@ -282,6 +316,8 @@ public static class Probe {
    switch(tool){
     case "walls": r=new RvtMcp.Plugin.Handlers.TagAllWallsHandler().Execute(app,"{}");break;
     case "find": r=new RvtMcp.Plugin.Handlers.FindUntaggedElementsHandler().Execute(app,new JObject{["category"]=kase=="areas"?"Areas":kase=="doors"?"Doors":"Rooms",["view_id"]=viewId}.ToString());break;
+    case "rooms": r=new RvtMcp.Plugin.Handlers.TagAllRoomsHandler().Execute(app,"{}");break;
+    case "areas": r=new RvtMcp.Plugin.Handlers.TagAllAreasHandler().Execute(app,"{}");break;
     case "category": r=new RvtMcp.Plugin.Handlers.TagAllByCategoryHandler().Execute(app,new JObject{["category"]=kase=="doors_fail"?"Doors":"Rooms",["view_id"]=viewId}.ToString());break;
     default: r=new RvtMcp.Plugin.Handlers.TagElementsHandler().Execute(app,new JObject{["element_ids"]=new JArray(14,999),["view_id"]=viewId}.ToString());break;
    }
