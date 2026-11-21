@@ -79,6 +79,11 @@ Install the 3.0.1 gateway and add-ins together. TaskDialog declarations require 
 
 ### Send code and baked tools
 
+- `revit_send_code_to_revit` compile errors carry a `hint` computed from the Revit API the script was compiled against (in the error text and in `diagnostics[].hint`):
+  - A missing member (`CS1061`, `CS0117`) names where it really is: a subtype to check and cast to, a property that leads to it (`x.Application.FamilyTemplatePath`), the types that have it, or that no API type has it. The closest members of the type follow.
+  - A wrong call (`CS1503`, `CS1501`, `CS7036`, `CS1620`, `CS1615`, `CS1729`) shows the real signatures, the overload that accepts the named argument first. A type with no public constructor lists its static factories (`Plane.Create…`).
+  - An unknown type (`CS0246`) that exists in another Revit namespace names the `using` to add.
+  - A hint is given once per compile. The first one builds a name index of the loaded Revit API (about 0.3 s, 4 MB, once per Revit session).
 - `revit_send_code_to_revit` accepts more of the script shapes agents write:
   - A body that declares its own `app`, `uidoc` or `doc` at the top level keeps its own; the generated one of that name is left out instead of failing with `CS0128` / `CS0136`.
   - A full `McpDynamicScript` source without any `using` gets the default imports. A source with its own usings is compiled as written.

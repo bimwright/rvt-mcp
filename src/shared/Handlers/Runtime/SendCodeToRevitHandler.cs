@@ -135,12 +135,14 @@ namespace RvtMcp.Plugin.Handlers
                     Failures.FailureControl.NotifyCompileFailed();
                     return new CommandResult { Success = false,
                         Error = compiled.ErrorCode + ": " + (compiled.Hint == null ? "" : compiled.Hint + "\n") + string.Join("\n", compiled.Diagnostics.Select(d =>
-                            McpResponsePrivacy.RedactErrorForResponse(d.Source + ":" + d.Line + ":" + d.Column + " " + d.DiagnosticId + " " + d.Message)))
+                            McpResponsePrivacy.RedactErrorForResponse(d.Source + ":" + d.Line + ":" + d.Column + " " + d.DiagnosticId + " " + d.Message
+                                + (d.Hint == null ? "" : "\n  hint: " + d.Hint))))
                             + SkippedNote(skipped),
                         Data = new { compiled = false, compile_only = input.CompileOnly, executed = false,
                             diagnostics = compiled.Diagnostics.Select(d => new {
                                 source = McpResponsePrivacy.RedactErrorForResponse(d.Source), line = d.Line, column = d.Column,
-                                diagnostic_id = d.DiagnosticId, message = McpResponsePrivacy.RedactErrorForResponse(d.Message) }).ToArray() } };
+                                diagnostic_id = d.DiagnosticId, message = McpResponsePrivacy.RedactErrorForResponse(d.Message),
+                                hint = d.Hint == null ? null : McpResponsePrivacy.RedactErrorForResponse(d.Hint) }).ToArray() } };
                 }
                 if (input.CompileOnly)
                 {

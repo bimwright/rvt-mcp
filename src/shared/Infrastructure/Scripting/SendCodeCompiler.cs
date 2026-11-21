@@ -16,6 +16,8 @@ namespace RvtMcp.Plugin
         public int Column { get; set; }
         public string DiagnosticId { get; set; }
         public string Message { get; set; }
+        /// <summary>Where the missing member or type really is, or the real signatures; null when there is none.</summary>
+        public string Hint { get; set; }
     }
 
     internal sealed class ScriptCompileResult
@@ -63,7 +65,7 @@ namespace RvtMcp.Plugin
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
             // Bind signatures from symbols; do not instantiate types/read fields/run initializers.
             var errors = compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToArray();
-            if (errors.Length != 0) return Diagnostics(errors);
+            if (errors.Length != 0) return Diagnostics(errors, compilation);
             var script = compilation.GetTypeByMetadataName("McpDynamicScript");
             var signatures = new Dictionary<string, string[]>(StringComparer.Ordinal);
             foreach (var tree in trees.Where(t => t.FilePath.StartsWith("module:", StringComparison.Ordinal)))
@@ -101,7 +103,7 @@ namespace RvtMcp.Plugin
             using (var bytes = new MemoryStream())
             {
                 var emitted = compilation.Emit(bytes);
-                if (!emitted.Success) return Diagnostics(emitted.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+                if (!emitted.Success) return Diagnostics(emitted.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error), compilation);
                 return new ScriptCompileResult { Success = true, AssemblyBytes = input.CompileOnly ? null : bytes.ToArray(), ModuleSignatures = signatures, Repair = repair };
             }
         }
@@ -110,16 +112,21 @@ namespace RvtMcp.Plugin
         internal const string StrayBraceHint = "Hint: a '}' in the script closes nothing. Send statements only " +
             "(they become the body of Run; do not close it), then complete helper types after them, each with its own closing '}'.";
 
-        private static ScriptCompileResult Diagnostics(IEnumerable<Diagnostic> diagnostics)
-            => new ScriptCompileResult {
+        private static ScriptCompileResult Diagnostics(IEnumerable<Diagnostic> diagnostics, Compilation compilation)
+        {
+            var all = diagnostics.ToArray();
+            var shown = all.Take(20).ToArray();
+            var hints = ScriptCompileHints.For(shown, compilation);
+            return new ScriptCompileResult {
                 ErrorCode = ScriptErrorCodes.CompileFailed,
-                Hint = diagnostics.Any(d => d.Id == "CS1022" && d.Location.GetMappedLineSpan().Path == "script") ? StrayBraceHint : null,
-                Diagnostics = diagnostics.Take(20).Select(d => {
+                Hint = all.Any(d => d.Id == "CS1022" && d.Location.GetMappedLineSpan().Path == "script") ? StrayBraceHint : null,
+                Diagnostics = shown.Select((d, i) => {
                     var span = d.Location.GetMappedLineSpan();
                     return new ScriptCompileDiagnostic { Source = span.Path, Line = span.StartLinePosition.Line + 1,
-                        Column = span.StartLinePosition.Character + 1, DiagnosticId = d.Id, Message = d.GetMessage() };
+                        Column = span.StartLinePosition.Character + 1, DiagnosticId = d.Id, Message = d.GetMessage(), Hint = hints[i] };
                 }).ToArray()
             };
+        }
 
         private static ScriptCompileResult Error(string code, string message, string source, int line = 1, int column = 1)
             => new ScriptCompileResult { ErrorCode = code, Diagnostics = new[] { new ScriptCompileDiagnostic {
