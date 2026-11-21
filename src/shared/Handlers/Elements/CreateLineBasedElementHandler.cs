@@ -8,8 +8,8 @@ namespace RvtMcp.Plugin.Handlers
     public class CreateLineBasedElementHandler : IRevitCommand
     {
         public string Name => "create_line_based_element";
-        public string Description => "Create line-based elements (wall, beam, pipe) from start/end points";
-        public string ParametersSchema => @"{""type"":""object"",""properties"":{""elementType"":{""type"":""string"",""description"":""wall, pipe, duct, cabletray""},""startX"":{""type"":""number""},""startY"":{""type"":""number""},""endX"":{""type"":""number""},""endY"":{""type"":""number""},""level"":{""type"":""string""},""typeId"":{""type"":""integer""},""height"":{""type"":""number""}},""required"":[""elementType"",""startX"",""startY"",""endX"",""endY""]}";
+        public string Description => "Create a wall from start/end points";
+        public string ParametersSchema => @"{""type"":""object"",""properties"":{""elementType"":{""type"":""string"",""description"":""wall (the only supported type)""},""startX"":{""type"":""number""},""startY"":{""type"":""number""},""endX"":{""type"":""number""},""endY"":{""type"":""number""},""level"":{""type"":""string""},""typeId"":{""type"":""integer"",""description"":""WallType id""},""height"":{""type"":""number""}},""required"":[""elementType"",""startX"",""startY"",""endX"",""endY""]}";
 
         public CommandResult Execute(UIApplication app, string paramsJson)
         {
@@ -59,6 +59,16 @@ namespace RvtMcp.Plugin.Handlers
             if (level == null)
                 return CommandResult.Fail("No level found in the project.");
 
+            WallType wallType = null;
+            if (elementType == "wall" && typeId.HasValue)
+            {
+                if (!RevitCompat.CanRepresentElementId(typeId.Value))
+                    return CommandResult.Fail("typeId " + RevitCompat.ElementIdRangeError(typeId.Value));
+                wallType = doc.GetElement(RevitCompat.ToElementId(typeId.Value)) as WallType;
+                if (wallType == null)
+                    return CommandResult.Fail($"typeId {typeId.Value} is not a WallType. Nothing was created.");
+            }
+
             using (var tx = new Transaction(doc, "MCP: Create " + elementType))
             {
                 tx.Start();
@@ -70,11 +80,7 @@ namespace RvtMcp.Plugin.Handlers
                         case "wall":
                             var wall = Wall.Create(doc, line, level.Id, false);
                             wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)?.Set(heightFt);
-                            if (typeId.HasValue)
-                            {
-                                var wallType = doc.GetElement(RevitCompat.ToElementId(typeId.Value)) as WallType;
-                                if (wallType != null) wall.WallType = wallType;
-                            }
+                            if (wallType != null) wall.WallType = wallType;
                             created = wall;
                             break;
 

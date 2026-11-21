@@ -18,7 +18,7 @@ namespace RvtMcp.Server
         public static async Task<string> GetSelectedElements(int startIndex = 0, int maxResults = 200)
             => await ToolGateway.CallAsync("get_selected_elements", new { start_index = startIndex, max_results = maxResults });
 
-        [McpServerTool(Name = "revit_get_available_family_types", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List loadable family types. Returns {familyName, typeName, typeId} grouped by category. Optional: filter by category (e.g. 'Walls', 'Doors', 'Pipes' — NOT 'OST_Walls'). Feed typeId into create_point_based_element.")]
+        [McpServerTool(Name = "revit_get_available_family_types", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("List loadable family types. Returns {familyName, typeName, typeId} grouped by category. System types such as walls and pipes are not listed. Optional: filter by category (e.g. 'Doors', 'Windows', 'Furniture' — NOT 'OST_Doors'). Feed typeId into revit_create_point_based_element.")]
         public static async Task<string> GetAvailableFamilyTypes(string category = "")
             => await ToolGateway.CallAsync("get_available_family_types", new { category });
 
