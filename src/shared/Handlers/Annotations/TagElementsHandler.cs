@@ -101,7 +101,8 @@ namespace RvtMcp.Plugin.Handlers
                     return CommandResult.Fail("Tag type ID " + tagTypeId.Value + " does not resolve to a FamilySymbol.");
             }
 
-            // Get visible elements in the view to verify visibility
+            // Get visible elements in the view to verify visibility; without a finished scan
+            // no element can be called "not visible".
             var visibleIds = new HashSet<long>();
             try
             {
@@ -113,7 +114,10 @@ namespace RvtMcp.Plugin.Handlers
                     visibleIds.Add(RevitCompat.GetId(id));
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                return CommandResult.Fail("Failed to read the elements visible in view: " + ex.Message);
+            }
 
             var createdTags = new JArray();
             var failedElements = new JArray();

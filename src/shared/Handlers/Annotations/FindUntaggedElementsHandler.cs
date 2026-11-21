@@ -90,57 +90,16 @@ namespace RvtMcp.Plugin.Handlers
                 return CommandResult.Fail("Failed to collect visible elements: " + ex.Message);
             }
 
-            // Collect tagged IDs in the view
-            var taggedElementIds = new HashSet<long>();
-
-            // 1. Collect standard IndependentTag tagged elements
+            // Collect tagged IDs in the view; an unfinished scan must not report elements as untagged.
+            HashSet<long> taggedElementIds;
             try
             {
-                var tags = new FilteredElementCollector(doc, view.Id)
-                    .OfClass(typeof(IndependentTag))
-                    .Cast<IndependentTag>();
-                foreach (var tag in tags)
-                {
-                    foreach (var tid in GetTaggedElementIds(tag))
-                    {
-                        taggedElementIds.Add(tid);
-                    }
-                }
+                taggedElementIds = TagScan.CollectTaggedElementIds(doc, view);
             }
-            catch { }
-
-            // 2. Collect RoomTag tagged elements (for OST_Rooms)
-            try
+            catch (Exception ex)
             {
-                var roomTags = new FilteredElementCollector(doc, view.Id)
-                    .OfClass(typeof(RoomTag))
-                    .Cast<RoomTag>();
-                foreach (var rt in roomTags)
-                {
-                    if (rt.Room != null)
-                        taggedElementIds.Add(RevitCompat.GetId(rt.Room.Id));
-                }
+                return CommandResult.Fail("Failed to read existing tags in view: " + ex.Message);
             }
-            catch { }
-
-            // 3. Collect AreaTag tagged elements (for OST_Areas)
-            try
-            {
-                var areaTags = new FilteredElementCollector(doc, view.Id)
-                    .OfCategory(BuiltInCategory.OST_AreaTags)
-                    .WhereElementIsNotElementType();
-                foreach (var at in areaTags)
-                {
-                    var areaProp = at.GetType().GetProperty("Area");
-                    if (areaProp != null)
-                    {
-                        var areaElem = areaProp.GetValue(at) as Element;
-                        if (areaElem != null)
-                            taggedElementIds.Add(RevitCompat.GetId(areaElem.Id));
-                    }
-                }
-            }
-            catch { }
 
             // Subtract tagged from visible
             var untagged = new List<Element>();
@@ -238,77 +197,6 @@ namespace RvtMcp.Plugin.Handlers
             }
 
             return null;
-        }
-
-        private static HashSet<long> GetTaggedElementIds(IndependentTag tag)
-        {
-            var ids = new HashSet<long>();
-            if (tag == null) return ids;
-
-            // 1. Try GetTaggedElementIds() (Revit 2022+)
-            try
-            {
-                var method = tag.GetType().GetMethod("GetTaggedElementIds");
-                if (method != null)
-                {
-                    var refs = method.Invoke(tag, null) as System.Collections.IEnumerable;
-                    if (refs != null)
-                    {
-                        foreach (var linkId in refs)
-                        {
-                            var hostIdProp = linkId.GetType().GetProperty("HostElementId");
-                            if (hostIdProp != null)
-                            {
-                                var hostId = hostIdProp.GetValue(linkId) as ElementId;
-                                if (hostId != null && hostId != ElementId.InvalidElementId)
-                                {
-                                    ids.Add(RevitCompat.GetId(hostId));
-                                }
-                            }
-                        }
-                        if (ids.Count > 0) return ids;
-                    }
-                }
-            }
-            catch { }
-
-            // 2. Try TaggedLocalElementId (Revit 2021 and older)
-            try
-            {
-                var prop = tag.GetType().GetProperty("TaggedLocalElementId");
-                if (prop != null)
-                {
-                    var val = prop.GetValue(tag) as ElementId;
-                    if (val != null && val != ElementId.InvalidElementId)
-                    {
-                        ids.Add(RevitCompat.GetId(val));
-                        return ids;
-                    }
-                }
-            }
-            catch { }
-
-            // 3. Fallback: Try GetTaggedLocalElementIds() or direct fields
-            try
-            {
-                var method = tag.GetType().GetMethod("GetTaggedLocalElementIds");
-                if (method != null)
-                {
-                    var localIds = method.Invoke(tag, null) as ICollection<ElementId>;
-                    if (localIds != null)
-                    {
-                        foreach (var lid in localIds)
-                        {
-                            if (lid != ElementId.InvalidElementId)
-                                ids.Add(RevitCompat.GetId(lid));
-                        }
-                        return ids;
-                    }
-                }
-            }
-            catch { }
-
-            return ids;
         }
     }
 }
