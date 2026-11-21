@@ -5,8 +5,8 @@ using Xunit;
 namespace RvtMcp.Tests;
 
 /// <summary>
-/// place_view_on_sheet puts the viewport at the requested sheet point, else at the title block
-/// centre, else at the old fixed point, and returns where it went (#47).
+/// place_view_on_sheet puts the viewport at the requested sheet point, else at the fixed default
+/// point it always used, and returns where it went (#47).
 /// </summary>
 public class PlaceViewOnSheetHandlerTests
 {
@@ -20,7 +20,7 @@ public class PlaceViewOnSheetHandlerTests
     [Theory]
     [InlineData("requested_snake", "requested", 200.0, 400.0)]
     [InlineData("requested_camel", "requested", 200.0, 400.0)]
-    [InlineData("title_block", "title_block_center", 422.0, 296.0)]
+    [InlineData("title_block", "default_point", 304.8, 228.6)] // not the title block centre
     [InlineData("no_title_block", "default_point", 304.8, 228.6)]
     public void Places_the_viewport_and_returns_its_centre_in_mm(string scenario, string placement, double u, double v)
     {

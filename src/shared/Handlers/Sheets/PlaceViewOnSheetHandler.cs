@@ -71,32 +71,10 @@ namespace RvtMcp.Plugin.Handlers
                         sheet.Name = sheetName;
                     }
 
-                    // Requested point, else the title block centre, else the old fixed point (feet).
-                    XYZ center;
-                    string basis;
-                    if (xMm.HasValue)
-                    {
-                        center = new XYZ(xMm.Value / 304.8, yMm.Value / 304.8, 0);
-                        basis = "requested";
-                    }
-                    else
-                    {
-                        doc.Regenerate();
-                        var titleBlockBox = new FilteredElementCollector(doc, sheet.Id)
-                            .OfCategory(BuiltInCategory.OST_TitleBlocks)
-                            .WhereElementIsNotElementType()
-                            .FirstElement()?.get_BoundingBox(sheet);
-                        if (titleBlockBox != null)
-                        {
-                            center = new XYZ((titleBlockBox.Min.X + titleBlockBox.Max.X) / 2, (titleBlockBox.Min.Y + titleBlockBox.Max.Y) / 2, 0);
-                            basis = "title_block_center";
-                        }
-                        else
-                        {
-                            center = new XYZ(1.0, 0.75, 0);
-                            basis = "default_point";
-                        }
-                    }
+                    // The requested point, else the fixed default point (1.0, 0.75) ft = (304.8, 228.6) mm.
+                    var requested = xMm.HasValue;
+                    var center = requested ? new XYZ(xMm.Value / 304.8, yMm.Value / 304.8, 0) : new XYZ(1.0, 0.75, 0);
+                    var basis = requested ? "requested" : "default_point";
                     var viewport = Viewport.Create(doc, sheet.Id, view.Id, center);
 
                     if (tx.Commit() != TransactionStatus.Committed)
