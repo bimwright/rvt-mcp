@@ -30,7 +30,8 @@ namespace RvtMcp.Plugin.Handlers
 
             var outputPath = CaptureOutputPath.NormalizeOrDefault(rawOutputPath, imageFormat);
             var pathError = CaptureOutputPath.Validate(outputPath);
-            if (pathError != null) return CommandResult.Fail(pathError);
+            if (pathError != null)
+                return new CommandResult { Success = false, Error = pathError, Data = new { allowed_roots = CaptureOutputPath.AllowedRoots() } };
 
             var view = viewIdParam.HasValue
                 ? doc.GetElement(RevitCompat.ToElementId(viewIdParam.Value)) as View

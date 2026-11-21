@@ -17,6 +17,32 @@ namespace RvtMcp.Plugin
 
         public static string TempDirectory => Path.GetFullPath(Path.GetTempPath());
 
+        /// <summary>
+        /// The user's own temp folder. Revit points its process TEMP at a per-session subfolder of it, so a
+        /// path a client builds from the user's %TEMP% lies outside <see cref="TempDirectory"/>.
+        /// </summary>
+        public static string UserTempDirectory
+        {
+            get
+            {
+                string user = null;
+                try { user = Environment.GetEnvironmentVariable("TEMP", EnvironmentVariableTarget.User); } catch { }
+                return UserTemp(TempDirectory, user);
+            }
+        }
+
+        internal static string UserTemp(string processTemp, string userTemp)
+        {
+            try
+            {
+                var text = Environment.ExpandEnvironmentVariables((userTemp ?? "").Trim());
+                if (text.Length >= 3 && text[1] == ':' && (text[2] == '\\' || text[2] == '/') && !text.Contains("%"))
+                    return Path.GetFullPath(text);
+            }
+            catch { }
+            return processTemp;
+        }
+
         public static bool IsUnderRoot(string fullPath, string rootDirectory)
         {
             if (string.IsNullOrWhiteSpace(fullPath) || string.IsNullOrWhiteSpace(rootDirectory))
@@ -42,7 +68,7 @@ namespace RvtMcp.Plugin
 
         public static bool IsUnderTempOrCaptures(string fullPath)
         {
-            return IsUnderTempOrCaptures(fullPath, TempDirectory, CapturesDirectory);
+            return IsUnderTempOrCaptures(fullPath, TempDirectory, CapturesDirectory) || IsUnderRoot(fullPath, UserTempDirectory);
         }
         internal static bool IsUnderTempOrCaptures(string fullPath, string tempDirectory, string capturesDirectory)
             => IsUnderRoot(fullPath, tempDirectory) || IsUnderRoot(fullPath, capturesDirectory);

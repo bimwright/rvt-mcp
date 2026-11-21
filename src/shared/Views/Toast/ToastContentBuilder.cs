@@ -335,6 +335,8 @@ namespace RvtMcp.Plugin.Views.Toast
                 if (PathAllowlist.IsUnderTempOrCaptures(full, tempDirectory ?? PathAllowlist.TempDirectory,
                     capturesDirectory ?? PathAllowlist.CapturesDirectory))
                     return true;
+                if (tempDirectory == null && PathAllowlist.IsUnderRoot(full, PathAllowlist.UserTempDirectory))
+                    return true;
 
                 // A capture written to a folder the owner allowed shows its thumbnail too.
                 if (extraRoots == null && tempDirectory == null && capturesDirectory == null)

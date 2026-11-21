@@ -26,6 +26,18 @@ namespace RvtMcp.Plugin
             catch { return new string[0]; }
         }
 
+        /// <summary>Every folder a capture may be written into, as full paths.</summary>
+        public static string[] AllowedRoots()
+        {
+            var roots = new List<string> { PathAllowlist.TempDirectory, PathAllowlist.UserTempDirectory, PathAllowlist.CapturesDirectory };
+            roots.AddRange(ConfiguredRoots());
+            var distinct = new List<string>();
+            foreach (var root in roots)
+                if (!distinct.Exists(r => string.Equals(r.TrimEnd('\\', '/'), root.TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase)))
+                    distinct.Add(root);
+            return distinct.ToArray();
+        }
+
         public static string Validate(string path) => Validate(path, ConfiguredRoots());
 
         internal static string Validate(string path, IReadOnlyList<string> extraRoots)
@@ -61,8 +73,9 @@ namespace RvtMcp.Plugin
 
                 var allowed = $"output_path must be inside %TEMP% ({temp}) or %LOCALAPPDATA%\\Bimwright\\rvt-mcp\\captures\\ ({captures})";
                 foreach (var root in extraRoots) allowed += $" or {root}";
+                // Paths in an error text are masked on the way out, so the response also carries them as allowed_roots.
                 // What the agent can do itself comes first; the setting is the owner's to change.
-                return allowed + ". Omit output_path (the response returns saved_path) or use one of these folders, " +
+                return allowed + "; allowed_roots lists the full paths. Omit output_path (the response returns saved_path) or use one of these folders, " +
                        "then copy the file where it is needed. To allow another folder, the user adds it to captureRoots in " +
                        $"rvtmcp.config.json or to {RvtMcpConfig.EnvCaptureRoots} (';' separated) in the Revit process environment.";
             }
