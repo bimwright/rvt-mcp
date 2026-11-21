@@ -61,6 +61,8 @@ internal sealed class FakeSettings : ISettingsPresentation
     public bool ToastEnabled { get => _toast; set { if (_toast != value) { _toast = value; Changed(); } } }
     private bool _branding;
     public bool ShowBranding { get => _branding; set { if (_branding != value) { _branding = value; Changed(); } } }
+    private bool _snoozed;
+    public bool ToastSnoozed { get => _snoozed; set { if (_snoozed != value) { _snoozed = value; Changed(); } } }
     public RvtMcp.Plugin.ToastPositionOptions ToastPosition { get; private set; } = new RvtMcp.Plugin.ToastPositionOptions();
     public int ToastIdleSeconds { get => _idle; set { _idle = value; Changed(); } }
     public bool CacheSendCodeBodies { get => _cache; set { _cache = value; Changed(); } }

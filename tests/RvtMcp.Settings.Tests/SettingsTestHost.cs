@@ -25,6 +25,8 @@ namespace RvtMcp.Plugin
         public event Action<bool> PositionSaved { add { } remove { } }
         public void OnToastEnabledChanged(bool enabled, bool persisted) { }
         public void SetShowBranding(bool show) { }
+        public bool PauseForToday() => true;
+        public bool ResumeFromPause() => true;
         public void SetPositionOptions(ToastPositionOptions position) { }
     }
     public static class AuthToken { public static string RevitVersion => "2027"; }

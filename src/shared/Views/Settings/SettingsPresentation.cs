@@ -16,6 +16,8 @@ namespace RvtMcp.Plugin.Views.Settings
         bool ToastEnabled { get; set; }
         /// <summary>Wordmark on the activity card. Applied and saved immediately, not staged.</summary>
         bool ShowBranding { get; set; }
+        /// <summary>Pause activity toasts in every Revit until local midnight. Applied and saved immediately.</summary>
+        bool ToastSnoozed { get; set; }
         /// <summary>Corner, drag and offset of the activity card. Applied and saved immediately, not staged.</summary>
         ToastPositionOptions ToastPosition { get; }
         int ToastIdleSeconds { get; set; }

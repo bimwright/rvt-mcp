@@ -162,14 +162,15 @@ internal static class Program
                 var hasProductHeader = false;
                 foreach (var child in header.Children)
                 {
-                    if (child is TextBlock text && text.Text == "rvt-mcp · PID: " + processId)
+                    if (child is TextBlock text && PlainText(text) == "rvt-mcp · PID " + processId)
                     {
                         hasProductHeader = true;
                         break;
                     }
                 }
                 if (!hasProductHeader)
-                    throw new Exception("The activity card must name the product and owning process PID in its title.");
+                    throw new Exception("The activity card must name the product and owning process PID in its title. Header texts: "
+                        + string.Join(" | ", System.Linq.Enumerable.Select(System.Linq.Enumerable.OfType<TextBlock>(header.Children), t => "[" + PlainText(t) + "]")));
                 if (((TextBlock)grid.Children[1]).Text != "List Rooms")
                     throw new Exception("The line under the title must name the latest tool.");
                 var bodyGrid = (Grid)grid.Children[2];
@@ -230,7 +231,7 @@ internal static class Program
     private static void CheckBrandingFollowsPreference()
     {
         string expectedTitle;
-        using (var process = System.Diagnostics.Process.GetCurrentProcess()) expectedTitle = "rvt-mcp · PID: " + process.Id;
+        using (var process = System.Diagnostics.Process.GetCurrentProcess()) expectedTitle = "rvt-mcp · PID " + process.Id;
         var show = false;
         var aggregator = new ActivityAggregator();
         var manager = new McpToastManager(Dispatcher.CurrentDispatcher, aggregator, showBranding: () => show);
@@ -261,7 +262,7 @@ internal static class Program
     private static void CheckIdentityRow()
     {
         string pidSuffix;
-        using (var process = System.Diagnostics.Process.GetCurrentProcess()) pidSuffix = " · PID: " + process.Id;
+        using (var process = System.Diagnostics.Process.GetCurrentProcess()) pidSuffix = " · PID " + process.Id;
         var snapshot = new ActivitySnapshot(1, false, 1, 0, 0, "List Rooms", "Done", true, false);
 
         var window = new McpToastWindow(snapshot, null, null, null, null, null,
@@ -347,7 +348,17 @@ internal static class Program
     private static string TitleText(McpToastWindow window)
     {
         var title = (TextBlock)typeof(McpToastWindow).GetField("_titleText", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(window);
-        return title.Text;
+        return PlainText(title);
+    }
+
+    /// <summary>Text of a TextBlock built from Runs (TextBlock.Text stays empty then).</summary>
+    internal static string PlainText(TextBlock block)
+    {
+        if (block.Inlines.Count == 0) return block.Text;
+        var text = new System.Text.StringBuilder();
+        foreach (var inline in block.Inlines)
+            if (inline is System.Windows.Documents.Run run) text.Append(run.Text);
+        return text.ToString();
     }
 
     private static Grid BrandRow(McpToastWindow window)

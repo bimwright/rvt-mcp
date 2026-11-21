@@ -25,6 +25,12 @@ namespace RvtMcp.Server
         private static readonly string HistorySession = Guid.NewGuid().ToString("N");
         public static UsageEventLogger UsageLogger { get; set; }
 
+        /// <summary>
+        /// clientInfo.name the MCP client sent at initialize (e.g. "claude-code"). Passed to the add-in for the toast
+        /// title only; the client declares it, so it is never used for any decision.
+        /// </summary>
+        internal static volatile string ClientName;
+
         /// <summary>Calendar year of the bound Revit instance, or null when nothing is bound.</summary>
         public static string CurrentRevitVersion =>
             RevitTargetBinding.Snapshot().Record?.HostYear.ToString(System.Globalization.CultureInfo.InvariantCulture);

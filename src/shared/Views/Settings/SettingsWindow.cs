@@ -54,6 +54,7 @@ namespace RvtMcp.Plugin.Views.Settings
         private ComboBox _journalHours;
         private CheckBox _toastEnabled;
         private CheckBox _showBranding;
+        private CheckBox _toastSnoozed;
         private ComboBox _toastHorizontal;
         private ComboBox _toastVertical;
         private CheckBox _toastDrag;
@@ -131,6 +132,7 @@ namespace RvtMcp.Plugin.Views.Settings
             Bind(_toolsGrid, System.Windows.Controls.Primitives.Selector.SelectedItemProperty, nameof(ISettingsToolsPresentation.SelectedTool), BindingMode.TwoWay, source: _toolsViewModel);
             Bind(_listenerEnabled, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.IsListenerRunning), BindingMode.TwoWay);
             Bind(_toastEnabled, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.ToastEnabled), BindingMode.TwoWay);
+            Bind(_toastSnoozed, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.ToastSnoozed), BindingMode.TwoWay);
             Bind(_showBranding, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.ShowBranding), BindingMode.TwoWay);
             Bind(_cacheSendCodeBodies, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.CacheSendCodeBodies), BindingMode.TwoWay);
             Bind(_persistSendCodeBodies, System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(ISettingsPresentation.PersistSendCodeBodies), BindingMode.TwoWay);
@@ -145,7 +147,7 @@ namespace RvtMcp.Plugin.Views.Settings
             Bind(_toastVertical, System.Windows.Controls.Primitives.Selector.SelectedIndexProperty, nameof(ISettingsPresentation.ToastBottom), BindingMode.TwoWay, new CornerIndexConverter());
             Bind(_language, IsEnabledProperty, nameof(ISettingsPresentation.IsLanguageWriteDisabled), BindingMode.OneWay, new InverseBooleanConverter());
             Bind(_warningPolicy, IsEnabledProperty, nameof(ISettingsPresentation.IsWarningPolicyWriteDisabled), BindingMode.OneWay, new InverseBooleanConverter());
-            foreach (var control in new FrameworkElement[] { _showBranding, _toastHorizontal, _toastVertical, _toastDrag, _toastIdle })
+            foreach (var control in new FrameworkElement[] { _toastSnoozed, _showBranding, _toastHorizontal, _toastVertical, _toastDrag, _toastIdle })
                 Bind(control, IsEnabledProperty, nameof(ISettingsPresentation.ToastEnabled));
             Bind(_apply, Button.CommandProperty, nameof(ISettingsPresentation.ApplyCommand));
             Bind(_discard, Button.CommandProperty, nameof(ISettingsPresentation.DiscardCommand));
@@ -341,6 +343,8 @@ namespace RvtMcp.Plugin.Views.Settings
 
             var enabledLabel = RowLabel("settings.toast.enabled", "Show activity notifications");
             _toastEnabled = Switch(enabledLabel);
+            var snoozeLabel = RowLabel("settings.toast.snooze", "Pause for today");
+            _toastSnoozed = Switch(snoozeLabel);
             var brandLabel = RowLabel("settings.toast.brand", "Show branding");
             _showBranding = Switch(brandLabel);
             var horizontalLabel = RowLabel("settings.toast.horizontal", "Horizontal alignment");
@@ -356,6 +360,7 @@ namespace RvtMcp.Plugin.Views.Settings
             NameFromLabel(_toastIdle, idleLabel);
             page.Children.Add(Card(
                 Row(enabledLabel, RowCaption("settings.toast.enabled.help", "Takes effect immediately."), _toastEnabled, "enableToast"),
+                Row(snoozeLabel, RowCaption("settings.toast.snooze.help", "Hides activity notifications in every Revit on this computer until midnight. Turn off to show them again now."), _toastSnoozed, "toastSnoozedDate"),
                 Row(brandLabel, RowCaption("settings.toast.brand.help", "Appears when you point at the activity card. Applies immediately and is remembered after Revit restarts."), _showBranding, "showBranding"),
                 Row(horizontalLabel,
                     RowCaption("settings.toast.position.help", "Applies and saves immediately. Changing a corner clears the saved drag position."),

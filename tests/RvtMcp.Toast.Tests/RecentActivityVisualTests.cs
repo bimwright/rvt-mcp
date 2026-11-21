@@ -22,6 +22,82 @@ internal static class RecentActivityVisualTests
         CheckCompactBorderedCards();
         CheckAllCallsScrollingAndVirtualization();
         CheckScrollbarMotionAndReducedMotion();
+        CheckAgentTitlePidAndPause();
+    }
+
+    /// <summary>
+    /// Title "rvt-mcp 2027 · Claude · PID n": the agent follows the latest call, the PID is laid out but transparent
+    /// until a deliberate hover (also with branding off), and the expanded card's pause button pauses without
+    /// opening History.
+    /// </summary>
+    private static void CheckAgentTitlePidAndPause()
+    {
+        var cursor = new Point(10, 10);
+        var clicks = 0; var pauses = 0;
+        var window = new McpToastWindow(Snapshot(), null, null, _ => clicks++, null, null,
+            () => cursor, () => true, "rvt-mcp 2027 · Claude", () => pauses++);
+        try
+        {
+            window.SetShowBranding(false);
+            window.CapturePointerBaseline();
+            window.SetPosition(50, 50); window.Show(); window.PlayEnterAnimation();
+            Pump(350);
+            var title = Field<TextBlock>(window, "_titleText");
+            var pid = Field<SolidColorBrush>(window, "_pidBrush");
+            int processId;
+            using (var process = Process.GetCurrentProcess()) processId = process.Id;
+            if (Program.PlainText(title) != "rvt-mcp 2027 · Claude · PID " + processId || pid.Opacity != 0
+                || (string)title.ToolTip != "rvt-mcp 2027 · Claude · PID " + processId)
+                throw new Exception("The title must name the instance and agent, with the PID laid out but hidden: " + Program.PlainText(title));
+            var compactWidth = title.ActualWidth;
+
+            Raise(window, Mouse.MouseEnterEvent); // stationary pointer under a new card
+            Pump(250);
+            if (pid.Opacity != 0)
+                throw new Exception("A stationary pointer revealed the PID.");
+            cursor = new Point(24, 10); Raise(window, Mouse.MouseEnterEvent);
+            var fade = Sample(() => pid.Opacity, () => pid.Opacity == 1 && !pid.HasAnimatedProperties);
+            AssertGradual(fade, 0, 1, "PID reveal");
+            window.UpdateLayout();
+            if (Math.Abs(title.ActualWidth - compactWidth) > .1)
+                throw new Exception("Revealing the PID moved the title.");
+
+            var row = Field<Border>(window, "_detailsRow");
+            Sample(() => row.Height, () => row.Height > 0 && !row.HasAnimatedProperties);
+            var pause = Field<Border>(window, "_snoozeButton");
+            window.UpdateLayout();
+            var panel = Field<ToastActivityPanel>(window, "_detailsPanel");
+            if (pause.Visibility != Visibility.Visible || pause.ActualHeight <= 0
+                || row.Height < panel.ActualHeight + pause.ActualHeight)
+                throw new Exception("The expanded card must show the whole pause row below the recent results.");
+            var click = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                { RoutedEvent = UIElement.MouseLeftButtonUpEvent };
+            pause.RaiseEvent(click);
+            if (!click.Handled || pauses != 1 || clicks != 0)
+                throw new Exception("The pause button must pause once and must not open History.");
+
+            window.SetIdentityTitle("rvt-mcp 2027 · Codex");
+            if (Program.PlainText(title) != "rvt-mcp 2027 · Codex · PID " + processId)
+                throw new Exception("An update from another agent must rename the title.");
+            window.SetIdentityTitle(null);
+            if (Program.PlainText(title) != "rvt-mcp · PID " + processId)
+                throw new Exception("No identity must fall back to the product name.");
+
+            cursor = new Point(90, 90); Raise(window, Mouse.MouseLeaveEvent);
+            Sample(() => pid.Opacity, () => pid.Opacity == 0 && !pid.HasAnimatedProperties);
+        }
+        finally { window.CloseImmediate(); }
+        if (window.HasAnimatedProperties || Field<SolidColorBrush>(window, "_pidBrush").HasAnimatedProperties)
+            throw new Exception("Close retained PID animation clocks.");
+
+        var plain = new McpToastWindow(Snapshot(), null, null, null, null, null, () => new Point(10, 10), () => true);
+        try
+        {
+            if (Field<Border>(plain, "_snoozeButton").Visibility != Visibility.Collapsed)
+                throw new Exception("A card without a pause handler must not show the pause button.");
+        }
+        finally { plain.CloseImmediate(); }
+        Console.WriteLine("PASS: agent in the title, PID fades in on deliberate hover without moving the title, expanded pause button");
     }
 
     private static ActivitySnapshot Snapshot(string newest = "Hide Items") => new ActivitySnapshot(
@@ -339,7 +415,7 @@ internal static class RecentActivityVisualTests
             cursor = new Point(24, 10); Raise(window, Mouse.MouseEnterEvent); Pump(650);
             if (panel.Entries.Count != 5001 || panel.Entries[5000].Title != "Incoming"
                 || Math.Abs(viewer.VerticalOffset - viewer.ScrollableHeight) > .1 || Math.Abs(row.Height - height) > .1)
-                throw new Exception("Next hover did not refresh all calls at the same three-row height.");
+                throw new Exception("Next hover did not refresh all calls at the same three-row height. row=" + row.Height + " expected=" + height + " offset=" + viewer.VerticalOffset + "/" + viewer.ScrollableHeight + " entries=" + panel.Entries.Count);
             window.CloseImmediate(); Pump(250);
             if (Field<DispatcherTimer>(panel, "_scrollFadeTimer") != null || bar.HasAnimatedProperties
                 || panel.Entries.Count != 0 || list.Items.Count != 0)

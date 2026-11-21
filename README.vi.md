@@ -163,7 +163,7 @@ Toast không chỉ để trang trí. Tính năng này xuất phát từ ba nhu c
 
 Toast báo **kết quả từng tool**, không phải thanh tiến độ bên trong tool đang chạy và cũng không có nghĩa toàn bộ yêu cầu đã hoàn thành. Các kết quả liên tiếp cập nhật chung một card; thông báo có thể chờ khi Revit bị thu nhỏ hoặc đang có hộp thoại modal. Người dùng vẫn cần kiểm tra kết quả công việc của agent.
 
-Mỗi card ghi tên gateway, năm Revit và PID của Revit đang phát toast (ví dụ `rvt-mcp 2022 · PID: 12345`), tên tool vừa chạy, và bộ đếm Success · Failed · Capture. Ảnh chụp được giữ trên card ít nhất 5 giây.
+Mỗi card ghi tên gateway, năm Revit và agent của lệnh gần nhất (ví dụ `rvt-mcp 2022 · Claude`; PID của Revit đang phát toast, `· PID 12345`, hiện dần khi rê chuột vào card), tên tool vừa chạy, và bộ đếm Success · Failed · Capture. Ảnh chụp được giữ trên card ít nhất 5 giây.
 
 Hover có chủ ý mở timeline với ba kết quả gần nhất và giờ hoàn tất local (`HH:mm:ss`). Cuộn lên để xem các lần gọi trước trong cùng card. Khi ở cuối, kết quả mới trượt vào ngắn (các dòng đẩy lên, dòng mới hiện dần, chấm kết quả nảy lên; tắt animation thì hiện thẳng); khi đọc phía trên, vị trí được giữ nguyên. Bấm trong timeline để đọc mà không đóng card; bấm phần còn lại mở History. Tính năng hoạt động cả khi branding tắt. Tóm tắt được giới hạn và che thông tin nhạy cảm, chỉ giữ trong RAM và xóa khi card đóng. Object/array của script hiện số lượng; khảo sát chưa đủ vẫn ghi rõ chưa đủ. Thay đổi UI này không bổ sung toast cho tool chạy thuần server.
 
@@ -221,6 +221,7 @@ Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cụ
 | TTL journal (1h-14d) | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | Toast hoàn thành (mặc định bật) | ribbon **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
 | Brand trên toast (mặc định tắt, có lưu) | Settings → Toast → **Show branding** | — | `showBranding` |
+| Tắt tạm toast hôm nay (mọi Revit, đến 0 giờ) | nút **Pause for today** trên toast, Settings → Toast → **Pause for today** | — | `toastSnoozedDate` |
 | Thời gian toast tự ẩn (mặc định 20 giây) | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
 | Vị trí toast (mặc định trên-trái, không kéo; có lưu) | Settings → Toast → **Horizontal / Vertical alignment**, **Allow dragging the card**, **Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | Ngôn ngữ UI (add-in) | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |

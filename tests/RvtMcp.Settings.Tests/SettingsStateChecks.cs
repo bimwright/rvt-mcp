@@ -61,6 +61,19 @@ internal static class SettingsStateChecks
         using (var runtime = new Runtime())
         using (var model = new SettingsViewModel(runtime))
         {
+            Expect(!model.ToastSnoozed, "toasts start unpaused");
+            model.ToastSnoozed = true;
+            Expect(runtime.ToastSnoozed && runtime.ImmediateWrites == 1 && !model.IsDirty, "pausing applies immediately, not staged");
+            runtime.SaveSucceeds = false;
+            model.ToastSnoozed = false;
+            Expect(model.ImmediateWarningKey == "toastSnoozedDate", "a failed resume is visible");
+            runtime.SaveSucceeds = true;
+            runtime.SetToastSnoozed(true); // the card's pause button in this Revit
+            Expect(model.ToastSnoozed, "the open Settings window follows a pause from the card");
+        }
+        using (var runtime = new Runtime())
+        using (var model = new SettingsViewModel(runtime))
+        {
             runtime.IsWarningPolicyWriteDisabled = true;
             model.WarningPolicy = "accept-and-log";
             Expect(!model.IsDirty, "host override prevents staging");
@@ -109,11 +122,13 @@ internal static class SettingsStateChecks
         public event EventHandler ConnectionChanged;
         public event EventHandler LanguageChanged;
         public event EventHandler ToastEnabledChanged;
+        public event EventHandler ToastSnoozeChanged;
         public event Action<bool> PositionSaved;
         public Action<bool> PositionCallback => PositionSaved;
         public EventHandler LanguageCallback => LanguageChanged;
         public int Subscribers => (LanguageChanged?.GetInvocationList().Length ?? 0)
-            + (ConnectionChanged?.GetInvocationList().Length ?? 0) + (ToastEnabledChanged?.GetInvocationList().Length ?? 0) + (PositionSaved?.GetInvocationList().Length ?? 0);
+            + (ConnectionChanged?.GetInvocationList().Length ?? 0) + (ToastEnabledChanged?.GetInvocationList().Length ?? 0)
+            + (ToastSnoozeChanged?.GetInvocationList().Length ?? 0) + (PositionSaved?.GetInvocationList().Length ?? 0);
         public int Reads, Writes, ImmediateWrites, Disposals;
         public bool SaveSucceeds = true;
         public string Language = "auto";
@@ -125,6 +140,7 @@ internal static class SettingsStateChecks
         public bool IsWarningPolicyWriteDisabled { get; set; }
         public bool ToastEnabled { get; private set; } = true;
         public bool ShowBranding;
+        public bool ToastSnoozed { get; private set; }
         public ToastPositionOptions ToastPosition { get; private set; } = new ToastPositionOptions();
         public bool IsListenerRunning { get; private set; }
         public bool IsClientConnected => false;
@@ -136,12 +152,13 @@ internal static class SettingsStateChecks
         {
             Reads++;
             return new SettingsValues { Snapshot = new SettingsSnapshot(), SelectedLanguage = Language,
-                ToastEnabled = ToastEnabled, ShowBranding = ShowBranding, ToastPosition = ToastPosition,
+                ToastEnabled = ToastEnabled, ShowBranding = ShowBranding, ToastSnoozed = ToastSnoozed, ToastPosition = ToastPosition,
                 ToastIdleSeconds = 20, PersistSendCodeBodiesHours = 4, WarningPolicy = "rollback" };
         }
         public SettingsApplyReport Apply(SettingsChanges changes) { Writes++; LastChanges = changes; return ApplyResult; }
         public bool SetToastEnabled(bool enabled) { ImmediateWrites++; ToastEnabled = enabled; ToastEnabledChanged?.Invoke(this, EventArgs.Empty); return SaveSucceeds; }
         public bool SetShowBranding(bool show) { ImmediateWrites++; ShowBranding = show; return SaveSucceeds; }
+        public bool SetToastSnoozed(bool snoozed) { ImmediateWrites++; ToastSnoozed = snoozed; ToastSnoozeChanged?.Invoke(this, EventArgs.Empty); return SaveSucceeds; }
         public bool SetToastPosition(ToastPositionOptions options) { ImmediateWrites++; ToastPosition = options; return SaveSucceeds; }
         public bool SetLanguage(string language) { Language = language; return !IsLanguageWriteDisabled && SaveSucceeds; }
         public bool StartListener() { IsListenerRunning = true; return true; }

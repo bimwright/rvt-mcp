@@ -159,7 +159,7 @@ Toasts are work feedback, not just decoration. They grew out of three practical 
 
 A toast reports a tool result, **not progress inside a running tool or completion of the entire task**. Repeated results share one card; notifications may wait while Revit is minimized or blocked by a modal dialog. They do not replace reviewing the agent's work.
 
-Each card names the gateway, Revit year and owning Revit process PID (for example `rvt-mcp 2022 · PID: 12345`), the latest tool, and the Success · Failed · Capture counts. A capture preview stays on the card for at least 5 seconds.
+Each card names the gateway, Revit year and the agent of the latest call (for example `rvt-mcp 2022 · Claude`; the owning Revit process PID, `· PID 12345`, fades in when you point at the card), the latest tool, and the Success · Failed · Capture counts. A capture preview stays on the card for at least 5 seconds.
 
 Deliberate hover opens an activity timeline showing the newest three results, each with its local completion time (`HH:mm:ss`). Scroll up for earlier calls in that card. Incoming results follow the bottom with a short glide-in (the rows rise, the new row fades in and its outcome dot pops; none of this with reduced motion); while you read older calls, your position stays put. Click inside the timeline to read without closing it; clicking the rest of the card opens History. This works with branding off. Summaries are bounded and redacted, stay in memory only, and clear when the card closes. Script objects/arrays show counts; an incomplete survey remains explicitly incomplete. Server-local tools do not gain toast coverage from this UI change.
 
@@ -218,6 +218,7 @@ Precedence, high wins: **CLI → env (`BIMWRIGHT_*`) →** `%LOCALAPPDATA%\Bimwr
 | Journal TTL (1h-14d) | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | Completion toast (default on) | ribbon **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
 | Toast branding (default off, saved) | Settings → Toast → **Show branding** | — | `showBranding` |
+| Pause toasts for today (every Revit, until local midnight) | toast card **Pause for today**, Settings → Toast → **Pause for today** | — | `toastSnoozedDate` |
 | Toast idle duration (default 20 s) | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
 | Toast position (default top-left, no drag; saved) | Settings → Toast → **Horizontal / Vertical alignment**, **Allow dragging the card**, **Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | UI language (add-in) | ribbon **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |

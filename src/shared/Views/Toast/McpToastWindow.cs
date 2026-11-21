@@ -40,12 +40,26 @@ namespace RvtMcp.Plugin.Views.Toast
         private const int DetailsLeaveDelayMs = 120;
         private const int DetailsOpenMs = 260;
         private const int DetailsCloseMs = 220;
+        // Height the expansion adds: the recent-results panel, plus the pause row when it is shown.
+        private const double DetailsExpansionHeight = 157;
+        private const double SnoozeRowHeight = 24;
         private const int GwlExStyle = -20;
         private const long WsExNoActivate = 0x08000000L;
         private const long WsExToolWindow = 0x00000080L;
 
         private readonly TextBlock _iconText;
         private readonly TextBlock _titleText;
+        // Title = identity ("rvt-mcp 2027 · Claude") + PID. The PID is always laid out, so revealing it never moves
+        // the card; its brush fades in on a deliberate hover.
+        private readonly Run _titleIdentityRun = new Run();
+        private readonly Run _titlePidRun;
+        private readonly SolidColorBrush _pidBrush;
+        private DispatcherTimer _pidRevealTimer;
+        private bool _pidShown;
+        private readonly DockPanel _detailsBody;
+        private readonly Border _snoozeButton;
+        private readonly Action _snoozeRequested;
+        private MouseButtonEventHandler _snoozeUpHandler;
         private readonly TextBlock _toolText;
         private readonly TextBlock _bodyText;
         private readonly Viewbox _counterRow;
@@ -142,12 +156,16 @@ namespace RvtMcp.Plugin.Views.Toast
             Action<long> onPointerLeft,
             Func<Point> cursorPosition = null,
             Func<bool> motionEnabled = null,
-            string instanceIdentity = null)
+            string instanceIdentity = null,
+            Action onSnooze = null)
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
             var identityTitle = string.IsNullOrWhiteSpace(instanceIdentity) ? BrandAssets.ProductName : instanceIdentity;
             // This window runs inside Revit; never take its PID from a gateway or report payload.
-            using (var process = Process.GetCurrentProcess()) identityTitle += " · PID: " + process.Id;
+            using (var process = Process.GetCurrentProcess()) _titlePidRun = new Run(" · PID " + process.Id);
+            _pidBrush = new SolidColorBrush(McpToastTheme.Text.Color) { Opacity = 0 };
+            _titlePidRun.Foreground = _pidBrush;
+            _snoozeRequested = onSnooze;
             _card = new ToastCardViewModel(snapshot, identityTitle, onDismiss, onClick);
             DataContext = _card;
             _activityClosed = onClosed;
@@ -196,7 +214,7 @@ namespace RvtMcp.Plugin.Views.Toast
             };
 
             var content = new Grid { Margin = new Thickness(10, 10, 12, 10) };
-            // Title (product + Revit year + process PID), then the latest tool or status title.
+            // Title (product + Revit year + agent, PID on hover), then the latest tool or status title.
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             // Status summary and activity counters share one fixed-height body row.
@@ -253,13 +271,15 @@ namespace RvtMcp.Plugin.Views.Toast
 
             _titleText = new TextBlock
             {
-                Text = _card.IdentityTitle,
                 FontWeight = FontWeights.SemiBold,
                 FontSize = 13,
                 Foreground = McpToastTheme.Text,
                 TextWrapping = TextWrapping.Wrap,
                 VerticalAlignment = VerticalAlignment.Center
             };
+            _titleText.Inlines.Add(_titleIdentityRun);
+            _titleText.Inlines.Add(_titlePidRun);
+            SetIdentityTitle(identityTitle);
             header.Children.Add(_titleText);
 
             Grid.SetRow(header, 0);
@@ -317,10 +337,17 @@ namespace RvtMcp.Plugin.Views.Toast
             {
                 Opacity = 0, RenderTransform = _detailsShift
             };
+            _snoozeButton = CreateSnoozeButton();
+            // DockPanel, not StackPanel: the panel keeps the row's finite height as its constraint, so the explicit
+            // re-measure on each reveal sees its new entries.
+            _detailsBody = new DockPanel { LastChildFill = true };
+            DockPanel.SetDock(_snoozeButton, Dock.Bottom);
+            _detailsBody.Children.Add(_snoozeButton);
+            _detailsBody.Children.Add(_detailsPanel);
             _detailsRow = new Border
             {
                 Height = 0, ClipToBounds = true, Visibility = Visibility.Collapsed,
-                Child = _detailsPanel, Cursor = Cursors.Arrow
+                Child = _detailsBody, Cursor = Cursors.Arrow
             };
             // Reading/scrolling the preview must not invoke the card's dismiss action.
             _detailsUpHandler = (_, e) => e.Handled = true;
@@ -427,6 +454,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 {
                     _brandPointerMoved = true;
                     ScheduleBrandReveal();
+                    SchedulePidReveal();
                     ScheduleDetailsReveal();
                 }
             };
@@ -441,6 +469,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 _activityPointerEntered?.Invoke(CardId);
                 _brandPointerMoved = true;
                 ScheduleBrandReveal();
+                SchedulePidReveal();
                 ScheduleDetailsReveal();
             };
             _mouseLeaveHandler = (_, __) =>
@@ -451,6 +480,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 _brandPointerOver = false;
                 _brandPointerMoved = false;
                 HideBrand(immediate: false);
+                HidePid(immediate: false);
                 ScheduleDetailsHide();
             };
             _mouseUpHandler = (_, e) =>
@@ -594,6 +624,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 _dragStarted = true;
                 HideDetails(immediate: true);
                 HideBrand(immediate: true);
+                HidePid(immediate: true);
                 UpdateLayout();
             }
             var point = new Point(_dragWindowStart.X + delta.X, _dragWindowStart.Y + delta.Y);
@@ -642,6 +673,7 @@ namespace RvtMcp.Plugin.Views.Toast
             {
                 _brandPointerOver = _brandPointerMoved = true;
                 ScheduleBrandReveal();
+                SchedulePidReveal();
                 ScheduleDetailsReveal();
             }
         }
@@ -734,6 +766,119 @@ namespace RvtMcp.Plugin.Views.Toast
         }
 
         /// <summary>
+        /// "rvt-mcp 2027 · Claude": the manager passes it again on every update, because the latest call may come
+        /// from another agent. Null or empty falls back to the product name.
+        /// </summary>
+        internal void SetIdentityTitle(string identity)
+        {
+            var title = string.IsNullOrWhiteSpace(identity) ? BrandAssets.ProductName : identity;
+            if (_titleIdentityRun.Text != title) _titleIdentityRun.Text = title;
+            _titleText.ToolTip = title + _titlePidRun.Text;
+        }
+
+        /// <summary>
+        /// The PID fades in on a deliberate hover, like the wordmark, but independently of the branding preference.
+        /// </summary>
+        private void SchedulePidReveal()
+        {
+            if (_dragPending || !_brandPointerOver || !_brandPointerMoved || _closedCallbackRaised || _isClosing
+                || _pidShown || _pidRevealTimer != null)
+                return;
+            if (!_motionEnabled())
+            {
+                FadePid(show: true, immediate: true);
+                return;
+            }
+            _pidRevealTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(BrandRevealDelayMs) };
+            _pidRevealTimer.Tick += (_, __) =>
+            {
+                CancelPidRevealTimer();
+                if (_brandPointerOver && !_dragPending && !_isClosing && !_closedCallbackRaised)
+                    FadePid(show: true, immediate: false);
+            };
+            _pidRevealTimer.Start();
+        }
+
+        private void HidePid(bool immediate)
+        {
+            CancelPidRevealTimer();
+            if (_pidShown || immediate)
+                FadePid(show: false, immediate: immediate || !_motionEnabled());
+        }
+
+        private void FadePid(bool show, bool immediate)
+        {
+            _pidShown = show;
+            var target = show ? 1.0 : 0.0;
+            if (immediate)
+            {
+                _pidBrush.BeginAnimation(Brush.OpacityProperty, null);
+                _pidBrush.Opacity = target;
+                return;
+            }
+            var fade = new DoubleAnimation(target, TimeSpan.FromMilliseconds(show ? BrandRevealDurationMs : BrandHideDurationMs))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = show ? EasingMode.EaseOut : EasingMode.EaseIn }
+            };
+            // Settle on the base value so no clock outlives the fade; a reversed fade owns the brush by then.
+            fade.Completed += (_, __) =>
+            {
+                if (_pidShown != show || _closedCallbackRaised) return;
+                _pidBrush.BeginAnimation(Brush.OpacityProperty, null);
+                _pidBrush.Opacity = target;
+            };
+            _pidBrush.BeginAnimation(Brush.OpacityProperty, fade);
+        }
+
+        private void CancelPidRevealTimer()
+        {
+            _pidRevealTimer?.Stop();
+            _pidRevealTimer = null;
+        }
+
+        /// <summary>"Pause for today" at the foot of the expanded card; absent when no handler was given.</summary>
+        private Border CreateSnoozeButton()
+        {
+            var text = new TextBlock { FontSize = 11, Foreground = McpToastTheme.TextSecondary, VerticalAlignment = VerticalAlignment.Center };
+            text.Inlines.Add(new Run("\uE708") { FontFamily = McpToastTheme.IconFont, FontSize = 11 });
+            text.Inlines.Add(new Run("  " + Localized("toast.snooze.today", "Pause for today")));
+            var button = new Border
+            {
+                Height = SnoozeRowHeight - 4,
+                Margin = new Thickness(0, 4, 0, 0),
+                Padding = new Thickness(6, 0, 6, 0),
+                CornerRadius = new CornerRadius(4),
+                Background = Brushes.Transparent,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Cursor = Cursors.Hand,
+                Child = text,
+                ToolTip = Localized("toast.snooze.today.help",
+                    "Hide activity notifications in every Revit until midnight. Turn them back on in Settings or with the toast button."),
+                Visibility = _snoozeRequested == null ? Visibility.Collapsed : Visibility.Visible
+            };
+            System.Windows.Automation.AutomationProperties.SetName(button, Localized("toast.snooze.today", "Pause for today"));
+            if (_snoozeRequested != null)
+            {
+                _snoozeUpHandler = (_, e) =>
+                {
+                    // The card's own click opens History; this click only pauses.
+                    e.Handled = true;
+                    if (!_isClosing && !_closedCallbackRaised) _snoozeRequested();
+                };
+                button.MouseLeftButtonUp += _snoozeUpHandler;
+                button.MouseEnter += (_, __) => button.Background = McpToastTheme.ThumbnailBackground;
+                button.MouseLeave += (_, __) => button.Background = Brushes.Transparent;
+            }
+            return button;
+        }
+
+        private static string Localized(string key, string fallback)
+        {
+            var value = L.T(key);
+            return string.IsNullOrWhiteSpace(value) || string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
+        }
+
+        /// <summary>
         /// Intent delay is independent of branding and reduced motion. A passing pointer
         /// or a card appearing underneath a still pointer never exposes outcome content.
         /// </summary>
@@ -773,7 +918,7 @@ namespace RvtMcp.Plugin.Views.Toast
             var newReading = !_detailsRevealed;
             if (newReading)
             {
-                PrepareExpansion?.Invoke(157);
+                PrepareExpansion?.Invoke(DetailsExpansionHeight + (_snoozeButton.Visibility == Visibility.Visible ? SnoozeRowHeight : 0));
                 _detailsShift.Y = _growUp ? 6 : -6;
                 _detailsPanel.SetEntries(_card.RecentEntries);
             }
@@ -782,8 +927,8 @@ namespace RvtMcp.Plugin.Views.Toast
             _detailsRevealed = true;
             _detailsHiding = false;
             var generation = ++_detailsGeneration;
-            _detailsPanel.Measure(new Size(CardWidth - 28, double.PositiveInfinity));
-            var height = _detailsPanel.DesiredSize.Height;
+            _detailsBody.Measure(new Size(CardWidth - 28, double.PositiveInfinity));
+            var height = _detailsBody.DesiredSize.Height;
             _detailsRow.Visibility = Visibility.Visible;
             if (newReading)
                 _detailsPanel.ScrollToLatest();
@@ -1095,8 +1240,6 @@ namespace RvtMcp.Plugin.Views.Toast
 
         private void BindCard()
         {
-            Bind(_titleText, TextBlock.TextProperty, nameof(ToastCardViewModel.IdentityTitle));
-            Bind(_titleText, ToolTipProperty, nameof(ToastCardViewModel.IdentityTitle));
             Bind(_toolText, TextBlock.TextProperty, nameof(ToastCardViewModel.Title));
             Bind(_toolText, ToolTipProperty, nameof(ToastCardViewModel.ToolTip));
             Bind(_bodyText, TextBlock.TextProperty, nameof(ToastCardViewModel.Body));
@@ -1418,6 +1561,7 @@ namespace RvtMcp.Plugin.Views.Toast
                 _closeHost.MouseLeftButtonUp -= _closeHostMouseUpHandler;
             }
             _detailsRow.MouseLeftButtonUp -= _detailsUpHandler;
+            if (_snoozeUpHandler != null) _snoozeButton.MouseLeftButtonUp -= _snoozeUpHandler;
             HideDetails(immediate: true);
             _detailsPanel.SetEntries(Array.AsReadOnly(new ToastActivityEntry[0]));
             foreach (var element in new FrameworkElement[] { _titleText, _toolText, _bodyText, _iconText, _successLabel, _failedLabel, _captureLabel, _counterRow, _thumbnailHost })
@@ -1438,6 +1582,8 @@ namespace RvtMcp.Plugin.Views.Toast
             MouseMove -= _mouseMoveHandler;
             MouseLeave -= _mouseLeaveHandler;
             CancelBrandRevealTimer();
+            CancelPidRevealTimer();
+            _pidBrush.BeginAnimation(Brush.OpacityProperty, null);
             _brandHideGeneration++;
             _brandCell.BeginAnimation(UIElement.OpacityProperty, null);
             MouseLeftButtonUp -= _mouseUpHandler;

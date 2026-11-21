@@ -23,6 +23,7 @@ namespace RvtMcp.Plugin.Infrastructure.UI
             L.Changed += OnLanguageChanged;
             RvtMcp.ToolCatalog.ToolCatalogStore.Changed += OnConnectionChanged;
             _app.ToastEnabledChanged += OnToastEnabledChanged;
+            Views.Toast.ToastSnooze.Changed += OnToastSnoozeChanged;
             // Capture the subscribed instance: a later host replacement must not retain this adapter.
             var notifier = _app.ToastNotifier;
             if (notifier != null)
@@ -35,12 +36,14 @@ namespace RvtMcp.Plugin.Infrastructure.UI
         public event EventHandler ConnectionChanged;
         public event EventHandler LanguageChanged;
         public event EventHandler ToastEnabledChanged;
+        public event EventHandler ToastSnoozeChanged;
         public event Action<bool> PositionSaved;
         public int LanguageVersion => L.Version;
         public string EffectiveLanguage => L.Locale;
         public bool IsLanguageWriteDisabled => !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(RvtMcpConfig.EnvUiLanguage));
         public bool IsWarningPolicyWriteDisabled => Environment.GetEnvironmentVariable(RvtMcpConfig.EnvWarningPolicy) != null;
         public bool ToastEnabled => _app.ToastEnabled;
+        public bool ToastSnoozed => Views.Toast.ToastSnooze.IsActive();
         public ToastPositionOptions ToastPosition => _app.ToastNotifier?.PositionOptions;
         public bool IsListenerRunning => _app.IsTransportRunning && _app.Transport != null;
         public bool IsClientConnected => IsListenerRunning && _app.Transport.IsClientConnected;
@@ -75,6 +78,7 @@ namespace RvtMcp.Plugin.Infrastructure.UI
                 },
                 SelectedLanguage = language, ToastEnabled = _app.ToastEnabled,
                 ShowBranding = _app.ToastNotifier?.ShowBranding ?? _snapshot.ShowBrandingOrDefault,
+                ToastSnoozed = Views.Toast.ToastSnooze.IsActive(_snapshot),
                 ToastPosition = ToastPosition ?? _snapshot.ToastPositionOrDefault,
                 ToastIdleSeconds = _snapshot.ToastIdleSecondsOrDefault,
                 PersistSendCodeBodies = _snapshot.IsPersistSendCodeBodiesActive(),
@@ -155,6 +159,14 @@ namespace RvtMcp.Plugin.Infrastructure.UI
             return saved;
         }
 
+        public bool SetToastSnoozed(bool snoozed)
+        {
+            string error;
+            var notifier = _app.ToastNotifier;
+            if (notifier != null) return snoozed ? notifier.PauseForToday() : notifier.ResumeFromPause();
+            return snoozed ? Views.Toast.ToastSnooze.PauseForToday(out error) : Views.Toast.ToastSnooze.Resume(out error);
+        }
+
         public bool SetShowBranding(bool show)
         {
             if (_app.Config != null) _app.Config.ShowBranding = show;
@@ -199,6 +211,7 @@ namespace RvtMcp.Plugin.Infrastructure.UI
         private void OnConnectionChanged(object sender, EventArgs e) => Post(() => ConnectionChanged?.Invoke(this, EventArgs.Empty));
         private void OnLanguageChanged(object sender, EventArgs e) => Post(() => LanguageChanged?.Invoke(this, EventArgs.Empty));
         private void OnToastEnabledChanged(object sender, EventArgs e) => Post(() => ToastEnabledChanged?.Invoke(this, EventArgs.Empty));
+        private void OnToastSnoozeChanged() => Post(() => ToastSnoozeChanged?.Invoke(this, EventArgs.Empty));
         private void OnPositionSaved(bool saved) => Post(() => PositionSaved?.Invoke(saved));
         private void Post(Action action)
         {
@@ -214,6 +227,7 @@ namespace RvtMcp.Plugin.Infrastructure.UI
             L.Changed -= OnLanguageChanged;
             RvtMcp.ToolCatalog.ToolCatalogStore.Changed -= OnConnectionChanged;
             _app.ToastEnabledChanged -= OnToastEnabledChanged;
+            Views.Toast.ToastSnooze.Changed -= OnToastSnoozeChanged;
             _detachPosition?.Invoke();
         }
     }

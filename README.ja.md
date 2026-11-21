@@ -163,7 +163,7 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 トーストが伝えるのは **ツール 1 回分の結果** であり、実行中のツールの進捗でも、タスク全体の完了でもありません。連続した結果は 1 枚のカードにまとまります。Revit が最小化されているときやモーダルダイアログで止まっているときは、通知が待たされることがあります。エージェントの作業を確認する代わりにはなりません。
 
-各カードにはゲートウェイ名、Revit の年と通知元の Revit プロセスの PID（例：`rvt-mcp 2022 · PID: 12345`）、直近のツール、Success · Failed · Capture のカウントが表示されます。キャプチャのプレビューは少なくとも 5 秒間カードに残ります。
+各カードにはゲートウェイ名、Revit の年と直近の呼び出しのエージェント（例：`rvt-mcp 2022 · Claude`。通知元の Revit プロセスの PID `· PID 12345` はカードにポインタを置くとフェードインします）、直近のツール、Success · Failed · Capture のカウントが表示されます。キャプチャのプレビューは少なくとも 5 秒間カードに残ります。
 
 意図的にホバーすると、最新 3 件の結果と各ローカル完了時刻（`HH:mm:ss`）を示すアクティビティタイムラインが開きます。上にスクロールすると、そのカードの以前の呼び出しを読めます。新しい結果は短いスライドインで末尾に追従します（行が上がり、新しい行がフェードインし、結果のドットが弾みます。視覚効果を減らす設定ではどれも表示されません）。古い呼び出しを読んでいる間は位置が保たれます。タイムライン内をクリックしても閉じずに読み続けられ、カードのそれ以外の部分をクリックすると History が開きます。ブランディングをオフにしても動作します。要約は長さが制限され、機微な情報は伏せられ、メモリ内にのみ保持され、カードを閉じると消去されます。スクリプトのオブジェクトや配列は件数で表示し、不完全な調査は不完全と明示されます。サーバー側のみのツールは、この UI 変更ではトースト対象になりません。
 
@@ -221,6 +221,7 @@ v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 
 | Journal TTL（1h-14d） | `--persist-send-code-bodies-for 4h` | `BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL` | `persistSendCodeBodiesUntil` |
 | 完了トースト（既定オン） | リボン **Toast** | `BIMWRIGHT_ENABLE_TOAST=0` | `enableToast` |
 | トースト branding（既定オフ、保存あり） | Settings → Toast → **Show branding** | — | `showBranding` |
+| 今日はトーストを一時停止（すべての Revit、真夜中まで） | トーストの **Pause for today**、Settings → Toast → **Pause for today** | — | `toastSnoozedDate` |
 | トーストのアイドル時間（既定 20 秒） | Settings → Toast → **Idle duration** | — | `toastIdleSeconds` |
 | トーストの位置（既定は左上・ドラッグなし、保存あり） | Settings → Toast → **Horizontal / Vertical alignment**、**Allow dragging the card**、**Reset position** | — | `toastHorizontalAlign`, `toastVerticalAlign`, `toastDragEnabled`, `toastDragOffset` |
 | UI 言語（アドイン） | リボン **Language** | `BIMWRIGHT_UI_LANGUAGE` | `uiLanguage` |
