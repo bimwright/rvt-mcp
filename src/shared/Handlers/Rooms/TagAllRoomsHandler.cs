@@ -35,7 +35,8 @@ namespace RvtMcp.Plugin.Handlers
             if (rooms.Count == 0)
                 return CommandResult.Ok(new { tagged = 0, message = "No rooms found in current view." });
 
-            var alreadyTagged = new HashSet<long>(new FilteredElementCollector(doc, view.Id)
+            // Tags the view owns; a view-scoped collector can leave some out (see TagScan).
+            var alreadyTagged = new HashSet<long>(new FilteredElementCollector(doc).OwnedByView(view.Id)
                 .OfCategory(BuiltInCategory.OST_RoomTags)
                 .WhereElementIsNotElementType()
                 .Cast<RoomTag>()

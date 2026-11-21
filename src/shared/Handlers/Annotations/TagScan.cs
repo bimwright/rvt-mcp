@@ -16,7 +16,9 @@ namespace RvtMcp.Plugin.Handlers
         /// <summary>
         /// Ids of the host elements tagged in the view by element, room and area tags. With
         /// <paramref name="elementTagCategories"/> only element tags of those categories count (so a
-        /// keynote or material tag does not make a wall "tagged").
+        /// keynote or material tag does not make a wall "tagged"). Tags are read as the elements the
+        /// view owns: a view-scoped collector left out tags the view owns and shows (seen in Revit 2022
+        /// on a large plan), so a second tagging pass tagged those walls again.
         /// </summary>
         public static HashSet<long> CollectTaggedElementIds(Document doc, View view, params BuiltInCategory[] elementTagCategories)
         {
@@ -25,7 +27,7 @@ namespace RvtMcp.Plugin.Handlers
                 ? new HashSet<long>(elementTagCategories.Select(c => (long)c))
                 : null;
 
-            foreach (var tag in new FilteredElementCollector(doc, view.Id)
+            foreach (var tag in new FilteredElementCollector(doc).OwnedByView(view.Id)
                 .OfClass(typeof(IndependentTag))
                 .Cast<IndependentTag>())
             {
@@ -37,7 +39,7 @@ namespace RvtMcp.Plugin.Handlers
             }
 
             // RoomTag cannot be used with OfClass (ElementClassFilter does not support it); collect by category.
-            foreach (var tag in new FilteredElementCollector(doc, view.Id)
+            foreach (var tag in new FilteredElementCollector(doc).OwnedByView(view.Id)
                 .OfCategory(BuiltInCategory.OST_RoomTags)
                 .WhereElementIsNotElementType()
                 .OfType<RoomTag>())
@@ -46,7 +48,7 @@ namespace RvtMcp.Plugin.Handlers
                     ids.Add(RevitCompat.GetId(tag.Room.Id));
             }
 
-            foreach (var tag in new FilteredElementCollector(doc, view.Id)
+            foreach (var tag in new FilteredElementCollector(doc).OwnedByView(view.Id)
                 .OfCategory(BuiltInCategory.OST_AreaTags)
                 .WhereElementIsNotElementType())
             {

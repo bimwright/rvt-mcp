@@ -48,6 +48,42 @@ public class TagHandlerTests
         Assert.Equal(0, result["data"]!.Value<int>("alreadyTagged"));
     }
 
+    // Seen live in Revit 2022: FilteredElementCollector(doc, viewId) left out 81 of 158 tags a plan
+    // owned, so tag_all_walls tagged 42 walls again on its second call.
+    [Fact]
+    public void Tag_all_walls_sees_a_tag_a_view_scoped_collector_misses()
+    {
+        var result = Run("walls:missed");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        Assert.Equal(1, result["data"]!.Value<int>("tagged"));
+        Assert.Equal(1, result["data"]!.Value<int>("alreadyTagged"));
+    }
+
+    [Fact]
+    public void Find_untagged_sees_a_tag_a_view_scoped_collector_misses()
+    {
+        var result = Run("find:missed_doors");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        Assert.Equal(0, result["data"]!.Value<int>("untagged_count"));
+    }
+
+    [Fact]
+    public void Tag_all_rooms_sees_a_room_tag_a_view_scoped_collector_misses()
+    {
+        var result = Run("rooms:missed");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        Assert.Equal(0, result["data"]!.Value<int>("tagged"));
+    }
+
+    [Fact]
+    public void Tag_all_areas_sees_an_area_tag_a_view_scoped_collector_misses()
+    {
+        var result = Run("areas:missed");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        Assert.Equal(1, result["data"]!.Value<int>("created_count")); // area 43 only
+        Assert.Equal(0, result["data"]!.Value<int>("failed_count")); // area 42 counts as tagged, not as unplaceable
+    }
+
     [Fact]
     public void Tag_all_walls_counts_a_multi_category_tag_as_a_wall_tag()
     {
@@ -217,7 +253,7 @@ namespace Autodesk.Revit.DB {
  public class Category { public ElementId Id; public string Name;
   public static Category GetCategory(Document doc,BuiltInCategory bic)=>doc.Settings.Categories.FirstOrDefault(c=>c.Id.IntegerValue==(int)bic)??throw new ArgumentException("no category"); }
  public class Settings { public List<Category> Categories=new List<Category>(); }
- public class Element { public ElementId Id; public string Name=""; public Category Category; public Location Location; public int[] InViews; public ElementId TypeId=ElementId.InvalidElementId;
+ public class Element { public ElementId Id; public string Name=""; public Category Category; public Location Location; public int[] InViews; public bool MissedByViewScan; public ElementId TypeId=ElementId.InvalidElementId;
   public BoundingBoxXYZ get_BoundingBox(View v)=>null; public void ChangeTypeId(ElementId id){TypeId=id;} public ElementId GetTypeId()=>TypeId; }
  public class ElementType:Element {}
  public class FamilySymbol:ElementType { public bool IsActive=true; public void Activate(){IsActive=true;} }
@@ -261,9 +297,10 @@ namespace Autodesk.Revit.DB {
   public FilteredElementCollector OfCategory(BuiltInCategory bic){Rules.Add(e=>e.Category!=null&&e.Category.Id.IntegerValue==(int)bic);return this;}
   public FilteredElementCollector OfCategoryId(ElementId id){Rules.Add(e=>e.Category!=null&&e.Category.Id==id);return this;}
   public FilteredElementCollector WhereElementIsNotElementType(){Rules.Add(e=>!(e is ElementType));return this;}
+  public FilteredElementCollector OwnedByView(ElementId view){Rules.Add(e=>e.InViews!=null&&e.InViews.Contains(view.IntegerValue));return this;}
   public Element FirstElement()=>this.FirstOrDefault();
   public ICollection<ElementId> ToElementIds(){ if(Doc.VisibleScanFails)throw new InvalidOperationException("view scan failed"); return this.Select(e=>e.Id).ToList(); }
-  public IEnumerator<Element> GetEnumerator()=>Doc.Items.Values.Where(e=>View==null||e.InViews==null||e.InViews.Contains(View.IntegerValue)).Where(e=>Rules.All(r=>r(e))).ToList().GetEnumerator();
+  public IEnumerator<Element> GetEnumerator()=>Doc.Items.Values.Where(e=>View==null||(!e.MissedByViewScan&&(e.InViews==null||e.InViews.Contains(View.IntegerValue)))).Where(e=>Rules.All(r=>r(e))).ToList().GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator()=>GetEnumerator();
  }
  public class Transaction:IDisposable {
@@ -320,6 +357,13 @@ public static class Probe {
   doc.Add(new RoomTag{Id=new ElementId(32),Room=rooms[1],Category=Cat(doc,BuiltInCategory.OST_RoomTags),InViews=v});
   doc.Add(new RoomTag{Id=new ElementId(33),Room=rooms[2],IsTaggingLink=true,Category=Cat(doc,BuiltInCategory.OST_RoomTags),InViews=v});
   doc.Add(new AreaTag{Id=new ElementId(51),Area=areas[0],Category=Cat(doc,BuiltInCategory.OST_AreaTags),InViews=new[]{100,300}});
+  if(kase.StartsWith("missed")){
+   // Owned by the plan and shown in it, but left out by a view-scoped collector.
+   doc.Add(new TagV2022{Id=new ElementId(83),Host=w1,Category=Cat(doc,BuiltInCategory.OST_WallTags),InViews=v,MissedByViewScan=true});
+   doc.Add(new TagV2022{Id=new ElementId(84),Host=doors[3],Category=Cat(doc,BuiltInCategory.OST_DoorTags),InViews=v,MissedByViewScan=true});
+   doc.Add(new RoomTag{Id=new ElementId(85),Room=rooms[2],Category=Cat(doc,BuiltInCategory.OST_RoomTags),InViews=v,MissedByViewScan=true});
+   doc.Add(new AreaTag{Id=new ElementId(86),Area=areas[1],Category=Cat(doc,BuiltInCategory.OST_AreaTags),InViews=new[]{100,300},MissedByViewScan=true});
+  }
   if(kase=="multi_category")doc.Add(new TagV2022{Id=new ElementId(82),Host=w1,Category=Cat(doc,BuiltInCategory.OST_MultiCategoryTags),InViews=v});
   if(kase=="keynote")doc.Add(new TagV2022{Id=new ElementId(81),Host=w1,Category=Cat(doc,BuiltInCategory.OST_KeynoteTags),InViews=v});
   if(kase=="interrupted")doc.Add(new TagInterrupted{Id=new ElementId(92),Host=w1,Category=Cat(doc,BuiltInCategory.OST_WallTags),InViews=v});
@@ -332,7 +376,7 @@ public static class Probe {
    RvtMcp.Plugin.CommandResult r;
    switch(tool){
     case "walls": r=new RvtMcp.Plugin.Handlers.TagAllWallsHandler().Execute(app,"{}");break;
-    case "find": r=new RvtMcp.Plugin.Handlers.FindUntaggedElementsHandler().Execute(app,new JObject{["category"]=kase=="areas"?"Areas":kase=="doors"?"Doors":"Rooms",["view_id"]=viewId}.ToString());break;
+    case "find": r=new RvtMcp.Plugin.Handlers.FindUntaggedElementsHandler().Execute(app,new JObject{["category"]=kase=="areas"?"Areas":kase.EndsWith("doors")?"Doors":"Rooms",["view_id"]=viewId}.ToString());break;
     case "rooms": r=new RvtMcp.Plugin.Handlers.TagAllRoomsHandler().Execute(app,"{}");break;
     case "areas": r=new RvtMcp.Plugin.Handlers.TagAllAreasHandler().Execute(app,"{}");break;
     case "category": r=new RvtMcp.Plugin.Handlers.TagAllByCategoryHandler().Execute(app,new JObject{["category"]=kase=="doors_fail"?"Doors":"Rooms",["view_id"]=viewId}.ToString());break;
