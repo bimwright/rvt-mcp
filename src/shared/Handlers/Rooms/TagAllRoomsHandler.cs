@@ -35,7 +35,8 @@ namespace RvtMcp.Plugin.Handlers
             if (rooms.Count == 0)
                 return CommandResult.Ok(new { tagged = 0, message = "No rooms found in current view." });
 
-            var alreadyTagged = new HashSet<long>(new FilteredElementCollector(doc, view.Id)
+            // Tags the view owns; a view-scoped collector can leave some out (see TagScan).
+            var alreadyTagged = new HashSet<long>(new FilteredElementCollector(doc).OwnedByView(view.Id)
                 .OfCategory(BuiltInCategory.OST_RoomTags)
                 .WhereElementIsNotElementType()
                 .Cast<RoomTag>()
@@ -75,13 +76,13 @@ namespace RvtMcp.Plugin.Handlers
                 if (tagged == 0)
                 {
                     tx.RollBack();
-                    return new CommandResult { Success = false, Error = "No rooms could be tagged. See failed for individual errors.", Data = new { tagged, totalRooms = rooms.Count, failed } };
+                    return new CommandResult { Success = false, Error = "No rooms could be tagged. See failed for individual errors.", Data = new { tagged, totalRooms = rooms.Count, failed, failedCount = failed.Count } };
                 }
                 if (tx.Commit() != TransactionStatus.Committed)
                     return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
             }
 
-            return CommandResult.Ok(new { tagged, totalRooms = rooms.Count, tagIds, failed });
+            return CommandResult.Ok(new { tagged, totalRooms = rooms.Count, tagIds, failed, failedCount = failed.Count });
         }
     }
 }

@@ -105,8 +105,8 @@ namespace RvtMcp.Plugin.Handlers
                 .Cast<Area>()
                 .ToList();
 
-            // Collect existing tags in this view
-            var existingTags = new FilteredElementCollector(doc, areaPlan.Id)
+            // Collect existing tags the view owns; a view-scoped collector can leave some out (see TagScan).
+            var existingTags = new FilteredElementCollector(doc).OwnedByView(areaPlan.Id)
                 .OfCategory(BuiltInCategory.OST_AreaTags)
                 .Cast<AreaTag>()
                 .ToList();
@@ -243,6 +243,7 @@ namespace RvtMcp.Plugin.Handlers
                 created_count = createdCount,
                 skipped_existing_count = skippedCount,
                 failed_count = failedCount,
+                failedCount,
                 truncated = candidateAreas.Count > processedCount,
                 remaining_candidate_count = System.Math.Max(0, candidateAreas.Count - processedCount),
                 created_tag_id_preview = createdTagIds.Take(20).ToArray(),

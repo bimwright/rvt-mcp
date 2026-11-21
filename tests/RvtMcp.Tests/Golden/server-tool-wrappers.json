@@ -3898,7 +3898,7 @@
       "calls": [
         {
           "command": "place_view_on_sheet",
-          "params": "{\"viewId\":1,\"sheetId\":null,\"sheetNumber\":\"\",\"sheetName\":\"MCP Generated Sheet\"}",
+          "params": "{\"viewId\":1,\"sheetId\":null,\"sheetNumber\":\"\",\"sheetName\":\"MCP Generated Sheet\",\"x_mm\":null,\"y_mm\":null}",
           "timeout": null
         }
       ],
@@ -3908,7 +3908,7 @@
       "calls": [
         {
           "command": "place_view_on_sheet",
-          "params": "{\"viewId\":1,\"sheetId\":null,\"sheetNumber\":\"\",\"sheetName\":\"MCP Generated Sheet\"}",
+          "params": "{\"viewId\":1,\"sheetId\":null,\"sheetNumber\":\"\",\"sheetName\":\"MCP Generated Sheet\",\"x_mm\":null,\"y_mm\":null}",
           "timeout": null
         }
       ],

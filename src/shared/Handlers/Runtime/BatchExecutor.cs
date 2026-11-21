@@ -192,7 +192,10 @@ namespace RvtMcp.Plugin.Handlers
                 }
                 else
                 {
-                    outcome.Results.Add(new { index = i, ok = false, error = r.Error });
+                    // A failed command's data (for example failed_references) explains the error.
+                    outcome.Results.Add(r.Data == null
+                        ? (object)new { index = i, ok = false, error = r.Error }
+                        : new { index = i, ok = false, error = r.Error, data = r.Data });
                     outcome.AnyFailed = true;
                     if (!continueOnError) return outcome;
                 }
@@ -248,8 +251,8 @@ namespace RvtMcp.Plugin.Handlers
             public static InvokeResult Ok(object data) =>
                 new InvokeResult { Success = true, Data = data };
 
-            public static InvokeResult Fail(string error) =>
-                new InvokeResult { Success = false, Error = error };
+            public static InvokeResult Fail(string error, object data = null) =>
+                new InvokeResult { Success = false, Error = error, Data = data };
 
             public static InvokeResult Unknown() =>
                 new InvokeResult { UnknownCommand = true };

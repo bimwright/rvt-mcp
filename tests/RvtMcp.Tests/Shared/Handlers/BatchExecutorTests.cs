@@ -104,6 +104,29 @@ namespace RvtMcp.Tests
             Assert.True(outcome.ShouldRollBack(false));
         }
 
+        // FC-B-04 (b): each step's result, including why a failed step failed.
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Failed_command_keeps_its_data_in_the_step_result(bool continueOnError)
+        {
+            var outcome = BatchExecutor.Run(Cmds(("create_dimensions", null)), continueOnError, (name, _) =>
+                BatchExecutor.InvokeResult.Fail("Fewer than two valid references were successfully resolved. See failed_references.",
+                    new JObject { ["created"] = false, ["failed_references"] = new JArray(new JObject { ["element_id"] = 999, ["error"] = "Element not found." }) }));
+
+            var step = JArray.FromObject(outcome.Results)[0];
+            Assert.False(step.Value<bool>("ok"));
+            Assert.Equal(999, step["data"]!["failed_references"]![0]!.Value<long>("element_id"));
+            Assert.Equal(!continueOnError, outcome.ShouldRollBack(continueOnError));
+        }
+
+        [Fact]
+        public void Failed_command_without_data_keeps_the_old_step_shape()
+        {
+            var outcome = BatchExecutor.Run(Cmds(("bad", null)), false, (name, _) => BatchExecutor.InvokeResult.Fail("invalid argument"));
+            Assert.Null(JArray.FromObject(outcome.Results)[0]["data"]);
+        }
+
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
@@ -275,6 +298,32 @@ namespace RvtMcp.Tests
             Assert.False(result.Value<bool>("ok"));
             Assert.Equal(1, result["data"]?.Value<int>("failedCount"));
             Assert.Contains("partial failure", result.Value<string>("error"));
+        }
+
+        // FC-B-04 (#45): the response shape tag_elements now returns for a partial failure (a failed array plus
+        // failedCount) stops the batch for rollback. The handler's own output is checked live, not here.
+        [Fact]
+        public void Run_TagElementsResponseShapeWithFailedCount_StopsForRollback()
+        {
+            var dispatch = Dispatch(new Dictionary<string, Func<string, BatchExecutor.InvokeResult>>
+            {
+                ["create_level"] = _ => BatchExecutor.InvokeResult.Ok(new { elementId = 10 }),
+                ["tag_elements"] = _ => BatchExecutor.InvokeResult.Ok(new JObject
+                {
+                    ["tagged"] = true,
+                    ["created"] = 1,
+                    ["failed"] = new JArray(new JObject { ["element_id"] = 7, ["error"] = "Element is not visible in target view." }),
+                    ["failedCount"] = 1
+                }),
+            });
+
+            var outcome = BatchExecutor.Run(Cmds(("create_level", null), ("tag_elements", null)), continueOnError: false, dispatch);
+
+            Assert.True(outcome.AnyFailed);
+            Assert.Equal(2, outcome.Results.Count);
+            var second = JObject.FromObject(outcome.Results[1]);
+            Assert.False(second.Value<bool>("ok"));
+            Assert.Contains("1 partial failure", second.Value<string>("error"));
         }
 
         [Fact]

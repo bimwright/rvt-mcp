@@ -21,12 +21,13 @@ namespace RvtMcp.Plugin.Handlers
 
         public string Description =>
             "List all types (FamilySymbols) within a single Family, including each type's parameter values "
-            + "(with feet->mm / sq_ft->sq_m conversion). More detailed/scoped than get_available_family_types.";
+            + "(with feet->mm / sq_ft->sq_m conversion). More detailed/scoped than get_available_family_types. "
+            + "A system family id from list_loaded_families (system:<typeId>) lists every type of that system family, such as each wall type.";
 
         public string ParametersSchema => @"{
   ""type"": ""object"",
   ""properties"": {
-    ""family_id"": {""type"": ""string"", ""description"": ""Family ElementId. Either family_id or family_name required.""},
+    ""family_id"": {""type"": ""string"", ""description"": ""Family ElementId, or system:<typeId> from list_loaded_families for a system family. Either family_id or family_name required.""},
     ""family_name"": {""type"": ""string"", ""description"": ""Family name. Used if family_id not provided.""},
     ""include_parameter_values"": {""type"": ""boolean"", ""default"": true, ""description"": ""If true, include bounded type parameter values.""},
     ""include_built_in_only"": {""type"": ""boolean"", ""default"": false, ""description"": ""If true, only built-in parameters; else include shared/project parameters too.""},
@@ -68,6 +69,11 @@ namespace RvtMcp.Plugin.Handlers
 
             if (string.IsNullOrWhiteSpace(familyIdStr) && string.IsNullOrWhiteSpace(familyName))
                 return CommandResult.Fail("Either family_id or family_name is required.");
+
+            // A system family (walls, floors, pipes...) has no Family element: list_loaded_families
+            // publishes it as system:<id of one of its types>.
+            if (!string.IsNullOrWhiteSpace(familyIdStr) && familyIdStr.Trim().StartsWith(SystemPrefix, StringComparison.OrdinalIgnoreCase))
+                return ListSystemFamilyTypes(doc, familyIdStr.Trim(), includeParameterValues, includeBuiltInOnly, parameterNames, paging);
 
             // Resolve family (id first, then name)
             Family family = null;
@@ -151,9 +157,68 @@ namespace RvtMcp.Plugin.Handlers
             });
         }
 
+        private const string SystemPrefix = "system:";
+
+        /// <summary>
+        /// Every type of one system family: the types of the same class, family name and category
+        /// as the given type, the grouping list_loaded_families uses.
+        /// </summary>
+        private static CommandResult ListSystemFamilyTypes(Document doc, string familyId, bool includeParameterValues,
+            bool includeBuiltInOnly, HashSet<string> parameterNames, ResponsePaging.Options paging)
+        {
+            var idText = familyId.Substring(SystemPrefix.Length).Trim();
+            if (!long.TryParse(idText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var rawId))
+                return CommandResult.Fail("family_id '" + familyId + "' must be system:<typeId>, as revit_list_loaded_families returns it.");
+            if (!RevitCompat.CanRepresentElementId(rawId))
+                return CommandResult.Fail(RevitCompat.ElementIdRangeError(rawId));
+
+            var seed = doc.GetElement(RevitCompat.ToElementId(rawId)) as ElementType;
+            if (seed == null || seed is FamilySymbol)
+                return CommandResult.Fail("family_id '" + familyId + "' is not a system family type. Use the system:<typeId> id revit_list_loaded_families returns, or a numeric Family id for a loadable family.");
+
+            var familyName = SafeFamilyName(seed);
+            var categoryId = seed.Category == null ? (long?)null : RevitCompat.GetId(seed.Category.Id);
+            var typesInFamily = new FilteredElementCollector(doc)
+                .OfClass(seed.GetType())
+                .Cast<ElementType>()
+                .Where(t => string.Equals(SafeFamilyName(t), familyName, StringComparison.Ordinal)
+                    && (t.Category == null ? (long?)null : RevitCompat.GetId(t.Category.Id)) == categoryId)
+                .OrderBy(t => RevitCompat.GetId(t.Id))
+                .ToArray();
+            var page = ResponsePaging.Slice(typesInFamily, paging.StartIndex, paging.MaxResults);
+
+            var types = page.Items.Select(t => new
+            {
+                id = RevitCompat.GetId(t.Id).ToString(CultureInfo.InvariantCulture),
+                name = SafeName(t) ?? string.Empty,
+                parameters = includeParameterValues ? BuildParametersDto(doc, t, includeBuiltInOnly, parameterNames) : null
+            }).ToArray();
+
+            return CommandResult.Ok(new
+            {
+                family_id = familyId,
+                family_name = familyName,
+                category = seed.Category?.Name,
+                kind = "system",
+                is_editable = false,
+                total_type_count = page.TotalCount,
+                start_index = page.StartIndex,
+                returned_count = page.ReturnedCount,
+                truncated = page.Truncated,
+                next_index = page.NextIndex,
+                types
+            });
+        }
+
+        private static string SafeFamilyName(ElementType type)
+        {
+            try { return type.FamilyName ?? "<unknown>"; }
+            catch { return "<unknown>"; }
+        }
+
         // --- parameter extraction ---------------------------------------------------
 
-        private static JObject BuildParametersDto(Document doc, FamilySymbol sym, bool includeBuiltInOnly, HashSet<string> parameterNames)
+        private static JObject BuildParametersDto(Document doc, ElementType sym, bool includeBuiltInOnly, HashSet<string> parameterNames)
         {
             var paramsObj = new JObject();
             ParameterSet paramSet;

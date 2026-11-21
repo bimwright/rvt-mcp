@@ -12,9 +12,12 @@ namespace RvtMcp.Server
         public static async Task<string> CreateView(string viewType, string level = "", string name = "")
             => await ToolGateway.CallAsync("create_view", new { viewType, level, name });
 
-        [McpServerTool(Name = "revit_place_view_on_sheet", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Place a view on a sheet. Auto-creates sheet if sheetId omitted. Params: viewId (required), sheetId (optional), sheetNumber (optional), sheetName (optional).")]
-        public static async Task<string> PlaceViewOnSheet(long viewId, long? sheetId = null, string sheetNumber = "", string sheetName = "MCP Generated Sheet")
-            => await ToolGateway.CallAsync("place_view_on_sheet", new { viewId, sheetId, sheetNumber, sheetName });
+        [McpServerTool(Name = "revit_place_view_on_sheet", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Place a view on a sheet. Auto-creates sheet if sheetId omitted. Params: viewId (required), sheetId (optional), sheetNumber (optional), sheetName (optional), " +
+            "xMm and yMm (optional, both or neither): viewport centre in sheet paper coordinates in mm, as revit_place_schedule_on_sheet and revit_analyze_sheet_layout use. " +
+            "Without them the viewport goes to the fixed default point (304.8, 228.6) mm, whatever the sheet size. Returns the placed centre {u, v} in mm and placement (requested or default_point). " +
+            "Example: viewId=1234, sheetNumber='A101', xMm=420, yMm=297 centres the view on an A1 sheet.")]
+        public static async Task<string> PlaceViewOnSheet(long viewId, long? sheetId = null, string sheetNumber = "", string sheetName = "MCP Generated Sheet", double? xMm = null, double? yMm = null)
+            => await ToolGateway.CallAsync("place_view_on_sheet", new { viewId, sheetId, sheetNumber, sheetName, x_mm = xMm, y_mm = yMm });
 
         [McpServerTool(Name = "revit_analyze_sheet_layout", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Analyze title block and a bounded viewport page in mm. Use startViewport + maxViewports (hard max 500).")]
         public static async Task<string> AnalyzeSheetLayout(string sheetNumber = "", long? sheetId = null, int startViewport = 0, int maxViewports = 100)
