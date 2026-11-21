@@ -81,7 +81,7 @@ namespace RvtMcp.Plugin.Handlers
                     return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
             }
 
-            return CommandResult.Ok(new { tagged, totalRooms = rooms.Count, tagIds, failed });
+            return CommandResult.Ok(new { tagged, totalRooms = rooms.Count, tagIds, failed, failedCount = failed.Count });
         }
     }
 }
