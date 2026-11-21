@@ -135,7 +135,7 @@
     },
     {
       "name": "revit_ai_element_filter",
-      "description_hash": "sha256:f94f7ccce36f8263303f2fdf81c64c26471f78587572e7d25f60ba4c92c5715f",
+      "description_hash": "sha256:a90ee523afeb8c564398e0eee782f9247ff7563c2437ba621573b8fac556279b",
       "inputSchema": {
         "properties": {
           "category": {

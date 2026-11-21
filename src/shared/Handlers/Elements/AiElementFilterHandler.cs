@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -54,12 +55,23 @@ namespace RvtMcp.Plugin.Handlers
                 .OfCategory(bic.Value)
                 .WhereElementIsNotElementType();
 
-            var elements = collector.ToList();
-
-            // Filter by parameter if specified
-            if (!string.IsNullOrEmpty(paramName) && !string.IsNullOrEmpty(paramValue))
+            // Without a parameter filter Revit counts the category natively and only `limit`
+            // elements are read. With a filter every element is still tested so totalFound stays
+            // exact, but only the first `limit` matches are kept.
+            int totalFound;
+            List<Element> filtered;
+            if (string.IsNullOrEmpty(paramName) || string.IsNullOrEmpty(paramValue))
             {
-                elements = elements.Where(el =>
+                totalFound = collector.GetElementCount();
+                filtered = new FilteredElementCollector(doc)
+                    .OfCategory(bic.Value)
+                    .WhereElementIsNotElementType()
+                    .Take(limit)
+                    .ToList();
+            }
+            else
+            {
+                Func<Element, bool> matches = el =>
                 {
                     var param = el.LookupParameter(paramName);
                     if (param == null) return false;
@@ -96,10 +108,16 @@ namespace RvtMcp.Plugin.Handlers
                         case "startswith": return val.StartsWith(paramValue, StringComparison.OrdinalIgnoreCase);
                         default: return val.Equals(paramValue, StringComparison.OrdinalIgnoreCase);
                     }
-                }).ToList();
+                };
+                totalFound = 0;
+                filtered = new List<Element>();
+                foreach (var el in collector)
+                {
+                    if (!matches(el)) continue;
+                    totalFound++;
+                    if (filtered.Count < limit) filtered.Add(el);
+                }
             }
-
-            var filtered = elements.Take(limit).ToList();
 
             // Auto-select if requested
             if (selectResult && filtered.Count > 0)
@@ -131,7 +149,7 @@ namespace RvtMcp.Plugin.Handlers
 
             return CommandResult.Ok(new
             {
-                totalFound = elements.Count,
+                totalFound,
                 returned = result.Length,
                 selected = selectResult,
                 limit,

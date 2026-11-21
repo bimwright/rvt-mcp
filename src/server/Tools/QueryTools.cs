@@ -22,7 +22,7 @@ namespace RvtMcp.Server
         public static async Task<string> GetAvailableFamilyTypes(string category = "")
             => await ToolGateway.CallAsync("get_available_family_types", new { category });
 
-        [McpServerTool(Name = "revit_ai_element_filter", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Filter elements by category + parameter. Numeric values in mm (auto-converted). category uses human name ('Pipes', NOT 'OST_Pipes'). Operators: equals/contains/startswith/greaterthan/lessthan. select=true highlights results. Example: category='Pipes', parameterName='Diameter', parameterValue='200', operator='greaterthan', select=true.")]
+        [McpServerTool(Name = "revit_ai_element_filter", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Filter elements by category + parameter. Numeric values in mm (auto-converted). category uses human name ('Pipes', NOT 'OST_Pipes'). Operators: equals/contains/startswith/greaterthan/lessthan. select=true highlights results. limit caps the returned elements; with a parameter filter every element of the category is still tested so totalFound is exact. Example: category='Pipes', parameterName='Diameter', parameterValue='200', operator='greaterthan', select=true.")]
         public static async Task<string> AiElementFilter(string category, string parameterName = "", string parameterValue = "", string @operator = "equals", int limit = 100, bool select = false)
             => await ToolGateway.CallAsync("ai_element_filter", new { category, parameterName, parameterValue, @operator, limit, select });
 
