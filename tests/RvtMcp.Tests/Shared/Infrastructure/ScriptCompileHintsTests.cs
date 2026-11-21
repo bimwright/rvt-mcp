@@ -115,6 +115,16 @@ namespace Autodesk.Revit.UI {
         }
 
         [Fact]
+        public void Unknown_non_revit_type_names_its_own_namespace_not_a_revit_type()
+        {
+            Assert.Equal("'StringBuilder' is System.Text.StringBuilder: add `using System.Text;` or write System.Text.StringBuilder.",
+                Hint("StringBuilder sb = null; return sb;", "CS0246"));
+            Assert.Equal("'Regex' is System.Text.RegularExpressions.Regex: add `using System.Text.RegularExpressions;` " +
+                         "or write System.Text.RegularExpressions.Regex.", Hint("return Regex.IsMatch(\"a\", \"a\");", "CS0103"));
+            Assert.Contains("`using System.IO;`", Hint("return Path.GetTempPath();", "CS0103"));
+        }
+
+        [Fact]
         public void Type_without_a_public_constructor_lists_its_factories()
         {
             var hint = Hint("return new Plane(new Frame());", "CS1729");

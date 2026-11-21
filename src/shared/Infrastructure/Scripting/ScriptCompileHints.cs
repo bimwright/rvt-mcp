@@ -149,10 +149,39 @@ namespace RvtMcp.Plugin
                 }
                 return $"'{text}' is one of {string.Join(", ", names)}: write the full name or add its using.";
             }
+            // StringBuilder, Regex, Path, JArray: a public type of another referenced assembly needs its using, not a Revit name.
+            var elsewhere = OtherNamespaces(compilation, text);
+            if (elsewhere.Length == 1) return $"'{text}' is {elsewhere[0]}.{text}: add `using {elsewhere[0]};` or write {elsewhere[0]}.{text}.";
+            if (elsewhere.Length > 1)
+                return $"'{text}' is one of {string.Join(", ", elsewhere.Take(3).Select(ns => ns + "." + text))}: write the full name or add its using.";
             // An unknown plain name is usually the script's own variable; only a name used as a type gets suggestions.
             if (id != "CS0246") return null;
             var near = Nearest(index.TypesByName.Keys, text, 5, minShared: 4);
             return near.Length == 0 ? null : $"No Revit API type '{text}'. Closest: {string.Join(", ", near)}.";
+        }
+
+        /// <summary>
+        /// Namespaces (outside the Revit API) of the referenced assemblies that have a public top-level type of this name,
+        /// System ones first. Walks namespaces only, on the failure path, so nothing is indexed or kept.
+        /// </summary>
+        private static string[] OtherNamespaces(Compilation compilation, string typeName)
+        {
+            var found = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var assembly in compilation.References.Select(compilation.GetAssemblyOrModuleSymbol).OfType<IAssemblySymbol>())
+                Collect(assembly.GlobalNamespace, typeName, found);
+            return found.OrderBy(ns => ns == "System" || ns.StartsWith("System.", StringComparison.Ordinal) ? 0 : 1)
+                .ThenBy(ns => ns.Length).ThenBy(ns => ns, StringComparer.Ordinal).ToArray();
+        }
+
+        private static void Collect(INamespaceSymbol ns, string typeName, HashSet<string> found)
+        {
+            foreach (var child in ns.GetNamespaceMembers())
+            {
+                var name = child.ToDisplayString();
+                if (name == ApiNamespace || name.StartsWith(ApiNamespace + ".", StringComparison.Ordinal) || name.Contains("Internal")) continue;
+                if (child.GetTypeMembers(typeName).Any(t => t.DeclaredAccessibility == Microsoft.CodeAnalysis.Accessibility.Public)) found.Add(name);
+                Collect(child, typeName, found);
+            }
         }
 
         // ---- wrong call (argument count, type, ref/out, constructor) ----
