@@ -26,6 +26,11 @@ namespace RvtMcp.Plugin.Commands
             string saveError;
             var persisted = RvtMcpConfig.TrySaveEnableToast(
                 App.Instance.ToastEnabled, out saveError);
+            if (App.Instance.ToastEnabled && !Views.Toast.ToastSnooze.ResumeIfPaused(out var resumeError))
+            {
+                persisted = false;
+                saveError = resumeError;
+            }
             if (!persisted && !string.IsNullOrWhiteSpace(saveError))
                 App.DebugLog("Toast preference could not be saved: " + saveError);
 

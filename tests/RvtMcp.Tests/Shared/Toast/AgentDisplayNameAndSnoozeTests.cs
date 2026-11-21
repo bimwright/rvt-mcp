@@ -85,6 +85,16 @@ namespace RvtMcp.Tests
             finally { ToastSnooze.Changed -= onChanged; }
         }
 
+        [Fact]
+        public void Turning_toasts_on_ends_only_an_active_pause()
+        {
+            Assert.True(ToastSnooze.ResumeIfPaused(out var error), error);
+            Assert.False(File.Exists(RvtMcpConfig.ConfigFilePathOverride));
+            Assert.True(ToastSnooze.PauseForToday(out error), error);
+            Assert.True(ToastSnooze.ResumeIfPaused(out error), error);
+            Assert.False(ToastSnooze.IsActive());
+        }
+
         [Theory]
         [InlineData(null)]
         [InlineData("")]

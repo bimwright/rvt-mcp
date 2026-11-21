@@ -154,6 +154,8 @@ namespace RvtMcp.Plugin.Infrastructure.UI
             if (_app.Config != null) _app.Config.EnableToast = enabled;
             string error;
             var saved = RvtMcpConfig.TrySaveEnableToast(enabled, out error);
+            // Turning toasts on shows them now: an active pause for today ends too.
+            if (enabled && !Views.Toast.ToastSnooze.ResumeIfPaused(out var resumeError)) { saved = false; error = resumeError; }
             if (!saved) App.DebugLog("Settings save enableToast failed: " + error);
             _app.ToastNotifier?.OnToastEnabledChanged(enabled, saved);
             return saved;

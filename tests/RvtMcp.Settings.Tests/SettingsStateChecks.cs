@@ -115,6 +115,33 @@ internal static class SettingsStateChecks
         Console.WriteLine("PASS: real SettingsViewModel staging, partial apply/retry, immediate actions, overrides, expiry and lifetime without host/I/O");
     }
 
+    /// <summary>The real Revit settings adapter: pausing saves the date; turning toasts on ends the pause.</summary>
+    internal static void RunPauseWithRealAdapter()
+    {
+        var folder = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "rvt-settings-pause-" + Guid.NewGuid().ToString("N"));
+        var previousPath = RvtMcpConfig.ConfigFilePathOverride;
+        System.IO.Directory.CreateDirectory(folder);
+        try
+        {
+            RvtMcpConfig.ConfigFilePathOverride = System.IO.Path.Combine(folder, "config.json");
+            using (var runtime = new RvtMcp.Plugin.Infrastructure.UI.SettingsRuntime(new App()))
+            {
+                Expect(!runtime.ToastSnoozed && runtime.SetToastSnoozed(true) && runtime.ToastSnoozed
+                    && runtime.Read().ToastSnoozed, "pausing for today is saved and read back");
+                runtime.SetToastEnabled(false);
+                Expect(runtime.ToastSnoozed, "turning toasts off keeps the pause");
+                runtime.SetToastEnabled(true);
+                Expect(!runtime.ToastSnoozed, "turning toasts on ends a pause for today");
+            }
+        }
+        finally
+        {
+            RvtMcpConfig.ConfigFilePathOverride = previousPath;
+            try { System.IO.Directory.Delete(folder, true); } catch { }
+        }
+        Console.WriteLine("PASS: pause for today through the real settings adapter; turning toasts on resumes");
+    }
+
     private static void Expect(bool condition, string message) { if (!condition) throw new Exception(message); }
 
     private sealed class Runtime : ISettingsRuntime

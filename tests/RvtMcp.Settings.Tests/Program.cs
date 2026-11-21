@@ -83,6 +83,7 @@ internal static class Program
                 return 0;
             }
             SettingsStateChecks.Run();
+            SettingsStateChecks.RunPauseWithRealAdapter();
             ToolsStateChecks.Run();
             HistoryStateChecks.Run();
             HistoryLatestChecks.Run();

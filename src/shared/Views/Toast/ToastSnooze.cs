@@ -33,6 +33,16 @@ namespace RvtMcp.Plugin.Views.Toast
         /// <summary>Ends a pause early. Returns whether the choice was saved.</summary>
         public static bool Resume(out string error) => Save(null, out error);
 
+        /// <summary>
+        /// Turning toasts on means showing them now, so an active pause ends too. Returns false only when a pause
+        /// was active and its removal could not be saved.
+        /// </summary>
+        public static bool ResumeIfPaused(out string error)
+        {
+            error = null;
+            return !IsActive() || Resume(out error);
+        }
+
         private static bool Save(string date, out string error)
         {
             var saved = RvtMcpConfig.TrySaveToastSnoozedDate(date, out error);

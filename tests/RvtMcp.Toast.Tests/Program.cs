@@ -88,6 +88,7 @@ internal static class Program
             TimelineVisualTests.Run();
             CheckSingleActivityCard();
             CheckStatusAndClickLifecycle();
+            CheckPauseClosesTheCard();
             Console.WriteLine("PASS: single-card activity manager and WPF guards");
             return 0;
         }
@@ -537,6 +538,37 @@ internal static class Program
         {
             manager.DismissAllImmediate();
         }
+    }
+
+    /// <summary>The pause button runs the notifier's path (reset the activity, render): the open card closes.</summary>
+    private static void CheckPauseClosesTheCard()
+    {
+        var aggregator = new ActivityAggregator();
+        McpToastManager manager = null;
+        var pauses = 0;
+        manager = new McpToastManager(Dispatcher.CurrentDispatcher, aggregator, motionEnabled: () => false,
+            snooze: () => { pauses++; if (aggregator.Reset()) manager.Render(); });
+        try
+        {
+            if (aggregator.RecordResult("List Rooms", "Done", true, null, true)) manager.Render();
+            Pump();
+            var window = Current(manager);
+            var pause = (Border)typeof(McpToastWindow).GetField("_snoozeButton", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(window);
+            if (window == null || pause.Visibility != Visibility.Visible)
+                throw new Exception("A manager given a pause action must offer the pause button.");
+            var click = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                { RoutedEvent = UIElement.MouseLeftButtonUpEvent };
+            pause.RaiseEvent(click);
+            Pump();
+            if (pauses != 1 || Current(manager) != null || window.IsVisible)
+                throw new Exception("Pausing must close the open card.");
+            if (aggregator.RecordResult("List Rooms", "Done", true, null, true)) manager.Render();
+            Pump();
+            if (Current(manager) == null)
+                throw new Exception("The manager must still show cards the notifier lets through.");
+        }
+        finally { manager.DismissAllImmediate(); }
+        Console.WriteLine("PASS: the pause button closes the open card through the manager");
     }
 
     private static McpToastWindow Current(McpToastManager manager)
