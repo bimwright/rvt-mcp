@@ -278,6 +278,7 @@ namespace RvtMcp.Plugin.Handlers
                 ["created"] = createdCount,
                 ["tags"] = createdTags,
                 ["failed"] = failedElements,
+                ["failedCount"] = failedElements.Count,
                 ["truncated"] = truncated,
                 ["error"] = null
             };

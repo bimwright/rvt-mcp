@@ -330,6 +330,7 @@ namespace RvtMcp.Plugin.Handlers
                 },
                 ["resolved_references"] = resolvedRefsInfo,
                 ["failed_references"] = failedRefsInfo,
+                ["failedCount"] = failedRefsInfo.Count,
                 ["error"] = null
             });
         }

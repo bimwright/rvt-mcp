@@ -243,6 +243,7 @@ namespace RvtMcp.Plugin.Handlers
                 created_count = createdCount,
                 skipped_existing_count = skippedCount,
                 failed_count = failedCount,
+                failedCount,
                 truncated = candidateAreas.Count > processedCount,
                 remaining_candidate_count = System.Math.Max(0, candidateAreas.Count - processedCount),
                 created_tag_id_preview = createdTagIds.Take(20).ToArray(),

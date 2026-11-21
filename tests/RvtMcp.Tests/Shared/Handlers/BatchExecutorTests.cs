@@ -277,6 +277,49 @@ namespace RvtMcp.Tests
             Assert.Contains("partial failure", result.Value<string>("error"));
         }
 
+        // FC-B-04 (#45): tag_elements reports some elements failed with success=true; the batch must stop and roll back.
+        [Fact]
+        public void Run_TagElementsPartialFailurePayload_StopsAndFlags_ForRollback()
+        {
+            var dispatch = Dispatch(new Dictionary<string, Func<string, BatchExecutor.InvokeResult>>
+            {
+                ["create_level"] = _ => BatchExecutor.InvokeResult.Ok(new { elementId = 10 }),
+                ["tag_elements"] = _ => BatchExecutor.InvokeResult.Ok(new JObject
+                {
+                    ["tagged"] = true,
+                    ["created"] = 1,
+                    ["failed"] = new JArray(new JObject { ["element_id"] = 7, ["error"] = "Element is not visible in target view." }),
+                    ["failedCount"] = 1
+                }),
+            });
+
+            var outcome = BatchExecutor.Run(Cmds(("create_level", null), ("tag_elements", null)), continueOnError: false, dispatch);
+
+            Assert.True(outcome.AnyFailed);
+            Assert.Equal(2, outcome.Results.Count);
+            var second = JObject.FromObject(outcome.Results[1]);
+            Assert.False(second.Value<bool>("ok"));
+            Assert.Contains("1 partial failure", second.Value<string>("error"));
+        }
+
+        // FC-B-04 (#45): create_dimensions with fewer than two resolved references now returns failure, not created:false.
+        [Fact]
+        public void Run_CreateDimensionsWithoutDimension_IsAFailedStep()
+        {
+            var dispatch = Dispatch(new Dictionary<string, Func<string, BatchExecutor.InvokeResult>>
+            {
+                ["create_level"] = _ => BatchExecutor.InvokeResult.Ok(new { elementId = 10 }),
+                ["create_dimensions"] = _ => BatchExecutor.InvokeResult.Fail("Fewer than two valid references were successfully resolved. See failed_references."),
+            });
+
+            var outcome = BatchExecutor.Run(Cmds(("create_level", null), ("create_dimensions", null)), continueOnError: false, dispatch);
+
+            Assert.True(outcome.AnyFailed);
+            var second = JObject.FromObject(outcome.Results[1]);
+            Assert.False(second.Value<bool>("ok"));
+            Assert.Contains("Fewer than two", second.Value<string>("error"));
+        }
+
         [Fact]
         public void Run_SuccessPayloadWithFailedCount_ContinueOnErrorTrue_AttemptsRemaining()
         {

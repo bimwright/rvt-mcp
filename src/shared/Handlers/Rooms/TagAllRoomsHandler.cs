@@ -75,13 +75,13 @@ namespace RvtMcp.Plugin.Handlers
                 if (tagged == 0)
                 {
                     tx.RollBack();
-                    return new CommandResult { Success = false, Error = "No rooms could be tagged. See failed for individual errors.", Data = new { tagged, totalRooms = rooms.Count, failed } };
+                    return new CommandResult { Success = false, Error = "No rooms could be tagged. See failed for individual errors.", Data = new { tagged, totalRooms = rooms.Count, failed, failedCount = failed.Count } };
                 }
                 if (tx.Commit() != TransactionStatus.Committed)
                     return CommandResult.Fail("Revit did not commit the transaction; model changes were not confirmed.");
             }
 
-            return CommandResult.Ok(new { tagged, totalRooms = rooms.Count, tagIds, failed });
+            return CommandResult.Ok(new { tagged, totalRooms = rooms.Count, tagIds, failed, failedCount = failed.Count });
         }
     }
 }

@@ -285,6 +285,7 @@ namespace RvtMcp.Plugin.Handlers
                 ["created"] = createdCount,
                 ["tags"] = createdTags,
                 ["failed"] = failedElements,
+                ["failedCount"] = failedElements.Count,
                 ["error"] = null
             };
             if (createdCount == 0 && failedElements.Count > 0)
