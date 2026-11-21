@@ -170,16 +170,7 @@ namespace RvtMcp.Plugin.Handlers
                         {
                             throw new Exception("Element is not a Wall.");
                         }
-                        var lc = wall.Location as LocationCurve;
-                        if (lc == null || lc.Curve == null)
-                        {
-                            throw new Exception("Wall location curve is not available.");
-                        }
-                        revitRef = lc.Curve.Reference;
-                        if (revitRef == null)
-                        {
-                            throw new Exception("Revit did not expose a valid centerline Reference for this wall.");
-                        }
+                        revitRef = GetWallLocationLineReference(wall, view);
                     }
                     else
                     {
@@ -342,6 +333,46 @@ namespace RvtMcp.Plugin.Handlers
                 ["error"] = null
             });
         }
+
+        /// <summary>
+        /// A LocationCurve's curve carries no Reference, so a wall's location line is read from the
+        /// wall geometry (computed references, non-visible objects): the referenced line parallel to
+        /// the location line and nearest to it in plan.
+        /// </summary>
+        private static Reference GetWallLocationLineReference(Wall wall, View view)
+        {
+            var lc = wall.Location as LocationCurve;
+            if (lc == null || lc.Curve == null)
+                throw new Exception("Wall location curve is not available.");
+            if (!(lc.Curve is Line locationLine))
+                throw new Exception("wall_centerline supports straight walls only; this wall's location curve is " + lc.Curve.GetType().Name + ".");
+
+            var options = new Options { ComputeReferences = true, IncludeNonVisibleObjects = true, View = view };
+            var geometry = wall.get_Geometry(options);
+            var target = Midpoint(locationLine);
+            Line best = null;
+            var bestDistance = double.MaxValue;
+            if (geometry != null)
+            {
+                foreach (var obj in geometry)
+                {
+                    if (!(obj is Line candidate) || candidate.Reference == null) continue;
+                    if (Math.Abs(candidate.Direction.DotProduct(locationLine.Direction)) < 0.9999) continue;
+                    var mid = Midpoint(candidate);
+                    var distance = Math.Sqrt((mid.X - target.X) * (mid.X - target.X) + (mid.Y - target.Y) * (mid.Y - target.Y));
+                    if (distance < bestDistance)
+                    {
+                        best = candidate;
+                        bestDistance = distance;
+                    }
+                }
+            }
+            if (best == null)
+                throw new Exception("Revit did not expose a location-line Reference for this wall in this view.");
+            return best.Reference;
+        }
+
+        private static XYZ Midpoint(Line line) => (line.GetEndPoint(0) + line.GetEndPoint(1)) * 0.5;
 
         private static bool EnsureViewCanHostAnnotation(View view, out string error)
         {
