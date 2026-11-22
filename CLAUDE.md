@@ -1,4 +1,4 @@
-﻿# RvtMcp-MCP
+﻿# rvt-mcp
 
 Open-source (Apache-2.0) MCP gateway that lets Claude Code (and any MCP-capable client) drive Autodesk Revit 2022–2027.
 
@@ -62,7 +62,12 @@ src/
 │   ├── Infrastructure/       # shared Revit/schema/file/permission helpers
 │   │   ├── Execution/        # dispatch, ExternalEvent and request lifecycle
 │   │   ├── Responses/        # response guards, paging, compaction and spill
-│   │   └── ChangeTracking/   # change capture, model identity and history transfer
+│   │   ├── ChangeTracking/   # change capture, model identity and history transfer
+│   │   ├── Scripting/        # send_code compile host, script contracts and identity
+│   │   └── UI/               # runtime glue for the History, Issues and Settings windows
+│   ├── Documents/            # Checkpoints and backup-file handling
+│   ├── Presentation/         # History, Issues, Settings and Toast UI
+│   ├── Ribbon/               # Ribbon helpers
 │   ├── Failures/             # Controlled failures: warning/dialog capture, policy, local ledger, Revit message catalogue
 │   ├── Transport/            # TcpTransportServer, PipeTransportServer, ITransportServer
 │   ├── Logging/              # McpLogger
@@ -114,16 +119,16 @@ MCP Server runs from `src/server/bin/Debug/net10.0/RvtMcp.Server.exe`.
 
 ### Commands
 - IRevitCommand interface: Name, Description, Execute(UIApplication, paramsJson) → CommandResult
-- Explicit dictionary registration in CommandDispatcher (not reflection until 10+ commands)
+- Explicit dictionary registration in CommandDispatcher (`Register(new …Handler())`), not reflection
 - Each handler = 1 file in `Handlers/<Domain>/`; keep namespace `RvtMcp.Plugin.Handlers`. The solution-level `Shared source` folder displays the same physical source files.
 - All return DTOs (anonymous objects) — NEVER serialize Revit API objects directly
 - Unit conversion: Revit internal (feet) → mm using SpecTypeId/ForgeTypeId
 
 ### MCP Tools
 - The bare binary registers the default toolsets (`query,create,view,meta`); `--toolsets all` gives the full surface, plus the adaptive bake tools when enabled. `install.ps1` seeds `rvtmcp.config.json` with `toolsets=all` so installed machines get the full surface. Tool counts are not repeated here: the source of truth is `tests/RvtMcp.Tests/Golden/tools-list*.json`, and the README and CHANGELOG quote them (checked by `ToolCountDocumentationTests`). ALL MCP-facing names prefixed `revit_` (e.g. `revit_create_grid`). Server↔plugin wire command names stay unprefixed and unchanged.
-- Tools live in `[McpServerToolType, Toolset("<name>")]` classes grouped by domain (query, create, modify, delete, view, export, annotation, mep, schedule, sheets, materials, geometry, rooms, links, structural, lint, toolbaker, meta), one file each in `src/server/Tools/`. Each tool = `[McpServerTool]` static method with param docs + examples. A shell whose arguments are plain values is `=> await ToolGateway.CallAsync("<wire_command>", new { ... })`; a shell that parses or normalizes input uses `ToolGateway.CallWithParamsAsync("<wire_command>", () => { ...; return new { ... }; })` so the parsing runs inside the helper's `try` and bad input still returns `Error: ...` text. Read-only and timeout guards stay as statements before the call. New classes must also be added to `Program.ResolveRegisteredToolTypes` (`Program.ToolRegistration.cs`).
+- Tools live in `[McpServerToolType, Toolset("<name>")]` classes grouped by domain (query, create, modify, delete, view, export, annotation, mep, schedule, sheets, materials, geometry, rooms, links, structural, lint, toolbaker, meta, documents, families, graphics, organization, parameters, workflows), one file each in `src/server/Tools/`. Each tool = `[McpServerTool]` static method with param docs + examples. A shell whose arguments are plain values is `=> await ToolGateway.CallAsync("<wire_command>", new { ... })`; a shell that parses or normalizes input uses `ToolGateway.CallWithParamsAsync("<wire_command>", () => { ...; return new { ... }; })` so the parsing runs inside the helper's `try` and bad input still returns `Error: ...` text. Read-only and timeout guards stay as statements before the call. New classes must also be added to `Program.ResolveRegisteredToolTypes` (`Program.ToolRegistration.cs`).
 - Progressive disclosure (A3): default toolsets are `query,create,view,meta`. `--toolsets all` (or an explicit CSV) and `--read-only` gate the rest. `structural` is write-capable and **off** unless requested. `--read-only` filters individual tools by their document/file effects, including read tools within otherwise write-capable toolsets, and removes arbitrary code and baked-tool execution.
-- Tool Search (v0.5): server `instructions` field populated at startup (keyword-dense) so MCP clients can discover the surface — it was previously empty, so search returned nothing.
+- Tool Search: the server `instructions` field is populated at startup (keyword-dense) so MCP clients can discover the surface.
 - `revit_batch_execute` (A6): TransactionGroup-wrapped multi-command call, max 20 sub-commands. Caller timeout is separate from native execution: retain the operation ID and query status before retrying; a started request can complete later.
 
 ### Controlled failures (warnings and dialogs)
@@ -158,7 +163,7 @@ MCP Server runs from `src/server/bin/Debug/net10.0/RvtMcp.Server.exe`.
 ## Decision Log
 
 - C# MCP Server over TypeScript: single-language simplicity, direct Revit API access patterns
-- Single C# project for plugin (not split Plugin/Commands): reduces csproj + build complexity
+- One plugin project per Revit year, all compiling `src/shared/` (no separate Plugin/Commands projects): reduces csproj + build complexity
 - Port 0 over port scanning: OS-assigned ports avoid conflicts with other dev tools
 - DTO mapping mandatory: Revit objects not serializable (circular refs, COM interop)
 - AppDomain.GetAssemblies() for Roslyn refs: fixes Assembly.Load crash in Revit context
