@@ -21,7 +21,8 @@ namespace RvtMcp.Plugin.Localization
         private readonly TimeSpan _debounce;
         private readonly FileSystemWatcher _fsw;
         private readonly object _gate = new object();
-        private Timer _timer;
+        private readonly Func<TimerCallback, TimeSpan, IDisposable> _startTimer;
+        private IDisposable _timer;
         private bool _disposed;
 
         public event EventHandler Changed;
@@ -32,8 +33,17 @@ namespace RvtMcp.Plugin.Localization
         /// <param name="watchFilesystem">False → no FileSystemWatcher; feed via <see cref="OnFileEvent"/> only (tests).</param>
         public OverrideFolderWatcher(string dir, Func<string> activeLocale,
             TimeSpan? debounce = null, bool watchFilesystem = true)
+            : this(dir, activeLocale, debounce, watchFilesystem, null)
+        {
+        }
+
+        /// <param name="startTimer">Test seam: starts the one-shot debounce timer, so a test can elapse it
+        /// without depending on thread scheduling. Null → <see cref="Timer"/>.</param>
+        internal OverrideFolderWatcher(string dir, Func<string> activeLocale, TimeSpan? debounce, bool watchFilesystem,
+            Func<TimerCallback, TimeSpan, IDisposable> startTimer)
         {
             _activeLocale = activeLocale ?? (() => "en");
+            _startTimer = startTimer ?? ((callback, due) => new Timer(callback, null, due, Timeout.InfiniteTimeSpan));
             _debounce = debounce ?? DefaultDebounce;
             if (watchFilesystem && !string.IsNullOrEmpty(dir) && Directory.Exists(dir))
             {
@@ -64,7 +74,7 @@ namespace RvtMcp.Plugin.Localization
             {
                 if (_disposed) return;
                 _timer?.Dispose();
-                _timer = new Timer(_ => RaiseChanged(), null, _debounce, Timeout.InfiniteTimeSpan);
+                _timer = _startTimer(_ => RaiseChanged(), _debounce);
             }
         }
 
