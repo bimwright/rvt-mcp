@@ -212,6 +212,7 @@ Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cụ
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | Thời gian giữ file spill (mặc định 36 giờ) | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
 | Thời gian giữ báo cáo của agent (mặc định 30 ngày) | — | — | `reportRetentionDays` |
+| Giữ mọi log (mặc định tắt; gateway và tiến trình Revit) | — | `BIMWRIGHT_KEEP_ALL_LOGS=1` | — |
 | LAN bind (plugin) | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | Thư mục thêm cho `revit_capture_view_image` (plugin; mặc định không có) | — | `BIMWRIGHT_CAPTURE_ROOTS=D:\Out;E:\Shots` | `captureRoots` |
 | ToolBaker surface | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
@@ -229,6 +230,8 @@ Từ v1.0.0, server trả `_changes` và `_history` theo model. Lịch sử cụ
 Warning policy dùng **Apply / Discard**, có hiệu lực từ call tiếp theo, không đổi call đang chạy hay tự retry. Chỉ CLI/env được client chọn rõ ràng mới override policy đọc lại từ host; JSON lúc gateway khởi động không đóng băng thay đổi Settings sau đó. Env trong tiến trình Revit được hiển thị và khóa row tương ứng.
 
 Journal có đúng tám lựa chọn **1h, 4h, 8h, 12h, 24h, 2d, 7d, 14d**; mặc định 4h. `persistSendCodeBodiesHours` vẫn là số giờ nguyên (1-336). Chọn thời hạn dài hơn giữ nội dung lâu hơn, không tự bật journal.
+
+`BIMWRIGHT_KEEP_ALL_LOGS=1` (hoặc `true`, `yes`, `on`) giữ lại mọi bản ghi. Gateway và add-in Revit mỗi bên đọc biến này từ môi trường tiến trình của mình, nên cần đặt cho cả hai. Mọi việc tự động xoá call log, journal hằng ngày, journal send-code, bản ghi usage và bake audit, log chẩn đoán và báo cáo của agent đều bị bỏ qua. File vẫn xoay vòng sang bản lưu có dấu thời gian; log chẩn đoán xoay sang bản lưu có dấu thời gian thay cho bản backup duy nhất, và log chẩn đoán lẫn log cũ không còn bị cắt bớt. Biến này chỉ chặn việc xoá: không bật log nào, không đổi nội dung được ghi, không đổi TTL lưu body send-code. Nó cũng giữ journal send-code qua mốc xoá 7 ngày sau khi tắt — ngoại lệ có chủ ý duy nhất đối với giới hạn thời gian của journal này. Khi đó dung lượng đĩa không bị giới hạn. File spill, ảnh capture, checkpoint, file discovery, file tạm, thao tác của installer, Issues → Reset và các thao tác xoá chủ động khác giữ nguyên. Khi biến này bật, log chẩn đoán ghi một dòng lúc khởi động.
 
 Đổi cờ server xong: restart kết nối MCP để client nhận tool list mới.
 

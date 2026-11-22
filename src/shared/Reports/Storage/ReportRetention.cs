@@ -7,6 +7,7 @@ namespace RvtMcp.Plugin.Reports.Storage
     {
         public static int Cleanup(string directory, TimeSpan retention, DateTime utcNow, Action<string> log)
         {
+            if (LogRetentionPolicy.KeepAll) return 0; // BIMWRIGHT_KEEP_ALL_LOGS keeps every report
             var deleted = 0;
             var cutoff = utcNow.ToUniversalTime().Subtract(retention);
             try

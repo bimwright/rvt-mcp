@@ -212,6 +212,7 @@ v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | spill ファイルの保持時間（既定 36 時間） | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
 | エージェントレポートの保持期間（既定 30 日） | — | — | `reportRetentionDays` |
+| すべてのログを保持（既定オフ、ゲートウェイと Revit プロセス） | — | `BIMWRIGHT_KEEP_ALL_LOGS=1` | — |
 | LAN バインド（プラグイン） | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | `revit_capture_view_image` の追加出力フォルダー（プラグイン、既定なし） | — | `BIMWRIGHT_CAPTURE_ROOTS=D:\Out;E:\Shots` | `captureRoots` |
 | ToolBaker 面 | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
@@ -229,6 +230,8 @@ v1.0.0 以降、サーバーは `_changes` とモデル別のローカル履歴 
 Warning policy は **Apply / Discard** で保存し、次の MCP call から適用します。実行中の call は変更せず、自動再試行もしません。明示的なクライアント CLI/env のみ host の方針を上書きし、gateway 起動時の JSON は後の Settings 変更を固定しません。Revit プロセスの env override は表示され、その行は編集不可になります。
 
 Journal の選択肢は **1h, 4h, 8h, 12h, 24h, 2d, 7d, 14d** の八つ、既定は 4h です。`persistSendCodeBodiesHours` は整数の時間数（1-336）のままです。長い期間は内容を長く保持しますが、それだけで journal を有効にはしません。
+
+`BIMWRIGHT_KEEP_ALL_LOGS=1`（`true`、`yes`、`on` も可）はすべての記録を保持します。ゲートウェイと Revit アドインはそれぞれ自分のプロセス環境から読むため、両方に設定してください。call log、日次 journal、send-code journal、usage と bake audit の記録、診断ログ、エージェントレポートの自動削除はすべて行いません。ファイルは引き続きタイムスタンプ付きアーカイブへローテーションします。診断ログは唯一のバックアップを上書きせずタイムスタンプ付きアーカイブへローテーションし、診断ログと旧ログの切り詰めも行いません。削除を止めるだけで、ログを有効にすることも、記録内容や send-code 本体の TTL を変えることもありません。無効化から 7 日後の send-code journal の削除も行いません。これは journal の期限に対する唯一の意図的な例外です。ディスク使用量には上限がなくなります。spill ファイル、キャプチャ、checkpoint、discovery ファイル、一時ファイル、インストーラーの処理、Issues → Reset などの明示的な削除は変わりません。有効な場合、起動時に診断ログへ 1 行記録します。
 
 サーバ側フラグ変更後は MCP 接続を再起動し、クライアントが新しいツール一覧を取るようにしてください。
 

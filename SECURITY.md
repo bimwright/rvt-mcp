@@ -53,7 +53,7 @@ bimwright runs on `127.0.0.1` only. The attack surface is:
 - Adaptive bake is separate: it only enables suggestion/logging tools and is not required for `send_code_to_revit`.
 - Use `--read-only` or `--disable-toolbaker` when a host profile should not expose dynamic-code execution.
 - ToolBaker bakes require user approval per tool + operate under the host Revit process trust boundary. Production hardening, including signed-bake verification, remains tracked as v1.0 hardening work.
-- **TTL send_code journal:** When `persistSendCodeBodies` is enabled, raw code bodies (partially redacted for paths and secrets) are stored on the local disk under `%LOCALAPPDATA%\Bimwright\rvt-mcp\send-code-journal.jsonl`. This journal has a maximum 2-day TTL and is completely deleted 7 days after expiration or disablement. Secure local environment access is required to prevent unauthorized reading of local journal files.
+- **TTL send_code journal:** When `persistSendCodeBodies` is enabled, raw code bodies (partially redacted for paths and secrets) are stored on the local disk under `%LOCALAPPDATA%\Bimwright\rvt-mcp\send-code-journal.jsonl`. This journal has a maximum 2-day TTL and is completely deleted 7 days after expiration or disablement, unless `BIMWRIGHT_KEEP_ALL_LOGS=1` is set: that keeps it, the one deliberate exception to this time limit (the TTL recording window is unchanged). Secure local environment access is required to prevent unauthorized reading of local journal files.
 
 ## Reporting a vulnerability
 

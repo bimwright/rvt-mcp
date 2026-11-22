@@ -17,6 +17,7 @@
     <Compile Include="../../src/shared/Logging/McpLogger.cs" Link="Logging/McpLogger.cs" />
     <Compile Include="../../src/shared/Logging/SessionLogHistoryLoader.cs" Link="Logging/SessionLogHistoryLoader.cs" />
     <Compile Include="../../src/shared/Logging/BoundedLogFile.cs" Link="Logging/BoundedLogFile.cs" />
+    <Compile Include="../../src/shared/Logging/LogRetentionPolicy.cs" Link="Logging/LogRetentionPolicy.cs" />
     <Compile Include="../../src/shared/Security/BakeRedactor.cs" Link="Security/BakeRedactor.cs" />
     <Compile Include="../../src/shared/Security/SecretMasker.cs" Link="Security/SecretMasker.cs" />
     <Compile Include="../../src/shared/Security/McpResponsePrivacy.cs" Link="Security/McpResponsePrivacy.cs" />

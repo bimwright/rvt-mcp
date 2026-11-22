@@ -18,6 +18,8 @@ namespace RvtMcp.Tests
         internal static void Initialize()
         {
             DiagnosticLog.LocalAppDataOverride = Root;
+            // Retention tests never depend on BIMWRIGHT_KEEP_ALL_LOGS in the real environment.
+            LogRetentionPolicy.KeepAllOverride = false;
             AppDomain.CurrentDomain.ProcessExit += (_, __) =>
             {
                 DiagnosticLog.Flush(5000);

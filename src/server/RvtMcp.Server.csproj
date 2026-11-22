@@ -48,6 +48,7 @@
     <Compile Include="..\shared\Infrastructure\Scripting\ScriptPresentation.cs" Link="Shared\Infrastructure\Scripting\ScriptPresentation.cs" />
     <Compile Include="..\shared\Logging\BoundedLogFile.cs" Link="Shared\Logging\BoundedLogFile.cs" />
     <Compile Include="..\shared\Logging\DiagnosticLog.cs" Link="Shared\Logging\DiagnosticLog.cs" />
+    <Compile Include="..\shared\Logging\LogRetentionPolicy.cs" Link="Shared\Logging\LogRetentionPolicy.cs" />
     <Compile Include="..\shared\Failures\FailureContracts.cs" Link="Shared\Failures\FailureContracts.cs" />
     <Compile Include="..\shared\Failures\FailureCompletion.cs" Link="Shared\Failures\FailureCompletion.cs" />
     <Compile Include="..\shared\Failures\FailurePolicy.cs" Link="Shared\Failures\FailurePolicy.cs" />

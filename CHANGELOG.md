@@ -112,6 +112,7 @@ Update the gateway and add-ins together to see the agent name; an older gateway 
 ### Logs
 
 - Local logs rotate once per day instead of on every write. Daily rotation compared the log's creation time, which Windows gives back to a file re-created right after a rename, so each call left a one-line archive and every later write scanned them all; tens of thousands of archives made a large `revit_send_code_to_revit` call take about 10 s. Rotation now uses the last write time, and log maintenance reads file sizes and times in one directory pass. Archives already created are removed by the existing 30-day retention.
+- `BIMWRIGHT_KEEP_ALL_LOGS=1` (also `true`, `yes` or `on`) keeps every record. Set it in the gateway's and the Revit process's environment; each reads its own. Automatic deletion of call logs, daily journals, send-code journals, usage and bake audit records, diagnostics and agent reports is skipped. Files still rotate to timestamped archives, the diagnostic log rolls to a timestamped archive instead of overwriting its one backup, and nothing is trimmed. It turns no log on and changes neither what is recorded nor the send-code body TTL. Keeping the send-code journal past its 7-day purge after disabling is the one deliberate exception to that journal's time limit. Spill files, captures, checkpoints, discovery files and explicit deletions are unchanged; unset, retention is unchanged.
 
 ### Agent reports
 

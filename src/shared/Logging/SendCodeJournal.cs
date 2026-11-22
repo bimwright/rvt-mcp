@@ -194,7 +194,8 @@ namespace RvtMcp.Plugin
                     var text = File.ReadAllText(disabledMarker);
                     if (DateTimeOffset.TryParse(text, out var disabledAt))
                     {
-                        if (now - disabledAt >= TimeSpan.FromDays(7))
+                        // Keep-all is the one deliberate exception to the 7-day purge after disabling.
+                        if (now - disabledAt >= TimeSpan.FromDays(7) && !LogRetentionPolicy.KeepAll)
                         {
                             foreach (var f in BoundedLogFile.Files(rootDir, "send-code-journal"))
                             {
