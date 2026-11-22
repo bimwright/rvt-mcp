@@ -197,6 +197,36 @@ public sealed class KeepAllLogsTests : IDisposable
     }
 
     [Fact]
+    public void Keep_all_keeps_generated_captures_past_their_age_and_size_limits()
+    {
+        Directory.CreateDirectory(_root);
+        var now = DateTime.UtcNow;
+        var old = Path.Combine(_root, "capture-20200101-101010-0123abcd.png");
+        File.WriteAllBytes(old, new byte[400]);
+        File.SetLastWriteTimeUtc(old, now.AddDays(-400));
+
+        Assert.Equal(0, CaptureOutputPath.PruneGenerated(_root, null, now, days: 30, budget: 1));
+        Assert.True(File.Exists(old));
+    }
+
+    [Fact]
+    public void Ledger_reset_keeps_the_newest_five_backups_unless_keep_all_is_on()
+    {
+        var store = new RvtMcp.Failures.FailureLedgerStore(Path.Combine(_root, "failures", "ledger.db"));
+        var time = new DateTime(2026, 11, 1, 9, 0, 0);
+        string[] Backups() => Directory.GetFiles(store.BackupFolder, "ledger-*.db");
+
+        LogRetentionPolicy.KeepAllOverride = false;
+        for (var i = 0; i < 7; i++) store.Reset(time.AddMinutes(i));
+        Assert.Equal(RvtMcp.Failures.FailureLedgerStore.KeptResetBackups, Backups().Length);
+        Assert.Contains(Path.Combine(store.BackupFolder, "ledger-20261101-090600.db"), Backups());
+
+        LogRetentionPolicy.KeepAllOverride = true;
+        for (var i = 7; i < 10; i++) store.Reset(time.AddMinutes(i));
+        Assert.Equal(RvtMcp.Failures.FailureLedgerStore.KeptResetBackups + 3, Backups().Length);
+    }
+
+    [Fact]
     public void Keep_all_report_retention_deletes_nothing()
     {
         Directory.CreateDirectory(_root);

@@ -201,6 +201,39 @@ namespace RvtMcp.Tests
             Assert.Equal(1L, Count(backup, "incidents"));
         }
 
+        [Fact] public void PruneBackupsKeepsTheNewestResetBackupsWithTheirPendingArchivesAndNothingElse()
+        {
+            var folder = Path.Combine(_root, "failures", "backups");
+            Directory.CreateDirectory(folder);
+            var start = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+            string Backup(string name, int day)
+            {
+                var path = Path.Combine(folder, name);
+                File.WriteAllText(path, name);
+                File.SetLastWriteTimeUtc(path, start.AddDays(day));
+                return path;
+            }
+            var backups = Enumerable.Range(1, 7).Select(day => Backup($"ledger-202611{day:D2}-120000.db", day)).ToList();
+            Directory.CreateDirectory(backups[0] + ".pending");
+            File.WriteAllText(Path.Combine(backups[0] + ".pending", "record.json"), "{}");
+            Directory.CreateDirectory(backups[6] + ".pending");
+            var sameSecond = Backup("ledger-20261107-120000-2.db", 7);
+            var named = Backup("ledger-before-migration.db", 0);
+            var other = Backup("notes.db", 0);
+
+            // The current backup is kept first, then the newest by write time; eight reset backups exist, five stay.
+            Assert.Equal(3, FailureLedgerStore.PruneBackups(folder, backups[0], 5));
+            Assert.True(File.Exists(backups[0]) && Directory.Exists(backups[0] + ".pending"));
+            Assert.False(File.Exists(backups[1])); Assert.False(File.Exists(backups[2])); Assert.False(File.Exists(backups[3]));
+            foreach (var kept in new[] { backups[4], backups[5], backups[6], sameSecond, named, other }) Assert.True(File.Exists(kept), kept);
+            Assert.True(Directory.Exists(backups[6] + ".pending"));
+
+            // Once another backup is current, the oldest one goes together with its pending archive.
+            Assert.Equal(1, FailureLedgerStore.PruneBackups(folder, sameSecond, 4));
+            Assert.False(File.Exists(backups[0])); Assert.False(Directory.Exists(backups[0] + ".pending"));
+            Assert.Equal(0, FailureLedgerStore.PruneBackups(Path.Combine(_root, "missing"), null, 5));
+        }
+
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
