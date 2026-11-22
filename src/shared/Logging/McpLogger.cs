@@ -84,7 +84,12 @@ namespace RvtMcp.Plugin
                 var rotationSucceeded = true;
                 try
                 {
-                    if (currentVersion < LogVersion)
+                    if (currentVersion < LogVersion && LogRetentionPolicy.KeepAll)
+                    {
+                        // Keep-all: archive the old-format log instead of deleting it; archives stay.
+                        if (File.Exists(_logPath)) BoundedLogFile.Rotate(_logPath, DateTime.UtcNow);
+                    }
+                    else if (currentVersion < LogVersion)
                     {
                         File.Delete(_logPath);
                         foreach (var archive in BoundedLogFile.Files(dir, "mcp-calls"))

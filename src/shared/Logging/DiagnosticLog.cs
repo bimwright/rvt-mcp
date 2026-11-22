@@ -60,6 +60,9 @@ namespace RvtMcp.Plugin
             var root = Path.Combine(LocalAppDataOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bimwright", "rvt-mcp");
             // One bounded campaign per profile/process, including after retries are exhausted.
             if (!CleanupRoots.TryAdd(root, 0)) return;
+            // Server and every add-in shell call this once at startup.
+            if (LogRetentionPolicy.KeepAll)
+                Write("LogRetention", LogRetentionPolicy.EnvKeepAllLogs + " is on: automatic deletion of logs, journals and reports is skipped.");
             if (!Queue.TryAdd(new Entry { Cleanup = true, Root = root }))
             {
                 byte ignored;
@@ -132,8 +135,12 @@ namespace RvtMcp.Plugin
                     BoundedLogFile.CompactDiagnostics(backup, FileBytes);
                     if (File.Exists(path) && new FileInfo(path).Length + bytes.Length > FileBytes)
                     {
-                        if (File.Exists(backup)) File.Delete(backup);
-                        File.Move(path, backup);
+                        if (LogRetentionPolicy.KeepAll) BoundedLogFile.Rotate(path, DateTime.UtcNow); // timestamped archive, never overwritten
+                        else
+                        {
+                            if (File.Exists(backup)) File.Delete(backup);
+                            File.Move(path, backup);
+                        }
                     }
                     using (var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read)) stream.Write(bytes, 0, bytes.Length);
                     return true;
@@ -163,7 +170,7 @@ namespace RvtMcp.Plugin
                 try
                 {
                     if (item.Group != null) BoundedLogFile.MaintainGroup(item.Path, item.Group);
-                    else
+                    else if (!LogRetentionPolicy.KeepAll) // keep-all leaves legacy logs whole, untrimmed
                     {
                         BoundedLogFile.RefuseLink(item.Path);
                         if (File.Exists(item.Path))

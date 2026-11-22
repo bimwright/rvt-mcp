@@ -80,6 +80,8 @@ namespace RvtMcp.Server
                 "  BIMWRIGHT_RESPONSE_WARN_BYTES, BIMWRIGHT_RESPONSE_STRONG_WARN_BYTES,",
                 "  BIMWRIGHT_RESPONSE_BUDGET_BYTES, BIMWRIGHT_MAX_RESPONSE_BYTES,",
                 "  BIMWRIGHT_SPILL_RETENTION_HOURS,",
+                "  BIMWRIGHT_KEEP_ALL_LOGS (1/true/yes/on: no automatic log, journal or report deletion;",
+                "   set it in the server and the Revit process environment),",
                 "  BIMWRIGHT_ENABLE_ADAPTIVE_BAKE, BIMWRIGHT_CACHE_SEND_CODE_BODIES,",
                 "  BIMWRIGHT_PERSIST_SEND_CODE_BODIES, BIMWRIGHT_PERSIST_SEND_CODE_BODIES_TTL,",
                 "  BIMWRIGHT_CAPTURE_ROOTS (plugin-side: set it in the Revit process environment)",

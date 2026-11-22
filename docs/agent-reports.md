@@ -335,6 +335,7 @@ reduced motion scrolls immediately and does not animate layout heights.
 - **Retention:** reports are deleted after 30 days, when the add-in starts. Change this
   with `reportRetentionDays` (1–3650) in `rvtmcp.config.json`. Age is the only reason
   for automatic deletion; the user can also delete a report from the window.
+  `BIMWRIGHT_KEEP_ALL_LOGS=1` in the Revit process environment turns automatic deletion off.
 - **Privacy:** `summary` and `body` pass through secret masking before they are
   stored. Reports stay on the user's machine. They can contain project and element
   names, so do not copy them into issues or tests.

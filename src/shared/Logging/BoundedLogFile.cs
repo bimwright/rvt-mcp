@@ -70,7 +70,7 @@ namespace RvtMcp.Plugin
                 stream.Write(bytes, 0, bytes.Length);
         }
 
-        private static void Rotate(string path, DateTime utc)
+        internal static void Rotate(string path, DateTime utc)
         {
             var archive = Path.Combine(Path.GetDirectoryName(path), Path.GetFileNameWithoutExtension(path) + "-" + utc.ToString("yyyyMMdd-HHmmssfffffff", System.Globalization.CultureInfo.InvariantCulture) + "-" + Guid.NewGuid().ToString("N") + Path.GetExtension(path));
             File.Move(path, archive);
@@ -113,6 +113,8 @@ namespace RvtMcp.Plugin
 
         private static void Prune(string directory, string group, string active, long budget, DateTime cutoff)
         {
+            // Keep-all skips the whole prune, including the budget refusal; rotation still archives.
+            if (LogRetentionPolicy.KeepAll) return;
             var files = GroupFiles(directory, group);
             long total = files.Sum(f => f.Length);
             foreach (var info in files)
@@ -190,6 +192,7 @@ namespace RvtMcp.Plugin
         public static void CompactDiagnostics(string path, long budget)
         {
             RefuseLink(path);
+            if (LogRetentionPolicy.KeepAll) return;
             if (!File.Exists(path) || new FileInfo(path).Length <= budget) return;
             var temporary = path + ".compact-" + Guid.NewGuid().ToString("N");
             try

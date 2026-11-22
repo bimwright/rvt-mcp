@@ -71,7 +71,7 @@ rvt-mcp --persist-send-code-bodies-for 4h
 - **TTL bounds (v1.2.2 source):** Min 1 hour, default 4 hours, max 14 days. Settings presets are 1h, 4h, 8h, 12h, 24h, 2d, 7d and 14d. The CLI/Env clamps values automatically.
 - **Journal file:** written to `%LOCALAPPDATA%\Bimwright\rvt-mcp\send-code-journal.jsonl`.
 - **Rotation:** rotates at ~5MB.
-- **Retention:** deleted automatically 7 days after the persist window expires or is disabled.
+- **Retention:** deleted automatically 7 days after the persist window expires or is disabled. `BIMWRIGHT_KEEP_ALL_LOGS=1` keeps it instead, the one deliberate exception to this time limit; the TTL recording window is unchanged.
 - **Redaction:** `BakeRedactor.RedactForBake` (redacts local paths, UNC paths, and sensitive tokens) is applied to the persisted code.
 
 ## Local Storage

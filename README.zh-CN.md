@@ -211,6 +211,7 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 | Transport cap | `--max-response-bytes` | `BIMWRIGHT_MAX_RESPONSE_BYTES` | `maxResponseBytes` |
 | spill 文件保留时间（默认 36 小时） | `--spill-retention-hours <n>` | `BIMWRIGHT_SPILL_RETENTION_HOURS` | `spillRetentionHours` |
 | Agent 报告保留时间（默认 30 天） | — | — | `reportRetentionDays` |
+| 保留全部日志（默认关闭；gateway 与 Revit 进程） | — | `BIMWRIGHT_KEEP_ALL_LOGS=1` | — |
 | LAN 绑定（插件） | — | `BIMWRIGHT_ALLOW_LAN_BIND=1` | `allowLanBind` |
 | `revit_capture_view_image` 的额外输出文件夹（插件；默认无） | — | `BIMWRIGHT_CAPTURE_ROOTS=D:\Out;E:\Shots` | `captureRoots` |
 | ToolBaker 表面 | `--enable-toolbaker` / `--disable-toolbaker` | `BIMWRIGHT_ENABLE_TOOLBAKER` | `enableToolbaker` |
@@ -228,6 +229,8 @@ v1.0.0 提供六个 MCP 提示。在客户端提示菜单（Claude Code：`/mcp_
 Warning policy 使用 **Apply / Discard**，从下一次 MCP call 生效，不改变正在运行的 call，也不会自动重试。只有客户端明确指定的 CLI/env 才覆盖 host 策略；gateway 启动时的 JSON 不会冻结之后的 Settings 变更。Revit 进程中的 env override 会显示出来，并禁用该行编辑。
 
 Journal 恰有八个选项：**1h, 4h, 8h, 12h, 24h, 2d, 7d, 14d**，默认仍为 4h。`persistSendCodeBodiesHours` 仍是整数小时数（1-336）。更长时间会更久地保留内容，但选择时长本身不会开启 journal。
+
+`BIMWRIGHT_KEEP_ALL_LOGS=1`（也可为 `true`、`yes` 或 `on`）保留全部记录。gateway 与 Revit 插件各自从本进程的环境变量读取，因此两边都要设置。call log、每日 journal、send-code journal、usage 与 bake audit 记录、诊断日志以及 Agent 报告的自动删除全部跳过。文件仍会轮转为带时间戳的归档；诊断日志轮转到带时间戳的归档，而不是覆盖唯一的备份文件，诊断日志和旧版日志也不再被截短。它只阻止删除：不开启任何日志，不改变记录内容，也不改变 send-code 正文的 TTL。关闭 send-code journal 满 7 天后的清除也会跳过，这是对该 journal 时间限制唯一有意的例外。此时磁盘占用没有上限。spill 文件、截图、checkpoint、discovery 文件、临时文件、安装程序操作、Issues → Reset 以及其他主动删除保持不变。开启时，诊断日志会在启动时记录一行。
 
 改 server 标志后请重启 MCP 连接，以便客户端拿到新工具列表。
 
