@@ -99,7 +99,7 @@ Counts below describe the current development source. The **v1.2.2 release** has
 | `--toolsets all` | **257** | Full catalog |
 | `all` + adaptive bake | **260** | Adds 3 suggestion-lifecycle tools |
 
-Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 62-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline; agent reports are allowed because they only write per-user report data.
+Counts exclude your personal baked tools. The installer writes the seeded default only when `rvtmcp.config.json` doesn't already set `toolsets` — your own list survives upgrades, and removing the key (or setting your own CSV) returns a bare server to the 63-tool surface. Read-only filters individual tools by `ReadOnly=true`, including reads inside mixed toolsets. Tools that can write files are excluded even when their default output is inline; agent reports are allowed because they only write per-user report data.
 
 | Toolset | What it covers |
 |---------|----------------|
