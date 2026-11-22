@@ -393,8 +393,46 @@ GROUP BY m.scope," + IncidentRevitYear + " ORDER BY 2 COLLATE NOCASE,3 DESC,m.sc
                 }
                 _uncertainScopes.Clear();
                 _resetGeneration = generation;
+                if (!RvtMcp.Plugin.LogRetentionPolicy.KeepAll) PruneBackups(BackupFolder, backup, KeptResetBackups);
                 return backup;
             }
+        }
+
+        /// <summary>Reset backups kept in <see cref="BackupFolder"/>; <c>BIMWRIGHT_KEEP_ALL_LOGS</c> keeps every one.</summary>
+        public const int KeptResetBackups = 5;
+
+        private static readonly System.Text.RegularExpressions.Regex ResetBackupName = new System.Text.RegularExpressions.Regex(
+            @"^ledger-\d{8}-\d{6}(-\d+)?\.db$", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Keeps the newest <paramref name="keep"/> reset backups (including <paramref name="current"/>) and deletes older
+        /// ones with their archived <c>.pending</c> folder. Only names Reset creates are touched. Never throws: the reset
+        /// already succeeded, and a locked old backup must not fail it.
+        /// </summary>
+        internal static int PruneBackups(string folder, string current, int keep)
+        {
+            var deleted = 0;
+            try
+            {
+                if (!Directory.Exists(folder)) return 0;
+                var backups = new DirectoryInfo(folder).GetFiles("ledger-*.db")
+                    .Where(f => ResetBackupName.IsMatch(f.Name) && (f.Attributes & FileAttributes.ReparsePoint) == 0)
+                    .OrderByDescending(f => string.Equals(f.FullName, current, StringComparison.OrdinalIgnoreCase))
+                    .ThenByDescending(f => f.LastWriteTimeUtc).ThenByDescending(f => f.Name, StringComparer.Ordinal).ToList();
+                foreach (var old in backups.Skip(Math.Max(1, keep)))
+                {
+                    try
+                    {
+                        var pending = old.FullName + ".pending";
+                        if (Directory.Exists(pending)) Directory.Delete(pending, true);
+                        old.Delete();
+                        deleted++;
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+            return deleted;
         }
 
         public FailurePersistenceResult SaveOperation(FailureOperation operation)

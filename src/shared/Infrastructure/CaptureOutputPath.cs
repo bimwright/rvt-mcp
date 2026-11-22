@@ -40,10 +40,12 @@ namespace RvtMcp.Plugin
         /// <paramref name="days"/> go, then the oldest until the rest fits <paramref name="budget"/>. Only files
         /// with a generated name directly in <paramref name="directory"/> are touched; a file the caller named
         /// is never deleted. Never throws: a capture must not fail because an old one is locked.
+        /// <c>BIMWRIGHT_KEEP_ALL_LOGS</c> keeps every capture.
         /// </summary>
         public static int PruneGenerated(string directory, string keep, DateTime utcNow, int days = RetentionDays, long budget = RetentionBytes)
         {
             var deleted = 0;
+            if (LogRetentionPolicy.KeepAll) return 0;
             try
             {
                 if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory)) return 0;

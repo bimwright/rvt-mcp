@@ -5,6 +5,8 @@ using Xunit;
 
 namespace RvtMcp.Tests
 {
+    // PruneGenerated reads the process-wide keep-all policy, which KeepAllLogsTests turns on.
+    [Collection("ServerStateConfig")]
     public class CaptureViewImagePathTests
     {
         [Fact]
