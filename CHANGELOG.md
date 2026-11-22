@@ -140,6 +140,10 @@ Update the gateway and add-ins together to see the agent name; an older gateway 
 - Parameter validation in every tool also checks objects inside an array parameter, one level deep: required fields, property types and allowed values. The hint describes what the schema allows for the failing field instead of pointing to the description's Example section, and the gateway now passes the add-in's `Suggestion:` and `Hint:` lines on in the error text; before, only the error line reached the agent.
 - The tool summaries in Settings now match the changed descriptions of the nine tools these fixes touched (for example `revit_create_dimensions`, which Settings still showed as an array of element-reference objects), in every UI language.
 
+### Rooms and areas
+
+- `revit_list_areas` reports each area's `area_scheme` and filters by `area_scheme_name` again. Areas are model elements with no owner view, so the scheme read from the owner view was null for every area and the scheme filter matched nothing; the scheme now comes from the area itself, with the owner view as a fallback. Fixes [#55](https://github.com/bimwright/rvt-mcp/issues/55); from [#56](https://github.com/bimwright/rvt-mcp/pull/56), thanks [@tal-sm](https://github.com/tal-sm).
+
 ## v1.2.2 — 2026-11-02
 
 Release assets include the Setup ZIP, optional Claude Desktop MCPB and server-only NuGet package, each with a SHA-256 sidecar. NuGet.org and MCP Registry publication are separate.
