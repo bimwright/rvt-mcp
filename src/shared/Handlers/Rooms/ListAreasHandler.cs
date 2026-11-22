@@ -76,7 +76,11 @@ namespace RvtMcp.Plugin.Handlers
                     viewPlan = doc.GetElement(a.OwnerViewId) as ViewPlan;
                 }
 
-                var scheme = viewPlan?.AreaScheme;
+                // An Area is a model element with no owner view, so its scheme comes from the area itself;
+                // the owner view is only a fallback.
+                AreaScheme scheme = null;
+                try { scheme = a.AreaScheme; } catch (Exception) { }
+                if (scheme == null) scheme = viewPlan?.AreaScheme;
                 var level = a.Level ?? viewPlan?.GenLevel;
 
                 string status = (a.Area > 0.0001 && a.Location != null) ? "placed" : "not_enclosed";
