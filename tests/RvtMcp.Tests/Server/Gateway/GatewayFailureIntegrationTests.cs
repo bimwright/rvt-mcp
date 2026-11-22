@@ -34,6 +34,9 @@ namespace RvtMcp.Tests
     {
         private const int Pid = 474747;
         private static readonly DateTime Start = new DateTime(2026, 10, 8, 8, 0, 0, DateTimeKind.Utc);
+        // Hang guard for a pending request to finish after its final frame (or cancellation) reaches the gateway.
+        // Locally this takes about 0.1 s; a loaded CI runner once needed more than 3 s. It is not a latency check.
+        private static readonly TimeSpan ExecutionWait = TimeSpan.FromSeconds(9);
         private readonly string _root = Path.Combine(Path.GetTempPath(), "rvt-gateway-failure-" + Guid.NewGuid().ToString("N"));
         private readonly string _oldDir = ServerAuthToken.DiscoveryDirOverride;
         private readonly string _oldCatalogRoot = RevitMessageLookup.RootOverride;
@@ -568,7 +571,7 @@ namespace RvtMcp.Tests
             var blockedRequest = wire.Requests.Last(); var pending = Pending[blockedRequest.Value<string>("id")];
             Assert.True(Declare().Value<bool>("success"));
             Assert.StartsWith("REVIT_BUSY", (await Send("create_wall")).Value<string>("error"));
-            wire.Send(Final(blockedRequest)); await pending.Execution.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            wire.Send(Final(blockedRequest)); await pending.Execution.Task.WaitAsync(ExecutionWait);
             wire.OnCommand = null;
             // Same target reconnects with an older add-in: reject before consuming next.
             ToolGateway.CloseConnection(); Descriptor(wire.Port);
@@ -695,7 +698,7 @@ namespace RvtMcp.Tests
             Assert.True(HistoryCallLease.IsActive(operationId));
             _ledger.SaveOperation(new FailureOperation { OperationId = operationId, Execution = "completed", Outcome = "committed", MutationApplied = true, FinalResult = final });
             wire.Send(final);
-            await pending.Execution.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            await pending.Execution.Task.WaitAsync(ExecutionWait);
             Assert.False(HistoryCallLease.IsActive(operationId));
             Assert.Equal("recorded", pending.HistoryReceipt["status"]);
             Assert.Equal("timed_out_running", JObject.Parse(await pending.Caller.Task)["_operation"]["execution"]);
@@ -764,7 +767,7 @@ namespace RvtMcp.Tests
             var pending = Pending[first.Value<string>("id")];
             var final = Final(first);
             wire.Send(final);
-            await pending.Execution.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            await pending.Execution.Task.WaitAsync(ExecutionWait);
             if (readStatus)
             {
                 _ledger.SaveOperation(new FailureOperation { OperationId = operationId, Execution = "completed", Outcome = "committed", MutationApplied = true, FinalResult = final });
@@ -813,7 +816,7 @@ namespace RvtMcp.Tests
                 Assert.True(ToolGateway.SwitchBinding(TargetSelector.ForPid(Pid + 1), RevitTargetBinding.Scan().Live, out _, rebind: true).Ok);
             }
             else wire.CloseClient();
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending.Execution.Task.WaitAsync(TimeSpan.FromSeconds(3)));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending.Execution.Task.WaitAsync(ExecutionWait));
             _ledger.SaveOperation(new FailureOperation { OperationId = request.Value<string>("operation_id"), Execution = "completed", Outcome = "rolled_back", MutationApplied = false });
             Assert.Equal(callerResponse, await pending.Caller.Task);
             Assert.Equal("rolled_back", JObject.Parse(await FailureTools.GetOperationStatus(receipt["_operation"].Value<string>("operationId")))["outcome"]);
@@ -1025,7 +1028,7 @@ namespace RvtMcp.Tests
                 Outcome = "committed", MutationApplied = true, FinalResult = final });
             Assert.Null(_ledger.GetOperation(operationId).FinalResult["_userDialogs"]); // Ephemeral, never written to the ledger.
             wire.Send(final);
-            await pending.Execution.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            await pending.Execution.Task.WaitAsync(ExecutionWait);
             if (summaryFirst)
                 Assert.Equal("Sample", Assert.Single((JArray)Delivered(await Send())["_previousOperation"])["_userDialogs"]["model"]);
 
