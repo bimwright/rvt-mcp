@@ -27,13 +27,15 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
-## v3.0.1 (unreleased)
+## v2.5.1 (unreleased)
+
+This release was developed as 3.0.1 and ships as 2.5.1, the shared release number of the four bimwright gateways (rvt-mcp, dwg-mcp, nwd-mcp, ipt-mcp). The number does not mark breaking changes; the entries below list what changed since v1.2.2.
 
 - Development source counts: `--toolsets all` **257**, adaptive bake **260**, and bare defaults **63**.
 
 ### Controlled failures and Issues
 
-Install the 3.0.1 gateway and add-ins together. TaskDialog declarations require the matching gateway and add-in protocol, and expire even if you switch away from a document and back. If the document changes before a queued command starts, Revit rejects the command before it runs.
+Install the 2.5.1 gateway and add-ins together. TaskDialog declarations require the matching gateway and add-in protocol, and expire even if you switch away from a document and back. If the document changes before a queued command starts, Revit rejects the command before it runs.
 
 - Advance TaskDialog answers: `revit_set_dialog_answers` validates exact permitted pairs, scopes declarations to the next write or gateway session (a target or active-document change drops them and reports `_dialogAnswers` once), requires `dialog_answers_v2`, and records authorization/native outcome in Issues. User choices retain priority; denied pairs and native failure guards remain enforced.
 - Open an issue for the user: `revit_show_issue` opens History → Issues in Revit on one recorded incident, with all states shown, its model and incident selected and an optional suggested action highlighted. It records nothing; the user still reviews, ticks the review box and clicks the action.
