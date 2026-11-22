@@ -102,7 +102,7 @@ Các số dưới đây áp dụng cho source đang phát triển; **bản v1.2.
 | `--toolsets all` | **257** | Full catalog |
 | `all` + adaptive bake | **260** | Thêm 3 tool vòng đời suggestion |
 
-Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 62 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline; báo cáo agent được phép vì chỉ ghi dữ liệu báo cáo của người dùng.
+Số lượng chưa tính baked tool cá nhân. Installer chỉ seed khi `rvtmcp.config.json` chưa có `toolsets` — list của bạn sống sót qua upgrade; bỏ key (hoặc đặt CSV riêng) thì bare server về mặt 63 tool. Read-only lọc từng tool theo `ReadOnly=true`, nên vẫn giữ công cụ đọc trong nhóm hỗn hợp. Tool có thể ghi file sẽ bị loại, kể cả khi output mặc định là inline; báo cáo agent được phép vì chỉ ghi dữ liệu báo cáo của người dùng.
 
 | Toolset | Phạm vi |
 |---------|---------|
@@ -231,7 +231,7 @@ Warning policy dùng **Apply / Discard**, có hiệu lực từ call tiếp theo
 
 Journal có đúng tám lựa chọn **1h, 4h, 8h, 12h, 24h, 2d, 7d, 14d**; mặc định 4h. `persistSendCodeBodiesHours` vẫn là số giờ nguyên (1-336). Chọn thời hạn dài hơn giữ nội dung lâu hơn, không tự bật journal.
 
-`BIMWRIGHT_KEEP_ALL_LOGS=1` (hoặc `true`, `yes`, `on`) giữ lại mọi bản ghi. Gateway và add-in Revit mỗi bên đọc biến này từ môi trường tiến trình của mình, nên cần đặt cho cả hai. Mọi việc tự động xoá call log, journal hằng ngày, journal send-code, bản ghi usage và bake audit, log chẩn đoán và báo cáo của agent đều bị bỏ qua. File vẫn xoay vòng sang bản lưu có dấu thời gian; log chẩn đoán xoay sang bản lưu có dấu thời gian thay cho bản backup duy nhất, và log chẩn đoán lẫn log cũ không còn bị cắt bớt. Biến này chỉ chặn việc xoá: không bật log nào, không đổi nội dung được ghi, không đổi TTL lưu body send-code. Nó cũng giữ journal send-code qua mốc xoá 7 ngày sau khi tắt — ngoại lệ có chủ ý duy nhất đối với giới hạn thời gian của journal này. Khi đó dung lượng đĩa không bị giới hạn. File spill, ảnh capture, checkpoint, file discovery, file tạm, thao tác của installer, Issues → Reset và các thao tác xoá chủ động khác giữ nguyên. Khi biến này bật, log chẩn đoán ghi một dòng lúc khởi động.
+`BIMWRIGHT_KEEP_ALL_LOGS=1` (hoặc `true`, `yes`, `on`) giữ lại mọi bản ghi. Gateway và add-in Revit mỗi bên đọc biến này từ môi trường tiến trình của mình, nên cần đặt cho cả hai. Mọi việc tự động xoá call log, journal hằng ngày, journal send-code, bản ghi usage và bake audit, log chẩn đoán, báo cáo của agent, ảnh capture do tool tự đặt tên và các bản backup của Issues → Reset ngoài 5 bản mới nhất đều bị bỏ qua. File vẫn xoay vòng sang bản lưu có dấu thời gian; log chẩn đoán xoay sang bản lưu có dấu thời gian thay cho bản backup duy nhất, và log chẩn đoán lẫn log cũ không còn bị cắt bớt. Biến này chỉ chặn việc xoá: không bật log nào, không đổi nội dung được ghi, không đổi TTL lưu body send-code. Nó cũng giữ journal send-code qua mốc xoá 7 ngày sau khi tắt — ngoại lệ có chủ ý duy nhất đối với giới hạn thời gian của journal này. Khi đó dung lượng đĩa không bị giới hạn. File spill, checkpoint, file discovery, file tạm, thao tác của installer, Issues → Reset và các thao tác xoá chủ động khác giữ nguyên. Khi biến này bật, log chẩn đoán ghi một dòng lúc khởi động.
 
 Đổi cờ server xong: restart kết nối MCP để client nhận tool list mới.
 

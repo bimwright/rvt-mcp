@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using RvtMcp.Plugin.Localization;
 using Xunit;
@@ -82,20 +84,50 @@ namespace RvtMcp.Tests
             Assert.Equal(1, fired);
         }
 
+        // The test owns the debounce timers, so a test thread paused longer than the debounce
+        // (seen on CI) cannot split the burst into two changes.
         [Fact]
         public void Debounce_CollapsesBurst_IntoSingleChange()
         {
+            var timers = new List<FakeTimer>();
             var fired = 0;
-            using (var w = new OverrideFolderWatcher(null, () => "de",
-                TimeSpan.FromMilliseconds(60)))
+            using (var w = new OverrideFolderWatcher(null, () => "de", TimeSpan.FromMilliseconds(60), false,
+                (callback, due) => { var timer = new FakeTimer(callback, due); timers.Add(timer); return timer; }))
             {
-                w.Changed += (s, e) => Interlocked.Increment(ref fired);
+                w.Changed += (s, e) => fired++;
                 for (var i = 0; i < 5; i++)
                     w.OnFileEvent(P("strings.de.json"));   // editor-style write burst
-                Assert.True(SpinWait.SpinUntil(() => fired == 1, TimeSpan.FromSeconds(5)));
+
+                Assert.Equal(5, timers.Count);
+                Assert.All(timers.Take(4), t => Assert.True(t.Disposed));   // each event restarts the window
+                Assert.False(timers[4].Disposed);
+                Assert.Equal(TimeSpan.FromMilliseconds(60), timers[4].Due);
+                foreach (var timer in timers) timer.Elapse();               // a restarted timer never fires
             }
-            Thread.Sleep(200);
             Assert.Equal(1, fired);
+        }
+
+        [Fact]
+        public void Debounce_RaisesChanged_OnARealTimer()
+        {
+            var fired = 0;
+            using (var w = new OverrideFolderWatcher(null, () => "de", TimeSpan.FromMilliseconds(60)))
+            {
+                w.Changed += (s, e) => Interlocked.Increment(ref fired);
+                w.OnFileEvent(P("strings.de.json"));
+                Assert.True(SpinWait.SpinUntil(() => Volatile.Read(ref fired) >= 1, TimeSpan.FromSeconds(30)));
+            }
+            Assert.Equal(1, Volatile.Read(ref fired));
+        }
+
+        private sealed class FakeTimer : IDisposable
+        {
+            private readonly TimerCallback _callback;
+            public FakeTimer(TimerCallback callback, TimeSpan due) { _callback = callback; Due = due; }
+            public TimeSpan Due { get; }
+            public bool Disposed { get; private set; }
+            public void Elapse() { if (!Disposed) _callback(null); }
+            public void Dispose() => Disposed = true;
         }
 
         [Fact]

@@ -42,11 +42,13 @@ Install the 2.5.1 gateway and add-ins together. TaskDialog declarations require 
 - History → Issues opens on **All states** every time, so models whose only incidents are observed (user-answered dialogs) stay listed.
 - When a user rule or grant answers a dialog the agent had declared, `_failure.groups[]` now says so with `agentDeclarationNotUsed`, and the `nextStep` for a rule-answered dialog no longer talks about warnings.
 - **Windows without a Revit dialog event** (an add-in's MessageBox, a file dialog): a read-only background probe in the add-in now notices a window that blocks Revit and waits for the user. During an MCP call the pending receipt says `REVIT_OPERATION_REQUIRES_USER` after about 2 seconds with `_operation.dialog.kind=window` (title, text and button labels), instead of waiting for the timeout; `revit_get_operation_status` reports the same window while it is open, and the final `_failure.groups[]` lists it with `answeredBy=user` (a window whose model is not certain goes to `_operation.windowDialogsWithoutModel` instead; past 20 per operation, `omittedWindowDialogs` counts the rest). A window left open outside MCP refuses new calls at once with `REVIT_BUSY` and `_operation.window` (its title only), queued calls return `REVIT_REQUEST_NOT_STARTED` at once, and `revit_health` reports `waiting_for_user`. The probe never clicks or closes anything; `BIMWRIGHT_RVT_WINDOW_PROBE=0` turns it off. See [controlled failures](docs/controlled-failures.md#windows-without-a-revit-dialog-event).
+- Advance dialog answers and the window probe are part of [#16](https://github.com/bimwright/rvt-mcp/issues/16) (Revit dialogs that hold up MCP calls), from [#39](https://github.com/bimwright/rvt-mcp/pull/39).
+- Issues → Reset keeps the newest five ledger backups in `failures\backups\`: after a reset, older `ledger-<date>-<time>.db` backups and their `.pending` folders are deleted. Other files in that folder are never touched, and `BIMWRIGHT_KEEP_ALL_LOGS=1` keeps every backup.
 
 ### Capture output folders
 
 - `revit_capture_view_image` can write into folders you allow beside `%TEMP%` and the captures folder: list them in `captureRoots` in `rvtmcp.config.json` (an array, or one string separated by `;`) or in `BIMWRIGHT_CAPTURE_ROOTS` in the Revit process environment. Only absolute local folders count; nothing is added by default.
-- The captures folder is now bounded: after a capture is saved there, captures with a generated name (`capture-<date>-<time>-<id>…`) older than 30 days are deleted, then the oldest until the rest fits 200 MB. A file you named yourself, a subfolder, `%TEMP%` and your `captureRoots` folders are never cleaned.
+- The captures folder is now bounded: after a capture is saved there, captures with a generated name (`capture-<date>-<time>-<id>…`) older than 30 days are deleted, then the oldest until the rest fits 200 MB. A file you named yourself, a subfolder, `%TEMP%` and your `captureRoots` folders are never cleaned. `BIMWRIGHT_KEEP_ALL_LOGS=1` keeps every capture.
 - `revit_capture_view_image` accepts an `output_path` in the user's own `%TEMP%` folder. Revit runs with `TEMP` set to a per-session subfolder, so such a path was refused although the message named `%TEMP%`.
 - A refused `output_path` returns the allowed folders as `allowed_roots` (the paths in the error text are masked) and the next step: omit `output_path` and copy the saved file, or ask the user to allow the folder.
 
@@ -63,6 +65,7 @@ Update the gateway and add-ins together to see the agent name; an older gateway 
 - Move the standalone MCP server and its unit tests to .NET 10; require SDK 10.0.404 or a later patch in the same feature band. Revit 2022–2024 plugins retain .NET Framework 4.8.
 - Update ModelContextProtocol and AspNetCore 1.1.0 → 1.4.2, Microsoft.Data.Sqlite 8.0.11 → 8.0.34, native SQLite package 2.1.13 → 2.1.14 (SQLite 3.54.0), Roslyn 4.8.0 → 4.13.0, System.Drawing.Common 8.0.0 → 8.0.34, xUnit 2.9.0 → 2.9.3, and Test.Sdk 17.10.0 → 17.14.2. Hosting and Windows principal APIs now come from the .NET 10 framework instead of redundant package references.
 - Retain Newtonsoft.Json 13.0.3 and the existing Revit API references; Roslyn remains below 4.14 for the .NET 8 plugin dependency layout.
+- The server-only NuGet tool package `RvtMcp.Server` targets .NET 10, so `dotnet tool install` needs the .NET 10 runtime. The Setup ZIP still bundles a self-contained server.
 
 ### Document lifecycle
 
@@ -74,6 +77,7 @@ Update the gateway and add-ins together to see the agent name; an older gateway 
   - Stops when `ProjectPath` is empty or is still not a full folder path, and names File > Options > File Locations > *Default path for user files*.
   - Refuses a workshared model saved in an older Revit before any local copy is created (`WORKSHARED_UPGRADE_NEEDS_USER`).
 - The native open/save guard identifies a central by its stored central path rather than the header flag. Opening a newly created local and saving it the first time no longer need a grant; opening or saving a central still does.
+- `FILE_CHANGED_ON_DISK` can follow Reload Latest in Revit's UI on a workshared local, which advances the save count in memory but not on disk. The [document lifecycle](docs/document-lifecycle.md) guide says what to do: ask the user to review the local and save it in Revit (not Synchronize with Central), read `revit_get_document_state` again, then retry. Without a known UI Reload, check for an external file replacement first; the file is never overwritten to clear the error.
 
 ### Wall top constraints
 
@@ -84,6 +88,7 @@ Update the gateway and add-ins together to see the agent name; an older gateway 
 - **`revit_set_view_style`, `revit_set_view_orientation` and `revit_create_camera_view`** in `view`: set display style and detail level, aim a 3D view from eye and target points, and create or re-aim perspective camera views, so an agent can frame and capture its own result with `revit_capture_view_image`. From [#28](https://github.com/bimwright/rvt-mcp/pull/28); thanks [@gbwzzy218](https://github.com/gbwzzy218).
 - Named 3D views and cameras save the new orientation, which Revit Undo restores. The default 3D view (`{3D}`, or `{3D - user}` when workshared) is a viewing view: only its temporary camera moves, nothing is saved, and the result reports `orientation_saved: false`. A failed call leaves the camera where it was. New cameras turn off Far Clip Active and report `far_clip_active`.
 - `revit_set_view_orientation` without `fit` turns off the crop box only on the default 3D view. A named view keeps its crop box, since it may be placed on a sheet, unless `fit=true`; `fit=false` changes neither crop nor zoom.
+- The `revit_set_view_orientation` description tells the agent to pass the returned `view.view_id` to `revit_capture_view_image`, which otherwise exports the active view.
 
 ### Mesh import
 
@@ -92,6 +97,7 @@ Update the gateway and add-ins together to see the agent name; an older gateway 
 ### Move and rotate
 
 - Add typed `revit_move_elements` and `revit_rotate_elements` commands with explicit model-space units, atomic selection validation, placement checks and native Undo. Rotation has no default pivot: pass one explicit pivot for the whole selection, or `pivot_mode="each_location"` to turn each element in place about its insertion point or location-line midpoint. See [usage and verification](docs/placement-and-mep-contracts.md#moving-and-rotating-existing-elements-unreleased). From [#27](https://github.com/bimwright/rvt-mcp/pull/27); thanks [@kiselas](https://github.com/kiselas).
+- Rooms and model groups move and rotate too. Their location point has no readable rotation, so only their position is checked and `rotation_degrees` is `null`. `pivot_z_mm` is optional and defaults to 0, since it does not change a turn about a vertical axis; without `pivot_x_mm` or `pivot_y_mm` the error names both choices (one pivot, or `pivot_mode="each_location"`). When Revit holds back a transform, the error names the element, and all changes are rolled back.
 
 ### Send code and baked tools
 
@@ -114,7 +120,7 @@ Update the gateway and add-ins together to see the agent name; an older gateway 
 ### Logs
 
 - Local logs rotate once per day instead of on every write. Daily rotation compared the log's creation time, which Windows gives back to a file re-created right after a rename, so each call left a one-line archive and every later write scanned them all; tens of thousands of archives made a large `revit_send_code_to_revit` call take about 10 s. Rotation now uses the last write time, and log maintenance reads file sizes and times in one directory pass. Archives already created are removed by the existing 30-day retention.
-- `BIMWRIGHT_KEEP_ALL_LOGS=1` (also `true`, `yes` or `on`) keeps every record. Set it in the gateway's and the Revit process's environment; each reads its own. Automatic deletion of call logs, daily journals, send-code journals, usage and bake audit records, diagnostics and agent reports is skipped. Files still rotate to timestamped archives, the diagnostic log rolls to a timestamped archive instead of overwriting its one backup, and nothing is trimmed. It turns no log on and changes neither what is recorded nor the send-code body TTL. Keeping the send-code journal past its 7-day purge after disabling is the one deliberate exception to that journal's time limit. Spill files, captures, checkpoints, discovery files and explicit deletions are unchanged; unset, retention is unchanged.
+- `BIMWRIGHT_KEEP_ALL_LOGS=1` (also `true`, `yes` or `on`) keeps every record. Set it in the gateway's and the Revit process's environment; each reads its own. Automatic deletion of call logs, daily journals, send-code journals, usage and bake audit records, diagnostics, agent reports, generated captures and Issues → Reset backups beyond the newest five is skipped. Files still rotate to timestamped archives, the diagnostic log rolls to a timestamped archive instead of overwriting its one backup, and nothing is trimmed. It turns no log on and changes neither what is recorded nor the send-code body TTL. Keeping the send-code journal past its 7-day purge after disabling is the one deliberate exception to that journal's time limit. Spill files, checkpoints, discovery files and explicit deletions are unchanged; unset, retention is unchanged.
 
 ### Agent reports
 
@@ -131,7 +137,12 @@ Update the gateway and add-ins together to see the agent name; an older gateway 
 - `revit_create_line_based_element` refuses a `typeId` that is not a wall type, instead of creating the wall with the default type; wall is its only `elementType`. `revit_get_available_family_types` no longer suggests system categories such as Walls or Pipes, and tool descriptions that pointed to other tools now use their `revit_` names. `revit_list_family_types_in_family` takes the `system:<typeId>` id `revit_list_loaded_families` returns and lists the id of every type in that system family, including wall types with no instance. Fixes [#44](https://github.com/bimwright/rvt-mcp/issues/44).
 - `revit_ai_element_filter` without a parameter filter reads only `limit` elements and counts the category natively. With a filter it still tests every element so `totalFound` stays exact; the description says so. Fixes [#46](https://github.com/bimwright/rvt-mcp/issues/46).
 - `revit_place_view_on_sheet` takes optional `xMm`/`yMm` (both or neither) in sheet paper millimetres, like `revit_place_schedule_on_sheet`. Without them the viewport stays at the fixed default point (304.8, 228.6) mm as before; `revit_align_viewports` with `center_on_sheet` centres it on the title block afterwards. The response returns the placed `center` {`u`, `v`} in mm and `placement` (`requested` or `default_point`). Fixes [#47](https://github.com/bimwright/rvt-mcp/issues/47).
-- `revit_list_areas` reports each area's `area_scheme` and filters by `area_scheme_name` again. Areas are model elements with no owner view, so the scheme read from the owner view was null for every area and the scheme filter matched nothing; the scheme now comes from the area itself, with the owner view as a fallback.
+- Parameter validation in every tool also checks objects inside an array parameter, one level deep: required fields, property types and allowed values. The hint describes what the schema allows for the failing field instead of pointing to the description's Example section, and the gateway now passes the add-in's `Suggestion:` and `Hint:` lines on in the error text; before, only the error line reached the agent.
+- The tool summaries in Settings now match the changed descriptions of the nine tools these fixes touched (for example `revit_create_dimensions`, which Settings still showed as an array of element-reference objects), in every UI language.
+
+### Rooms and areas
+
+- `revit_list_areas` reports each area's `area_scheme` and filters by `area_scheme_name` again. Areas are model elements with no owner view, so the scheme read from the owner view was null for every area and the scheme filter matched nothing; the scheme now comes from the area itself, with the owner view as a fallback. Fixes [#55](https://github.com/bimwright/rvt-mcp/issues/55); from [#56](https://github.com/bimwright/rvt-mcp/pull/56), thanks [@tal-sm](https://github.com/tal-sm).
 
 ## v1.2.2 — 2026-11-02
 

@@ -4,7 +4,7 @@ namespace RvtMcp.Plugin
 {
     /// <summary>
     /// <c>BIMWRIGHT_KEEP_ALL_LOGS</c>: when on, automatic deletion of logs, call records, journals,
-    /// usage/audit logs and agent reports is skipped. Rotation still archives; nothing is overwritten.
+    /// usage/audit logs, agent reports, generated captures and ledger Reset backups is skipped. Rotation still archives; nothing is overwritten.
     /// It never turns a recorder on or changes what is recorded. Each process reads its own environment.
     /// </summary>
     public static class LogRetentionPolicy
