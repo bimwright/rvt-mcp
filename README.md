@@ -1,6 +1,6 @@
 <!-- mcp-name: io.github.bimwright/rvt-mcp -->
 
-**Current version: v1.2.2.** See [release notes](CHANGELOG.md).
+**Current version: v2.5.1.** See [release notes](CHANGELOG.md).
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/bimwright/.github/master/assets/logos/rvt-mcp.png" alt="rvt-mcp" width="180" />
@@ -39,7 +39,7 @@ Agents get a **typed tool surface** for common Revit work, a C# escape hatch for
 
 ## Install
 
-**v1.2.2:** [Setup and Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.2). The release also includes a server-only NuGet package; publication to NuGet.org and MCP Registry is separate. Earlier coverage remains in the [v1.2.0 validation record](docs/testing/2026-10-18-v1.2.0-validation.md).
+**v2.5.1:** [Setup and Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v2.5.1). The release also includes a server-only NuGet package; publication to NuGet.org and MCP Registry is separate. Earlier coverage remains in the [v1.2.0 validation record](docs/testing/2026-10-18-v1.2.0-validation.md).
 
 **Let an AI agent install it for your target client.** Use an agent that can run PowerShell and edit local files on this Windows machine (Claude Code, Codex, Cursor, …), not a chat session without local tools. The agent installing it can be different from the client where you will use Revit tools. It follows [AGENTS.md](AGENTS.md), previews changes and asks before applying them; you may still need to approve a UI step or restart an app.
 
@@ -90,7 +90,7 @@ Community videos of rvt-mcp at work. Install steps shown in a video can be older
 
 ## Tools
 
-Counts below describe the current development source. The **v1.2.2 release** has 242 tools with `all`, 245 with adaptive bake and 55 bare defaults.
+Counts below describe **v2.5.1**: 257 tools with `all`, 260 with adaptive bake and 63 bare defaults.
 
 | Mode | Tools | Notes |
 |------|------:|-------|

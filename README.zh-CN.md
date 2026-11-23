@@ -1,10 +1,10 @@
 <!-- mcp-name: io.github.bimwright/rvt-mcp -->
 
-**当前版本：v1.2.2。** 参见[更新日志](CHANGELOG.md)。
+**当前版本：v2.5.1。** 参见[更新日志](CHANGELOG.md)。
 
 [工具描述大小基准](docs/benchmarks/2026-10-18-tool-descriptors.md) · [v1.2.0 验证结果与待验证项目](docs/testing/2026-10-18-v1.2.0-validation.md)（英文；不代表原生执行性能）。
 
-**v1.2.2：** [Setup 和 Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.2)。Release 也包含仅服务器的 NuGet 包；发布到 NuGet.org 和 MCP Registry 是独立步骤。
+**v2.5.1：** [Setup 和 Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v2.5.1)。Release 也包含仅服务器的 NuGet 包；发布到 NuGet.org 和 MCP Registry 是独立步骤。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/bimwright/.github/master/assets/logos/rvt-mcp.png" alt="rvt-mcp" width="180" />
@@ -92,7 +92,7 @@ powershell -ExecutionPolicy Bypass -File "$dir\install.ps1" -Client claude-deskt
 
 ## Tools
 
-下表数量对应当前开发源码；**v1.2.2 发布版**的 `all` 为 242 个、adaptive bake 为 245 个、裸服务器默认为 55 个。
+下表数量对应 **v2.5.1 发布版**：`all` 为 257 个、adaptive bake 为 260 个、裸服务器默认为 63 个。
 
 | 模式 | Tools | 说明 |
 |------|------:|------|
