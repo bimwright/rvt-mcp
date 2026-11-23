@@ -50,6 +50,16 @@ public class ListAreasHandlerTests
     }
 
     [Fact]
+    public void Permit_fallback_reads_level_from_owner_view_when_area_level_is_null()
+    {
+        var result = Probe.Value("permit_fallback");
+        Assert.True(result.Value<bool>("success"), result.Value<string>("error"));
+        var area = Assert.Single(result["data"]!["areas"]!);
+        Assert.Equal("Level 1", area["level"]!.Value<string>("name"));
+        Assert.Equal(311, area["level"]!.Value<long>("element_id"));
+    }
+
+    [Fact]
     public void Combines_area_scheme_and_level_filters()
     {
         var result = Probe.Value("rentable_level_mismatch");
