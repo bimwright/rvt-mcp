@@ -1,10 +1,10 @@
 <!-- mcp-name: io.github.bimwright/rvt-mcp -->
 
-**現在のバージョン: v1.2.2。** [変更履歴](CHANGELOG.md)を参照してください。
+**現在のバージョン: v2.5.1。** [変更履歴](CHANGELOG.md)を参照してください。
 
 [ツール記述サイズのベンチマーク](docs/benchmarks/2026-10-18-tool-descriptors.md) · [v1.2.0 検証結果と未検証項目](docs/testing/2026-10-18-v1.2.0-validation.md)（英語。ネイティブ実行性能の測定ではありません）。
 
-**v1.2.2:** [Setup と Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.2)。サーバーのみの NuGet パッケージも含まれます。NuGet.org と MCP Registry への公開は別の手順です。
+**v2.5.1:** [Setup と Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v2.5.1)。サーバーのみの NuGet パッケージも含まれます。NuGet.org と MCP Registry への公開は別の手順です。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/bimwright/.github/master/assets/logos/rvt-mcp.png" alt="rvt-mcp" width="180" />
@@ -93,7 +93,7 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 ## Tools
 
-以下のツール数は現在の開発ソースに対応します。**v1.2.2 リリース**は `all` が 242 件、adaptive bake が 245 件、素の既定が 55 件です。
+以下のツール数は **v2.5.1 リリース**に対応します（`all` が 257 件、adaptive bake が 260 件、素の既定が 63 件）。
 
 | モード | Tools | 注記 |
 |--------|------:|------|

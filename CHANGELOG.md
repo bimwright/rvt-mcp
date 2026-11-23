@@ -4,6 +4,7 @@
 
 | Version | Date | Available as |
 |---|---|---|
+| v2.5.1 | 2026-11-23 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v2.5.1): Setup, Claude Desktop MCPB and server-only NuGet package, each with a checksum |
 | v1.2.2 | 2026-11-02 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.2): Setup, Claude Desktop MCPB and server-only NuGet package, each with a checksum |
 | v1.2.1 | 2026-10-20 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.1) |
 | v1.2.0 | 2026-10-19 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.0); [NuGet `RvtMcp.Server` 1.2.0](https://www.nuget.org/packages/RvtMcp.Server/1.2.0); [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.bimwright%2Frvt-mcp/versions/1.2.0) |
@@ -27,11 +28,11 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
-## v2.5.1 (unreleased)
+## v2.5.1 — 2026-11-23
 
 This release was developed as 3.0.1 and ships as 2.5.1, the shared release number of the four bimwright gateways (rvt-mcp, dwg-mcp, nwd-mcp, ipt-mcp). The number does not mark breaking changes; the entries below list what changed since v1.2.2.
 
-- Development source counts: `--toolsets all` **257**, adaptive bake **260**, and bare defaults **63**.
+- Catalog counts: `--toolsets all` **257**, adaptive bake **260**, and bare defaults **63**.
 
 ### Controlled failures and Issues
 
