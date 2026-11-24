@@ -28,6 +28,8 @@ namespace RvtMcp.Scripting
         public const string RequestTooLarge = "REQUEST_TOO_LARGE";
         public const string EntrypointMismatch = "SCRIPT_ENTRYPOINT_MISMATCH";
         public const string CompileFailed = "SCRIPT_COMPILE_FAILED";
+        /// <summary>The add-in could not load its C# compiler, for example after another add-in loaded a different Roslyn (issue #68).</summary>
+        public const string CompilerUnavailable = "SCRIPT_COMPILER_UNAVAILABLE";
         public const string TaskResultRequired = "TASK_RESULT_REQUIRED";
         public const string TaskFailed = "TASK_FAILED";
         public const string ModuleNotFound = "MODULE_NOT_FOUND";
