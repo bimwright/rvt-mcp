@@ -47,6 +47,15 @@ public sealed class McpAddinDiscoveryTests : IDisposable
         Assert.Equal(new[] { "Other MCP" }, Scan());
     }
 
+    [Fact]
+    public void PyRevit_loader_never_triggers_coexistence_but_another_MCP_still_does()
+    {
+        // Issue #68: pyRevit's MCP server is the separate `pyrevit mcp` CLI; its loader add-in must not turn rvt-mcp off.
+        Manifest("pyRevit MCP", "PyRevitLoader.PyRevitLoaderApplication", "B39107C3-A1D7-47F4-A5A1-532DDF6EDB5D", "eirannejad");
+        Manifest("Other MCP", "AnotherVendor.McpServer.Application");
+        Assert.Equal(new[] { "Other MCP" }, Scan());
+    }
+
     [Theory]
     [InlineData("Example MCP", "Vendor.Application")]
     [InlineData("Example", "Vendor.RevitMCPServer.Application")]
