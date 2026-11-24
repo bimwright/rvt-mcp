@@ -159,9 +159,32 @@ namespace Autodesk.Revit.UI {
                 Tuple.Create(new Version(4, 13, 0, 0), Path.Combine(own, "Microsoft.CodeAnalysis.dll")),
                 Tuple.Create(new Version(4, 11, 0, 0), Path.Combine(other, "Microsoft.CodeAnalysis.dll"))
             }, own);
-            Assert.Contains("Microsoft.CodeAnalysis 4.11.0.0 from " + other, message);
+            Assert.Contains("Microsoft.CodeAnalysis 4.11.0.0 from OtherAddin/bin/netcore.", message);
             Assert.DoesNotContain("4.13.0.0", message);
             Assert.EndsWith("Detail: detail", message);
         }
+
+        [Fact]
+        public void Unavailable_message_keeps_the_other_add_ins_folder_name_after_response_redaction()
+        {
+            var message = RoslynHost.DescribeUnavailable("detail", new[]
+            {
+                Tuple.Create(new Version(4, 11, 0, 0), @"C:\Users\someone\AppData\Roaming\OtherAddin-Master\bin\netcore\Microsoft.CodeAnalysis.dll")
+            }, @"C:\Users\someone\AppData\Roaming\Autodesk\Revit\Addins\2026\RvtMcp");
+
+            var redacted = McpResponsePrivacy.RedactErrorForResponse(ScriptErrorCodes.CompilerUnavailable + ": " + message);
+
+            Assert.Contains("Microsoft.CodeAnalysis 4.11.0.0 from OtherAddin-Master/bin/netcore.", redacted);
+            Assert.DoesNotContain("someone", redacted);
+            Assert.DoesNotContain(@"C:\", redacted);
+        }
+
+        [Theory]
+        [InlineData(@"C:\Users\someone\AppData\Roaming\OtherAddin\bin\netfx", "OtherAddin/bin/netfx")]
+        [InlineData(@"C:\Users\someone\OtherAddin", "OtherAddin")]
+        [InlineData(@"D:\Tools", "Tools")]
+        [InlineData(@"\\server\share\addins\OtherAddin", "share/addins/OtherAddin")]
+        public void Add_in_folder_keeps_the_last_three_folders_without_drive_or_user_name(string directory, string expected)
+            => Assert.Equal(expected, RoslynHost.AddinFolder(directory));
     }
 }

@@ -73,8 +73,21 @@ namespace RvtMcp.Plugin
                 !string.Equals(Path.GetDirectoryName(c.Item2), ownDirectory, StringComparison.OrdinalIgnoreCase)).ToArray();
             return "rvt-mcp could not load its C# compiler. " +
                 (others.Length == 0 ? "" : "Another Revit add-in already loaded " +
-                    string.Join("; ", others.Select(c => CompilerAssembly + " " + c.Item1 + " from " + Path.GetDirectoryName(c.Item2))) + ". ") +
+                    string.Join("; ", others.Select(c => CompilerAssembly + " " + c.Item1 + " from " + AddinFolder(Path.GetDirectoryName(c.Item2)))) + ". ") +
                 "This is an add-in conflict inside Revit, not a script error: do not rewrite the script; report it to the user. Detail: " + detail;
+        }
+
+        /// <summary>
+        /// The last three folders, joined by '/', without the drive or Users\&lt;name&gt; (for example
+        /// pyRevit-Master/bin/netcore). Response redaction cuts a full Windows path down to its last folder,
+        /// which would hide the add-in's name.
+        /// </summary>
+        internal static string AddinFolder(string directory)
+        {
+            var parts = (directory ?? "").Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries)
+                .Where(p => !p.EndsWith(":", StringComparison.Ordinal)).ToList();
+            if (parts.Count >= 2 && string.Equals(parts[0], "Users", StringComparison.OrdinalIgnoreCase)) parts.RemoveRange(0, 2);
+            return string.Join("/", parts.Skip(Math.Max(0, parts.Count - 3)));
         }
 
         private static T Call<T>(string method, params object[] arguments)

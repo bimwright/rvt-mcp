@@ -33,7 +33,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 ### Send code and baked tools
 
 - Fix [#68](https://github.com/bimwright/rvt-mcp/issues/68): `revit_send_code_to_revit` and baked-tool compiles failed with `Could not load file or assembly 'Microsoft.CodeAnalysis, Version=4.13.0.0'` when another add-in, such as pyRevit 7, had already loaded an older Roslyn. In Revit 2025–2027 the add-in now compiles in its own .NET load context with the Roslyn it ships. Revit 2022–2024 still compile as before.
-- A compiler that cannot be loaded is reported as `SCRIPT_COMPILER_UNAVAILABLE`, naming the other add-in folder that loaded `Microsoft.CodeAnalysis`. Before this fix it was reported as `SCRIPT_INPUT_INVALID`, which suggested the script was wrong.
+- A compiler that cannot be loaded is reported as `SCRIPT_COMPILER_UNAVAILABLE`, naming the other add-in folder that loaded `Microsoft.CodeAnalysis` by its last three folders, for example `pyRevit-Master/bin/netcore`, without the drive or user name. Before this fix it was reported as `SCRIPT_INPUT_INVALID`, which suggested the script was wrong.
 - The pyRevit loader is exempt from the third-party MCP check, as Autodesk's MCP already is. pyRevit's own MCP server (`pyrevit mcp`) is a separate process, and the two gateways can run side by side.
 
 ## v2.5.1 — 2026-11-23
