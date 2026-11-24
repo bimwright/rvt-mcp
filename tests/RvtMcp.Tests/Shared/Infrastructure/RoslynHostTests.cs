@@ -112,6 +112,25 @@ namespace Autodesk.Revit.UI {
         }
 
         [Fact]
+        public void Baked_tool_compile_through_the_host_returns_assembly_bytes()
+        {
+            var output = RoslynHost.CompileTool("public class BakedTool_ok { public object Run() { return 42; } }", _references);
+            Assert.True(output.Success, output.Error);
+            Assert.NotEmpty(output.AssemblyBytes);
+        }
+
+        [Fact]
+        public void Baked_tool_policy_denial_from_the_isolated_compiler_reaches_the_host_unchanged()
+        {
+            var output = RoslynHost.CompileTool(
+                "public class BakedTool_io { public object Run() { System.IO.File.Delete(\"x\"); return null; } }", _references);
+            Assert.False(output.Success);
+            Assert.StartsWith("SecurityViolation:", output.Error);
+            Assert.Equal(new[] { output.Error }, output.Diagnostics);
+            Assert.Null(output.AssemblyBytes);
+        }
+
+        [Fact]
         public void Failure_to_load_the_compiler_is_reported_as_SCRIPT_COMPILER_UNAVAILABLE_not_input_invalid()
         {
             var load = new FileLoadException("The located assembly's manifest definition does not match the assembly reference. (0x80131040)",
