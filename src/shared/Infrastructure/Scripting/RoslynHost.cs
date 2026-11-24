@@ -25,6 +25,26 @@ namespace RvtMcp.Plugin
         internal const string CompilerAssembly = "Microsoft.CodeAnalysis";
         private static readonly object Gate = new object();
         private static Type _bridge;
+#if !NETFRAMEWORK
+        private static AssemblyLoadContext _context;
+#endif
+
+        /// <summary>
+        /// Loaded assemblies with a file, for compile references. Leaves out the copies in the isolated context:
+        /// scripts and baked tools run in the default context, and those copies would show up as duplicates there.
+        /// </summary>
+        internal static IEnumerable<Assembly> LoadedAssemblies()
+            => AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && !IsIsolated(a));
+
+        internal static bool IsIsolated(Assembly assembly)
+        {
+#if NETFRAMEWORK
+            return false;
+#else
+            var context = _context;
+            return context != null && AssemblyLoadContext.GetLoadContext(assembly) == context;
+#endif
+        }
 
         internal static ScriptCompileResult CompileScript(ScriptInput input, IReadOnlyList<ScriptModuleRevision> modules,
             string[] referencePaths, Action compileStarting, out SkippedScriptReference[] skipped)
@@ -116,9 +136,13 @@ namespace RvtMcp.Plugin
                 _bridge = typeof(RoslynBridge);
 #else
                 var self = typeof(RoslynHost).Assembly;
-                _bridge = string.IsNullOrEmpty(self.Location) ? typeof(RoslynBridge)
-                    : new RoslynLoadContext(Path.GetDirectoryName(self.Location), self.GetName().Name)
-                        .LoadFromAssemblyName(self.GetName()).GetType(typeof(RoslynBridge).FullName, true);
+                if (string.IsNullOrEmpty(self.Location)) _bridge = typeof(RoslynBridge);
+                else
+                {
+                    var context = new RoslynLoadContext(Path.GetDirectoryName(self.Location), self.GetName().Name);
+                    _context = context;
+                    _bridge = context.LoadFromAssemblyName(self.GetName()).GetType(typeof(RoslynBridge).FullName, true);
+                }
 #endif
                 return _bridge;
             }

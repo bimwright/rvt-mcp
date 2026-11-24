@@ -186,5 +186,17 @@ namespace Autodesk.Revit.UI {
         [InlineData(@"\\server\share\addins\OtherAddin", "share/addins/OtherAddin")]
         public void Add_in_folder_keeps_the_last_three_folders_without_drive_or_user_name(string directory, string expected)
             => Assert.Equal(expected, RoslynHost.AddinFolder(directory));
+
+        [Fact]
+        public void Compile_references_leave_out_the_copies_in_the_isolated_context()
+        {
+            Assert.True(RoslynHost.CompileTool("public class BakedTool_refs { public object Run() { return 1; } }", _references).Success);
+
+            Assert.Contains(AppDomain.CurrentDomain.GetAssemblies(), RoslynHost.IsIsolated);
+            var loaded = RoslynHost.LoadedAssemblies().ToArray();
+            Assert.DoesNotContain(loaded, RoslynHost.IsIsolated);
+            Assert.Contains(typeof(RoslynHost).Assembly, loaded);
+            Assert.Contains(typeof(Compilation).Assembly, loaded);
+        }
     }
 }
