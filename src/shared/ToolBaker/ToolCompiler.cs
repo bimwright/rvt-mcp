@@ -1,9 +1,7 @@
 ﻿using System;
-using System.IO;
 using System.Linq;
 using System.Reflection;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+using RvtMcp.Scripting;
 
 namespace RvtMcp.Plugin.ToolBaker
 {
@@ -84,8 +82,6 @@ public class BakedTool_{safeName} : IRevitCommand
         {
             try
             {
-                var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
-
                 var groups = AppDomain.CurrentDomain.GetAssemblies()
                     .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
                     .GroupBy(a => a.GetName().Name)
@@ -95,71 +91,54 @@ public class BakedTool_{safeName} : IRevitCommand
                 // can make a baked tool compile against a newer API than the author tested.
                 LogAssemblyConflicts(groups);
 
+                // Roslyn runs in its own load context (issue #68); loading the tool stays here.
+                var compiled = RoslynHost.CompileTool(sourceCode, groups
+                    .Select(g => g.OrderByDescending(a => a.GetName().Version).First().Location).ToArray());
                 // Issue #38: skip loaded DLLs whose metadata Roslyn cannot read instead of failing every compile.
-                var references = ScriptReferences.FromPaths(groups
-                    .Select(g => g.OrderByDescending(a => a.GetName().Version).First().Location), out var skipped);
-                LogSkippedReferences(skipped);
-
-                var policy = BakeCompilerPolicy.Validate(sourceCode, references);
-                if (!policy.Allowed)
+                LogSkippedReferences(compiled.Skipped ?? new SkippedScriptReference[0]);
+                if (!compiled.Success)
                 {
                     return new ToolCompileResult
                     {
                         Success = false,
-                        Error = policy.Error,
-                        Diagnostics = new[] { policy.Error }
+                        Error = compiled.Error,
+                        Diagnostics = compiled.Diagnostics ?? new string[0]
                     };
                 }
 
-                var compilation = CSharpCompilation.Create(
-                    "BakedTool_" + Guid.NewGuid().ToString("N").Substring(0, 8),
-                    new[] { syntaxTree },
-                    references,
-                    new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+                var bytes = compiled.AssemblyBytes;
+                var assembly = Assembly.Load(bytes);
 
-                using (var ms = new MemoryStream())
+                // Find the IRevitCommand implementation
+                var commandType = assembly.GetTypes()
+                    .FirstOrDefault(t => typeof(IRevitCommand).IsAssignableFrom(t) && !t.IsAbstract);
+
+                if (commandType == null)
                 {
-                    var result = compilation.Emit(ms);
-                    if (!result.Success)
-                    {
-                        var errors = result.Diagnostics
-                            .Where(d => d.Severity == DiagnosticSeverity.Error)
-                            .Select(d => d.ToString())
-                            .Take(5)
-                            .ToArray();
-                        return new ToolCompileResult
-                        {
-                            Success = false,
-                            Error = "Compilation failed:\n" + string.Join("\n", errors),
-                            Diagnostics = errors
-                        };
-                    }
-
-                    var bytes = ms.ToArray();
-                    var assembly = Assembly.Load(bytes);
-
-                    // Find the IRevitCommand implementation
-                    var commandType = assembly.GetTypes()
-                        .FirstOrDefault(t => typeof(IRevitCommand).IsAssignableFrom(t) && !t.IsAbstract);
-
-                    if (commandType == null)
-                    {
-                        return new ToolCompileResult
-                        {
-                            Success = false,
-                            Error = "Compiled assembly does not contain an IRevitCommand implementation.",
-                            Diagnostics = new[] { "No IRevitCommand implementation was found." },
-                            AssemblyBytes = bytes
-                        };
-                    }
-
                     return new ToolCompileResult
                     {
-                        Success = true,
-                        Command = (IRevitCommand)Activator.CreateInstance(commandType),
+                        Success = false,
+                        Error = "Compiled assembly does not contain an IRevitCommand implementation.",
+                        Diagnostics = new[] { "No IRevitCommand implementation was found." },
                         AssemblyBytes = bytes
                     };
                 }
+
+                return new ToolCompileResult
+                {
+                    Success = true,
+                    Command = (IRevitCommand)Activator.CreateInstance(commandType),
+                    AssemblyBytes = bytes
+                };
+            }
+            catch (ScriptContractException ex)
+            {
+                return new ToolCompileResult
+                {
+                    Success = false,
+                    Error = ex.ErrorCode + ": " + ex.Message,
+                    Diagnostics = new[] { ex.ErrorCode + ": " + ex.Message }
+                };
             }
             catch (Exception ex)
             {

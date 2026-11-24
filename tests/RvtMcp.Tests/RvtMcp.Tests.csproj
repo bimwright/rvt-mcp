@@ -46,6 +46,8 @@
     <Compile Include="..\..\src\shared\Infrastructure\Scripting\ScriptCompileHints.cs" Link="Shared\Infrastructure\Scripting\ScriptCompileHints.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\Scripting\ApiDescriber.cs" Link="Shared\Infrastructure\Scripting\ApiDescriber.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\Scripting\ScriptReferences.cs" Link="Shared\Infrastructure\Scripting\ScriptReferences.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\Scripting\RoslynBridge.cs" Link="Shared\Infrastructure\Scripting\RoslynBridge.cs" />
+    <Compile Include="..\..\src\shared\Infrastructure\Scripting\RoslynHost.cs" Link="Shared\Infrastructure\Scripting\RoslynHost.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\Scripting\ScriptCompileHost.cs" Link="Shared\Infrastructure\Scripting\ScriptCompileHost.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\NoDocumentGuidance.cs" Link="Shared\Infrastructure\NoDocumentGuidance.cs" />
     <Compile Include="..\..\src\shared\Infrastructure\RecentFileList.cs" Link="Shared\Infrastructure\RecentFileList.cs" />

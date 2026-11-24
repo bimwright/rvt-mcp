@@ -66,6 +66,9 @@ namespace RvtMcp.Plugin
                     // Autodesk's own MCP is deliberately exempt, including read/write preview variants.
                     if (string.Equals(((string)addin.Element("VendorId"))?.Trim(), "ADSK", StringComparison.OrdinalIgnoreCase)
                         && className.StartsWith("Autodesk.RevitMcpServer.", StringComparison.Ordinal)) continue;
+                    // pyRevit is exempt too: its loader never turns MCP off. Its own MCP server is the separate
+                    // `pyrevit mcp` CLI process, and the two gateways coexist (issue #68).
+                    if (className.StartsWith("PyRevitLoader.", StringComparison.Ordinal)) continue;
                     try
                     {
                         if (string.IsNullOrWhiteSpace(assembly)) continue;

@@ -17,6 +17,10 @@ namespace RvtMcp.Tests
         [ModuleInitializer]
         internal static void Initialize()
         {
+            // RoslynHostTests load a second copy of this assembly into an isolated context; that copy must not
+            // replace the process-wide logger settings with its own Root.
+            if (System.Runtime.Loader.AssemblyLoadContext.GetLoadContext(typeof(TestDiagnostics).Assembly)
+                != System.Runtime.Loader.AssemblyLoadContext.Default) return;
             DiagnosticLog.LocalAppDataOverride = Root;
             // Retention tests never depend on BIMWRIGHT_KEEP_ALL_LOGS in the real environment.
             LogRetentionPolicy.KeepAllOverride = false;
