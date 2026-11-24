@@ -198,5 +198,36 @@ namespace Autodesk.Revit.UI {
             Assert.Contains(typeof(RoslynHost).Assembly, loaded);
             Assert.Contains(typeof(Compilation).Assembly, loaded);
         }
+
+        [Fact]
+        public void Compiler_load_failure_with_a_file_path_is_reported_as_SCRIPT_COMPILER_UNAVAILABLE()
+        {
+            var load = new FileLoadException("x", @"C:\addins\RvtMcp\Microsoft.CodeAnalysis.CSharp.dll");
+            Assert.Equal(ScriptErrorCodes.CompilerUnavailable, RoslynHost.CompilerUnavailable(load)?.ErrorCode);
+        }
+
+        [Fact]
+        public void Assemblies_that_only_share_the_compilers_name_prefix_or_are_damaged_are_not_compiler_unavailable()
+        {
+            Assert.Null(RoslynHost.CompilerUnavailable(new FileNotFoundException("x", "Microsoft.CodeAnalysisTools, Version=1.0.0.0")));
+            // A damaged file is not an add-in conflict, so it must not tell the agent to report one.
+            Assert.Null(RoslynHost.CompilerUnavailable(new BadImageFormatException("x", @"C:\addins\RvtMcp\Microsoft.CodeAnalysis.dll")));
+        }
+
+        [Theory]
+        [InlineData("Microsoft.CodeAnalysis", true)]
+        [InlineData("Microsoft.CodeAnalysis.CSharp", true)]
+        [InlineData("Microsoft.CodeAnalysisTools", false)]
+        [InlineData("System.Collections.Immutable", false)]
+        public void Isolated_context_loads_only_Microsoft_CodeAnalysis_and_its_sub_assemblies(string name, bool expected)
+            => Assert.Equal(expected, RoslynHost.IsCompilerAssembly(name));
+
+        [Fact]
+        public void Missing_resolved_module_is_input_invalid_not_a_null_reference()
+        {
+            var ex = Assert.Throws<ScriptContractException>(() => RoslynHost.CompileScript(new ScriptInput("return 1;"),
+                new ScriptModuleRevision[] { null! }, _references, null, out _));
+            Assert.Equal(ScriptErrorCodes.InputInvalid, ex.ErrorCode);
+        }
     }
 }

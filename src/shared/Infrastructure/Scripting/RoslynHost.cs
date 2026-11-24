@@ -46,9 +46,27 @@ namespace RvtMcp.Plugin
 #endif
         }
 
+        /// <summary>Microsoft.CodeAnalysis or Microsoft.CodeAnalysis.*, by simple assembly name.</summary>
+        internal static bool IsCompilerAssembly(string name)
+            => name != null && (string.Equals(name, CompilerAssembly, StringComparison.OrdinalIgnoreCase) ||
+                name.StartsWith(CompilerAssembly + ".", StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>A load failure's FileName: an assembly display name or a file path.</summary>
+        private static bool IsCompilerFile(string file)
+        {
+            var name = file.Substring(file.LastIndexOfAny(new[] { '\\', '/' }) + 1);
+            var comma = name.IndexOf(',');
+            if (comma >= 0) name = name.Substring(0, comma);
+            name = name.Trim();
+            if (name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)) name = name.Substring(0, name.Length - 4);
+            return IsCompilerAssembly(name);
+        }
+
         internal static ScriptCompileResult CompileScript(ScriptInput input, IReadOnlyList<ScriptModuleRevision> modules,
             string[] referencePaths, Action compileStarting, out SkippedScriptReference[] skipped)
         {
+            if (modules != null && modules.Any(m => m == null))
+                throw new ScriptContractException(ScriptErrorCodes.InputInvalid, "Missing resolved module snapshot.");
             var request = new JObject
             {
                 ["code"] = input.Code,
@@ -78,7 +96,7 @@ namespace RvtMcp.Plugin
             for (var e = ex; e != null; e = e.InnerException)
             {
                 var file = (e as FileLoadException)?.FileName ?? (e as FileNotFoundException)?.FileName;
-                if (file != null && file.StartsWith(CompilerAssembly, StringComparison.OrdinalIgnoreCase))
+                if (file != null && IsCompilerFile(file))
                     return new ScriptContractException(ScriptErrorCodes.CompilerUnavailable, DescribeUnavailable(e.Message,
                         AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic).Select(a => a.GetName().Name == CompilerAssembly
                             ? Tuple.Create(a.GetName().Version, a.Location) : null).Where(a => a != null),
@@ -165,7 +183,7 @@ namespace RvtMcp.Plugin
         protected override Assembly Load(AssemblyName name)
         {
             if (!string.Equals(name.Name, _bridgeAssembly, StringComparison.Ordinal) &&
-                !name.Name.StartsWith(RoslynHost.CompilerAssembly, StringComparison.Ordinal)) return null;
+                !RoslynHost.IsCompilerAssembly(name.Name)) return null;
             var path = Path.Combine(_directory, name.Name + ".dll");
             return File.Exists(path) ? LoadFromAssemblyPath(path) : null;
         }
