@@ -31,8 +31,8 @@ namespace RvtMcp.Plugin.Handlers
                 // Gather references from loaded assemblies (safe for any .NET runtime).
                 // File.Exists guards stale add-ins whose dll was deleted after Revit
                 // loaded them into the AppDomain (assembly Location points nowhere).
-                var compiled = RoslynHost.CompileLegacy(code, ReferencePaths(AppDomain.CurrentDomain.GetAssemblies()
-                    .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && File.Exists(a.Location))
+                var compiled = RoslynHost.CompileLegacy(code, ReferencePaths(RoslynHost.LoadedAssemblies()
+                    .Where(a => File.Exists(a.Location))
                     .GroupBy(a => a.GetName().Name)
                     .Select(g => g.OrderByDescending(a => a.GetName().Version).First())));
                 var skipped = LogSkipped(compiled.Skipped);
@@ -110,8 +110,8 @@ namespace RvtMcp.Plugin.Handlers
         {
             try
             {
-                var references = ReferencePaths(AppDomain.CurrentDomain.GetAssemblies()
-                    .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && File.Exists(a.Location))
+                var references = ReferencePaths(RoslynHost.LoadedAssemblies()
+                    .Where(a => File.Exists(a.Location))
                     .GroupBy(a => a.GetName().Name)
                     .Select(g => g.Key == "RevitAPIUI" ? typeof(UIApplication).Assembly :
                         g.Key == "RevitAPI" ? typeof(Autodesk.Revit.DB.Document).Assembly : g.OrderByDescending(a => a.GetName().Version).First()));

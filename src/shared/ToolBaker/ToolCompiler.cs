@@ -82,8 +82,7 @@ public class BakedTool_{safeName} : IRevitCommand
         {
             try
             {
-                var groups = AppDomain.CurrentDomain.GetAssemblies()
-                    .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
+                var groups = RoslynHost.LoadedAssemblies()
                     .GroupBy(a => a.GetName().Name)
                     .ToList();
 

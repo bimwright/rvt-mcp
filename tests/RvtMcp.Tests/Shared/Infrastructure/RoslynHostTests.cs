@@ -159,9 +159,75 @@ namespace Autodesk.Revit.UI {
                 Tuple.Create(new Version(4, 13, 0, 0), Path.Combine(own, "Microsoft.CodeAnalysis.dll")),
                 Tuple.Create(new Version(4, 11, 0, 0), Path.Combine(other, "Microsoft.CodeAnalysis.dll"))
             }, own);
-            Assert.Contains("Microsoft.CodeAnalysis 4.11.0.0 from " + other, message);
+            Assert.Contains("Microsoft.CodeAnalysis 4.11.0.0 from OtherAddin/bin/netcore.", message);
             Assert.DoesNotContain("4.13.0.0", message);
             Assert.EndsWith("Detail: detail", message);
+        }
+
+        [Fact]
+        public void Unavailable_message_keeps_the_other_add_ins_folder_name_after_response_redaction()
+        {
+            var message = RoslynHost.DescribeUnavailable("detail", new[]
+            {
+                Tuple.Create(new Version(4, 11, 0, 0), @"C:\Users\someone\AppData\Roaming\OtherAddin-Master\bin\netcore\Microsoft.CodeAnalysis.dll")
+            }, @"C:\Users\someone\AppData\Roaming\Autodesk\Revit\Addins\2026\RvtMcp");
+
+            var redacted = McpResponsePrivacy.RedactErrorForResponse(ScriptErrorCodes.CompilerUnavailable + ": " + message);
+
+            Assert.Contains("Microsoft.CodeAnalysis 4.11.0.0 from OtherAddin-Master/bin/netcore.", redacted);
+            Assert.DoesNotContain("someone", redacted);
+            Assert.DoesNotContain(@"C:\", redacted);
+        }
+
+        [Theory]
+        [InlineData(@"C:\Users\someone\AppData\Roaming\OtherAddin\bin\netfx", "OtherAddin/bin/netfx")]
+        [InlineData(@"C:\Users\someone\OtherAddin", "OtherAddin")]
+        [InlineData(@"D:\Tools", "Tools")]
+        [InlineData(@"\\server\share\addins\OtherAddin", "share/addins/OtherAddin")]
+        public void Add_in_folder_keeps_the_last_three_folders_without_drive_or_user_name(string directory, string expected)
+            => Assert.Equal(expected, RoslynHost.AddinFolder(directory));
+
+        [Fact]
+        public void Compile_references_leave_out_the_copies_in_the_isolated_context()
+        {
+            Assert.True(RoslynHost.CompileTool("public class BakedTool_refs { public object Run() { return 1; } }", _references).Success);
+
+            Assert.Contains(AppDomain.CurrentDomain.GetAssemblies(), RoslynHost.IsIsolated);
+            var loaded = RoslynHost.LoadedAssemblies().ToArray();
+            Assert.DoesNotContain(loaded, RoslynHost.IsIsolated);
+            Assert.Contains(typeof(RoslynHost).Assembly, loaded);
+            Assert.Contains(typeof(Compilation).Assembly, loaded);
+        }
+
+        [Fact]
+        public void Compiler_load_failure_with_a_file_path_is_reported_as_SCRIPT_COMPILER_UNAVAILABLE()
+        {
+            var load = new FileLoadException("x", @"C:\addins\RvtMcp\Microsoft.CodeAnalysis.CSharp.dll");
+            Assert.Equal(ScriptErrorCodes.CompilerUnavailable, RoslynHost.CompilerUnavailable(load)?.ErrorCode);
+        }
+
+        [Fact]
+        public void Assemblies_that_only_share_the_compilers_name_prefix_or_are_damaged_are_not_compiler_unavailable()
+        {
+            Assert.Null(RoslynHost.CompilerUnavailable(new FileNotFoundException("x", "Microsoft.CodeAnalysisTools, Version=1.0.0.0")));
+            // A damaged file is not an add-in conflict, so it must not tell the agent to report one.
+            Assert.Null(RoslynHost.CompilerUnavailable(new BadImageFormatException("x", @"C:\addins\RvtMcp\Microsoft.CodeAnalysis.dll")));
+        }
+
+        [Theory]
+        [InlineData("Microsoft.CodeAnalysis", true)]
+        [InlineData("Microsoft.CodeAnalysis.CSharp", true)]
+        [InlineData("Microsoft.CodeAnalysisTools", false)]
+        [InlineData("System.Collections.Immutable", false)]
+        public void Isolated_context_loads_only_Microsoft_CodeAnalysis_and_its_sub_assemblies(string name, bool expected)
+            => Assert.Equal(expected, RoslynHost.IsCompilerAssembly(name));
+
+        [Fact]
+        public void Missing_resolved_module_is_input_invalid_not_a_null_reference()
+        {
+            var ex = Assert.Throws<ScriptContractException>(() => RoslynHost.CompileScript(new ScriptInput("return 1;"),
+                new ScriptModuleRevision[] { null! }, _references, null, out _));
+            Assert.Equal(ScriptErrorCodes.InputInvalid, ex.ErrorCode);
         }
     }
 }

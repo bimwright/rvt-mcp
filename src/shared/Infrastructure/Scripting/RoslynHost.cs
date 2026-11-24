@@ -25,10 +25,48 @@ namespace RvtMcp.Plugin
         internal const string CompilerAssembly = "Microsoft.CodeAnalysis";
         private static readonly object Gate = new object();
         private static Type _bridge;
+#if !NETFRAMEWORK
+        private static AssemblyLoadContext _context;
+#endif
+
+        /// <summary>
+        /// Loaded assemblies with a file, for compile references. Leaves out the copies in the isolated context:
+        /// scripts and baked tools run in the default context, and those copies would show up as duplicates there.
+        /// </summary>
+        internal static IEnumerable<Assembly> LoadedAssemblies()
+            => AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && !IsIsolated(a));
+
+        internal static bool IsIsolated(Assembly assembly)
+        {
+#if NETFRAMEWORK
+            return false;
+#else
+            var context = _context;
+            return context != null && AssemblyLoadContext.GetLoadContext(assembly) == context;
+#endif
+        }
+
+        /// <summary>Microsoft.CodeAnalysis or Microsoft.CodeAnalysis.*, by simple assembly name.</summary>
+        internal static bool IsCompilerAssembly(string name)
+            => name != null && (string.Equals(name, CompilerAssembly, StringComparison.OrdinalIgnoreCase) ||
+                name.StartsWith(CompilerAssembly + ".", StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>A load failure's FileName: an assembly display name or a file path.</summary>
+        private static bool IsCompilerFile(string file)
+        {
+            var name = file.Substring(file.LastIndexOfAny(new[] { '\\', '/' }) + 1);
+            var comma = name.IndexOf(',');
+            if (comma >= 0) name = name.Substring(0, comma);
+            name = name.Trim();
+            if (name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)) name = name.Substring(0, name.Length - 4);
+            return IsCompilerAssembly(name);
+        }
 
         internal static ScriptCompileResult CompileScript(ScriptInput input, IReadOnlyList<ScriptModuleRevision> modules,
             string[] referencePaths, Action compileStarting, out SkippedScriptReference[] skipped)
         {
+            if (modules != null && modules.Any(m => m == null))
+                throw new ScriptContractException(ScriptErrorCodes.InputInvalid, "Missing resolved module snapshot.");
             var request = new JObject
             {
                 ["code"] = input.Code,
@@ -58,7 +96,7 @@ namespace RvtMcp.Plugin
             for (var e = ex; e != null; e = e.InnerException)
             {
                 var file = (e as FileLoadException)?.FileName ?? (e as FileNotFoundException)?.FileName;
-                if (file != null && file.StartsWith(CompilerAssembly, StringComparison.OrdinalIgnoreCase))
+                if (file != null && IsCompilerFile(file))
                     return new ScriptContractException(ScriptErrorCodes.CompilerUnavailable, DescribeUnavailable(e.Message,
                         AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic).Select(a => a.GetName().Name == CompilerAssembly
                             ? Tuple.Create(a.GetName().Version, a.Location) : null).Where(a => a != null),
@@ -73,8 +111,21 @@ namespace RvtMcp.Plugin
                 !string.Equals(Path.GetDirectoryName(c.Item2), ownDirectory, StringComparison.OrdinalIgnoreCase)).ToArray();
             return "rvt-mcp could not load its C# compiler. " +
                 (others.Length == 0 ? "" : "Another Revit add-in already loaded " +
-                    string.Join("; ", others.Select(c => CompilerAssembly + " " + c.Item1 + " from " + Path.GetDirectoryName(c.Item2))) + ". ") +
+                    string.Join("; ", others.Select(c => CompilerAssembly + " " + c.Item1 + " from " + AddinFolder(Path.GetDirectoryName(c.Item2)))) + ". ") +
                 "This is an add-in conflict inside Revit, not a script error: do not rewrite the script; report it to the user. Detail: " + detail;
+        }
+
+        /// <summary>
+        /// The last three folders, joined by '/', without the drive or Users\&lt;name&gt; (for example
+        /// pyRevit-Master/bin/netcore). Response redaction cuts a full Windows path down to its last folder,
+        /// which would hide the add-in's name.
+        /// </summary>
+        internal static string AddinFolder(string directory)
+        {
+            var parts = (directory ?? "").Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries)
+                .Where(p => !p.EndsWith(":", StringComparison.Ordinal)).ToList();
+            if (parts.Count >= 2 && string.Equals(parts[0], "Users", StringComparison.OrdinalIgnoreCase)) parts.RemoveRange(0, 2);
+            return string.Join("/", parts.Skip(Math.Max(0, parts.Count - 3)));
         }
 
         private static T Call<T>(string method, params object[] arguments)
@@ -103,9 +154,13 @@ namespace RvtMcp.Plugin
                 _bridge = typeof(RoslynBridge);
 #else
                 var self = typeof(RoslynHost).Assembly;
-                _bridge = string.IsNullOrEmpty(self.Location) ? typeof(RoslynBridge)
-                    : new RoslynLoadContext(Path.GetDirectoryName(self.Location), self.GetName().Name)
-                        .LoadFromAssemblyName(self.GetName()).GetType(typeof(RoslynBridge).FullName, true);
+                if (string.IsNullOrEmpty(self.Location)) _bridge = typeof(RoslynBridge);
+                else
+                {
+                    var context = new RoslynLoadContext(Path.GetDirectoryName(self.Location), self.GetName().Name);
+                    _context = context;
+                    _bridge = context.LoadFromAssemblyName(self.GetName()).GetType(typeof(RoslynBridge).FullName, true);
+                }
 #endif
                 return _bridge;
             }
@@ -128,7 +183,7 @@ namespace RvtMcp.Plugin
         protected override Assembly Load(AssemblyName name)
         {
             if (!string.Equals(name.Name, _bridgeAssembly, StringComparison.Ordinal) &&
-                !name.Name.StartsWith(RoslynHost.CompilerAssembly, StringComparison.Ordinal)) return null;
+                !RoslynHost.IsCompilerAssembly(name.Name)) return null;
             var path = Path.Combine(_directory, name.Name + ".dll");
             return File.Exists(path) ? LoadFromAssemblyPath(path) : null;
         }
