@@ -152,7 +152,7 @@ namespace RvtMcp.Tests
             Assert.NotNull(field);
             var text = (string)(field!.GetRawConstantValue() ?? field.GetValue(null)!);
             var bytes = System.Text.Encoding.UTF8.GetByteCount(text);
-            Assert.True(bytes <= 2048, $"ServerInstructionsText is {bytes} UTF-8 bytes (Anthropic Tool Search cap is 2048).");
+            Assert.True(bytes <= 2048, $"ServerInstructionsText is {bytes} UTF-8 bytes (family cap 2048, INSTR-MAX-2KB).");
             Assert.DoesNotContain("revit_change prompt", text);
         }
 

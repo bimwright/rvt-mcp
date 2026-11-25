@@ -54,6 +54,22 @@ namespace RvtMcp.Tests
             Assert.True(Encoding.UTF8.GetByteCount(text) < 2048);
         }
 
+        // INSTR-MOVE-TO-TOOL (BW-MCP-UPGRADE-001): Claude Code truncates a preloaded tool description at
+        // 4,096 characters, so every tool in every toolset, read-only or not, stays within it.
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Every_tool_description_fits_in_4096_characters(bool readOnly)
+        {
+            var config = new RvtMcpConfig { ReadOnly = readOnly, Toolsets = new List<string> { "all" } };
+            var tools = Program.CreateRegisteredTools(ToolsetFilter.Resolve(config), config)
+                .Select(tool => tool.ProtocolTool).ToList();
+            Assert.True(tools.Count > 30, "expected the full tool catalog, found " + tools.Count);
+            var tooLong = tools.Where(t => (t.Description ?? "").Length > 4096)
+                .Select(t => t.Name + "=" + t.Description!.Length).ToList();
+            Assert.True(tooLong.Count == 0, "Descriptions over 4096 characters: " + string.Join(", ", tooLong));
+        }
+
         [Fact]
         public void Core_descriptions_fit_per_tool_budget()
         {

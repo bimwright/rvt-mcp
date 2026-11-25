@@ -2,8 +2,9 @@ namespace RvtMcp.Server
 {
     partial class Program
     {
-        // Anthropic Tool Search truncates this at 2 KB; the constant below is kept
-        // under 2048 UTF-8 bytes. Lead with the keyword paragraph (highest discriminative
+        // Claude Code truncates server instructions at 4,096 characters; the family cap is stricter:
+        // the constant below is kept under 2048 UTF-8 bytes so four gateways open together stay small
+        // and clients with lower limits still read it whole. Lead with the keyword paragraph (highest discriminative
         // signal for queries like "list Revit tools"), then the report rule (clients that load
         // tool descriptions on demand never read revit_report_task_result's), then a compact
         // toolset-name index — 1-2 examples per toolset — so semantic search for individual ops still resolves.
