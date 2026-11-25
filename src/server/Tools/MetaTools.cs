@@ -108,6 +108,15 @@ namespace RvtMcp.Server
                     message = TargetPayload.CodeName(payload.Code) + ": " + ServerState.ReadOnlyTargetGuidance;
             }
             FillWindowTitles(json);
+            if (ClientSandboxGuidance.Replaces(payload))
+            {
+                // FC-TGT-07: inside the client's AppContainer, NO_TARGET is reported as CLIENT_SANDBOXED.
+                json["code"] = ClientSandboxGuidance.Code;
+                json["recommended_next_tool"] = JValue.CreateNull();
+                json["next_step"] = ClientSandboxGuidance.NextStep;
+                json["sandbox"] = ClientSandboxGuidance.SandboxJson(ClientSandbox.Current);
+                message = ClientSandboxGuidance.Message;
+            }
             var envelope = new JObject
             {
                 ["success"] = false,
@@ -166,17 +175,24 @@ namespace RvtMcp.Server
                     is_current = snap.Record != null && string.Equals(snap.Record.TargetId, c.TargetId, StringComparison.OrdinalIgnoreCase),
                     window_title = c.WindowTitle
                 }).ToArray();
-                return JsonConvert.SerializeObject(new
+                var sandbox = targets.Length == 0 ? ClientSandbox.Current : ClientSandboxResult.NotDetected;
+                var listing = new
                 {
                     discovery_dir = dir,
                     count = targets.Length,
                     targets,
                     note = targets.Length == 0
-                        ? "No revit-*.json descriptors found. Start Revit and ensure the rvt-mcp plugin is loaded (Add-Ins ribbon)."
+                        ? sandbox.Detected ? ClientSandboxGuidance.Message
+                        : "No revit-*.json descriptors found. Start Revit and ensure the rvt-mcp plugin is loaded (Add-Ins ribbon)."
                         : ServerState.IsReadOnly ? ServerState.ReadOnlyTargetGuidance
                         : "Pin an instance with revit_switch_target — 'version' accepts a 4-digit year, 'pid:<n>' or 'id:<target_id>'. When several instances share a year, always pin with pid:<n>.",
                     update_available = UpdateStatus.ForStatusResult()
-                }, Formatting.Indented);
+                };
+                if (!sandbox.Detected) return JsonConvert.SerializeObject(listing, Formatting.Indented);
+                // FC-TGT-07: same success shape, plus why nothing can be discovered here.
+                var json = JObject.Parse(JsonConvert.SerializeObject(listing));
+                json["sandbox"] = ClientSandboxGuidance.SandboxJson(sandbox);
+                return json.ToString(Formatting.Indented);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }

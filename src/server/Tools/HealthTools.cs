@@ -57,6 +57,9 @@ namespace RvtMcp.Server
             }
             ct.ThrowIfCancellationRequested();
             HealthRuntimeInfo.Enrich(health, gateway, connected);
+            // FC-TGT-07: report the client sandbox whenever it is detected, connected or not.
+            if (ClientSandbox.Current is { Detected: true } sandbox)
+                health["sandbox"] = ClientSandboxGuidance.SandboxJson(sandbox);
             var plugin = connected ? health["setup_plugin"] as JObject : null;
             health["update"] = checkUpdates ? await updates.CheckAsync(gateway, plugin, ct)
                 : ReleaseUpdateCheck.NotChecked(gateway, plugin);

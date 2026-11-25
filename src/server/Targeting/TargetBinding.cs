@@ -209,7 +209,9 @@ namespace RvtMcp.Server
     internal sealed class TargetException : InvalidOperationException
     {
         public TargetException(TargetPayload payload, JObject? operation = null)
-            : base(TargetPayload.CodeName(payload.Code) + ": " + payload.NextStep)
+            : base(ClientSandboxGuidance.Replaces(payload)
+                ? ClientSandboxGuidance.Message
+                : TargetPayload.CodeName(payload.Code) + ": " + payload.NextStep)
         {
             Payload = payload;
             Operation = operation;

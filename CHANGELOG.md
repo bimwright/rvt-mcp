@@ -30,6 +30,10 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 ## Unreleased
 
+### Targeting
+
+- Fix [#71](https://github.com/bimwright/rvt-mcp/issues/71): when an MCP client runs rvt-mcp inside its Windows AppContainer sandbox (for example Codex Desktop), the gateway cannot see or reach Revit, and it used to report only `count: 0` or `NO_TARGET`. It now detects the sandbox and, when no Revit is discovered, returns the new error code `CLIENT_SANDBOXED` instead of `NO_TARGET` (the command is not sent). `revit_list_available_targets` keeps its normal result and adds a `sandbox` block with guidance, and `revit_health` reports the `sandbox` block whenever the sandbox is detected. The message explains that the sandbox protects the user's computer, that only a person can let this one server run outside it (a per-server exception first), and that agents must not try to bypass it. Outside a sandbox nothing changes.
+
 ### Send code and baked tools
 
 - Fix [#68](https://github.com/bimwright/rvt-mcp/issues/68): `revit_send_code_to_revit` and baked-tool compiles failed with `Could not load file or assembly 'Microsoft.CodeAnalysis, Version=4.13.0.0'` when another add-in, such as pyRevit 7, had already loaded an older Roslyn. In Revit 2025–2027 the add-in now compiles in its own .NET load context with the Roslyn it ships. Revit 2022–2024 still compile as before.
