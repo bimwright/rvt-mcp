@@ -61,7 +61,10 @@ namespace RvtMcp.Server
             var descriptors = new List<TargetDescriptor>();
             if (Directory.Exists(dir))
             {
-                foreach (var file in Directory.GetFiles(dir, "revit-*.json"))
+                string[] files;
+                try { files = Directory.GetFiles(dir, "revit-*.json"); }
+                catch (UnauthorizedAccessException) when (ClientSandbox.Current.Detected) { files = Array.Empty<string>(); }
+                foreach (var file in files)
                 {
                     JObject json;
                     try

@@ -59,6 +59,16 @@ public sealed class ClientSandboxProtocolTests
             Assert.Equal(ClientSandboxGuidance.Message, health.Value<string>("error"));
             Assert.Equal("CLIENT_SANDBOXED", health["target"].Value<string>("code"));
             AssertSandbox(health["sandbox"], dir);
+
+            var (switchError, sw) = await call("revit_switch_target", new { version = "pid:4242" });
+            Assert.True(switchError);
+            Assert.False(sw.Value<bool>("ok"));
+            Assert.False(sw.Value<bool>("success"));
+            Assert.Equal(ClientSandboxGuidance.Message, sw.Value<string>("error"));
+            Assert.Equal("CLIENT_SANDBOXED", sw["target"].Value<string>("code"));
+            Assert.Equal(JTokenType.Null, sw["target"]["recommended_next_tool"].Type);
+            Assert.Equal(JTokenType.Null, sw["recommended_next_tool"].Type);
+            AssertSandbox(sw["target"]["sandbox"], dir);
         });
     }
 
@@ -82,6 +92,13 @@ public sealed class ClientSandboxProtocolTests
             var (_, health) = await call("revit_health");
             Assert.StartsWith("NO_TARGET:", health.Value<string>("error"));
             Assert.Null(health["sandbox"]);
+
+            var (switchError, sw) = await call("revit_switch_target", new { version = "pid:4242" });
+            Assert.True(switchError);
+            Assert.Equal("NO_TARGET", sw["target"].Value<string>("code"));
+            Assert.Equal("revit_list_available_targets", sw["target"].Value<string>("recommended_next_tool"));
+            Assert.Equal("revit_list_available_targets", sw.Value<string>("recommended_next_tool"));
+            Assert.Null(sw["target"]["sandbox"]);
         });
     }
 
@@ -125,7 +142,7 @@ public sealed class ClientSandboxProtocolTests
             : new ProcessProbeResult(ProcessState.NotFound, null, null);
     }
 
-    private delegate Task<(bool IsError, JObject Body)> Call(string tool);
+    private delegate Task<(bool IsError, JObject Body)> Call(string tool, object arguments = null);
 
     private static async Task WithServer(ClientSandboxResult sandbox, bool liveTarget, Func<Call, string, Task> body)
     {
@@ -180,9 +197,9 @@ public sealed class ClientSandboxProtocolTests
                 { protocolVersion = "2025-11-25", capabilities = new { }, clientInfo = new { name = "client-sandbox-test", version = "1" } });
                 await writer.WriteLineAsync("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}");
                 var id = 1;
-                await body(async tool =>
+                await body(async (tool, arguments) =>
                 {
-                    var reply = await Request(writer, reader, ++id, "tools/call", new { name = tool, arguments = new { } });
+                    var reply = await Request(writer, reader, ++id, "tools/call", new { name = tool, arguments = arguments ?? new { } });
                     return (reply["result"].Value<bool?>("isError") == true,
                         JObject.Parse(reply["result"]["content"][0].Value<string>("text")));
                 }, root);

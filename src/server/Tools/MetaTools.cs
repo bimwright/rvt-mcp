@@ -93,7 +93,7 @@ namespace RvtMcp.Server
         }
 
         /// <summary>§6.10 rvt envelope around a target payload: {success:false, error:"CODE: …", target:{…}}.</summary>
-        internal static JObject TargetEnvelope(TargetPayload payload, JObject operation = null)
+        internal static JObject TargetEnvelope(TargetPayload payload, JObject operation = null, bool? discoveryEmpty = null)
         {
             var json = payload.ToJson();
             var message = payload.Message;
@@ -108,7 +108,7 @@ namespace RvtMcp.Server
                     message = TargetPayload.CodeName(payload.Code) + ": " + ServerState.ReadOnlyTargetGuidance;
             }
             FillWindowTitles(json);
-            if (ClientSandboxGuidance.Replaces(payload))
+            if (ClientSandboxGuidance.Replaces(payload, discoveryEmpty))
             {
                 // FC-TGT-07: inside the client's AppContainer, NO_TARGET is reported as CLIENT_SANDBOXED.
                 json["code"] = ClientSandboxGuidance.Code;
@@ -253,10 +253,10 @@ namespace RvtMcp.Server
                 var result = ToolGateway.SwitchBinding(selector, live, out var snapBefore, rebind, expectedDocumentId);
                 if (!result.Ok)
                 {
-                    var failEnv = TargetEnvelope(result.Failure);
+                    var failEnv = TargetEnvelope(result.Failure, discoveryEmpty: live.Count == 0);
                     failEnv["ok"] = false;
                     failEnv["allowed_versions"] = new JArray(AuthToken.AllVersions);
-                    failEnv["recommended_next_tool"] = result.Failure.RecommendedNextTool;
+                    failEnv["recommended_next_tool"] = failEnv["target"]?["recommended_next_tool"]?.DeepClone() ?? JValue.CreateNull();
                     return JsonConvert.SerializeObject(failEnv, Formatting.Indented);
                 }
 

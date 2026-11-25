@@ -134,12 +134,30 @@ namespace RvtMcp.Server
             ["data_dir"] = AuthToken.DiscoveryDir()
         };
 
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<TargetPayload, object> DecisionCache = new();
+        private static readonly object Replaced = new();
+        private static readonly object Kept = new();
+
         /// <summary>True when a NO_TARGET payload must be reported as CLIENT_SANDBOXED: sandboxed and nothing live discovered.</summary>
-        internal static bool Replaces(TargetPayload payload)
+        internal static bool Replaces(TargetPayload payload, bool? discoveryEmpty = null)
         {
-            if (payload == null || payload.Code != TargetCode.NoTarget || !ClientSandbox.Current.Detected) return false;
-            try { return RevitTargetBinding.ScanNoTitles().Live.Count == 0; }
-            catch { return false; } // leave the original payload when discovery cannot be re-checked
+            if (payload == null || payload.Code != TargetCode.NoTarget || payload.Candidates.Count > 0
+                || !ClientSandbox.Current.Detected)
+                return false;
+            if (DecisionCache.TryGetValue(payload, out var cached))
+                return ReferenceEquals(cached, Replaced);
+            bool replace;
+            if (discoveryEmpty.HasValue)
+            {
+                replace = discoveryEmpty.Value;
+            }
+            else
+            {
+                try { replace = RevitTargetBinding.ScanNoTitles().Live.Count == 0; }
+                catch { replace = false; } // leave the original payload when discovery cannot be re-checked
+            }
+            DecisionCache.AddOrUpdate(payload, replace ? Replaced : Kept);
+            return replace;
         }
     }
 }
