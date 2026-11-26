@@ -377,7 +377,7 @@ namespace RvtMcp.Server
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        [McpServerTool(Name = "revit_set_project_info", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace project information fields; restore them with Revit Undo. Set typed fields on doc.ProjectInformation. Params: name, number, client_name, address, status, issue_date (all optional, at least one required). Returns changed_fields and skipped reasons for read-only/missing parameters.")]
+        [McpServerTool(Name = "revit_set_project_info", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace project information fields; restore them with Revit Undo. Set typed fields on doc.ProjectInformation. Params: name, number, client_name, address, status, issue_date (all optional, at least one required). Before editing, survey the Project Information element with revit_survey_change_impact when its ID is known; read back parameters using the returned project_info_id. Also returns changed_fields and skipped reasons for read-only/missing parameters.")]
         public static async Task<string> SetProjectInfo(
             string name = null, string number = null,
             string client_name = null, string address = null,

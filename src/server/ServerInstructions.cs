@@ -9,21 +9,20 @@ namespace RvtMcp.Server
         // and closing Safety & permissions block (FC-SRV-06 / BW-PERM-001 R-C).
         // Detail belonging to one tool lives in that tool's description (INSTR-MOVE-TO-TOOL).
         internal const string Product =
-            "rvt-mcp - Autodesk Revit 2022-2027 MCP gateway (revit_*, mm). "
-            + "Use for .rvt, BIM, walls, doors, windows, floors, ceilings, roofs, levels, grids, rooms, sheets, schedules, families, "
-            + "views, templates, filters, MEP (ducts, pipes, trays, conduits, HVAC, lighting, plumbing), structural (columns, beams, foundations, rebar), "
-            + "dimensions, tags, keynotes, worksets, phases, links, coordinates, parameters, materials, clash, IFC, DWG, NWC, PDF.";
+            "rvt-mcp - Autodesk Revit 2022-2027 MCP gateway (revit_*, mm): .rvt, BIM, walls, doors, windows, floors, ceilings, roofs, "
+            + "levels, grids, rooms, sheets, schedules, families, views, templates, filters, MEP/HVAC, ducts, pipes, trays, conduits, lighting, plumbing, "
+            + "columns, beams, foundations, rebar, dimensions, tags, keynotes, worksets, phases, links, coordinates, parameters, materials, clash, IFC/DWG/NWC/PDF.";
 
         internal const string Session =
-            "Start: revit_list_available_targets, then revit_switch_target(\"pid:<n>\") to verify instance/document before writes "
-            + "(--read-only: --target pid:<n>). Then revit_health(check_updates=true) once; follow update_guidance. "
-            + "Subagents never switch. Check revit_get_operation_status before retrying a timed-out write; REVIT_BUSY means not started. "
+            "Use only registered tools. List targets with revit_list_available_targets if available. "
+            + "Verify before writes with revit_switch_target(\"pid:<n>\"); if absent, start reads with --target pid:<n>. Subagents never switch. "
+            + "Then, if available, call revit_health(check_updates=true) once. "
+            + "Check revit_get_operation_status before retrying timed-out writes; if absent, don't retry. REVIT_BUSY means not started. "
             // INSTR-SURVEY-HINT
-            + "Before modifying existing elements call revit_survey_change_impact; afterwards read the result back.";
+            + "Call revit_survey_change_impact before editing existing elements; read the result back. Enable meta to verify or query to survey if missing.";
 
         internal const string Reporting =
-            "After Revit work that changed the model or found elements to check, call revit_report_task_result once "
-            + "before your final answer (not for chat-only answers).";
+            "If available, call revit_report_task_result once before replying for model changes or elements to check, not chat-only.";
 
         internal const string ToolIndex =
             "Toolsets (defaults query,create,view,meta; --toolsets all for rest):\n"

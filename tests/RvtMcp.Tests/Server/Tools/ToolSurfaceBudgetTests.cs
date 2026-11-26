@@ -99,14 +99,11 @@ namespace RvtMcp.Tests
             var core = new[] { "revit_health", "revit_list_available_targets", "revit_switch_target",
                 "revit_get_current_target", "revit_get_current_view_info", "revit_get_selected_elements",
                 "revit_capture_view_image", "revit_list_recent_models", "revit_open_model",
-                "revit_get_operation_status" };
+                "revit_get_operation_status", "revit_send_code_to_revit" };
             var config = new RvtMcpConfig { Toolsets = new List<string> { "all" } };
-            var tools = Program.CreateRegisteredTools(ToolsetFilter.Resolve(config), config).ToArray();
-            foreach (var tool in tools.Where(tool => core.Contains(tool.ProtocolTool.Name)))
+            foreach (var tool in Program.CreateRegisteredTools(ToolsetFilter.Resolve(config), config)
+                .Where(tool => core.Contains(tool.ProtocolTool.Name)))
                 Assert.True(tool.ProtocolTool.Description.Length <= 600, tool.ProtocolTool.Name);
-
-            var sendCode = Assert.Single(tools, t => t.ProtocolTool.Name == "revit_send_code_to_revit").ProtocolTool;
-            Assert.True(Encoding.UTF8.GetByteCount(sendCode.Description) <= 4096, "revit_send_code_to_revit");
         }
     }
 }

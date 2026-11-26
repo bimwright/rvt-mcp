@@ -31,9 +31,15 @@ namespace RvtMcp.Tests;
 [Collection("ServerStateConfig")]
 public sealed class ServerInstructionsAndAlwaysLoadTests
 {
+    private const string AlwaysLoadKey = "anthropic/alwaysLoad";
+    private static readonly string[] ExpectedAlwaysLoadTools =
+    {
+        "revit_health", "revit_list_available_targets", "revit_report_task_result", "revit_switch_target"
+    };
+
     private static readonly string[] SurveyHintTools =
     {
-        // Bucket A — existing-element mutators / deleters (56)
+        // Bucket A — existing-element mutators / deleters (57)
         "revit_apply_keynote_to_element",
         "revit_wipe_empty_tags",
         "revit_delete_element",
@@ -64,6 +70,7 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
         "revit_create_mep_fitting",
         "revit_set_system_classification",
         "revit_purge_unused",
+        "revit_set_project_info",
         "revit_assign_elements_to_workset",
         "revit_change_element_type",
         "revit_color_elements",
@@ -222,9 +229,9 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
 
     // TOOL-SURVEY-HINT (BW-MCP-UPGRADE-001)
     [Fact]
-    public void Survey_hint_is_present_on_all_64_modifying_and_dispatch_tools()
+    public void Survey_hint_is_present_on_all_65_modifying_and_dispatch_tools()
     {
-        Assert.Equal(64, SurveyHintTools.Length);
+        Assert.Equal(65, SurveyHintTools.Length);
         var byName = AllProtocolTools().ToDictionary(t => t.Name, StringComparer.Ordinal);
 
         foreach (var name in SurveyHintTools)
@@ -287,6 +294,8 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
     [InlineData("--toolsets all --disable-toolbaker", 4)]
     [InlineData("--toolsets all --enable-adaptive-bake", 4)]
     [InlineData("--toolsets query", 0)]
+    [InlineData("--toolsets meta", 4)]
+    [InlineData("--toolsets modify", 0)]
     public async Task Wire_stream_exposes_instructions_caps_and_alwaysLoad_across_cli_modes(
         string cliLine, int expectedAlwaysLoadCount)
     {
@@ -334,6 +343,18 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
                 var catalog = await RequestAsync(writer, reader, 2, "tools/list", new { });
                 var tools = (JArray)catalog["result"]!["tools"]!;
                 Assert.NotEmpty(tools);
+                var registered = tools.Select(t => t.Value<string>("name")!).ToHashSet(StringComparer.Ordinal);
+                Assert.Contains("Use only registered tools", instructions, StringComparison.Ordinal);
+                if (!registered.Contains("revit_switch_target"))
+                    Assert.Contains("if absent, start reads with --target pid:<n>", instructions, StringComparison.Ordinal);
+                if (!registered.Contains("revit_health"))
+                    Assert.Contains("if available, call revit_health(check_updates=true)", instructions, StringComparison.Ordinal);
+                if (!registered.Contains("revit_report_task_result"))
+                    Assert.Contains("If available, call revit_report_task_result", instructions, StringComparison.Ordinal);
+                if (!registered.Contains("revit_get_operation_status"))
+                    Assert.Contains("before retrying timed-out writes; if absent, don't retry", instructions, StringComparison.Ordinal);
+                if (!registered.Contains("revit_survey_change_impact") || !registered.Contains("revit_switch_target"))
+                    Assert.Contains("Enable meta to verify or query to survey if missing", instructions, StringComparison.Ordinal);
 
                 var alwaysLoaded = new List<string>();
                 foreach (JObject tool in tools)
@@ -355,13 +376,14 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
                     }
 
                     var meta = tool["_meta"] as JObject;
-                    if (meta?[Program.AlwaysLoadMetadataKey]?.Value<bool>() == true)
+                    if (meta?[AlwaysLoadKey] is { Type: JTokenType.Boolean } flag && flag.Value<bool>())
                         alwaysLoaded.Add(name);
 
                     if (name == "revit_health")
                     {
                         Assert.NotNull(meta);
-                        Assert.True(meta![Program.AlwaysLoadMetadataKey]?.Value<bool>() == true);
+                        Assert.Equal(JTokenType.Boolean, meta![AlwaysLoadKey]?.Type);
+                        Assert.True(meta[AlwaysLoadKey]?.Value<bool>() == true);
                         Assert.NotNull(meta[HealthRuntimeInfo.ClientRuntimeMetadataKey]);
                     }
                     else if (name == "revit_send_code_to_revit")
@@ -371,12 +393,11 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
                     }
                     else if (name == "revit_get_report_history")
                     {
-                        Assert.Null(meta?[Program.AlwaysLoadMetadataKey]);
+                        Assert.Null(meta?[AlwaysLoadKey]);
                     }
                 }
 
-                var registered = tools.Select(t => t.Value<string>("name")!).ToHashSet(StringComparer.Ordinal);
-                var expected = Program.AlwaysLoadToolNames
+                var expected = ExpectedAlwaysLoadTools
                     .Where(registered.Contains)
                     .OrderBy(n => n, StringComparer.Ordinal)
                     .ToArray();
@@ -446,11 +467,11 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
 
             var registered = tools.Select(t => t.Name).ToHashSet(StringComparer.Ordinal);
             var alwaysLoaded = tools
-                .Where(t => t.ProtocolTool.Meta?[Program.AlwaysLoadMetadataKey]?.GetValue<bool>() == true)
+                .Where(t => t.ProtocolTool.Meta?[AlwaysLoadKey]?.GetValue<bool>() == true)
                 .Select(t => t.Name)
                 .OrderBy(n => n, StringComparer.Ordinal)
                 .ToArray();
-            var expected = Program.AlwaysLoadToolNames
+            var expected = ExpectedAlwaysLoadTools
                 .Where(registered.Contains)
                 .OrderBy(n => n, StringComparer.Ordinal)
                 .ToArray();

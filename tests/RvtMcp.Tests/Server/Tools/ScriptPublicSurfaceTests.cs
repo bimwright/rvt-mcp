@@ -46,14 +46,18 @@ namespace RvtMcp.Tests
             Assert.Null(tool.Annotations);
             Assert.Null(tool.Meta);
             var descBytes = System.Text.Encoding.UTF8.GetByteCount(tool.Description);
-            Assert.True(descBytes <= 4096, $"revit_send_code_to_revit description is {descBytes} UTF-8 bytes (cap 4096, INSTR-MOVE-TO-TOOL).");
+            Assert.True(descBytes <= 599, $"revit_send_code_to_revit description is {descBytes} UTF-8 bytes (core budget 599).");
+            foreach (var hint in new[] { "data", "modules", "compile_only", "SafeFailuresPreprocessor", "_failure", "700 KiB", "36 h", "revit_survey_change_impact" })
+                Assert.Contains(hint, tool.Description);
+            var codeDescription = schema["properties"]["code"].Value<string>("description");
             foreach (var hint in new[]
             {
-                "data", "coordinates", "modules", "task_v1", "McpTaskResult.Pass/Fail", "SafeFailuresPreprocessor",
-                "UIApplication app", "Document doc", "Autodesk.Revit.DB", "Architecture", "Newtonsoft.Json.Linq",
-                "RvtMcp.Plugin", "full source should declare its own usings", "_failure", "700 KiB", "36 h", "revit_survey_change_impact"
+                "McpDynamicScript.Run", "UIApplication app", "UIDocument uidoc", "Document doc", "Autodesk.Revit.DB",
+                "Architecture", "Newtonsoft.Json.Linq", "RvtMcp.Plugin.SafeFailuresPreprocessor", "declare its own usings"
             })
-                Assert.Contains(hint, tool.Description);
+                Assert.Contains(hint, codeDescription);
+            Assert.Contains("coordinates", schema["properties"]["data"].Value<string>("description"));
+            Assert.Contains("McpTaskResult.Pass/Fail", schema["properties"]["result_contract"].Value<string>("description"));
             foreach (var prop in ((JObject)schema["properties"]).Properties())
             {
                 var paramDesc = prop.Value["description"]?.Value<string>();

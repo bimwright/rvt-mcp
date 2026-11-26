@@ -7266,11 +7266,11 @@
     },
     {
       "name": "revit_send_code_to_revit",
-      "description_hash": "sha256:c5b7923a43410550175a29b9c7bf57db055a60cad19f91900c9a1a988961b76b",
+      "description_hash": "sha256:490e42ce64ef2f19caa9aad87b180ffb9dbedc6ebcb467844b1e4594472e2e15",
       "inputSchema": {
         "properties": {
           "code": {
-            "description": "C# body with return (no closing }) or full McpDynamicScript class; use revit_describe_api to inspect Revit API types first.",
+            "description": "C# body with return (no closing }) and optional helper types, or full public static McpDynamicScript.Run(UIApplication[, JObject]). Body globals: UIApplication app, nullable UIDocument uidoc and Document doc (null at Revit Home), plus JObject data when supplied. Return JSON-safe DTOs, never raw Revit API objects. Body imports: System, System.Linq, System.Collections.Generic, Autodesk.Revit.DB (+ Architecture, Electrical, Mechanical, Plumbing, Structure), Autodesk.Revit.UI; plus Newtonsoft.Json.Linq with data and RvtMcp.Plugin with result_contract=task_v1. Full source should declare its own usings. Wrap writes in Transaction/StairsEditScope with RvtMcp.Plugin.SafeFailuresPreprocessor: unapproved failures roll back that transaction, not earlier commits or file writes. Use revit_describe_api to inspect Revit API types.",
             "type": "String"
           },
           "compile_only": {
@@ -7796,7 +7796,7 @@
     },
     {
       "name": "revit_set_project_info",
-      "description_hash": "sha256:4dfe332684f23cce38cd63d1f14a9dc56fd38ed4f8d77d6762bf5ea02c7289cd",
+      "description_hash": "sha256:004708efdbc35332d0f22f1449bcabcde63458e6088a43cb868775eb349ea2d2",
       "inputSchema": {
         "properties": {
           "address": {
