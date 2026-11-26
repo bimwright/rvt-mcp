@@ -62,12 +62,16 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
-        public void Instructions_include_document_policy_and_fit_discovery_budget()
+        public void Instructions_index_documents_and_tool_descriptions_carry_document_policy()
         {
             var text = (string)typeof(Program).GetField("ServerInstructionsText", BindingFlags.NonPublic | BindingFlags.Static).GetRawConstantValue();
-            Assert.Contains("Documents: call revit_get_document_state before saving and follow its policy; checkpoint only before risky work.", text);
-            Assert.Contains("- documents: save_document, save_checkpoint", text);
-            Assert.True(Encoding.UTF8.GetByteCount(text) < 2048);
+            Assert.Contains("documents (save_document, save_checkpoint)", text);
+            Assert.Contains("get_document_state", text);
+            Assert.True(Encoding.UTF8.GetByteCount(text) <= 2048);
+
+            var tools = Tools(new RvtMcpConfig { Toolsets = new List<string> { "all" } }).Select(t => t.ProtocolTool).ToArray();
+            Assert.Contains("revit_get_document_state", Assert.Single(tools, t => t.Name == "revit_save_document").Description);
+            Assert.Contains("revit_get_document_state", Assert.Single(tools, t => t.Name == "revit_save_checkpoint").Description);
         }
     }
 }

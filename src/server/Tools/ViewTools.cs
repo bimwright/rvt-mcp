@@ -42,7 +42,7 @@ namespace RvtMcp.Server
             });
         }
 
-        [McpServerTool(Name = "revit_set_view_crop", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace saved view crop settings; restore them with Revit Undo. Modify view crop: enabled, visible, explicit bounds_json (mm), or fit_element_ids with padding_mm. Params: view_id (optional, default active), enabled, visible, bounds_json, fit_element_ids, padding_mm (default 100).")]
+        [McpServerTool(Name = "revit_set_view_crop", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace saved view crop settings; restore them with Revit Undo. Modify view crop: enabled, visible, explicit bounds_json (mm), or fit_element_ids with padding_mm. Params: view_id (optional, default active), enabled, visible, bounds_json, fit_element_ids, padding_mm (default 100). Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> SetViewCrop(
             long? view_id = null, bool? enabled = null, bool? visible = null,
             string bounds_json = null, long[] fit_element_ids = null, double padding_mm = 100)
@@ -67,7 +67,7 @@ namespace RvtMcp.Server
             });
         }
 
-        [McpServerTool(Name = "revit_set_view_scale", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace a saved view scale; restore it with Revit Undo. Set the graphical scale denominator of a view (e.g., 50 for 1:50). Params: view_id (optional, default active), scale (required, positive integer).")]
+        [McpServerTool(Name = "revit_set_view_scale", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace a saved view scale; restore it with Revit Undo. Set the graphical scale denominator of a view (e.g., 50 for 1:50). Params: view_id (optional, default active), scale (required, positive integer). Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> SetViewScale(int scale, long? view_id = null)
         {
             var blocked = ServerState.BlockIfReadOnly("set_view_scale");
@@ -106,7 +106,7 @@ namespace RvtMcp.Server
         [McpServerTool(Name = "revit_set_view_style", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
             "Replace a view's display style and detail level; restore them with Revit Undo. Use before revit_capture_view_image to get shaded or realistic images. " +
             "display_style: wireframe|hidden_line|shaded|shaded_edges|consistent_colors|realistic; detail_level: coarse|medium|fine. View by view_id or view_name; default active view. " +
-            "For category visibility use revit_set_category_visibility. Example: view_name='3D Overview', display_style='shaded', detail_level='fine'.")]
+            "For category visibility use revit_set_category_visibility. Example: view_name='3D Overview', display_style='shaded', detail_level='fine'. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> SetViewStyle(long? view_id = null, string view_name = null, string display_style = null, string detail_level = null)
         {
             var blocked = ServerState.BlockIfReadOnly("set_view_style");
@@ -118,7 +118,7 @@ namespace RvtMcp.Server
             "Replace a 3D view's camera orientation; restore it with Revit Undo. The default 3D view ({3D}, or {3D - user} when workshared) only moves its temporary camera, which is not saved and has no Undo. " +
             "Pass view_name or view_id; without them the active view is used. To capture the result, e.g. for turntable images, pass the returned view.view_id to revit_capture_view_image, which otherwise exports the active view. " +
             "eye and target are [x,y,z] in mm; up defaults to +Z and falls back to another axis when parallel to the view direction. perspective=true toggles an isometric view to perspective (false toggles back) when Revit allows. " +
-            "Zooms to fit if the view is open. The default 3D view's crop box is turned off; a named view keeps its crop box unless fit=true; fit=false changes neither. Example: view_name='{3D}', eye=[-50000,-50000,30000], target=[0,0,0].")]
+            "Zooms to fit if the view is open. The default 3D view's crop box is turned off; a named view keeps its crop box unless fit=true; fit=false changes neither. Example: view_name='{3D}', eye=[-50000,-50000,30000], target=[0,0,0]. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> SetViewOrientation(double[] eye, double[] target, long? view_id = null, string view_name = null, double[] up = null,
             bool? perspective = null, bool? fit = null)
         {
@@ -130,7 +130,7 @@ namespace RvtMcp.Server
         [McpServerTool(Name = "revit_create_camera_view", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
             "Create a perspective 3D camera view, or replace the orientation of an existing perspective view with the same name; restore it with Revit Undo. " +
             "Use for eye-level or aerial perspective images with revit_capture_view_image. eye and target are [x,y,z] in mm, optional up. Far clipping is turned off unless far_clip=true. " +
-            "Returns the view id. Example: name='Entrance Camera', eye=[0,-30000,1700], target=[0,0,1700].")]
+            "Returns the view id. Example: name='Entrance Camera', eye=[0,-30000,1700], target=[0,0,1700]. Call revit_survey_change_impact before modifying existing elements and read back the result.")]
         public static async Task<string> CreateCameraView(string name, double[] eye, double[] target, double[] up = null, bool far_clip = false)
         {
             var blocked = ServerState.BlockIfReadOnly("create_camera_view");

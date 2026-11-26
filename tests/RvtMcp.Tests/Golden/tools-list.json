@@ -4,7 +4,7 @@
   "tools": [
     {
       "name": "revit_acquire_coordinates_from_link",
-      "description_hash": "sha256:10aa70fd280a5970a57673f002f5b5ca2b7e8e92ffbf1229f072ab6d22bedeaf",
+      "description_hash": "sha256:6ed4fcf59096f39ff10bd3d23a9692f1f7f6cbb3a4f876312760a1433201b036",
       "inputSchema": {
         "properties": {
           "confirm": {
@@ -142,7 +142,7 @@
     },
     {
       "name": "revit_align_viewports",
-      "description_hash": "sha256:735a973f3ee1f4fba579fa91e7c019be496f53fc1f0296cbf158934b590c2091",
+      "description_hash": "sha256:81b81ac0a1906337199a16f27644f7350808185885e951ac30a43271bdc40944",
       "inputSchema": {
         "properties": {
           "dryRun": {
@@ -368,7 +368,7 @@
     },
     {
       "name": "revit_apply_filter_to_view",
-      "description_hash": "sha256:e5d8979c287670e02d497f5d9184a30d3a96e9e17406687d804020c1b571a900",
+      "description_hash": "sha256:29227409ed02a6dfb867c11983b93c90d5290440686af7800cb8ab76d5c90e68",
       "inputSchema": {
         "properties": {
           "filterId": {
@@ -398,7 +398,7 @@
     },
     {
       "name": "revit_apply_keynote_to_element",
-      "description_hash": "sha256:df3f337f4819773d32fe289d94850e32c78ae29785dae3530f649919581642b9",
+      "description_hash": "sha256:62d2ff6b46b71faf470db8698a53b23eb896501eee6a5b76b05856669b68d17e",
       "inputSchema": {
         "properties": {
           "dryRun": {
@@ -429,7 +429,7 @@
     },
     {
       "name": "revit_apply_schedule_filter_sort",
-      "description_hash": "sha256:4c9765e6c7b968ae6a55137bddfaf34ad53ae6cf62ce0eeedbeb24da340fcdd2",
+      "description_hash": "sha256:d640563d806a0c19abdca35bc6a5215bd2ddafe0ad297299001fd8d945982236",
       "inputSchema": {
         "properties": {
           "filters": {
@@ -465,7 +465,7 @@
     },
     {
       "name": "revit_apply_view_template",
-      "description_hash": "sha256:d857ea280f68c5c84037455984a0719b9a8a8292c9989b43066f6a5e3ea1e817",
+      "description_hash": "sha256:969f651b3203e29d78156c55b200bc8e18879d92f1d4f6ad1ebf01b17ebce830",
       "inputSchema": {
         "properties": {
           "mode": {
@@ -499,7 +499,7 @@
     },
     {
       "name": "revit_assign_elements_to_workset",
-      "description_hash": "sha256:1e13cb9a24733d6b8f1d236c7d82d378bac9a0b5c26cca430111a7c02131f9f0",
+      "description_hash": "sha256:dcfbc7ffccad50450a38f7a027c4acdd4d0d20eac6a0e009a7f5a3afea2b0faf",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -529,7 +529,7 @@
     },
     {
       "name": "revit_assign_material_to_element",
-      "description_hash": "sha256:18a12ecb7b4a672458e2aed3e6e7c83cbde89e6583a4561586efefd623435f96",
+      "description_hash": "sha256:1bf34ed04a4cf3cd1807b4c19ba9efe7aa42e3b4f75f41688db0c88af37dc951",
       "inputSchema": {
         "properties": {
           "allowTypeMutation": {
@@ -575,7 +575,7 @@
     },
     {
       "name": "revit_assign_revision_to_sheet",
-      "description_hash": "sha256:12dddf5278ef35d83effb4f2579805a0e527f39b486967cb5eb59b896cca0dd1",
+      "description_hash": "sha256:66619e109253d9ab793ec555004186a40f9a5aaf66ba03012a893f6e09d6ff8a",
       "inputSchema": {
         "properties": {
           "mode": {
@@ -699,7 +699,7 @@
     },
     {
       "name": "revit_batch_execute",
-      "description_hash": "sha256:404f8b08d6972af1d698f5d52a9148d261dbe1d65b4b03e583bac87f917bd637",
+      "description_hash": "sha256:580c595b110aee530249fa4aa03af8d8fc86b485f6130e5b79638ea6e87aa59a",
       "inputSchema": {
         "properties": {
           "commands": {
@@ -839,7 +839,7 @@
     },
     {
       "name": "revit_change_element_type",
-      "description_hash": "sha256:9b5964b2aa17f9c3a10654475f5741244611522a64b2ae55ccaa050640fca885",
+      "description_hash": "sha256:ecd90e005a5bf4b7c8eefcb94cf13a969a46b71b0f956fbe77feee3cdc5a8249",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -909,7 +909,7 @@
     },
     {
       "name": "revit_clear_element_overrides",
-      "description_hash": "sha256:ca5251a9cc52c7f5e37aebb62fb59cc0ec81e30464b227365306506b15f9b46f",
+      "description_hash": "sha256:5e90de96b9b313fc123caa61fe6ce9f5e8faa106254294e451e7e29517de0c5c",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -933,7 +933,7 @@
     },
     {
       "name": "revit_color_elements",
-      "description_hash": "sha256:bede17603abfb6cde251fe07daf4f5a90b09d93a69265c9b27346634d1a3b3d1",
+      "description_hash": "sha256:25865020cd56d583473fd14cdbb0f17f5fe71b883578299322bdfe7204be5211",
       "inputSchema": {
         "properties": {
           "category": {
@@ -1052,7 +1052,7 @@
     },
     {
       "name": "revit_connect_mep_elements",
-      "description_hash": "sha256:e9e8811624699f2fd097999cebc269a6de6b4424a2cd6d2b224a3af1d505f891",
+      "description_hash": "sha256:818910e89abfa49c46da945cf80f65fdabd8942016588d6aa0f8eca9ab623f55",
       "inputSchema": {
         "properties": {
           "connectorIndex1": {
@@ -1300,7 +1300,7 @@
     },
     {
       "name": "revit_create_camera_view",
-      "description_hash": "sha256:48996a0c743d0646fa76268811959b1cbd6b43ba76a0d48bb69900527bcae819",
+      "description_hash": "sha256:0bd0472dfc37944160d27dd676adf53f81064c2ce7ecc41c35ad31a8f37ec055",
       "inputSchema": {
         "properties": {
           "eye": {
@@ -1902,7 +1902,7 @@
     },
     {
       "name": "revit_create_mep_fitting",
-      "description_hash": "sha256:fbed9d4ef68f040525ad8b0563fbcc4022453b1947d549932b0becd23c8bcc54",
+      "description_hash": "sha256:f738abbdd6a80090f759b9bd304cdb33f9b7d524335a364bff1e75ccb5ec56cb",
       "inputSchema": {
         "properties": {
           "connectors": {
@@ -1929,7 +1929,7 @@
     },
     {
       "name": "revit_create_mesh_shapes",
-      "description_hash": "sha256:911255afaff76e28a4e24f3df838d12bcea0a5d85c8017e8b4c5052b9cd93619",
+      "description_hash": "sha256:ee86fa99242d1692884fab5c6e377a1706aa7181827f531f3ea178214de04ae0",
       "inputSchema": {
         "properties": {
           "file": {
@@ -3004,7 +3004,7 @@
     },
     {
       "name": "revit_delete_element",
-      "description_hash": "sha256:3a26ed432dbaceac8112acdfec46a5dac1574a64bcf3a6d4659f4f152f8afde0",
+      "description_hash": "sha256:fe38d46b7c2dbdca2d5b6676177e8bf8a45d063ee943434ab2f21e80062a3f3c",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -3026,7 +3026,7 @@
     },
     {
       "name": "revit_delete_saved_selection",
-      "description_hash": "sha256:f105c26b76bceaa7e9c7bb14130c42b5ab65da61d3312fbdc5d8f03488f8ddd3",
+      "description_hash": "sha256:aebdfc670741c31c1615a91652641d6cb20a6943fa8a7effa7ce94e82c7429e2",
       "inputSchema": {
         "properties": {
           "dryRun": {
@@ -3054,7 +3054,7 @@
     },
     {
       "name": "revit_delete_view_template",
-      "description_hash": "sha256:481d1d2622c75f3332739ef57f7aaacd6603f5300f4736a011051332ae411e7b",
+      "description_hash": "sha256:4013e3439fe6d9709357539f23cfebf6869d00a697f84b28ce15e46711adc3cd",
       "inputSchema": {
         "properties": {
           "clearFromViews": {
@@ -5089,7 +5089,7 @@
     },
     {
       "name": "revit_health",
-      "description_hash": "sha256:28dde0e2b2b52c5efaa42d65db50d5152a7a2ddacbf416ebec21e43fe8d44a72",
+      "description_hash": "sha256:66ec12a955fa8cd81cf383afdac2519c5c2bcab91872a90b8ee170d6497845ee",
       "inputSchema": {
         "properties": {
           "cancellationToken": {
@@ -6010,7 +6010,7 @@
     },
     {
       "name": "revit_load_family_from_path",
-      "description_hash": "sha256:844d6e0b9e425320ac1b19a506a16eb75984f5a64b509ce980a13f5d9a9d64ae",
+      "description_hash": "sha256:db8a77e8c1a50dca8ba99f27cfd44994dcf9782d675d1e078411de6ea4a101fa",
       "inputSchema": {
         "properties": {
           "includeSymbols": {
@@ -6183,7 +6183,7 @@
     },
     {
       "name": "revit_move_elements",
-      "description_hash": "sha256:41ba8c64adb50e9e44521446491d27ce170de0328e0b07d0942a439cc29cb0a6",
+      "description_hash": "sha256:0f7043b2ba8b24f866a889c11ff6384d0d73224f2832204899a2cc40f90ac3ea",
       "inputSchema": {
         "properties": {
           "dx_mm": {
@@ -6258,7 +6258,7 @@
     },
     {
       "name": "revit_operate_element",
-      "description_hash": "sha256:f4d2f0c2fbd7c751b1a75964d182b6533d8f78ccdd4fbcf844e6104ea8197f64",
+      "description_hash": "sha256:a41e792f29fec310d9915dcc36e2a7e6dd436fa6bdc3dea31c13c13842903339",
       "inputSchema": {
         "properties": {
           "b": {
@@ -6297,7 +6297,7 @@
     },
     {
       "name": "revit_override_element_graphics",
-      "description_hash": "sha256:d3bf9c4d83f54980746c02018ec3d493001231467fd43502627e3eb3508236e4",
+      "description_hash": "sha256:952733a8ffa26d57e7ebc37438920cb42804e68697dbe8e24cf91195ba1efbe9",
       "inputSchema": {
         "properties": {
           "cutLineColor": {
@@ -6477,7 +6477,7 @@
     },
     {
       "name": "revit_publish_coordinates_to_link",
-      "description_hash": "sha256:05ce2545541ffb950bedfb8250ee4ce7474f71585fda24c58bbc2d85cbf96dd9",
+      "description_hash": "sha256:90603f0c359175e5ce6bfb26fbf8d750375080dc6e00367adf995b2497b744fa",
       "inputSchema": {
         "properties": {
           "confirm": {
@@ -6507,7 +6507,7 @@
     },
     {
       "name": "revit_purge_unused",
-      "description_hash": "sha256:c87b39803c463f9ae7cd35bba102588a920aa4ea2d4c3da27397b8d6e6277549",
+      "description_hash": "sha256:21677c03706ad14c1c6cded2e4147903abae19f6269b8b752a658402e26fdd0f",
       "inputSchema": {
         "properties": {
           "dry_run": {
@@ -6652,7 +6652,7 @@
     },
     {
       "name": "revit_reload_link",
-      "description_hash": "sha256:11e93a06f7e40115b3a130402970122ad6b9de6faeea6698f0a8ffad6bc97710",
+      "description_hash": "sha256:44811249d47e1e5b55e56a1e1cf6d25025cfe341251ca5cfdad91eb67bd0f05b",
       "inputSchema": {
         "properties": {
           "linkInstanceId": {
@@ -6680,7 +6680,7 @@
     },
     {
       "name": "revit_remove_filter_from_view",
-      "description_hash": "sha256:97b35eda1ad0efcc3573a313c9b100e081cd8ac4a95702e123d6f2cb921f9e4f",
+      "description_hash": "sha256:a56a0de80c11e6025e8bd9faf12c762a349a066787255a181f5c8031468087c6",
       "inputSchema": {
         "properties": {
           "deleteDefinitionIfUnused": {
@@ -6746,7 +6746,7 @@
     },
     {
       "name": "revit_rename_family_type",
-      "description_hash": "sha256:b263347b4eec4aece6496ef53259335b57c3653bb5ff2464479d1de5a1113897",
+      "description_hash": "sha256:ce4a40fea3e88594f8199ea4ea4106a905f458d4554edef551eb80787defc603",
       "inputSchema": {
         "properties": {
           "newName": {
@@ -6773,7 +6773,7 @@
     },
     {
       "name": "revit_renumber_sheets",
-      "description_hash": "sha256:ed76f296a1dc0527bf8ec8730d0619096002fc2f8b16625180378a0c3ef407b9",
+      "description_hash": "sha256:ea71aa2322101485e911cc05fc555ec437f7388c7bd31bf699cac47f28317846",
       "inputSchema": {
         "properties": {
           "dryRun": {
@@ -6813,7 +6813,7 @@
     },
     {
       "name": "revit_replace_family_type",
-      "description_hash": "sha256:be78f1b75065536409cdd6d732a44bc34853df4769f1f39ae48b1478112fa442",
+      "description_hash": "sha256:264459f87ebce5da9f6ab59645931e216f74240cbc963a6bbe72d2b777ed328b",
       "inputSchema": {
         "properties": {
           "dryRun": {
@@ -6924,7 +6924,7 @@
     },
     {
       "name": "revit_rotate_elements",
-      "description_hash": "sha256:537d60d2d895d9bb925f5958a98d115048244727cdd3b9f72c5f031c680256a1",
+      "description_hash": "sha256:c86f295afcc67538e02540948529913487b219b3dd7f24e54800e17b5420767f",
       "inputSchema": {
         "properties": {
           "angle_degrees": {
@@ -6967,7 +6967,7 @@
     },
     {
       "name": "revit_run_baked_tool",
-      "description_hash": "sha256:99eba48531af06e3b050e5667a7645170f00ab38eb79badb556e5a64f6aeaf38",
+      "description_hash": "sha256:65fd64fa010153fb6dc0939dbb4aca84717dbcbac8e5d6d21c22dcfb6bef481e",
       "inputSchema": {
         "properties": {
           "name": {
@@ -6997,7 +6997,7 @@
     },
     {
       "name": "revit_save_checkpoint",
-      "description_hash": "sha256:3117abe61fa82efb96231205b60614dbc3d5de7d030eb7164dddba698accf718",
+      "description_hash": "sha256:9b02cdb5913fbd7bfb71d0c9683435346fac6b80af11e5d720c003bf10a579fb",
       "inputSchema": {
         "properties": {
           "allow_format_upgrade": {
@@ -7102,7 +7102,7 @@
     },
     {
       "name": "revit_save_selection",
-      "description_hash": "sha256:480e16b7ed47acb904fe665be725c228ca8e12e8b3254c88377c6c5dd910c0de",
+      "description_hash": "sha256:e04ce129a43e3b70536f2a2a7b8e3126ff58eee37bc40353c600b5c6b729d75d",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -7176,31 +7176,31 @@
     },
     {
       "name": "revit_send_code_to_revit",
-      "description_hash": "sha256:d5e77b0242da65c295477fb2db068b65343dd42fd77e5675a8ab22748f1de795",
+      "description_hash": "sha256:c5b7923a43410550175a29b9c7bf57db055a60cad19f91900c9a1a988961b76b",
       "inputSchema": {
         "properties": {
           "code": {
-            "description": "",
+            "description": "C# body with return (no closing }) or full McpDynamicScript class; use revit_describe_api to inspect Revit API types first.",
             "type": "String"
           },
           "compile_only": {
-            "description": "",
+            "description": "Validate syntax and compilation without executing against Revit (default false).",
             "type": "Boolean"
           },
           "data": {
-            "description": "",
+            "description": "Optional JSON object bound as JObject data for literals, coordinates, and lists so code stays reusable.",
             "type": "Dictionary`2"
           },
           "modules": {
-            "description": "",
+            "description": "Optional saved code-module names (from revit_list_code_modules) compiled alongside the script for shared helpers.",
             "type": "String[]"
           },
           "result_contract": {
-            "description": "",
+            "description": "legacy (default) or task_v1 (uses McpTaskResult.Pass/Fail structured contract).",
             "type": "String"
           },
           "usage_context": {
-            "description": "",
+            "description": "Execution context label for diagnostics: project, test, or unknown (default unknown).",
             "type": "String"
           }
         },
@@ -7212,7 +7212,7 @@
     },
     {
       "name": "revit_set_category_visibility",
-      "description_hash": "sha256:c7ce1aec46c8d08b712a55f95176cd58af2cd23fe08b5ccd257f62a3e096fad3",
+      "description_hash": "sha256:52f774ab2f2e72a9f19c87690169fcb6827d1d2c76c3e71214d54bcb9b7a0a2a",
       "inputSchema": {
         "properties": {
           "categories": {
@@ -7271,7 +7271,7 @@
     },
     {
       "name": "revit_set_element_parameter_values",
-      "description_hash": "sha256:338c1af9601ecd928fef15f4ede64b51e64e01bc2c56ffafc9bead9cbed518ed",
+      "description_hash": "sha256:2581586e704b72e4c5393c2142f95fcd7a56916290d261af9fdb20cf7a085d6f",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -7307,7 +7307,7 @@
     },
     {
       "name": "revit_set_element_phase",
-      "description_hash": "sha256:3c6a565c8f76f62486fd822ed5c758b2ad91aa22eeb98129f806fddbff2384f7",
+      "description_hash": "sha256:57dbe60baf6dec54040da6a0c61ab25d53f7eb54486bc4ed9d687260f1738cd7",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -7345,7 +7345,7 @@
     },
     {
       "name": "revit_set_filter_overrides",
-      "description_hash": "sha256:309d8dd8666173393d7666dd2ab34ae9121e4e7fcf12eceac157c3a8149bcbf5",
+      "description_hash": "sha256:a2bb09b66e792bf6d7063e458ba67f7c6239b6fc664c372663362582adc22d25",
       "inputSchema": {
         "properties": {
           "cutLineColor": {
@@ -7395,7 +7395,7 @@
     },
     {
       "name": "revit_set_material_appearance",
-      "description_hash": "sha256:fbf9788f08cde375a5ba200660d821ea61ae5ba9ffb8906f53a088fd2c833d94",
+      "description_hash": "sha256:2ce2c9470dedd3642091d195a4cc3dd8f81710ba94c38bc58061235e9924b691",
       "inputSchema": {
         "properties": {
           "blue": {
@@ -7463,7 +7463,7 @@
     },
     {
       "name": "revit_set_material_identity",
-      "description_hash": "sha256:e9b62be229b65f12ca27b219e950c82991fbdfb55584383eac145ea19bd2307e",
+      "description_hash": "sha256:e12b5f371dcc7e97d579a4b6f875df4e2537bc5f2cbb6933cd4d04374769b39d",
       "inputSchema": {
         "properties": {
           "cost": {
@@ -7519,7 +7519,7 @@
     },
     {
       "name": "revit_set_material_structural_asset",
-      "description_hash": "sha256:89e675438a421490c2f2578729c5a28f51ab8a38580a19b76de06a5004b24df6",
+      "description_hash": "sha256:158e98a1bdb96eaef1472f2eb355809f94675998984c6e141bbfdc3882e497b8",
       "inputSchema": {
         "properties": {
           "assetName": {
@@ -7567,7 +7567,7 @@
     },
     {
       "name": "revit_set_material_thermal_asset",
-      "description_hash": "sha256:2aedd3f8a6747da4d1e08ced24d9044c0052a299828e5534de9df7ddab80ac5b",
+      "description_hash": "sha256:e13043bc4b7f44e1f0ec4f00072b891cd3c54b99397266cd341d326d7bb898d2",
       "inputSchema": {
         "properties": {
           "assetName": {
@@ -7615,7 +7615,7 @@
     },
     {
       "name": "revit_set_parameter_value_by_guid",
-      "description_hash": "sha256:c5be63ab949953990e168e4be77c9f0b7ddaf1157faaeba8ea3517b32092083e",
+      "description_hash": "sha256:031c5f6835b3d1f4e018de5a1b783a563637fe28392d1454033ab4630a820bf9",
       "inputSchema": {
         "properties": {
           "allOrNothing": {
@@ -7663,7 +7663,7 @@
     },
     {
       "name": "revit_set_project_base_point",
-      "description_hash": "sha256:cf8259e9a340fabf3e59c351fca5e3a81980a28ad348145f6de0dddc02576d89",
+      "description_hash": "sha256:f44780cb0b16caafe39c5d4e022497943141053e21f6d479d724abda77d1acb7",
       "inputSchema": {
         "properties": {
           "angleToTrueNorth": {
@@ -7746,7 +7746,7 @@
     },
     {
       "name": "revit_set_structural_load",
-      "description_hash": "sha256:39dea791a156f22e1bf05172c55d3ed6820580a74901ce1a0d1d56b60eb90c2d",
+      "description_hash": "sha256:c8fe1bdb17ef4a7f60d8c635217270c3abfef545a3573acf612d7997dc75554d",
       "inputSchema": {
         "properties": {
           "action": {
@@ -7796,7 +7796,7 @@
     },
     {
       "name": "revit_set_system_classification",
-      "description_hash": "sha256:2f4d5c0603c07e049a539fa643d09636c12eb363a4d2b31f137ba3ca139abb89",
+      "description_hash": "sha256:24f8abf03688a24852a7f99934bbb5beebd673e6e3d34b27fac163dab8f3564a",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -7822,7 +7822,7 @@
     },
     {
       "name": "revit_set_titleblock_parameters",
-      "description_hash": "sha256:e201a27174b0386b99010940b842a67a31abcb07e1ecea0268a0fbe9fb6312b5",
+      "description_hash": "sha256:54962cd4707f8ffc87e19a95ec2e5ec67f0d141937d29583c10f6eefa37e21b2",
       "inputSchema": {
         "properties": {
           "parameters": {
@@ -7856,7 +7856,7 @@
     },
     {
       "name": "revit_set_type_parameter_values",
-      "description_hash": "sha256:9fe2a4d13989e7d8340542ede154b3f7c8558b97498a40fd9b2f55dbc700d886",
+      "description_hash": "sha256:74126984bedb39ba47b1598aecd0335bf4663767c8a54dd35a661b472f0186c0",
       "inputSchema": {
         "properties": {
           "elementIds": {
@@ -7895,7 +7895,7 @@
     },
     {
       "name": "revit_set_view_crop",
-      "description_hash": "sha256:bbd403d22c047aab240263e4c13b3c00b2f6fd14e0611b0fc8141b9fb8798f72",
+      "description_hash": "sha256:a836b19016d35e41981ead83f3191595cbe5557fa220ea80de87d8d9b4ed49a0",
       "inputSchema": {
         "properties": {
           "bounds_json": {
@@ -7935,7 +7935,7 @@
     },
     {
       "name": "revit_set_view_orientation",
-      "description_hash": "sha256:48c1a65c7848045a1ea0812308bf604bcc8b2d1f458b2e61c34e95d67ca7c6e5",
+      "description_hash": "sha256:27da5fcb99f33de97a52ec38f6a7117f308875187ec1ae615a87388d708a9f26",
       "inputSchema": {
         "properties": {
           "eye": {
@@ -7982,7 +7982,7 @@
     },
     {
       "name": "revit_set_view_phase",
-      "description_hash": "sha256:a21d70ef1b873f1adb0f246d1fa73e72ced1d2d4925902a4a67f6b49295c8937",
+      "description_hash": "sha256:a6f4cba1d04fe6f279a19e12149c27e1742dd087fb924abc966bf761fef10757",
       "inputSchema": {
         "properties": {
           "phaseFilterId": {
@@ -8018,7 +8018,7 @@
     },
     {
       "name": "revit_set_view_scale",
-      "description_hash": "sha256:60fa330f037cc4710727a0719ca4697d3e5fed5970e9a3a1c2781bddc61e988c",
+      "description_hash": "sha256:94a7594fc07a607082b6149012df2bdf593f470863d943f5665750fe28a2d524",
       "inputSchema": {
         "properties": {
           "scale": {
@@ -8044,7 +8044,7 @@
     },
     {
       "name": "revit_set_view_style",
-      "description_hash": "sha256:0cdf661228081373fb0afc0757fca7751e955d0daf7c43b017a7ebb11279864c",
+      "description_hash": "sha256:16c61ea816e9a38bfc8e5beff13173a18aa5834761734de568a5c95df3d75c70",
       "inputSchema": {
         "properties": {
           "detail_level": {
@@ -8076,7 +8076,7 @@
     },
     {
       "name": "revit_set_wall_top",
-      "description_hash": "sha256:ca251b5d32a1ea4895d515cf3ebe635391cb51e689b01c936b31d5fe8199450f",
+      "description_hash": "sha256:10e87b295022262a4d9c02877fe478309b3e190e052f82e2305c983250369cc7",
       "inputSchema": {
         "properties": {
           "top_level": {
@@ -8316,7 +8316,7 @@
     },
     {
       "name": "revit_switch_target",
-      "description_hash": "sha256:d72cc7368ef4070609fe95d46911026de89b5e0c042f79804080ee4555f7c0ba",
+      "description_hash": "sha256:123242b6d288ff3140f34f670e261da347fef876f7ce6bf80c75608ba1852aea",
       "inputSchema": {
         "properties": {
           "expectedDocumentId": {
@@ -8536,7 +8536,7 @@
     },
     {
       "name": "revit_unload_family",
-      "description_hash": "sha256:998aa277453a04e34ba283c44098ca871345443da28cd5336eb4d7de7476f447",
+      "description_hash": "sha256:15ead7fcc9a527c74666b85ae59a8843ca6c28817747f20281ad1430d396e0af",
       "inputSchema": {
         "properties": {
           "cascadeDeleteInstances": {
@@ -8568,7 +8568,7 @@
     },
     {
       "name": "revit_unload_link",
-      "description_hash": "sha256:b42b49a239dd3465b6248adcc7b19585f5677b222de1f6c736de669dbfa32d5f",
+      "description_hash": "sha256:72fb753e3d5b43ca3a2d7b2613432e0c43702fe11fdff77547f49483e5ed4332",
       "inputSchema": {
         "properties": {
           "linkInstanceId": {
@@ -8596,7 +8596,7 @@
     },
     {
       "name": "revit_update_schedule_field",
-      "description_hash": "sha256:b13941140e87c06221534ae93a2b7a162af9826dd138e0ae5938cc476eb26e91",
+      "description_hash": "sha256:5f5b2b743d98daec6632b55e289f60c0b7634bdc33a912afa9a938a1badf3d76",
       "inputSchema": {
         "properties": {
           "changes": {
@@ -8631,7 +8631,7 @@
     },
     {
       "name": "revit_wipe_empty_tags",
-      "description_hash": "sha256:b06463abab8cc3e7415e12a5aa7bb68693c605d99ceed6522f77537f3bd443ed",
+      "description_hash": "sha256:e00daecacf8cd6ca9be684af9c2c02e3027aca397ddc1a9874a9a9f287e81e3c",
       "inputSchema": {
         "properties": {
           "dryRun": {
@@ -8659,7 +8659,7 @@
     },
     {
       "name": "revit_workflow_clash_review",
-      "description_hash": "sha256:88849ea1cc124cdb86f5bccbfcf0e6f11d0405c301a12c7a3376d677750527de",
+      "description_hash": "sha256:f3205d98f66335bbd96567676044637048fa7515b0af324654b39aae7eb85a4b",
       "inputSchema": {
         "properties": {
           "category_a": {
@@ -8714,7 +8714,7 @@
     },
     {
       "name": "revit_workflow_data_roundtrip",
-      "description_hash": "sha256:b81a300ad308f168f721d602be6dd8f3cea464bc433895888173a2a402db4e89",
+      "description_hash": "sha256:430e25c6168a6bcb3a26661f2df240a647661ce663673f2137fee65987afe617",
       "inputSchema": {
         "properties": {
           "category": {
@@ -8805,7 +8805,7 @@
     },
     {
       "name": "revit_workflow_naming_normalization",
-      "description_hash": "sha256:1847b2452ba4bc677a687f4aa2373e2f8ad24abe8ebb4c3f078d8074031e1454",
+      "description_hash": "sha256:0e00018c0ab692bfc387f6b005614882bec705cfbf5b7dfba85132c5fe9a83d5",
       "inputSchema": {
         "properties": {
           "dry_run": {
@@ -8895,7 +8895,7 @@
     },
     {
       "name": "revit_workflow_sheet_set",
-      "description_hash": "sha256:26dde06ec77554d36bc4bfc1d00bfe5266001b033cfe7e8c7833eb270d459a91",
+      "description_hash": "sha256:2b37a4a1894dccbe4f2a4ee88514c01d7da2fd55f90153b411b4b33e5058526e",
       "inputSchema": {
         "properties": {
           "continue_on_error": {
@@ -8973,7 +8973,7 @@
     },
     {
       "name": "revit_workflow_view_cleanup",
-      "description_hash": "sha256:f058cb81940ac8578b8311dc05086ed4f9df1d636494af98e185f23f3eb3b708",
+      "description_hash": "sha256:a75d346caa7941b645043c9055db12f6535b0f3ec84d626df1b43c82f94bd3b1",
       "inputSchema": {
         "properties": {
           "delete_empty_views": {

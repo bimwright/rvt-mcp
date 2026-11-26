@@ -100,18 +100,21 @@
     },
     {
       "name": "revit_send_code_to_revit",
-      "description_hash": "sha256:d5e77b0242da65c295477fb2db068b65343dd42fd77e5675a8ab22748f1de795",
+      "description_hash": "sha256:c5b7923a43410550175a29b9c7bf57db055a60cad19f91900c9a1a988961b76b",
       "inputSchema": {
         "properties": {
           "code": {
+            "description": "C# body with return (no closing }) or full McpDynamicScript class; use revit_describe_api to inspect Revit API types first.",
             "type": "string"
           },
           "compile_only": {
             "default": false,
+            "description": "Validate syntax and compilation without executing against Revit (default false).",
             "type": "boolean"
           },
           "data": {
             "default": null,
+            "description": "Optional JSON object bound as JObject data for literals, coordinates, and lists so code stays reusable.",
             "type": [
               "object",
               "null"
@@ -119,6 +122,7 @@
           },
           "modules": {
             "default": null,
+            "description": "Optional saved code-module names (from revit_list_code_modules) compiled alongside the script for shared helpers.",
             "items": {
               "type": "string"
             },
@@ -129,6 +133,7 @@
           },
           "result_contract": {
             "default": "legacy",
+            "description": "legacy (default) or task_v1 (uses McpTaskResult.Pass/Fail structured contract).",
             "enum": [
               "legacy",
               "task_v1"
@@ -137,6 +142,7 @@
           },
           "usage_context": {
             "default": "unknown",
+            "description": "Execution context label for diagnostics: project, test, or unknown (default unknown).",
             "enum": [
               "project",
               "test",

@@ -44,8 +44,22 @@ namespace RvtMcp.Tests
             Assert.Equal("string", schema["properties"]["modules"]["items"].Value<string>("type"));
             Assert.Equal(new[] {"legacy", "task_v1"}, ((JArray)schema["properties"]["result_contract"]["enum"]).Values<string>());
             Assert.Null(tool.Annotations);
-            Assert.True(tool.Description.Length <= 599, "Keep the former description length budget");
-            foreach (var hint in new[] {"data", "coordinates", "modules", "task_v1", "McpTaskResult.Pass/Fail", "SafeFailuresPreprocessor"}) Assert.Contains(hint, tool.Description);
+            Assert.Null(tool.Meta);
+            var descBytes = System.Text.Encoding.UTF8.GetByteCount(tool.Description);
+            Assert.True(descBytes <= 4096, $"revit_send_code_to_revit description is {descBytes} UTF-8 bytes (cap 4096, INSTR-MOVE-TO-TOOL).");
+            foreach (var hint in new[]
+            {
+                "data", "coordinates", "modules", "task_v1", "McpTaskResult.Pass/Fail", "SafeFailuresPreprocessor",
+                "UIApplication app", "Document doc", "Autodesk.Revit.DB", "Architecture", "Newtonsoft.Json.Linq",
+                "RvtMcp.Plugin", "full source should declare its own usings", "_failure", "700 KiB", "36 h", "revit_survey_change_impact"
+            })
+                Assert.Contains(hint, tool.Description);
+            foreach (var prop in ((JObject)schema["properties"]).Properties())
+            {
+                var paramDesc = prop.Value["description"]?.Value<string>();
+                Assert.False(string.IsNullOrWhiteSpace(paramDesc), $"Parameter '{prop.Name}' must have a description.");
+                Assert.True(System.Text.Encoding.UTF8.GetByteCount(paramDesc) <= 2048, $"Parameter '{prop.Name}' exceeds 2048 UTF-8 bytes.");
+            }
         }
 
         [Theory]

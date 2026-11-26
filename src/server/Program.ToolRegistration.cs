@@ -19,6 +19,18 @@ namespace RvtMcp.Server
 
     partial class Program
     {
+        internal const string AlwaysLoadMetadataKey = "anthropic/alwaysLoad";
+
+        // TOOL-ALWAYSLOAD (BW-MCP-UPGRADE-001): startup routing, health, and task-report tools
+        // stay preloaded when registered; revit_send_code_to_revit and revit_get_report_history never do.
+        internal static readonly string[] AlwaysLoadToolNames =
+        {
+            "revit_health",
+            "revit_list_available_targets",
+            "revit_switch_target",
+            "revit_report_task_result"
+        };
+
         private static IMcpServerBuilder RegisterMcpSurface(
             IMcpServerBuilder mcp, HashSet<string> enabled, RvtMcpConfig config)
         {
@@ -72,6 +84,11 @@ namespace RvtMcp.Server
                             [HealthRuntimeInfo.ClientRuntimeMetadataKey] = System.Text.Json.Nodes.JsonNode.Parse(
                                 HealthRuntimeInfo.ClientRuntime(GatewayRuntime.Identity).ToString())
                         };
+                    if (AlwaysLoadToolNames.Contains(tool.ProtocolTool.Name, StringComparer.Ordinal))
+                    {
+                        tool.ProtocolTool.Meta ??= new System.Text.Json.Nodes.JsonObject();
+                        tool.ProtocolTool.Meta[AlwaysLoadMetadataKey] = true;
+                    }
                     return tool;
                 }).ToArray();
         }

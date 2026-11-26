@@ -223,7 +223,7 @@ namespace RvtMcp.Server
 
         [McpServerTool(Name = "revit_switch_target", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
             "Pin an instance listed by revit_list_available_targets using pid:<n>, id:revit-<year>-<pid>, auto or a calendar year (never R-codes); verify=true confirms the document for writes. " +
-            "Switching closes the old connection and may interrupt in-flight calls; rebind=true leaves a live confirmed target, expectedDocumentId checks identity, and verify=false permits open_model but requires re-verification before model writes. Example: {version: \"pid:1234\"}.")]
+            "Switching closes the old connection and may interrupt in-flight calls; rebind=true leaves a live confirmed target, expectedDocumentId checks identity, and verify=false permits open_model but requires re-verification before model writes. Subagents must never switch or rebind the parent's target. Example: {version: \"pid:1234\"}.")]
         public static async Task<string> SwitchTarget(string version, bool verify = true, bool rebind = false, string expectedDocumentId = null)
         {
             var blocked = ServerState.BlockIfReadOnly("switch_target");
@@ -349,15 +349,15 @@ namespace RvtMcp.Server
         }
 
         [McpServerTool(Name = "revit_batch_execute", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
-            "Run multiple MCP commands atomically inside one Revit TransactionGroup (single undo on success). " +
+            "Run up to 20 MCP commands atomically inside one Revit TransactionGroup (single undo on success); subcommands may also overwrite files or shared parameter data that Revit Undo cannot restore, so back up affected files first. " +
             "send_code_to_revit and run_baked_tool must be called directly, outside a batch. " +
             "At most 20 commands; split larger jobs. " +
             "Input: commands — JSON array of {command, params}, e.g. " +
             "'[{\"command\":\"create_level\",\"params\":{\"elevation\":3000}}, " +
             "{\"command\":\"create_grid\",\"params\":{\"startX\":0,\"startY\":0,\"endX\":5000,\"endY\":0}}]'. " +
             "On any failure the whole group rolls back unless continueOnError=true. " +
-            "Returns: {results: [{index, ok, data|error}], rolledBack}. output=file writes NDJSON to a local same-machine absolute path with bounded preview; remote clients receive preview only." +
-            " Subcommands may overwrite files or shared parameter data that Revit Undo cannot restore. Back up affected files first.")]
+            "Returns: {results: [{index, ok, data|error}], rolledBack}. output=file writes NDJSON to a local same-machine absolute path with bounded preview; remote clients receive preview only. " +
+            "Check revit_get_operation_status before retrying after a timeout. Call revit_survey_change_impact before modifying existing elements and read back the result.")]
         public static async Task<string> BatchExecute(string commands, bool continueOnError = false, string output = "inline")
         {
             try
@@ -397,7 +397,7 @@ namespace RvtMcp.Server
             });
         }
 
-        [McpServerTool(Name = "revit_purge_unused", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Delete unused family symbols; restore them with Revit Undo. Conservative purge of unused loadable family symbols. MVP supports targets=['families'] only. Skips in-place families and symbols with any placed instance. dry_run defaults to true.")]
+        [McpServerTool(Name = "revit_purge_unused", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Delete unused family symbols; restore them with Revit Undo. Conservative purge of unused loadable family symbols. MVP supports targets=['families'] only. Skips in-place families and symbols with any placed instance. dry_run defaults to true. Call revit_survey_change_impact before modifying existing elements and read back the result.")]
         public static async Task<string> PurgeUnused(
             string[] targets = null, bool dry_run = true, int limit = 500)
         {

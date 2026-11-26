@@ -68,7 +68,7 @@ namespace RvtMcp.Server
             long? element_id = null, string load_type = null, int limit = 500)
             => await ToolGateway.CallAsync("get_structural_loads", new { element_id, load_type, limit });
 
-        [McpServerTool(Name = "revit_set_structural_load", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace structural load values; restore them with Revit Undo. Update force/moment of an existing structural load. action='update' supported; action='create' returns not_implemented. Params: action ('update'), load_id (required for update), force_x/y/z, moment_x/y/z (optional, units = Revit internal).")]
+        [McpServerTool(Name = "revit_set_structural_load", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace structural load values; restore them with Revit Undo. Update force/moment of an existing structural load. action='update' supported; action='create' returns not_implemented. Params: action ('update'), load_id (required for update), force_x/y/z, moment_x/y/z (optional, units = Revit internal). Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> SetStructuralLoad(
             string action,
             long? load_id = null,

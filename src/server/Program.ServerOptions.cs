@@ -8,8 +8,8 @@ namespace RvtMcp.Server
         // signal for Tool Search discoverability — Claude Code/Desktop's Tool Search ranks
         // servers by (1) instructions, (2) literal tool name. Without this populated, an
         // agent asking "list Revit tools" returns nothing even though 224 tools are exposed.
-        // Anthropic truncates this field at 2KB; the keyword-dense first paragraph carries
-        // the discoverability load if the SDK or proxy truncates later.
+        // Claude Code truncates this field at 4,096 characters and the family cap is 2,048 UTF-8 bytes
+        // (INSTR-MAX-2KB); the keyword-dense first paragraph still leads for discoverability.
         // Preserve the revision so a fresh client can compare the loaded gateway build.
         internal static readonly string ServerInformationalVersion =
             Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()

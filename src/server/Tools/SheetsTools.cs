@@ -100,7 +100,7 @@ namespace RvtMcp.Server
                 limit
             });
 
-        [McpServerTool(Name = "revit_set_titleblock_parameters", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace titleblock parameter values; restore them with Revit Undo. Set titleblock instance and type parameters for a sheet. parameters: object map of {paramName: value}.")]
+        [McpServerTool(Name = "revit_set_titleblock_parameters", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace titleblock parameter values; restore them with Revit Undo. Set titleblock instance and type parameters for a sheet. parameters: object map of {paramName: value}. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> SetTitleblockParameters(IDictionary<string, object> parameters, long? sheetId = null, string sheetNumber = "", string target = "instance")
             => await ToolGateway.CallWithParamsAsync("set_titleblock_parameters", () =>
             {
@@ -156,7 +156,7 @@ namespace RvtMcp.Server
                 issued
             });
 
-        [McpServerTool(Name = "revit_assign_revision_to_sheet", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace sheet revision assignments; restore them with Revit Undo. Assign or remove a revision on sheets")]
+        [McpServerTool(Name = "revit_assign_revision_to_sheet", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace sheet revision assignments; restore them with Revit Undo. Assign or remove a revision on sheets. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> AssignRevisionToSheet(long revisionId, long[] sheetIds = null, string[] sheetNumbers = null, string mode = "append")
             => await ToolGateway.CallAsync("assign_revision_to_sheet", new
             {
@@ -173,7 +173,7 @@ namespace RvtMcp.Server
                 include_sheets = includeSheets
             });
 
-        [McpServerTool(Name = "revit_renumber_sheets", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace sheet numbers or names; restore them with Revit Undo. Bulk renumber/rename sheets with collision preflights and cyclic swap support")]
+        [McpServerTool(Name = "revit_renumber_sheets", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace sheet numbers or names; restore them with Revit Undo. Bulk renumber/rename sheets with collision preflights and cyclic swap support. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> RenumberSheets(object items = null, string find = "", string replace = "", string prefix = "", string suffix = "", bool dryRun = true)
             => await ToolGateway.CallWithParamsAsync("renumber_sheets", () =>
             {
@@ -200,7 +200,7 @@ namespace RvtMcp.Server
                 max_viewports = maxViewports
             });
 
-        [McpServerTool(Name = "revit_align_viewports", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace viewport positions on a sheet; restore them with Revit Undo. Align viewports to a reference viewport (left, right, top, bottom, center_x, center_y, center) or centre them on the sheet (center_on_sheet) using sheet-space millimetres of the visible crop rectangle. dryRun defaults to true and returns the planned moves without changing anything.")]
+        [McpServerTool(Name = "revit_align_viewports", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace viewport positions on a sheet; restore them with Revit Undo. Align viewports to a reference viewport (left, right, top, bottom, center_x, center_y, center) or centre them on the sheet (center_on_sheet) using sheet-space millimetres of the visible crop rectangle. dryRun defaults to true and returns the planned moves without changing anything. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> AlignViewports(string mode, long? sheetId = null, string sheetNumber = "", long? referenceViewportId = null, long[] viewportIds = null, bool dryRun = true)
             => await ToolGateway.CallAsync("align_viewports", new
             {

@@ -141,7 +141,7 @@ namespace RvtMcp.Server
             "File: {materials:[{name, color:[r,g,b] 0-255, transparency 0-100, shininess 0-128?}], shapes:[{name, category: GenericModel|Mass|StructuralColumns|StructuralFraming|Roofs|Floors|Walls|Site|Entourage|Planting|Furniture|SpecialtyEquipment, material, vertices:[[x,y,z]...] in mm, faces:[[i,j,k] or [i,j,k,l]...] 0-based, CCW from outside}]}. " +
             "Existing materials with the same name (any case) are reused unchanged; update_materials=true changes them for every element that uses them. Each shape becomes one DirectShape named after 'name'. Open surfaces fall back to mesh geometry; degenerate faces are skipped and counted. " +
             "replace_existing deletes shapes this tool created earlier with the same names; mesh_only skips the solid attempt for huge shapes. Limits per call: 64 MB file, 500,000 faces. One transaction per file: any failure rolls back everything and names the failing shape. " +
-            "timeout_seconds is 1-900 (default 600). Example: file='C:/models/canopy.json', replace_existing=true.")]
+            "timeout_seconds is 1-900 (default 600). Example: file='C:/models/canopy.json', replace_existing=true. Call revit_survey_change_impact before modifying existing elements and read back the result.")]
         public static async Task<string> CreateMeshShapes(string file, bool replace_existing = false, bool update_materials = false, bool mesh_only = false,
             int timeout_seconds = 600)
         {

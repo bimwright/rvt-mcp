@@ -492,7 +492,7 @@
     },
     {
       "name": "revit_set_structural_load",
-      "description_hash": "sha256:39dea791a156f22e1bf05172c55d3ed6820580a74901ce1a0d1d56b60eb90c2d",
+      "description_hash": "sha256:c8fe1bdb17ef4a7f60d8c635217270c3abfef545a3573acf612d7997dc75554d",
       "inputSchema": {
         "properties": {
           "action": {
