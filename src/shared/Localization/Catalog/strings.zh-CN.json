@@ -208,7 +208,6 @@
   "bakeInbox.instruction": "已接受的烘焙工具",
   "bakeInbox.empty": "没有可用的已接受烘焙工具。",
   "bakeInbox.ribbonSlot": " [功能区槽位 {slot:n}]",
-
   "ribbon.settings.text": "Settings",
   "ribbon.settings.tooltip": "Open rvt-mcp Settings",
   "settings.window.title": "rvt-mcp · Settings",
@@ -544,5 +543,7 @@
   "reports.history.status.recorded": "Reason supplied in History.",
   "reports.history.model": "Model key",
   "reports.history.callFailed": "This call failed; some recorded changes may still have committed.",
-  "reports.history.notCaptured": "Not captured"
+  "reports.history.notCaptured": "Not captured",
+  "update.whatsNew": "更新内容",
+  "update.previewPrompt": "预览代理更新提示词"
 }

@@ -19,10 +19,11 @@ namespace RvtMcp.Tests
             try { Directory.Delete(_dir, true); } catch { }
         }
 
-        private static string Release(string tag, bool prerelease = false, bool draft = false) =>
+        private static string Release(string tag, bool prerelease = false, bool draft = false, string body = null) =>
             "{\"tag_name\":\"" + tag + "\",\"prerelease\":" + (prerelease ? "true" : "false") +
             ",\"draft\":" + (draft ? "true" : "false") +
-            ",\"html_url\":\"https://github.com/bimwright/rvt-mcp/releases/tag/" + tag + "\"}";
+            ",\"html_url\":\"https://github.com/bimwright/rvt-mcp/releases/tag/" + tag + "\"" +
+            (body == null ? "" : ",\"body\":" + Newtonsoft.Json.JsonConvert.SerializeObject(body)) + "}";
 
         [Theory]
         [InlineData("0.8.2", "0.8.10", -1)]
@@ -114,7 +115,37 @@ namespace RvtMcp.Tests
             var prompt = UpdateNoticeText.BuildAgentPrompt(info);
             Assert.Contains("v0.8.2", prompt);
             Assert.Contains("v0.9.0", prompt);
+            Assert.Contains("RvtMcp.Setup-v0.9.0-win-x64.zip", prompt);
+            Assert.DoesNotContain("vv0.9.0", prompt);
             Assert.Contains(info.ReleaseUrl, prompt);
+        }
+
+        [Fact]
+        public async Task Release_notes_are_formatted_cached_and_trimmed_before_distribution()
+        {
+            var body = "Summary of **changes**.\n\n### Fixed\n- Fix [#71](https://github.com/bimwright/rvt-mcp/issues/71): `CLIENT_SANDBOXED`.\n\n### Distribution\nSetup ZIP details.\n\nSource commit: abc123.";
+            var now = new DateTime(2026, 11, 26, 12, 0, 0, DateTimeKind.Utc);
+            var info = await UpdateChecker.CheckAsync("2.5.1", StatePath, _ => Task.FromResult(Release("v2.5.2", body: body)), now);
+
+            Assert.NotNull(info);
+            Assert.NotNull(info.ReleaseNotes);
+            Assert.Contains("Summary of changes.", info.ReleaseNotes);
+            Assert.Contains("• Fix #71: CLIENT_SANDBOXED.", info.ReleaseNotes);
+            Assert.DoesNotContain("Distribution", info.ReleaseNotes);
+            Assert.DoesNotContain("Source commit", info.ReleaseNotes);
+
+            var cached = UpdateChecker.FromCache("2.5.1", StatePath);
+            Assert.Equal(info.ReleaseNotes, cached.ReleaseNotes);
+        }
+
+        [Fact]
+        public void FormatReleaseNotes_bounds_long_bodies_with_ellipsis()
+        {
+            var longBody = string.Join("\n", Enumerable.Range(1, 50).Select(i => "- Change item number " + i + " with descriptive detail."));
+            var formatted = UpdateChecker.FormatReleaseNotes(longBody, maxChars: 200);
+            Assert.NotNull(formatted);
+            Assert.True(formatted.Length <= 200);
+            Assert.EndsWith("…", formatted);
         }
 
         [Fact]
