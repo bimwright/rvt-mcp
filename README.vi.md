@@ -1,10 +1,10 @@
 <!-- mcp-name: io.github.bimwright/rvt-mcp -->
 
-**Phiên bản hiện tại: v2.5.1.** Xem [changelog](CHANGELOG.md).
+**Phiên bản hiện tại: v2.5.2.** Xem [changelog](CHANGELOG.md).
 
 [Benchmark kích thước descriptor](docs/benchmarks/2026-10-18-tool-descriptors.md) · [Kết quả kiểm thử v1.2.0 và các mục pending](docs/testing/2026-10-18-v1.2.0-validation.md) (tiếng Anh; không phải benchmark hiệu năng native).
 
-**v2.5.1:** [Setup và Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v2.5.1). Release cũng có gói NuGet chỉ chứa server; việc đăng lên NuGet.org và MCP Registry là bước riêng.
+**v2.5.2:** [Setup và Claude Desktop MCPB](https://github.com/bimwright/rvt-mcp/releases/tag/v2.5.2). Release cũng có gói NuGet chỉ chứa server; việc đăng lên NuGet.org và MCP Registry là bước riêng.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/bimwright/.github/master/assets/logos/rvt-mcp.png" alt="rvt-mcp" width="180" />
@@ -93,7 +93,7 @@ Video cộng đồng giới thiệu rvt-mcp. Cách cài trong video có thể c�
 
 ## Tools
 
-Các số dưới đây áp dụng cho **bản v2.5.1**: 257 tool với `all`, 260 với adaptive bake và 63 bare defaults.
+Các số dưới đây áp dụng cho **bản v2.5.2**: 257 tool với `all`, 260 với adaptive bake và 63 bare defaults.
 
 | Mode | Tools | Ghi chú |
 |------|------:|---------|
