@@ -31,7 +31,7 @@ namespace RvtMcp.Tests;
 [Collection("ServerStateConfig")]
 public sealed class ServerInstructionsAndAlwaysLoadTests
 {
-    private const string AlwaysLoadKey = "anthropic/alwaysLoad";
+    private static readonly string[] AlwaysLoadKeys = { "anthropic/alwaysLoad", "antigravity/alwaysLoad" };
     private static readonly string[] ExpectedAlwaysLoadTools =
     {
         "revit_health", "revit_list_available_targets", "revit_report_task_result", "revit_switch_target"
@@ -356,7 +356,7 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
                 if (!registered.Contains("revit_survey_change_impact") || !registered.Contains("revit_switch_target"))
                     Assert.Contains("Enable meta to verify or query to survey if missing", instructions, StringComparison.Ordinal);
 
-                var alwaysLoaded = new List<string>();
+                var alwaysLoadedByKey = AlwaysLoadKeys.ToDictionary(k => k, _ => new List<string>(), StringComparer.Ordinal);
                 foreach (JObject tool in tools)
                 {
                     var name = tool.Value<string>("name")!;
@@ -376,15 +376,21 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
                     }
 
                     var meta = tool["_meta"] as JObject;
-                    if (meta?[AlwaysLoadKey] is { Type: JTokenType.Boolean } flag && flag.Value<bool>())
-                        alwaysLoaded.Add(name);
+                    foreach (var key in AlwaysLoadKeys)
+                    {
+                        if (meta?[key] is { Type: JTokenType.Boolean } flag && flag.Value<bool>())
+                            alwaysLoadedByKey[key].Add(name);
+                    }
 
                     if (name == "revit_health")
                     {
                         Assert.NotNull(meta);
-                        Assert.Equal(JTokenType.Boolean, meta![AlwaysLoadKey]?.Type);
-                        Assert.True(meta[AlwaysLoadKey]?.Value<bool>() == true);
-                        Assert.NotNull(meta[HealthRuntimeInfo.ClientRuntimeMetadataKey]);
+                        foreach (var key in AlwaysLoadKeys)
+                        {
+                            Assert.Equal(JTokenType.Boolean, meta![key]?.Type);
+                            Assert.True(meta[key]?.Value<bool>() == true);
+                        }
+                        Assert.NotNull(meta![HealthRuntimeInfo.ClientRuntimeMetadataKey]);
                     }
                     else if (name == "revit_send_code_to_revit")
                     {
@@ -393,7 +399,8 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
                     }
                     else if (name == "revit_get_report_history")
                     {
-                        Assert.Null(meta?[AlwaysLoadKey]);
+                        foreach (var key in AlwaysLoadKeys)
+                            Assert.Null(meta?[key]);
                     }
                 }
 
@@ -402,7 +409,8 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
                     .OrderBy(n => n, StringComparer.Ordinal)
                     .ToArray();
                 Assert.Equal(expectedAlwaysLoadCount, expected.Length);
-                Assert.Equal(expected, alwaysLoaded.OrderBy(n => n, StringComparer.Ordinal).ToArray());
+                foreach (var key in AlwaysLoadKeys)
+                    Assert.Equal(expected, alwaysLoadedByKey[key].OrderBy(n => n, StringComparer.Ordinal).ToArray());
             }
             finally { await host.StopAsync(timeout.Token); }
         }
@@ -466,17 +474,20 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
             }
 
             var registered = tools.Select(t => t.Name).ToHashSet(StringComparer.Ordinal);
-            var alwaysLoaded = tools
-                .Where(t => t.ProtocolTool.Meta?[AlwaysLoadKey]?.GetValue<bool>() == true)
-                .Select(t => t.Name)
-                .OrderBy(n => n, StringComparer.Ordinal)
-                .ToArray();
             var expected = ExpectedAlwaysLoadTools
                 .Where(registered.Contains)
                 .OrderBy(n => n, StringComparer.Ordinal)
                 .ToArray();
             Assert.Equal(expectedAlwaysLoadCount, expected.Length);
-            Assert.Equal(expected, alwaysLoaded);
+            foreach (var key in AlwaysLoadKeys)
+            {
+                var alwaysLoaded = tools
+                    .Where(t => t.ProtocolTool.Meta?[key]?.GetValue<bool>() == true)
+                    .Select(t => t.Name)
+                    .OrderBy(n => n, StringComparer.Ordinal)
+                    .ToArray();
+                Assert.Equal(expected, alwaysLoaded);
+            }
 
             var health = Assert.Single(tools, t => t.Name == "revit_health").ProtocolTool;
             Assert.NotNull(health.Meta?[HealthRuntimeInfo.ClientRuntimeMetadataKey]);

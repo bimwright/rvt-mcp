@@ -20,6 +20,7 @@ namespace RvtMcp.Server
     partial class Program
     {
         internal const string AlwaysLoadMetadataKey = "anthropic/alwaysLoad";
+        internal const string AntigravityAlwaysLoadMetadataKey = "antigravity/alwaysLoad";
 
         // TOOL-ALWAYSLOAD (BW-MCP-UPGRADE-001): startup routing, health, and task-report tools
         // stay preloaded when registered; revit_send_code_to_revit and revit_get_report_history never do.
@@ -88,6 +89,7 @@ namespace RvtMcp.Server
                     {
                         tool.ProtocolTool.Meta ??= new System.Text.Json.Nodes.JsonObject();
                         tool.ProtocolTool.Meta[AlwaysLoadMetadataKey] = true;
+                        tool.ProtocolTool.Meta[AntigravityAlwaysLoadMetadataKey] = true;
                     }
                     return tool;
                 }).ToArray();
