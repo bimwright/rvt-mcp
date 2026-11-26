@@ -7,14 +7,17 @@ namespace RvtMcp.Plugin.Update
     /// <summary>
     /// Plugin glue for the update check: <see cref="Start"/> runs the (cached,
     /// at most daily) GitHub check on a thread-pool thread during OnStartup;
-    /// <see cref="OnIdling"/> runs on Revit's UI thread and shows the modeless
-    /// notice once per session after the main window exists.
+    /// <see cref="TriggerFromUi"/> allows a shorter-cooldown check when the user
+    /// opens History or Reports; <see cref="OnIdling"/> runs on Revit's UI thread
+    /// and shows the modeless notice at most once per session.
     /// </summary>
     public sealed class UpdateNoticeCoordinator
     {
         private readonly Action<string> _log;
+        private readonly object _gate = new object();
         private Task<UpdateInfo> _check;
-        private bool _handled;
+        private bool _disabled;
+        private bool _shown;
         private UpdateNoticeWindow _window;
 
         public UpdateNoticeCoordinator(Action<string> log)
@@ -26,22 +29,49 @@ namespace RvtMcp.Plugin.Update
         {
             if (UpdateChecker.IsDisabledByEnvironment())
             {
-                _handled = true;
+                _disabled = true;
                 _log("UpdateCheck: disabled by " + UpdateChecker.DisableEnvVar);
                 return;
             }
-            var current = UpdateChecker.VersionOf(typeof(UpdateNoticeCoordinator).Assembly);
-            _check = Task.Run(() => UpdateChecker.CheckAsync(current));
+            StartCheck(UpdateChecker.CheckInterval);
+        }
+
+        /// <summary>
+        /// Triggers a non-blocking update check with a shorter cooldown (30 min)
+        /// when the user opens History or Reports, unless a notice was already
+        /// shown in this session or a check is already running.
+        /// </summary>
+        public void TriggerFromUi()
+        {
+            if (_disabled || _shown || _window != null) return;
+            StartCheck(UpdateChecker.InteractiveCheckInterval);
+        }
+
+        private void StartCheck(TimeSpan interval)
+        {
+            lock (_gate)
+            {
+                if (_disabled || _shown || (_check != null && !_check.IsCompleted)) return;
+                var current = UpdateChecker.VersionOf(typeof(UpdateNoticeCoordinator).Assembly);
+                _check = Task.Run(() => UpdateChecker.CheckAsync(current, checkInterval: interval));
+            }
         }
 
         public void OnIdling(IntPtr ownerHwnd)
         {
-            if (_handled || _check == null || !_check.IsCompleted || ownerHwnd == IntPtr.Zero) return;
-            _handled = true;
+            if (_disabled || _shown || ownerHwnd == IntPtr.Zero) return;
+            Task<UpdateInfo> completed;
+            lock (_gate)
+            {
+                if (_check == null || !_check.IsCompleted) return;
+                completed = _check;
+                _check = null;
+            }
             try
             {
-                var info = _check.Status == TaskStatus.RanToCompletion ? _check.Result : null;
+                var info = completed.Status == TaskStatus.RanToCompletion ? completed.Result : null;
                 if (info == null || info.IsSkipped) return;
+                _shown = true;
                 _log("UpdateCheck: " + info.LatestVersion + " available (running " + info.CurrentVersion + ")");
                 _window = new UpdateNoticeWindow(info);
                 new System.Windows.Interop.WindowInteropHelper(_window).Owner = ownerHwnd;

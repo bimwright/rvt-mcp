@@ -149,6 +149,29 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public async Task Interactive_check_interval_refreshes_sooner_than_daily_interval()
+        {
+            var calls = 0;
+            var latest = "v2.5.1";
+            Func<CancellationToken, Task<string>> fetch = _ => { calls++; return Task.FromResult(Release(latest)); };
+            var now = new DateTime(2026, 11, 26, 8, 0, 0, DateTimeKind.Utc);
+
+            Assert.Null(await UpdateChecker.CheckAsync("2.5.1", StatePath, fetch, now));
+            Assert.Equal(1, calls);
+
+            latest = "v2.5.2";
+            // Within 30 minutes: still cached
+            Assert.Null(await UpdateChecker.CheckAsync("2.5.1", StatePath, fetch, now.AddMinutes(10), UpdateChecker.InteractiveCheckInterval));
+            Assert.Equal(1, calls);
+
+            // After 31 minutes: interactive trigger refreshes and detects v2.5.2
+            var info = await UpdateChecker.CheckAsync("2.5.1", StatePath, fetch, now.AddMinutes(31), UpdateChecker.InteractiveCheckInterval);
+            Assert.Equal(2, calls);
+            Assert.NotNull(info);
+            Assert.Equal("v2.5.2", info.LatestVersion);
+        }
+
+        [Fact]
         public void Composed_instructions_lead_with_the_notice_and_stay_under_the_cap()
         {
             var baseText = "keywords paragraph\n\n" + string.Join("\n", new string[40].Select((_, i) => "- toolset" + i + ": tool_a, tool_b"));

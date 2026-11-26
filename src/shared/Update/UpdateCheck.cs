@@ -143,6 +143,7 @@ namespace RvtMcp.Plugin.Update
         public const string ReleasesLatestUrl = "https://github.com/bimwright/rvt-mcp/releases/latest";
         public const string DisableEnvVar = "BIMWRIGHT_DISABLE_UPDATE_CHECK";
         public static readonly TimeSpan CheckInterval = TimeSpan.FromHours(24);
+        public static readonly TimeSpan InteractiveCheckInterval = TimeSpan.FromMinutes(30);
         public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(5);
 
         public static bool IsDisabledByEnvironment()
@@ -285,14 +286,15 @@ namespace RvtMcp.Plugin.Update
         /// returns the resulting notice (null when up to date or unknown). Never throws.
         /// </summary>
         public static async Task<UpdateInfo> CheckAsync(string currentVersion, string statePath = null,
-            Func<CancellationToken, Task<string>> fetch = null, DateTime? nowUtc = null)
+            Func<CancellationToken, Task<string>> fetch = null, DateTime? nowUtc = null, TimeSpan? checkInterval = null)
         {
             try
             {
                 var now = nowUtc ?? DateTime.UtcNow;
+                var interval = checkInterval ?? CheckInterval;
                 var state = UpdateCheckState.Load(statePath);
                 var due = state.LastCheckedUtc == null
-                    || now - state.LastCheckedUtc.Value >= CheckInterval
+                    || now - state.LastCheckedUtc.Value >= interval
                     || state.LastCheckedUtc.Value > now.AddMinutes(5); // clock moved backwards
                 if (due)
                 {

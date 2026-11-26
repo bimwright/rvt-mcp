@@ -188,6 +188,7 @@ namespace RvtMcp.Plugin
 
         public void ShowOrFocusHistoryWindow()
         {
+            _updateNotice?.TriggerFromUi();
             if (_historyWindow == null || !_historyWindow.IsLoaded)
             {
                 _historyWindow?.Dispose();
@@ -283,6 +284,7 @@ namespace RvtMcp.Plugin
         /// <summary>Ribbon command: <paramref name="app"/> lets the module re-read the active document first.</summary>
         public void ShowOrFocusReportsWindow(UIApplication app = null)
         {
+            _updateNotice?.TriggerFromUi();
             Reports.Revit.ReportsModule.ShowOrFocus(app);
         }
 
