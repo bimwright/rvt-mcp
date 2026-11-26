@@ -18,9 +18,10 @@ namespace RvtMcp.Server
             => await ToolGateway.CallAsync("list_baked_tools", new { name_filter = nameFilter, start_index = startIndex, limit });
 
         [McpServerTool(Name = "revit_run_baked_tool", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description(
-            "Run a baked tool by name. Call list_baked_tools first to discover. " +
-            "Params: name, params (tool-specific), output=inline|file. File mode writes a sniffed local same-machine artifact; oversized inline output auto-spills. Remote clients receive preview only." +
-            " May change documents and files; Undo cannot restore arbitrary file writes. Review its source and back up affected files before running.")]
+            "Execute a baked tool by name, which may modify documents or overwrite files that Revit Undo cannot restore; review its source and back up affected files first. " +
+            "Call list_baked_tools first to discover. " +
+            "Params: name, params (tool-specific), output=inline|file. File mode writes a sniffed local same-machine artifact; oversized inline output auto-spills. Remote clients receive preview only. " +
+            "Check revit_get_operation_status before retrying after a timeout. Call revit_survey_change_impact before modifying existing elements and read back the result.")]
         public static async Task<string> RunBakedTool(string name, object @params = null, string output = "inline")
         {
             var revitVersionBeforeConnect = ToolGateway.CurrentRevitVersion ?? "unknown";

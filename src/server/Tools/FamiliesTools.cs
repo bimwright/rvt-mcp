@@ -12,7 +12,7 @@ namespace RvtMcp.Server
         public static async Task<string> ListLoadedFamilies(string categoryFilter = "", string kindFilter = "all", bool includeInstanceCount = false, int limit = 1000)
             => await ToolGateway.CallAsync("list_loaded_families", new { category_filter = categoryFilter, kind_filter = kindFilter, include_instance_count = includeInstanceCount, limit });
 
-        [McpServerTool(Name = "revit_load_family_from_path", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Load or replace family definitions; restore model changes with Revit Undo. Load an .rfa family. Response is compact by default; set includeSymbols=true for a bounded symbol preview (maxSymbolResults hard max 1000). timeout_seconds: plugin wait 1-900s, default 600 - a large family load can exceed 60s.")]
+        [McpServerTool(Name = "revit_load_family_from_path", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Load or replace family definitions; restore model changes with Revit Undo. Load an .rfa family. Response is compact by default; set includeSymbols=true for a bounded symbol preview (maxSymbolResults hard max 1000). timeout_seconds: plugin wait 1-900s, default 600 - a large family load can exceed 60s. Call revit_survey_change_impact before modifying existing elements and read back the result.")]
         public static async Task<string> LoadFamilyFromPath(string path, bool overwriteExisting = true, bool overwriteParameterValues = false, bool includeSymbols = false, int maxSymbolResults = 200, int timeout_seconds = 600)
         {
             var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
@@ -21,7 +21,7 @@ namespace RvtMcp.Server
             return await ToolGateway.CallAsync("load_family_from_path", new { path, overwrite_existing = overwriteExisting, overwrite_parameter_values = overwriteParameterValues, include_symbols = includeSymbols, max_symbol_results = maxSymbolResults }, timeout_seconds);
         }
 
-        [McpServerTool(Name = "revit_unload_family", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Delete a family and optionally its instances; restore them with Revit Undo. Remove (purge) a loadable family from the document. Identify by familyId or familyName. cascadeDeleteInstances=true to also delete placed instances; otherwise error if instances exist. dryRun=true returns the projected effect without changing the model. System families cannot be unloaded.")]
+        [McpServerTool(Name = "revit_unload_family", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Delete a family and optionally its instances; restore them with Revit Undo. Remove (purge) a loadable family from the document. Identify by familyId or familyName. cascadeDeleteInstances=true to also delete placed instances; otherwise error if instances exist. dryRun=true returns the projected effect without changing the model. System families cannot be unloaded. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> UnloadFamily(string familyId = "", string familyName = "", bool cascadeDeleteInstances = false, bool dryRun = false)
             => await ToolGateway.CallAsync("unload_family", new { family_id = familyId, family_name = familyName, cascade_delete_instances = cascadeDeleteInstances, dry_run = dryRun });
 
@@ -33,7 +33,7 @@ namespace RvtMcp.Server
                 return new { source_type_id = sourceTypeId, new_type_name = newTypeName, type_parameter_overrides = parsedOverrides };
             });
 
-        [McpServerTool(Name = "revit_rename_family_type", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Rename an existing type; restore its name with Revit Undo. Rename a FamilySymbol or system type. Must be unique within the family. Catches Autodesk.Revit.Exceptions.ArgumentException for duplicate/invalid names and returns a clean error DTO without throwing.")]
+        [McpServerTool(Name = "revit_rename_family_type", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Rename an existing type; restore its name with Revit Undo. Rename a FamilySymbol or system type. Must be unique within the family. Catches Autodesk.Revit.Exceptions.ArgumentException for duplicate/invalid names and returns a clean error DTO without throwing. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> RenameFamilyType(string typeId, string newName)
             => await ToolGateway.CallAsync("rename_family_type", new { type_id = typeId, new_name = newName });
 
@@ -41,7 +41,7 @@ namespace RvtMcp.Server
         public static async Task<string> AuditFamilies(bool includeUnused = true, bool includeInplace = true, bool includeDuplicateNames = true, bool includeHighTypeCount = true, int highTypeCountThreshold = 20, int startIndex = 0, int limitPerSection = 100)
             => await ToolGateway.CallAsync("audit_families", new { include_unused = includeUnused, include_inplace = includeInplace, include_duplicate_names = includeDuplicateNames, include_high_type_count = includeHighTypeCount, high_type_count_threshold = highTypeCountThreshold, start_index = startIndex, limit_per_section = limitPerSection });
 
-        [McpServerTool(Name = "revit_replace_family_type", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace instance types; restore them with Revit Undo. Replace all instances of FamilySymbol A with FamilySymbol B across the project, active view, or selection. Both types must be the same category. dryRun=true previews counts without changing the model. Target symbol is auto-activated.")]
+        [McpServerTool(Name = "revit_replace_family_type", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace instance types; restore them with Revit Undo. Replace all instances of FamilySymbol A with FamilySymbol B across the project, active view, or selection. Both types must be the same category. dryRun=true previews counts without changing the model. Target symbol is auto-activated. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> ReplaceFamilyType(string fromTypeId, string toTypeId, string scope = "all", long? viewId = null, bool dryRun = false)
             => await ToolGateway.CallAsync("replace_family_type", new { from_type_id = fromTypeId, to_type_id = toTypeId, scope, view_id = viewId, dry_run = dryRun });
 

@@ -51,23 +51,46 @@ namespace RvtMcp.Tests
         {
             var text = (string)typeof(Program).GetField("ServerInstructionsText",
                 BindingFlags.NonPublic | BindingFlags.Static).GetRawConstantValue();
-            Assert.True(Encoding.UTF8.GetByteCount(text) < 2048);
+            Assert.True(Encoding.UTF8.GetByteCount(text) <= 2048);
         }
 
         // INSTR-MOVE-TO-TOOL (BW-MCP-UPGRADE-001): Claude Code truncates a preloaded tool description at
-        // 4,096 characters, so every tool in every toolset, read-only or not, stays within it.
+        // 4,096 characters; every tool in every toolset (including adaptive bake), read-only or not, stays
+        // within 4,096 characters and UTF-8 bytes, and every parameter description stays within 2,048 UTF-8 bytes.
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
         public void Every_tool_description_fits_in_4096_characters(bool readOnly)
         {
-            var config = new RvtMcpConfig { ReadOnly = readOnly, Toolsets = new List<string> { "all" } };
+            var config = new RvtMcpConfig
+            {
+                ReadOnly = readOnly,
+                EnableAdaptiveBake = true,
+                Toolsets = new List<string> { "all" }
+            };
             var tools = Program.CreateRegisteredTools(ToolsetFilter.Resolve(config), config)
                 .Select(tool => tool.ProtocolTool).ToList();
             Assert.True(tools.Count > 30, "expected the full tool catalog, found " + tools.Count);
-            var tooLong = tools.Where(t => (t.Description ?? "").Length > 4096)
-                .Select(t => t.Name + "=" + t.Description!.Length).ToList();
-            Assert.True(tooLong.Count == 0, "Descriptions over 4096 characters: " + string.Join(", ", tooLong));
+            var tooLong = tools.Where(t => (t.Description ?? "").Length > 4096
+                    || Encoding.UTF8.GetByteCount(t.Description ?? "") > 4096)
+                .Select(t => $"{t.Name}={t.Description!.Length}ch/{Encoding.UTF8.GetByteCount(t.Description)}B").ToList();
+            Assert.True(tooLong.Count == 0, "Descriptions over 4096 chars/UTF-8 bytes: " + string.Join(", ", tooLong));
+
+            var tooLongParams = new List<string>();
+            foreach (var tool in tools)
+            {
+                if (!tool.InputSchema.TryGetProperty("properties", out var props) || props.ValueKind != JsonValueKind.Object)
+                    continue;
+                foreach (var prop in props.EnumerateObject())
+                {
+                    if (!prop.Value.TryGetProperty("description", out var desc) || desc.ValueKind != JsonValueKind.String)
+                        continue;
+                    var bytes = Encoding.UTF8.GetByteCount(desc.GetString() ?? "");
+                    if (bytes > 2048)
+                        tooLongParams.Add($"{tool.Name}.{prop.Name}={bytes}B");
+                }
+            }
+            Assert.True(tooLongParams.Count == 0, "Parameter descriptions over 2048 UTF-8 bytes: " + string.Join(", ", tooLongParams));
         }
 
         [Fact]

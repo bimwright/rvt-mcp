@@ -28,13 +28,11 @@ namespace RvtMcp.Server
             return await ToolGateway.CallAsync("link_revit_model", new { path, placement, relative, reuse_existing_type = reuseExistingType }, timeout_seconds);
         }
 
-        [McpServerTool(Name = "revit_unload_link", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Unload a Revit link type by type or instance ID." +
-            " Changes link loading outside a document transaction. Save a model backup first; Revit Undo may not restore this operation.")]
+        [McpServerTool(Name = "revit_unload_link", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Unload a Revit link outside a document transaction; Revit Undo may not restore this, so save a model backup first. Target by linkTypeId or linkInstanceId. Call revit_survey_change_impact on affected host elements first and read back the result.")]
         public static async Task<string> UnloadLink(long? linkTypeId = null, long? linkInstanceId = null, string scope = "all_users")
             => await ToolGateway.CallAsync("unload_link", new { link_type_id = linkTypeId, link_instance_id = linkInstanceId, scope });
 
-        [McpServerTool(Name = "revit_reload_link", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Reload a Revit link type by type or instance ID. timeout_seconds: plugin wait 1-900s, default 600 - reloading a large link can exceed 60s." +
-            " Changes link loading outside a document transaction. Save a model backup first; Revit Undo may not restore this operation.")]
+        [McpServerTool(Name = "revit_reload_link", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Reload a Revit link outside a document transaction; Revit Undo may not restore this, so save a model backup first. Target by linkTypeId or linkInstanceId. timeout_seconds: plugin wait 1-900s, default 600 - reloading a large link can exceed 60s. Call revit_survey_change_impact on affected host elements first and read back the result.")]
         public static async Task<string> ReloadLink(long? linkTypeId = null, long? linkInstanceId = null, int timeout_seconds = 600)
         {
             var timeoutError = ToolGateway.ValidateTimeoutSeconds(timeout_seconds);
@@ -55,16 +53,15 @@ namespace RvtMcp.Server
         public static async Task<string> GetLinkCoordinateSystem(long linkInstanceId)
             => await ToolGateway.CallAsync("get_link_coordinate_system", new { link_instance_id = linkInstanceId });
 
-        [McpServerTool(Name = "revit_acquire_coordinates_from_link", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace host shared coordinates; restore them with Revit Undo. Acquire shared coordinates from a Revit link or linked CAD instance into the host project. Requires confirm=true and modifies the host shared-coordinate system.")]
+        [McpServerTool(Name = "revit_acquire_coordinates_from_link", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace host shared coordinates; restore them with Revit Undo. Acquire shared coordinates from a Revit link or linked CAD instance into the host project. Requires confirm=true and modifies the host shared-coordinate system. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> AcquireCoordinatesFromLink(long linkInstanceId, bool confirm = false)
             => await ToolGateway.CallAsync("acquire_coordinates_from_link", new { link_instance_id = linkInstanceId, confirm });
 
-        [McpServerTool(Name = "revit_publish_coordinates_to_link", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Publish host shared coordinates to a loaded Revit link. Call revit_get_link_coordinate_system first to discover linkedProjectLocationId; omit it to target the linked active Project Location. Requires confirm=true. CAD links are not supported." +
-            " Publishes changes to the linked model. Back up that model first; restoring its prior file may be required.")]
+        [McpServerTool(Name = "revit_publish_coordinates_to_link", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Publish host shared coordinates into a loaded Revit link, modifying the linked model; back up that model first because restoring its prior file may be required. Call revit_get_link_coordinate_system first to discover linkedProjectLocationId; omit it to target the linked active Project Location. Requires confirm=true. CAD links are not supported. Call revit_survey_change_impact on affected host elements first and read back the result.")]
         public static async Task<string> PublishCoordinatesToLink(long linkInstanceId, long? linkedProjectLocationId = null, bool confirm = false)
             => await ToolGateway.CallAsync("publish_coordinates_to_link", new { link_instance_id = linkInstanceId, linked_project_location_id = linkedProjectLocationId, confirm });
 
-        [McpServerTool(Name = "revit_set_project_base_point", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace base point or survey point values; restore them with Revit Undo. Set project base point or survey point parameters.")]
+        [McpServerTool(Name = "revit_set_project_base_point", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace base point or survey point values; restore them with Revit Undo. Set project base point or survey point parameters. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> SetProjectBasePoint(double eastWest, double northSouth, double elevation = 0, double angleToTrueNorth = 0, string pointKind = "project_base_point", bool dryRun = false)
             => await ToolGateway.CallAsync("set_project_base_point", new { east_west = eastWest, north_south = northSouth, elevation, angle_to_true_north = angleToTrueNorth, point_kind = pointKind, dry_run = dryRun });
     }

@@ -55,7 +55,7 @@ namespace RvtMcp.Server
                 return new { scheduleId, scheduleName, field = parsedField, insertIndex, columnHeading, hidden, columnWidth };
             });
 
-        [McpServerTool(Name = "revit_update_schedule_field", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Modify existing schedule fields; restore them with Revit Undo. Modify an existing schedule field's properties: columnHeading, hidden, columnWidth, horizontalAlignment, headingOrientation, formula (only if calculated), combinedParameters (only if combined), isTotal, isPercentage, displayType. Cannot change the underlying parameter of a parameter field — use remove + add instead.")]
+        [McpServerTool(Name = "revit_update_schedule_field", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Modify existing schedule fields; restore them with Revit Undo. Modify an existing schedule field's properties: columnHeading, hidden, columnWidth, horizontalAlignment, headingOrientation, formula (only if calculated), combinedParameters (only if combined), isTotal, isPercentage, displayType. Cannot change the underlying parameter of a parameter field — use remove + add instead. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> UpdateScheduleField(
             [System.ComponentModel.Description("JSON object identifying a field, e.g. {\"fieldName\":\"Level\"} or {\"fieldIndex\":3}; not a plain name or number.")] string fieldRef,
             [System.ComponentModel.Description("JSON object of changes, e.g. {\"hidden\":true}.")] string changes,
@@ -67,7 +67,7 @@ namespace RvtMcp.Server
                 return new { scheduleId, scheduleName, fieldRef = parsedFieldRef, changes = parsedChanges };
             });
 
-        [McpServerTool(Name = "revit_apply_schedule_filter_sort", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace schedule filters and settings; restore them with Revit Undo. Partially update a schedule's filters, sort/group, and settings. filters/sortGroup replace only when supplied; omitted sections are preserved.")]
+        [McpServerTool(Name = "revit_apply_schedule_filter_sort", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace schedule filters and settings; restore them with Revit Undo. Partially update a schedule's filters, sort/group, and settings. filters/sortGroup replace only when supplied; omitted sections are preserved. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> ApplyScheduleFilterSort(long? scheduleId = null, string scheduleName = "", string filters = null, string sortGroup = null, string settings = null)
             => await ToolGateway.CallWithParamsAsync("apply_schedule_filter_sort", () =>
             {

@@ -2,45 +2,43 @@ namespace RvtMcp.Server
 {
     partial class Program
     {
-        // Claude Code truncates server instructions at 4,096 characters; the family cap is stricter:
-        // the constant below is kept under 2048 UTF-8 bytes so four gateways open together stay small
-        // and clients with lower limits still read it whole. Lead with the keyword paragraph (highest discriminative
-        // signal for queries like "list Revit tools"), then the report rule (clients that load
-        // tool descriptions on demand never read revit_report_task_result's), then a compact
-        // toolset-name index — 1-2 examples per toolset — so semantic search for individual ops still resolves.
+        // INSTR-MAX-2KB (BW-MCP-UPGRADE-001): Claude Code truncates server instructions at 4,096 characters;
+        // the family cap is stricter (<= 2,048 UTF-8 bytes) so four gateways open together stay small and
+        // clients with lower limits still read them whole.
+        // INSTR-ORDER: product keywords, session start (target -> health -> survey -> report), tool index,
+        // and closing Safety & permissions block (FC-SRV-06 / BW-PERM-001 R-C).
+        // Detail belonging to one tool lives in that tool's description (INSTR-MOVE-TO-TOOL).
+        internal const string Product =
+            "rvt-mcp - Autodesk Revit 2022-2027 MCP gateway (revit_*, mm): .rvt, BIM, walls, doors, windows, floors, ceilings, roofs, "
+            + "levels, grids, rooms, sheets, schedules, families, views, templates, filters, MEP/HVAC, ducts, pipes, trays, conduits, lighting, plumbing, "
+            + "columns, beams, foundations, rebar, dimensions, tags, keynotes, worksets, phases, links, coordinates, parameters, materials, clash, IFC/DWG/NWC/PDF.";
+
+        internal const string Session =
+            "Use only registered tools. List targets with revit_list_available_targets if available. "
+            + "Verify before writes with revit_switch_target(\"pid:<n>\"); if absent, start reads with --target pid:<n>. Subagents never switch. "
+            + "Then, if available, call revit_health(check_updates=true) once. "
+            + "Check revit_get_operation_status before retrying timed-out writes; if absent, don't retry. REVIT_BUSY means not started. "
+            // INSTR-SURVEY-HINT
+            + "Call revit_survey_change_impact before editing existing elements; read the result back. Enable meta to verify or query to survey if missing.";
+
+        internal const string Reporting =
+            "If available, call revit_report_task_result once before replying for model changes or elements to check, not chat-only.";
+
+        internal const string ToolIndex =
+            "Toolsets (defaults query,create,view,meta; --toolsets all for rest):\n"
+            + "- core: query (ai_element_filter), create, modify, delete, view, documents (save_document, save_checkpoint)\n"
+            + "- model: sheets (get_viewport_geometry), schedule, families, annotation, graphics, organization, parameters, materials, rooms, links\n"
+            + "- eng/meta: mep, structural, geometry, export, workflows, lint, toolbaker (run_baked_tool), meta (get_document_state, open_model, set_dialog_answers)";
+
+        // INSTR-SAFETY-BLOCK / FC-SRV-06 / BW-PERM-001 R-C: always the last block.
+        internal const string SafetyAndPermissions =
+            "Safety & permissions: prefer read tools and dry_run previews. "
+            + "Before deleting or overwriting anything not created in this session, name exact element IDs or paths, "
+            + "get user confirmation, then pass those literal values. "
+            + "If a permission check or auto mode refuses a call, do not repeat it via revit_batch_execute, a baked tool, or revit_send_code_to_revit; tell the user. "
+            + "revit_send_code_to_revit is full-trust C#, not a sandbox. Work in the user's project folder; give full paths.";
+
         private const string ServerInstructionsText =
-@"rvt-mcp — Autodesk Revit 2022-2027 MCP gateway. Use for .rvt, BIM, walls, doors, windows, floors, ceilings, roofs, levels, grids, rooms, sheets, schedules, families, views, templates, filters, MEP (ducts, pipes, trays, conduits, HVAC, lighting, plumbing), structural (columns, beams, foundations, rebar), dimensions, tags, annotations, keynotes, worksets, phases, links, parameters, materials, IFC, DWG, NWC, PDF.
-
-Connect: list targets; revit_health(). For writes pin and verify with revit_switch_target(""pid:<n>""); subagents never switch. --read-only: set --target pid:<n> at startup; restart to change. check_updates=true opts in; unknown is not current. Follow update_guidance; never auto-install/downgrade or retry after timeout. Defaults: query,create,view,meta; --toolsets all for others.
-
-After Revit work that changed the model or found elements to check, call revit_report_task_result once before your final answer (not for chat-only answers).
-
-Documents: call revit_get_document_state before saving and follow its policy; checkpoint only before risky work.
-
-Tools (prefix revit_<verb>_<noun>, lengths in mm):
-- query: get_current_view_info, ai_element_filter
-- create: create_grid
-- modify: operate_element, set_element_parameter_values
-- delete: delete_element
-- view: capture_view_image
-- sheets: create_sheet, viewport_geometry
-- schedule: list_schedules
-- families: list_loaded_families
-- mep: analyze_mep_network
-- annotation: create_dimensions
-- graphics: create_view_filter
-- export: export_pdf
-- materials: list_materials
-- geometry: clash_detection
-- rooms: list_rooms
-- links: project coordinates, link/acquire/publish
-- parameters: create_shared_parameter
-- organization: apply_view_template, save_selection
-- workflows: workflow_model_audit
-- documents: save_document, save_checkpoint
-- structural: create_structural_column, create_rebar_set
-- meta: open_model, send_code_to_revit, set_dialog_answers
-- lint: find_untagged_elements, get_model_warnings_summary
-- toolbaker: list_baked_tools, run_baked_tool";
+            Product + "\n\n" + Session + "\n\n" + Reporting + "\n\n" + ToolIndex + "\n\n" + SafetyAndPermissions;
     }
 }

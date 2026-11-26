@@ -4,6 +4,7 @@
 
 | Version | Date | Available as |
 |---|---|---|
+| v2.5.2 | 2026-11-26 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v2.5.2): Setup, Claude Desktop MCPB and server-only NuGet package, each with a checksum |
 | v2.5.1 | 2026-11-23 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v2.5.1): Setup, Claude Desktop MCPB and server-only NuGet package, each with a checksum |
 | v1.2.2 | 2026-11-02 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.2): Setup, Claude Desktop MCPB and server-only NuGet package, each with a checksum |
 | v1.2.1 | 2026-10-20 | [GitHub Release](https://github.com/bimwright/rvt-mcp/releases/tag/v1.2.1) |
@@ -28,7 +29,17 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
-## Unreleased
+## v2.5.2 — 2026-11-26
+
+This release begins an ongoing MCP gateway upgrade focused on cleaner server instructions, tool discovery, and client compatibility.
+
+- Catalog counts: `--toolsets all` **257**, adaptive bake **260**, and bare defaults **63**.
+
+### Server instructions and tool discovery
+
+- Keep `ServerInstructions` under 2,048 UTF-8 bytes, with product keywords first, target and health guidance that accounts for filtered toolsets, survey before edits and read-back after, reporting when available, a corrected 24-toolset index, and a closing `Safety & permissions:` block.
+- Mark startup and reporting tools (`revit_health`, `revit_list_available_targets`, `revit_switch_target`, `revit_report_task_result`) with `_meta["anthropic/alwaysLoad"]: true` and `_meta["antigravity/alwaysLoad"]: true` across both stdio and HTTP transports (preserving `bimwright/rvt-mcp/runtime` on `revit_health`, omitting `revit_switch_target` under `--read-only`, and never setting them on `revit_send_code_to_revit` or `revit_get_report_history`).
+- Add survey and read-back guidance to 65 tools that can modify existing elements, including `revit_set_project_info`. Move subagent, document and timeout details into the relevant tool descriptions. Keep the `revit_send_code_to_revit` description within its 599-byte budget; document script shapes, globals, imports and rollback scope on `code`.
 
 ### Targeting
 

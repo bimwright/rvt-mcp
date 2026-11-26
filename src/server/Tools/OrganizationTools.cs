@@ -14,7 +14,7 @@ namespace RvtMcp.Server
         public static async Task<string> CreateViewTemplateFromView(string templateName, long? sourceViewId = null, long[] controlledSettingIds = null, long[] nonControlledSettingIds = null, bool failIfNameExists = true)
             => await ToolGateway.CallAsync("create_view_template_from_view", new { templateName, sourceViewId, controlledSettingIds, nonControlledSettingIds, failIfNameExists });
 
-        [McpServerTool(Name = "revit_apply_view_template", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace view settings or template assignments; restore them with Revit Undo. Apply or assign a view template to one or more views.")]
+        [McpServerTool(Name = "revit_apply_view_template", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace view settings or template assignments; restore them with Revit Undo. Apply or assign a view template to one or more views. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> ApplyViewTemplate(long templateId, long[] viewIds = null, string mode = "assign", bool replaceExisting = false)
             => await ToolGateway.CallAsync("apply_view_template", new { templateId, viewIds, mode, replaceExisting });
 
@@ -22,11 +22,11 @@ namespace RvtMcp.Server
         public static async Task<string> DuplicateViewTemplate(long templateId, string newName)
             => await ToolGateway.CallAsync("duplicate_view_template", new { templateId, newName });
 
-        [McpServerTool(Name = "revit_delete_view_template", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Delete a view template and optionally detach dependent views; restore them with Revit Undo. Delete a view template. maxUsedByViews caps dependent-view/deleted-id response previews.")]
+        [McpServerTool(Name = "revit_delete_view_template", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Delete a view template and optionally detach dependent views; restore them with Revit Undo. Delete a view template. maxUsedByViews caps dependent-view/deleted-id response previews. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> DeleteViewTemplate(long templateId, bool dryRun = true, bool clearFromViews = false, int maxUsedByViews = 100)
             => await ToolGateway.CallAsync("delete_view_template", new { templateId, dryRun, clearFromViews, max_used_by_views = maxUsedByViews });
 
-        [McpServerTool(Name = "revit_save_selection", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create or replace a saved selection; restore document changes with Revit Undo. Save a named selection. IDs are omitted from the response by default; opt in with includeElementIds and maxElementIdResults.")]
+        [McpServerTool(Name = "revit_save_selection", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Create or replace a saved selection; restore document changes with Revit Undo. Save a named selection. IDs are omitted from the response by default; opt in with includeElementIds and maxElementIdResults. Call revit_survey_change_impact before modifying existing elements and read back the result.")]
         public static async Task<string> SaveSelection(string name, long[] elementIds = null, bool replaceExisting = false, bool useActiveSelectionIfIdsOmitted = true, bool includeElementIds = false, int maxElementIdResults = 100)
             => await ToolGateway.CallAsync("save_selection", new { name, elementIds, replaceExisting, useActiveSelectionIfIdsOmitted, include_element_ids = includeElementIds, max_element_id_results = maxElementIdResults });
 
@@ -38,7 +38,7 @@ namespace RvtMcp.Server
         public static async Task<string> ListSavedSelections(string nameFilter = "", bool includeElementIds = false, bool includeElementSummary = false, int limit = 500)
             => await ToolGateway.CallAsync("list_saved_selections", new { nameFilter, includeElementIds, includeElementSummary, limit });
 
-        [McpServerTool(Name = "revit_delete_saved_selection", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Delete a saved selection filter; restore it with Revit Undo. Delete a saved selection filter by name or ID.")]
+        [McpServerTool(Name = "revit_delete_saved_selection", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Delete a saved selection filter; restore it with Revit Undo. Delete a saved selection filter by name or ID. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> DeleteSavedSelection(string name = "", long? selectionId = null, bool dryRun = true)
             => await ToolGateway.CallAsync("delete_saved_selection", new { name, selectionId, dryRun });
 

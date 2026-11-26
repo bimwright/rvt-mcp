@@ -48,11 +48,11 @@ namespace RvtMcp.Server
         public static async Task<string> GetMepElementConnectors(long elementId)
             => await ToolGateway.CallAsync("get_mep_element_connectors", new { element_id = elementId });
 
-        [McpServerTool(Name = "revit_connect_mep_elements", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Change MEP connectivity; restore connections with Revit Undo. Connect physical connectors of two MEP elements with matching domains. Different assigned piping/HVAC system type IDs are rejected with connected=false and both types; unassigned equipment ports are allowed. A connection does not promise system merging. Optionally pin connectorIndex1/connectorIndex2 using Connector.Id, not ordinals. An existing direct connection or connection through one shared pipe/duct fitting is returned as already_connected=true without mutation.")]
+        [McpServerTool(Name = "revit_connect_mep_elements", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Change MEP connectivity; restore connections with Revit Undo. Connect physical connectors of two MEP elements with matching domains. Different assigned piping/HVAC system type IDs are rejected with connected=false and both types; unassigned equipment ports are allowed. A connection does not promise system merging. Optionally pin connectorIndex1/connectorIndex2 using Connector.Id, not ordinals. An existing direct connection or connection through one shared pipe/duct fitting is returned as already_connected=true without mutation. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> ConnectMepElements(long elementId1, long elementId2, long? connectorIndex1 = null, long? connectorIndex2 = null)
             => await ToolGateway.CallAsync("connect_mep_elements", new { element_id_1 = elementId1, element_id_2 = elementId2, connector_index_1 = connectorIndex1, connector_index_2 = connectorIndex2 });
 
-        [McpServerTool(Name = "revit_create_mep_fitting", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Insert an MEP fitting at connectors of existing MEP elements. fittingKind: elbow|tee|union|cross|transition. connectors is a JSON array of {element_id, connector_index} where connector_index is the connector_id from get_mep_element_connectors: elbow/union/transition need 2, tee 3, cross 4.")]
+        [McpServerTool(Name = "revit_create_mep_fitting", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Insert an MEP fitting at connectors of existing MEP elements. fittingKind: elbow|tee|union|cross|transition. connectors is a JSON array of {element_id, connector_index} where connector_index is the connector_id from get_mep_element_connectors: elbow/union/transition need 2, tee 3, cross 4. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> CreateMepFitting(string fittingKind, string connectors)
             => await ToolGateway.CallWithParamsAsync("create_mep_fitting", () =>
             {
@@ -60,7 +60,7 @@ namespace RvtMcp.Server
                 return new { fitting_kind = fittingKind, connectors = parsedConnectors };
             });
 
-        [McpServerTool(Name = "revit_set_system_classification", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Change MEP system membership; restore it with Revit Undo. Add MEP elements to an existing duct/piping system. If systemId omitted, only reports current system membership (read-only). elementIds is an array of MEP element ids.")]
+        [McpServerTool(Name = "revit_set_system_classification", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Change MEP system membership; restore it with Revit Undo. Add MEP elements to an existing duct/piping system. If systemId omitted, only reports current system membership (read-only). elementIds is an array of MEP element ids. Call revit_survey_change_impact before modifying existing elements and read back the result.")]
         public static async Task<string> SetSystemClassification(long[] elementIds, long? systemId = null)
             => await ToolGateway.CallAsync("set_system_classification", new { element_ids = elementIds, system_id = systemId });
 

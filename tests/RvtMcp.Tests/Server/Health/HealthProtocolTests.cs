@@ -67,7 +67,7 @@ public sealed class HealthProtocolTests
                 Assert.False(tool["annotations"].Value<bool>("destructiveHint"));
                 Assert.True(tool["annotations"].Value<bool>("idempotentHint"));
                 Assert.True(tool["annotations"].Value<bool>("openWorldHint"));
-                Assert.Contains("revit_health()", initialized["result"].Value<string>("instructions"));
+                Assert.Contains("revit_health(check_updates=true)", initialized["result"].Value<string>("instructions"));
                 var called = await Request(writer, reader, 3, "tools/call", new { name = "revit_health", arguments = new { } });
                 Assert.True(called["result"].Value<bool>("isError"));
                 var health = JObject.Parse(called["result"]["content"][0].Value<string>("text"));

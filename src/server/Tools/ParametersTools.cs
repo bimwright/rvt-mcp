@@ -34,7 +34,7 @@ namespace RvtMcp.Server
         public static async Task<string> ExportSharedParameterFile(string sharedParameterFilePath = "", string output = "inline")
             => await ToolGateway.CallAsync("export_shared_parameter_file", new { sharedParameterFilePath, output });
 
-        [McpServerTool(Name = "revit_set_parameter_value_by_guid", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace parameter values by GUID; restore them with Revit Undo. Set the value of a parameter by its shared GUID on one or more elements.")]
+        [McpServerTool(Name = "revit_set_parameter_value_by_guid", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace parameter values by GUID; restore them with Revit Undo. Set the value of a parameter by its shared GUID on one or more elements. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> SetParameterValueByGuid(long[] elementIds, string guid, string value, string valueType = "auto", string unit = "auto", string target = "auto", bool allOrNothing = true)
             => await ToolGateway.CallAsync("set_parameter_value_by_guid", new { elementIds, guid, value, valueType, unit, target, allOrNothing });
     }

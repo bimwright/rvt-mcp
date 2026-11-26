@@ -93,7 +93,7 @@ The solution exposes the shared C# source under `Shared source`, grouped by its 
 1. Write the handler in `src/shared/Handlers/<Domain>/<Verb><Noun>Handler.cs` implementing `IRevitCommand`. Return DTOs — never serialize Revit API objects directly.
 2. Register in `src/shared/Infrastructure/Execution/CommandDispatcher.cs` constructor: `Register(new Handlers.YourHandler());`.
 3. Add an `[McpServerTool]` method in the appropriate toolset class under `src/server/Tools/` (e.g. `QueryTools.cs` or `CreateTools.cs`). Use the 4-part description template: what, when-to-use, params, example. When the arguments are plain values, the body is `=> await ToolGateway.CallAsync("<wire_command>", new { ... });`. When the tool parses or normalizes input (JSON text, arrays), use `ToolGateway.CallWithParamsAsync("<wire_command>", () => { ...; return new { ... }; })`: the lambda runs inside the helper's `try`, so bad input returns `Error: ...` text instead of throwing. Never parse in the argument list of `CallAsync` — that runs before the `try`. Guards such as `ServerState.BlockIfReadOnly` or `ToolGateway.ValidateTimeoutSeconds` stay as statements before the call. A new toolset class also needs a line in `Program.ResolveRegisteredToolTypes` (`src/server/Program.ToolRegistration.cs`).
-4. Choose the domain toolset and explicitly set all four permission hints for the strongest optional branch. Model/file writes must not be marked read-only; destructive descriptions explain recovery or lack of Undo. Arbitrary send_code intentionally has no annotations. The bare CLI defaults to `query,create,view,meta`; fresh installs seed `all`.
+4. Choose the domain toolset and explicitly set all four permission hints for the strongest optional branch. Model/file writes must not be marked read-only; destructive descriptions explain recovery or lack of Undo, and tools that modify existing elements should note `revit_survey_change_impact` before editing. Keep each tool description under 4,096 characters (2,048 bytes per parameter; 2,048 UTF-8 bytes for `ServerInstructions`). Arbitrary send_code intentionally has no annotations. The bare CLI defaults to `query,create,view,meta`; fresh installs seed `all`.
 5. Cover any non-trivial logic with an xUnit test in `tests/RvtMcp.Tests/`. Extract pure functions where possible — `BatchExecutor.Run` is a good template.
 6. Manual smoke test in at least one Revit year before PR.
 
@@ -130,12 +130,12 @@ Open a GitHub issue with:
 ## Testing & drift detection
 
 ### Schema drift
-The canonical tool surface is snapshot to `tests/RvtMcp.Tests/Golden/tools-list.json`. CI compares each build against this file. A diff fails the build.
+The canonical tool surfaces are snapshot under `tests/RvtMcp.Tests/Golden/` (`tools-list.json`, `tools-list-adaptive-bake.json`, `tools-list-structural.json`, and `script-tools-schema.json`). CI compares each build against these files. A diff fails the build.
 
 When you intentionally add, rename, or reshape a tool:
 1. Run `UPDATE_SNAPSHOTS=1 dotnet test` locally.
-2. Review the diff in `Golden/tools-list.json`.
-3. Commit the updated golden file alongside your source change in the same PR.
+2. Review the diff in `tests/RvtMcp.Tests/Golden/`.
+3. Commit the updated golden files alongside your source change in the same PR.
 
 ### Weak-model benchmark
 Run the Haiku benchmark before merging when your PR:

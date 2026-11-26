@@ -24,7 +24,7 @@ namespace RvtMcp.Server
         }
 
         [McpServerTool(Name = "revit_save_checkpoint", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), Description(
-            "With user approval, create a checkpoint of a local model or family before risky work or at handover. It may first save and overwrite the working file; Revit keeps a backup. A timeout may leave the operation running; inspect its status before retrying. Example: revit_save_checkpoint(label=\"Before renumbering sheets\", reason=\"User approved the sheet plan\", milestone=true).")]
+            "Create a checkpoint of a local model or family before risky work or at handover; this may first save and overwrite the working file, and Revit keeps a backup. Use only with user approval, following revit_get_document_state policy. A timeout may leave the operation running; inspect its status before retrying. Example: revit_save_checkpoint(label=\"Before renumbering sheets\", reason=\"User approved the sheet plan\", milestone=true).")]
         public static async Task<string> SaveCheckpoint(
             [Description("Checkpoint label, 1-80 characters.")] string label,
             [Description("Optional reason, up to 500 characters.")] string reason = null,

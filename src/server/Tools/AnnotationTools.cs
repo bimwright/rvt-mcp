@@ -59,7 +59,7 @@ namespace RvtMcp.Server
         public static async Task<string> ListKeynotes(string keyPrefix = "", string search = "", int limit = 200)
             => await ToolGateway.CallAsync("list_keynotes", new { key_prefix = keyPrefix, search, limit });
 
-        [McpServerTool(Name = "revit_apply_keynote_to_element", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace keynote values; restore them with Revit Undo. Apply keynote parameter values to one or more elements.")]
+        [McpServerTool(Name = "revit_apply_keynote_to_element", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Replace keynote values; restore them with Revit Undo. Apply keynote parameter values to one or more elements. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> ApplyKeynoteToElement(long[] elementIds, string keynote, bool dryRun = false)
             => await ToolGateway.CallAsync("apply_keynote_to_element", new { element_ids = elementIds, keynote, dry_run = dryRun });
 
@@ -71,7 +71,7 @@ namespace RvtMcp.Server
         public static async Task<string> FindUndimensionedElements(string category, long? viewId = null, int limit = 200)
             => await ToolGateway.CallAsync("find_undimensioned_elements", new { category, view_id = viewId, limit });
 
-        [McpServerTool(Name = "revit_wipe_empty_tags", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Delete empty tags; restore them with Revit Undo. Find and delete empty tags in a view.")]
+        [McpServerTool(Name = "revit_wipe_empty_tags", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false), System.ComponentModel.Description("Delete empty tags; restore them with Revit Undo. Find and delete empty tags in a view. Call revit_survey_change_impact first and read back the result.")]
         public static async Task<string> WipeEmptyTags(long? viewId = null, bool dryRun = true, int limit = 200)
             => await ToolGateway.CallAsync("wipe_empty_tags", new { view_id = viewId, dry_run = dryRun, limit });
     }
