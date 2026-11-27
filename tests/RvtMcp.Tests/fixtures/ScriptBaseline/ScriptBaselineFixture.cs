@@ -86,9 +86,13 @@ namespace RvtMcp.Plugin {
             Directory.CreateDirectory(directory);
             foreach (var source in Directory.GetFiles(Path.Combine(Root(), "history")))
                 File.Copy(source, Path.Combine(directory, Path.GetFileName(source)));
-            // File.Copy keeps the checkout's write time; the current log stands for today's live file,
-            // otherwise daily rotation (keyed on the last write) archives it before the test appends.
-            File.SetLastWriteTimeUtc(Path.Combine(directory, "mcp-calls.jsonl"), DateTime.UtcNow);
+            // File.Copy keeps the checkout's write time; refresh copied logs inside the 30-day
+            // retention window so archives stay preserved (older than today's live file) and
+            // daily rotation does not archive mcp-calls.jsonl before the test appends.
+            var now = DateTime.UtcNow;
+            foreach (var file in Directory.GetFiles(directory, "mcp-calls-*.jsonl"))
+                File.SetLastWriteTimeUtc(file, now.AddDays(-1));
+            File.SetLastWriteTimeUtc(Path.Combine(directory, "mcp-calls.jsonl"), now);
         }
     }
 }
