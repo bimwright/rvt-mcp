@@ -90,6 +90,7 @@ namespace RvtMcp.Plugin.Update
         [JsonProperty("lastCheckedUtc")] public DateTime? LastCheckedUtc { get; set; }
         [JsonProperty("latestTag")] public string LatestTag { get; set; }
         [JsonProperty("latestUrl")] public string LatestUrl { get; set; }
+        [JsonProperty("latestNotes")] public string LatestNotes { get; set; }
         [JsonProperty("skippedVersion")] public string SkippedVersion { get; set; }
 
         public static string DefaultPath =>
@@ -128,6 +129,7 @@ namespace RvtMcp.Plugin.Update
         public string CurrentVersion { get; set; }
         public string LatestVersion { get; set; }
         public string ReleaseUrl { get; set; }
+        public string ReleaseNotes { get; set; }
         public bool IsSkipped { get; set; }
     }
 
@@ -141,6 +143,7 @@ namespace RvtMcp.Plugin.Update
         public const string ReleasesLatestUrl = "https://github.com/bimwright/rvt-mcp/releases/latest";
         public const string DisableEnvVar = "BIMWRIGHT_DISABLE_UPDATE_CHECK";
         public static readonly TimeSpan CheckInterval = TimeSpan.FromHours(24);
+        public static readonly TimeSpan InteractiveCheckInterval = TimeSpan.FromMinutes(30);
         public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(5);
 
         public static bool IsDisabledByEnvironment()
@@ -162,8 +165,8 @@ namespace RvtMcp.Plugin.Update
             catch { return "0.0.0"; }
         }
 
-        /// <summary>Returns (tag, html_url) for a stable, published release; null otherwise.</summary>
-        public static Tuple<string, string> ParseLatestRelease(string json)
+        /// <summary>Returns (tag, html_url, formattedNotes) for a stable, published release; null otherwise.</summary>
+        public static Tuple<string, string, string> ParseLatestRelease(string json)
         {
             try
             {
@@ -174,9 +177,87 @@ namespace RvtMcp.Plugin.Update
                 var url = o.Value<string>("html_url");
                 if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("https://github.com/bimwright/rvt-mcp/", StringComparison.Ordinal))
                     url = ReleasesLatestUrl;
-                return Tuple.Create(tag, url);
+                var notes = FormatReleaseNotes(o.Value<string>("body"));
+                return Tuple.Create(tag, url, notes);
             }
             catch { return null; }
+        }
+
+        /// <summary>
+        /// Converts GitHub release markdown into concise plain text for the update card,
+        /// dropping trailing Distribution/Validation metadata sections and bounding length.
+        /// </summary>
+        public static string FormatReleaseNotes(string markdown, int maxChars = 1500)
+        {
+            if (string.IsNullOrWhiteSpace(markdown)) return null;
+            var lines = markdown.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+            var sb = new StringBuilder();
+            var prevBlank = true;
+            foreach (var raw in lines)
+            {
+                var trimmed = raw.Trim();
+                if (trimmed.StartsWith("### Distribution", StringComparison.OrdinalIgnoreCase)
+                    || trimmed.StartsWith("### Validation", StringComparison.OrdinalIgnoreCase)
+                    || trimmed.StartsWith("Source commit:", StringComparison.OrdinalIgnoreCase))
+                    break;
+
+                if (trimmed.Length == 0)
+                {
+                    if (!prevBlank && sb.Length > 0)
+                    {
+                        sb.AppendLine();
+                        prevBlank = true;
+                    }
+                    continue;
+                }
+
+                var line = StripMarkdownInline(trimmed);
+                if (line.StartsWith("### ") || line.StartsWith("## ") || line.StartsWith("# "))
+                    line = line.TrimStart('#', ' ');
+                else if (line.StartsWith("- ") || line.StartsWith("* "))
+                    line = "• " + line.Substring(2).Trim();
+
+                if (sb.Length > 0 && sb.Length + line.Length + 2 > maxChars)
+                {
+                    var remaining = maxChars - sb.Length - 1;
+                    if (remaining > 20)
+                        sb.Append(line.Substring(0, remaining).TrimEnd()).Append('…');
+                    else
+                        sb.Append('…');
+                    break;
+                }
+
+                sb.AppendLine(line);
+                prevBlank = false;
+            }
+            var result = sb.ToString().Trim();
+            return result.Length == 0 ? null : result;
+        }
+
+        private static string StripMarkdownInline(string text)
+        {
+            // Convert markdown links [label](url) -> label.
+            var sb = new StringBuilder(text.Length);
+            var i = 0;
+            while (i < text.Length)
+            {
+                if (text[i] == '[')
+                {
+                    var closeBracket = text.IndexOf(']', i + 1);
+                    if (closeBracket > i && closeBracket + 1 < text.Length && text[closeBracket + 1] == '(')
+                    {
+                        var closeParen = text.IndexOf(')', closeBracket + 2);
+                        if (closeParen > closeBracket + 1)
+                        {
+                            sb.Append(text, i + 1, closeBracket - i - 1);
+                            i = closeParen + 1;
+                            continue;
+                        }
+                    }
+                }
+                sb.Append(text[i++]);
+            }
+            return sb.ToString().Replace("**", string.Empty).Replace("`", string.Empty);
         }
 
         /// <summary>Builds the notice from the cached state only (no network).</summary>
@@ -192,6 +273,7 @@ namespace RvtMcp.Plugin.Update
                 CurrentVersion = "v" + current,
                 LatestVersion = latestText,
                 ReleaseUrl = string.IsNullOrWhiteSpace(state.LatestUrl) ? ReleasesLatestUrl : state.LatestUrl,
+                ReleaseNotes = string.IsNullOrWhiteSpace(state.LatestNotes) ? null : state.LatestNotes,
                 IsSkipped = SemanticVersion.TryParse(state.SkippedVersion, out var skipped) && skipped.CompareTo(latest) == 0,
             };
         }
@@ -204,14 +286,15 @@ namespace RvtMcp.Plugin.Update
         /// returns the resulting notice (null when up to date or unknown). Never throws.
         /// </summary>
         public static async Task<UpdateInfo> CheckAsync(string currentVersion, string statePath = null,
-            Func<CancellationToken, Task<string>> fetch = null, DateTime? nowUtc = null)
+            Func<CancellationToken, Task<string>> fetch = null, DateTime? nowUtc = null, TimeSpan? checkInterval = null)
         {
             try
             {
                 var now = nowUtc ?? DateTime.UtcNow;
+                var interval = checkInterval ?? CheckInterval;
                 var state = UpdateCheckState.Load(statePath);
                 var due = state.LastCheckedUtc == null
-                    || now - state.LastCheckedUtc.Value >= CheckInterval
+                    || now - state.LastCheckedUtc.Value >= interval
                     || state.LastCheckedUtc.Value > now.AddMinutes(5); // clock moved backwards
                 if (due)
                 {
@@ -228,6 +311,7 @@ namespace RvtMcp.Plugin.Update
                     {
                         state.LatestTag = parsed.Item1;
                         state.LatestUrl = parsed.Item2;
+                        state.LatestNotes = parsed.Item3;
                         state.Save(statePath);
                     }
                 }
@@ -274,7 +358,8 @@ namespace RvtMcp.Plugin.Update
             sb.AppendLine();
             sb.AppendLine("Steps:");
             sb.AppendLine("1. Open the release page and read the release notes and install instructions (also AGENTS.md in the repository).");
-            sb.AppendLine("2. Download the RvtMcp.Setup-v" + info.LatestVersion + "-win-x64.zip asset and verify it against its .sha256 file.");
+            var bareVersion = (info.LatestVersion ?? string.Empty).TrimStart('v', 'V');
+            sb.AppendLine("2. Download the RvtMcp.Setup-v" + bareVersion + "-win-x64.zip asset and verify it against its .sha256 file.");
             sb.AppendLine("3. Tell me to close every running Revit before installing, then guide me through running the installer step by step.");
             sb.AppendLine("4. After installing, help me restart Revit and my MCP client, and confirm the server reports " + info.LatestVersion + ".");
             sb.Append("Ask me before running any command on my computer.");

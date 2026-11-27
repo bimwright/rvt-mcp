@@ -208,7 +208,6 @@
   "bakeInbox.instruction": "Herramientas bake aceptadas",
   "bakeInbox.empty": "No hay herramientas bake aceptadas disponibles.",
   "bakeInbox.ribbonSlot": " [Espacio de cinta {slot:n}]",
-
   "ribbon.settings.text": "Settings",
   "ribbon.settings.tooltip": "Open rvt-mcp Settings",
   "settings.window.title": "rvt-mcp · Settings",
@@ -544,5 +543,7 @@
   "reports.history.status.recorded": "Reason supplied in History.",
   "reports.history.model": "Model key",
   "reports.history.callFailed": "This call failed; some recorded changes may still have committed.",
-  "reports.history.notCaptured": "Not captured"
+  "reports.history.notCaptured": "Not captured",
+  "update.whatsNew": "Novedades",
+  "update.previewPrompt": "Ver prompt de actualización"
 }

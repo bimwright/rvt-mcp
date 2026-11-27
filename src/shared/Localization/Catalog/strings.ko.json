@@ -208,7 +208,6 @@
   "bakeInbox.instruction": "승인된 베이크 도구",
   "bakeInbox.empty": "사용할 수 있는 승인된 베이크 도구가 없습니다.",
   "bakeInbox.ribbonSlot": " [리본 슬롯 {slot:n}]",
-
   "ribbon.settings.text": "Settings",
   "ribbon.settings.tooltip": "Open rvt-mcp Settings",
   "settings.window.title": "rvt-mcp · Settings",
@@ -544,5 +543,7 @@
   "reports.history.status.recorded": "Reason supplied in History.",
   "reports.history.model": "Model key",
   "reports.history.callFailed": "This call failed; some recorded changes may still have committed.",
-  "reports.history.notCaptured": "Not captured"
+  "reports.history.notCaptured": "Not captured",
+  "update.whatsNew": "변경 사항",
+  "update.previewPrompt": "에이전트 업데이트 프롬프트 보기"
 }
