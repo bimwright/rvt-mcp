@@ -20,7 +20,7 @@
   <a href="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml"><img src="https://github.com/bimwright/rvt-mcp/actions/workflows/build.yml/badge.svg" alt="build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="license" /></a>
   <a href="#supported-revit-versions"><img src="https://img.shields.io/badge/Revit-2022--2027-186BFF" alt="Revit 2022-2027" /></a>
-  <a href="#tools"><img src="https://img.shields.io/badge/MCP-257%20tools-6C47FF" alt="MCP tools" /></a>
+  <a href="#tools"><img src="https://img.shields.io/badge/MCP-258%20tools-6C47FF" alt="MCP tools" /></a>
   <a href="https://github.com/bimwright/rvt-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/bimwright/rvt-mcp" alt="latest release" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-version%20history-informational" alt="changelog" /></a>
 </p>
@@ -93,16 +93,16 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 ## Tools
 
-以下のツール数は **v2.5.2 リリース**に対応します（`all` が 257 件、adaptive bake が 260 件、素の既定が 63 件）。
+以下のツール数は現在のビルドに対応します（`all` が 258 件、adaptive bake が 261 件、素の既定が 64 件）。
 
 | モード | Tools | 注記 |
 |--------|------:|------|
-| 新規インストール | **257** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
-| 素の `rvt-mcp.exe` | **63** | `query` + `create` + `view` + `meta` |
-| `--toolsets all` | **257** | フルカタログ |
-| `all` + adaptive bake | **260** | 提案ライフサイクル 3 ツールを追加 |
+| 新規インストール | **258** | `install.ps1` が `rvtmcp.config.json` に `"toolsets": ["all"]` をシード |
+| 素の `rvt-mcp.exe` | **64** | `query` + `create` + `view` + `meta` |
+| `--toolsets all` | **258** | フルカタログ |
+| `all` + adaptive bake | **261** | 提案ライフサイクル 3 ツールを追加 |
 
-件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 63 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。エージェント報告はユーザーごとの報告データのみを書くため、許可されます。
+件数に個人 baked ツールは含みません。インストーラーがシードするのは `rvtmcp.config.json` に `toolsets` が未設定の場合のみ——独自リストはアップグレード後も残り、キー削除（または独自 CSV）で素のサーバーは 64 ツールに戻ります。Read-only は `ReadOnly=true` のツールだけを残すため、混在 toolset 内の読み取りツールも使えます。既定の出力が inline でも、ファイルを書けるツールは除外されます。エージェント報告はユーザーごとの報告データのみを書くため、許可されます。
 
 | Toolset | 範囲 |
 |---------|------|
@@ -173,7 +173,7 @@ rvt-mcp を使ったコミュニティ動画です。動画内のインストー
 
 ### プロンプト
 
-v1.0.0 には 6 つの MCP プロンプトがあります。クライアントのプロンプトメニュー（Claude Code: `/mcp__rvt-mcp__revit_<name>`）から選ぶと、エージェントは手持ちのツールでスクリプトに沿って進めます。
+サーバーには 6 つのワークフローガイドが同梱されており、MCP プロンプト（Claude Code: `/mcp__rvt-mcp__revit_<name>`、Claude Desktop: プロンプトメニュー）、MCP Skills（`skill://revit-<name>/SKILL.md`）、または読み取り専用ツール `revit_get_workflow` から同じ内容を利用できます。
 
 - `revit_getting_started` — 開いているモデルの把握（読み取り専用、既定の設定で動作）。
 - `revit_drawing_layout` — `request` を指定：1 枚のシートのビューポートを整列します。まずシート座標の実位置を読み取り（`revit_get_viewport_geometry`）、整列方法を合意し、ドライラン計画を示し（`revit_align_viewports`）、確認後にのみ移動して、結果を再取得します。`query,sheets,view,meta` が必要です。読み取り専用モードでは報告と提案のみです。
@@ -311,6 +311,7 @@ Annotations は各ツールのドキュメントとファイルへの影響を�
       "mcp__rvt-mcp__revit_get_type_parameters",
       "mcp__rvt-mcp__revit_get_view_visibility",
       "mcp__rvt-mcp__revit_get_viewport_geometry",
+      "mcp__rvt-mcp__revit_get_workflow",
       "mcp__rvt-mcp__revit_health",
       "mcp__rvt-mcp__revit_list_areas",
       "mcp__rvt-mcp__revit_list_assemblies",

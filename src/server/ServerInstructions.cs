@@ -19,10 +19,11 @@ namespace RvtMcp.Server
             + "Then, if available, call revit_health(check_updates=true) once. "
             + "Check revit_get_operation_status before retrying timed-out writes; if absent, don't retry. REVIT_BUSY means not started. "
             // INSTR-SURVEY-HINT
-            + "Call revit_survey_change_impact before editing existing elements; read the result back. Enable meta to verify or query to survey if missing.";
+            + "Call revit_survey_change_impact before editing existing elements; read the result back. Enable meta to verify or query to survey if missing."
+            + " Use revit_get_workflow (meta) for workflows.";
 
         internal const string Reporting =
-            "If available, call revit_report_task_result once before replying for model changes or elements to check, not chat-only.";
+            "If available, call revit_report_task_result once for model changes or items to check, not chat-only.";
 
         internal const string ToolIndex =
             "Toolsets (defaults query,create,view,meta; --toolsets all for rest):\n"

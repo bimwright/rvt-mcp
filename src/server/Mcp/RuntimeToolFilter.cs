@@ -28,6 +28,7 @@ namespace RvtMcp.Server
                 // with the target envelope — regardless of how the tool formatted it.
                 var targetCtx = TargetCallContext.Begin();
                 targetCtx.Cancellation = ct;
+                PromptRequestLogging.CurrentSessionId = request.Server?.SessionId ?? "stdio";
                 try
                 {
                     using (var capture = new ChangeCaptureContext())
@@ -56,6 +57,7 @@ namespace RvtMcp.Server
                 {
                     TargetCallContext.End(targetCtx);
                     RevitTaskContext.Current = null;
+                    PromptRequestLogging.CurrentSessionId = null;
                 }
             }));
 

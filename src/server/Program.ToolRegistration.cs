@@ -43,6 +43,7 @@ namespace RvtMcp.Server
             mcp = RegisterToolsets(mcp, enabled, config);
             mcp.WithResources<RevitResources>();
             mcp.WithPrompts<RevitPrompts>();
+            mcp = RevitSkills.Register(mcp, enabled, config);
             return mcp;
         }
 
@@ -130,6 +131,7 @@ namespace RvtMcp.Server
             if (enabled.Contains("meta"))       types.Add(typeof(HealthTools));
             if (enabled.Contains("meta"))       types.Add(typeof(ChangeHistoryTools));
             if (enabled.Contains("meta"))       types.Add(typeof(FailureTools));
+            if (enabled.Contains("meta"))       types.Add(typeof(WorkflowGuideTools));
             if (enabled.Contains("lint"))       types.Add(typeof(LintTools));
             if (enabled.Contains("structural")) types.Add(typeof(StructuralTools));
             return types.ToArray();

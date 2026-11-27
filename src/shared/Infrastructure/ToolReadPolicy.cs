@@ -75,6 +75,7 @@ namespace RvtMcp.Plugin
             "get_type_parameters",
             "get_view_visibility",
             "get_viewport_geometry",
+            "get_workflow",
             "list_areas",
             "list_assemblies",
             "list_available_targets",

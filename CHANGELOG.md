@@ -34,6 +34,9 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 - Update `ModelContextProtocol` and `ModelContextProtocol.AspNetCore` from `1.4.2` to `2.4.0`. The server now negotiates MCP `2026-07-28` (`server/discover`) while still accepting older clients (`initialize`).
 - Keep `--http` on explicit stateless Streamable HTTP mode (`HttpServerSessionMode.Stateless`) and update its help/startup message (needs live verification with external HTTP clients; legacy `/sse` is disabled).
 - Add opt-in MCP Tasks (`SEP-2663`, `ModelContextProtocol.Extensions.Tasks 2.4.0`) for `revit_clash_detection`, `revit_batch_export_sheets`, `revit_export_ifc`, and `revit_export_nwc`, backed by `OperationId`, `PreviousOperationTracker`, and `FailureLedgerStore` with honest post-dispatch `tasks/cancel` handling, ledger recovery across restarts, and 1h TTL / 10s poll defaults.
+- Expose all six bundled Revit workflow guides via MCP Skills (`ModelContextProtocol.Extensions.Skills 2.4.0`, led by `skill://revit-change/SKILL.md`) from a single source shared with existing prompts.
+- Add the read-only `revit_get_workflow` tool (`meta` toolset) sharing the same workflow source for clients without MCP Skills, add workflow/skill invocation logging, and add a short `revit_get_workflow` hint to `ServerInstructions` within the 2,048-byte limit.
+- Catalog counts: `--toolsets all` **258**, adaptive bake **261**, and bare defaults **64**.
 
 ## v2.5.2 — 2026-11-26
 
