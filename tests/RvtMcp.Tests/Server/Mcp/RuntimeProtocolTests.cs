@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,8 +72,11 @@ namespace RvtMcp.Tests
             }
         }
 
-        [Fact]
-        public async Task MCP_filter_records_the_client_name_sent_at_initialize()
+        [Theory]
+        [InlineData("2026-07-28")]
+        [InlineData("2025-11-25")]
+        // SDK-CLIENT-NAME, SDK-OLD-AND-NEW-CLIENT, FC-TST-03
+        public async Task MCP_filter_records_the_client_name_across_protocol_versions(string protocolVersion)
         {
             var original = ServerState.Config; var originalSend = ToolGateway.SendOverride; var originalName = ToolGateway.ClientName;
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(20));
@@ -87,13 +91,27 @@ namespace RvtMcp.Tests
                 ToolGateway.SendOverride = (command, args, timeout) =>
                     Task.FromResult(ToolGateway.InterpretResponse(new JObject { ["success"] = true, ["data"] = new JObject { ["view_name"] = "Sample" } }));
                 var builder = Host.CreateApplicationBuilder(); builder.Logging.ClearProviders();
-                var mcp = builder.Services.AddMcpServer().WithStreamServerTransport(input, input);
+                var mcp = builder.Services.AddMcpServer(Program.ConfigureMcpServerOptions).WithStreamServerTransport(input, input);
                 mcp = RuntimeToolFilter.Register(mcp, config, new SessionContext(false, Path.GetTempPath()));
                 Program.RegisterToolsets(mcp, ToolsetFilter.Resolve(config), config);
                 using var host = builder.Build(); await host.StartAsync(deadline.Token);
                 await using var client = await McpClient.CreateAsync(new StreamClientTransport(output, output),
-                    new McpClientOptions { ClientInfo = new Implementation { Name = "claude-code", Version = "2.1.330" } },
+                    new McpClientOptions
+                    {
+                        ProtocolVersion = protocolVersion,
+                        ClientInfo = new Implementation { Name = "claude-code", Version = "2.1.330" }
+                    },
                     cancellationToken: deadline.Token);
+                Assert.Equal(protocolVersion, client.NegotiatedProtocolVersion);
+                Assert.Equal("rvt-mcp", client.ServerInfo?.Name);
+                Assert.Equal(Program.ServerInformationalVersion, client.ServerInfo?.Version);
+                Assert.False(string.IsNullOrEmpty(client.ServerInstructions));
+                Assert.True(Encoding.UTF8.GetByteCount(client.ServerInstructions) <= 2048);
+                Assert.EndsWith(Program.SafetyAndPermissions, client.ServerInstructions, StringComparison.Ordinal);
+
+                var tools = await client.ListToolsAsync(cancellationToken: deadline.Token);
+                Assert.Contains("revit_get_current_view_info", tools.Select(t => t.Name));
+
                 Assert.Null(ToolGateway.ClientName);
                 var response = await client.CallToolAsync("revit_get_current_view_info", cancellationToken: deadline.Token);
                 Assert.False(response.IsError == true);

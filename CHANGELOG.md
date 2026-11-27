@@ -29,6 +29,11 @@
 
 Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/releases/latest). v0.1.0–v0.5.0 are kept as git tags for history; any GitHub Releases for them are no longer published, and the legacy NuGet package `Bimwright.Rvt.Server` (0.1–0.3) is obsolete.
 
+## Unreleased
+
+- Update `ModelContextProtocol` and `ModelContextProtocol.AspNetCore` from `1.4.2` to `2.4.0`. The server now negotiates MCP `2026-07-28` (`server/discover`) while still accepting older clients (`initialize`).
+- Keep `--http` on explicit stateless Streamable HTTP mode (`HttpServerSessionMode.Stateless`) and update its help/startup message (needs live verification with external HTTP clients; legacy `/sse` is disabled).
+
 ## v2.5.2 — 2026-11-26
 
 This release begins an ongoing MCP gateway upgrade focused on cleaner server instructions, tool discovery, and client compatibility.
