@@ -55,6 +55,7 @@ namespace RvtMcp.Server
                 finally
                 {
                     TargetCallContext.End(targetCtx);
+                    RevitTaskContext.Current = null;
                 }
             }));
 

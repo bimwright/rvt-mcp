@@ -38,6 +38,7 @@ namespace RvtMcp.Server
             // The report reminder points at revit_report_task_result, which only the meta toolset registers.
             mcp = RuntimeToolFilter.Register(mcp, config, ToolGateway.Session, null,
                 enabled.Contains("meta") ? ToolGateway.ReportReminder : null);
+            mcp = RevitTaskSupport.Register(mcp);
             mcp = PromptRequestLogging.Register(mcp);
             mcp = RegisterToolsets(mcp, enabled, config);
             mcp.WithResources<RevitResources>();

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Bimwright.Targeting;
 using RvtMcp.Plugin; // RvtMcpConfig
@@ -48,9 +49,14 @@ namespace RvtMcp.Server
             var config = ServerState.Config ?? new RvtMcpConfig();
             var rejection = ToolReadPolicy.Rejection(command, config.ReadOnlyOrDefault, config.EnableSendCodeOrDefault);
             if (rejection != null) throw new InvalidOperationException(rejection);
+            var taskCtx = RevitTaskContext.Current;
             var sendOverride = SendOverride;
             if (sendOverride != null)
+            {
+                if (taskCtx != null && !taskCtx.TryMarkDispatched(command, TargetCallContext.Current?.Cancellation ?? CancellationToken.None))
+                    throw new OperationCanceledException(TargetCallContext.Current?.Cancellation ?? CancellationToken.None);
                 return await sendOverride(command, parameters, timeoutSeconds);
+            }
 
             var callCtx = TargetCallContext.Current;
             long pinned;
@@ -70,7 +76,7 @@ namespace RvtMcp.Server
             }
 
             var id = $"req-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
-            var operationId = Guid.NewGuid().ToString("N");
+            var operationId = taskCtx?.TaskId ?? Guid.NewGuid().ToString("N");
             var history = config.EnableChangeHistoryOrDefault ? new ChangeHistoryRequest { Id = operationId, Session = HistorySession } : null;
             var binding = RevitTargetBinding.Binding;
 
@@ -116,14 +122,33 @@ namespace RvtMcp.Server
             }
             var response = JObject.Parse(responseLine);
             var paramsJson = parameters != null ? JsonConvert.SerializeObject(parameters, RequestJsonSettings) : null;
-            if (script == null) UsageLogger?.RecordToolCall(command, paramsJson, response.Value<bool>("success"));
-            if (pending.HistoryReceipt != null) ChangeCaptureContext.RecordHistory(pending.HistoryReceipt);
-            var result = InterpretResponse(response);
-            // Finished pending operations are attached by RuntimeToolFilter, to the response the agent receives.
+            // TASK-ON-OPERATION: an MCP task awaits final host completion (staying Working while Revit runs or waits for a dialog).
             var execution = (response["_operation"] as JObject)?.Value<string>("execution");
             if (execution == "waiting_for_user" || execution == "timed_out_running" || execution == "running" || execution == "queued")
+            {
                 PreviousOperations.Remember(pending.OperationId, "revit_" + command, pending.Execution.Task, execution, ToolReadPolicy.IsReadOnly(command), pending);
-            return result;
+                if (taskCtx != null)
+                {
+                    var remaining = taskCtx.DeadlineUtc - DateTimeOffset.UtcNow;
+                    if (remaining > TimeSpan.FromHours(1)) remaining = TimeSpan.FromHours(1);
+                    if (remaining > TimeSpan.Zero)
+                        await Task.WhenAny(pending.Execution.Task, Task.Delay(remaining));
+                    if (pending.Execution.Task.Status == TaskStatus.RanToCompletion)
+                    {
+                        responseLine = await pending.Execution.Task;
+                        response = JObject.Parse(responseLine);
+                        PreviousOperations.MarkRead(pending.OperationId);
+                    }
+                    else if (pending.Execution.Task.IsCompleted)
+                    {
+                        if (script == null) UsageLogger?.RecordToolCall(command, paramsJson, false);
+                        throw new TargetException(binding.Interrupted(effectiveGeneration), pending.Pending("interrupted_unknown")["_operation"] as JObject);
+                    }
+                }
+            }
+            if (script == null) UsageLogger?.RecordToolCall(command, paramsJson, response.Value<bool>("success"));
+            if (pending.HistoryReceipt != null) ChangeCaptureContext.RecordHistory(pending.HistoryReceipt);
+            return InterpretResponse(response);
         }
 
         internal static readonly PreviousOperationTracker PreviousOperations = new PreviousOperationTracker();
@@ -163,6 +188,11 @@ namespace RvtMcp.Server
                 var result = await SendToRevit(command, parameters, timeoutSeconds);
                 return JsonConvert.SerializeObject(result, Formatting.Indented);
             }
+            catch (OperationCanceledException) when (RevitTaskContext.Current?.DispatchedToHost != true
+                && (RevitTaskContext.Current != null || TargetCallContext.Current?.Cancellation.IsCancellationRequested == true))
+            {
+                throw;
+            }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
@@ -177,6 +207,11 @@ namespace RvtMcp.Server
                 var parameters = buildParameters();
                 var result = await SendToRevit(command, parameters, timeoutSeconds);
                 return JsonConvert.SerializeObject(result, Formatting.Indented);
+            }
+            catch (OperationCanceledException) when (RevitTaskContext.Current?.DispatchedToHost != true
+                && (RevitTaskContext.Current != null || TargetCallContext.Current?.Cancellation.IsCancellationRequested == true))
+            {
+                throw;
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }

@@ -33,6 +33,7 @@ Install only the [latest GitHub Release](https://github.com/bimwright/rvt-mcp/re
 
 - Update `ModelContextProtocol` and `ModelContextProtocol.AspNetCore` from `1.4.2` to `2.4.0`. The server now negotiates MCP `2026-07-28` (`server/discover`) while still accepting older clients (`initialize`).
 - Keep `--http` on explicit stateless Streamable HTTP mode (`HttpServerSessionMode.Stateless`) and update its help/startup message (needs live verification with external HTTP clients; legacy `/sse` is disabled).
+- Add opt-in MCP Tasks (`SEP-2663`, `ModelContextProtocol.Extensions.Tasks 2.4.0`) for `revit_clash_detection`, `revit_batch_export_sheets`, `revit_export_ifc`, and `revit_export_nwc`, backed by `OperationId`, `PreviousOperationTracker`, and `FailureLedgerStore` with honest post-dispatch `tasks/cancel` handling, ledger recovery across restarts, and 1h TTL / 10s poll defaults.
 
 ## v2.5.2 — 2026-11-26
 
