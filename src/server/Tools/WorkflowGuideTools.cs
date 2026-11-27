@@ -13,7 +13,8 @@ namespace RvtMcp.Server
          Description(
              "Read a bundled Revit workflow guide (or list available guides when name is omitted): " +
              "change (disciplined survey-first edit guide), getting_started, model_audit, pre_issue_check, drawing_layout, or stairs. " +
-             "Honors --read-only and active toolsets. Read-only fallback for clients without MCP Skills.")]
+             "Honors --read-only and active toolsets. Read-only fallback for clients without MCP Skills. " +
+             "Example: {name: \"change\"} to read a guide, or {} to list all workflows.")]
         public static string GetWorkflow(
             [Description("Workflow name (change, getting_started, model_audit, pre_issue_check, drawing_layout, stairs), or omit to list all workflows.")]
             string name = null)
@@ -21,10 +22,12 @@ namespace RvtMcp.Server
             var config = ServerState.Config;
             var enabled = ToolsetFilter.Resolve(config);
             var sessionId = PromptRequestLogging.CurrentSessionId ?? "stdio";
+            var callCtx = TargetCallContext.Current;
+            var clientName = callCtx?.ClientNameResolved == true ? callCtx.ClientName : ToolGateway.ClientName;
 
             if (string.IsNullOrWhiteSpace(name))
             {
-                PromptRequestLogging.LogWorkflowTool(name, null, sessionId);
+                PromptRequestLogging.LogWorkflowTool(name, null, sessionId, clientName);
                 return JsonConvert.SerializeObject(new
                 {
                     workflows = WorkflowCatalog.All.Select(w => new
@@ -41,15 +44,15 @@ namespace RvtMcp.Server
 
             if (WorkflowCatalog.TryFind(name, out var def))
             {
-                PromptRequestLogging.LogWorkflowTool(name, def, sessionId);
+                PromptRequestLogging.LogWorkflowTool(name, def, sessionId, clientName);
                 return WorkflowCatalog.RenderBody(def, enabled, config);
             }
 
-            PromptRequestLogging.LogWorkflowTool(name, null, sessionId);
+            PromptRequestLogging.LogWorkflowTool(name, null, sessionId, clientName);
             return JsonConvert.SerializeObject(new
             {
                 ok = false,
-                error = "UNKNOWN_WORKFLOW: unknown workflow name. Call revit_get_workflow() with no arguments to list available workflows.",
+                error = "INVALID_ARGUMENT: unknown workflow name. Call revit_get_workflow() with no arguments to list available workflows.",
                 available_workflows = WorkflowCatalog.All.Select(w => w.Id).ToArray()
             }, Formatting.Indented);
         }

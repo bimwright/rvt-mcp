@@ -137,6 +137,124 @@ public sealed class HttpTransportProtocolTests
         }
     }
 
+    [Fact]
+    // SDK-CLIENT-NAME + SDK-RVT-HTTP (FC-TST-03): concurrent stateless HTTP clients keep isolated per-request
+    // client names on TargetCallContext, and an anonymous request never inherits the previous client's name.
+    public async Task Stateless_http_isolates_client_name_per_request_and_does_not_leak_across_clients()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "rvt-http-client-isolation-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var originalDir = ServerAuthToken.DiscoveryDirOverride;
+        var originalConfig = ServerState.Config;
+        var originalSend = ToolGateway.SendOverride;
+        var originalSession = ToolGateway.Session;
+        var originalClientName = ToolGateway.ClientName;
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+
+        try
+        {
+            ServerAuthToken.DiscoveryDirOverride = root;
+            RevitTargetBinding.ResetForTests();
+            ToolGateway.ResetForTests();
+            ToolGateway.ClientName = null;
+
+            var config = new RvtMcpConfig { Toolsets = new List<string> { "query", "meta" }, ReadOnly = true };
+            ServerState.Config = config;
+            ToolGateway.Session = new SessionContext(false, root);
+
+            var alphaEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var betaEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseBoth = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            ToolGateway.SendOverride = async (_, _, _) =>
+            {
+                var before = TargetCallContext.Current?.ClientName;
+                if (before == "http-alpha")
+                {
+                    alphaEntered.TrySetResult(true);
+                    await releaseBoth.Task.WaitAsync(timeout.Token);
+                }
+                else if (before == "http-beta")
+                {
+                    betaEntered.TrySetResult(true);
+                    await releaseBoth.Task.WaitAsync(timeout.Token);
+                }
+                var after = TargetCallContext.Current?.ClientName;
+                return new JObject { ["before"] = before, ["after"] = after };
+            };
+
+            await using var app = Program.BuildHttpApp(config, "http://127.0.0.1:0", registerMaintenance: false);
+            await app.StartAsync(timeout.Token);
+            try
+            {
+                var listenUrl = app.Urls.First();
+                await using var alpha = await McpClient.CreateAsync(
+                    new HttpClientTransport(new HttpClientTransportOptions { Endpoint = new Uri(listenUrl) }),
+                    new McpClientOptions
+                    {
+                        ProtocolVersion = "2026-07-28",
+                        ClientInfo = new Implementation { Name = "http-alpha", Version = "1.0" }
+                    },
+                    cancellationToken: timeout.Token);
+                await using var beta = await McpClient.CreateAsync(
+                    new HttpClientTransport(new HttpClientTransportOptions { Endpoint = new Uri(listenUrl) }),
+                    new McpClientOptions
+                    {
+                        ProtocolVersion = "2026-07-28",
+                        ClientInfo = new Implementation { Name = "http-beta", Version = "1.0" }
+                    },
+                    cancellationToken: timeout.Token);
+
+                var alphaCall = alpha.CallToolAsync("revit_get_current_view_info", cancellationToken: timeout.Token).AsTask();
+                var betaCall = beta.CallToolAsync("revit_get_current_view_info", cancellationToken: timeout.Token).AsTask();
+
+                await Task.WhenAll(alphaEntered.Task, betaEntered.Task).WaitAsync(TimeSpan.FromSeconds(5));
+                releaseBoth.TrySetResult(true);
+
+                var alphaResult = JObject.Parse(((TextContentBlock)(await alphaCall).Content[0]).Text);
+                var betaResult = JObject.Parse(((TextContentBlock)(await betaCall).Content[0]).Text);
+                Assert.Equal("http-alpha", alphaResult.Value<string>("before"));
+                Assert.Equal("http-alpha", alphaResult.Value<string>("after"));
+                Assert.Equal("http-beta", betaResult.Value<string>("before"));
+                Assert.Equal("http-beta", betaResult.Value<string>("after"));
+
+                // Anonymous request omitting clientInfo must not inherit "http-alpha" or "http-beta".
+                using var http = new HttpClient { BaseAddress = new Uri(listenUrl) };
+                var anonMeta = new JObject
+                {
+                    ["io.modelcontextprotocol/protocolVersion"] = "2026-07-28",
+                    ["io.modelcontextprotocol/clientCapabilities"] = new JObject()
+                };
+                var anonReply = await PostJsonRpcAsync(http, 99, "tools/call", new JObject
+                {
+                    ["name"] = "revit_get_current_view_info",
+                    ["arguments"] = new JObject(),
+                    ["_meta"] = anonMeta
+                }, timeout.Token, toolName: "revit_get_current_view_info");
+                Assert.Null(anonReply["error"]);
+                var anonData = JObject.Parse(anonReply["result"]!["content"]![0]!.Value<string>("text")!);
+                Assert.True(anonData["before"] == null || anonData["before"]!.Type == JTokenType.Null);
+                Assert.True(anonData["after"] == null || anonData["after"]!.Type == JTokenType.Null);
+            }
+            finally
+            {
+                releaseBoth.TrySetResult(true);
+                await app.StopAsync(CancellationToken.None);
+            }
+        }
+        finally
+        {
+            ServerAuthToken.DiscoveryDirOverride = originalDir;
+            ServerState.Config = originalConfig;
+            ToolGateway.SendOverride = originalSend;
+            ToolGateway.Session = originalSession;
+            ToolGateway.ClientName = originalClientName;
+            ToolGateway.ResetForTests();
+            RevitTargetBinding.ResetForTests();
+            try { if (Directory.Exists(root)) Directory.Delete(root, true); } catch (IOException) { }
+        }
+    }
+
     private static async Task<JObject> PostJsonRpcAsync(
         HttpClient http, int id, string method, JObject parameters, CancellationToken ct, string toolName = null)
     {

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +10,7 @@ using ModelContextProtocol.Extensions.Tasks;
 using ModelContextProtocol.Protocol;
 using Newtonsoft.Json.Linq;
 using RvtMcp.Failures;
+using RvtMcp.Plugin;
 
 namespace RvtMcp.Server
 {
@@ -68,15 +68,17 @@ namespace RvtMcp.Server
             public McpTaskInfo Info;
             public bool DispatchedToHost;
             public bool CancelRequestedAfterDispatch;
-            public string Command;
+            public bool IsReadOnlyCommand;
         }
 
         private readonly ConcurrentDictionary<string, TaskRecord> _tasks = new ConcurrentDictionary<string, TaskRecord>(StringComparer.Ordinal);
+        private readonly ConcurrentDictionary<string, DateTimeOffset> _cancelledRecoveredTasks = new ConcurrentDictionary<string, DateTimeOffset>(StringComparer.Ordinal);
         private readonly TimeSpan? _defaultTimeToLive;
         private readonly long _defaultPollIntervalMs;
         private readonly Func<FailureLedgerStore> _ledgerFactory;
         private readonly Func<string, JObject> _sessionStatusLookup;
-        private long _lastSweepTicks = DateTimeOffset.UtcNow.UtcTicks;
+        private readonly Func<DateTimeOffset> _utcNow;
+        private long _lastSweepTicks;
 
         public event Action<InputResponseReceivedEventArgs> InputResponseReceived;
 
@@ -84,7 +86,8 @@ namespace RvtMcp.Server
             TimeSpan? timeToLive = null,
             long pollIntervalMs = RecommendedPollIntervalMs,
             Func<FailureLedgerStore> ledgerFactory = null,
-            Func<string, JObject> sessionStatusLookup = null)
+            Func<string, JObject> sessionStatusLookup = null,
+            Func<DateTimeOffset> utcNow = null)
         {
             if (pollIntervalMs <= 0)
                 throw new ArgumentOutOfRangeException(nameof(pollIntervalMs), "Poll interval must be positive.");
@@ -92,6 +95,8 @@ namespace RvtMcp.Server
             _defaultPollIntervalMs = pollIntervalMs;
             _ledgerFactory = ledgerFactory ?? (() => FailureTools.StoreFactory());
             _sessionStatusLookup = sessionStatusLookup ?? (id => ToolGateway.PreviousOperations.Status(id));
+            _utcNow = utcNow ?? (() => DateTimeOffset.UtcNow);
+            _lastSweepTicks = _utcNow().UtcTicks;
         }
 
         // Must stay synchronous (no async/await) so setting RevitTaskContext.Current mutates the caller's
@@ -99,7 +104,7 @@ namespace RvtMcp.Server
         public Task<McpTaskInfo> CreateTaskAsync(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var now = DateTimeOffset.UtcNow;
+            var now = _utcNow();
             SweepExpired(now);
 
             var taskId = Guid.NewGuid().ToString("N");
@@ -115,6 +120,7 @@ namespace RvtMcp.Server
             _tasks[taskId] = new TaskRecord { Info = info };
             var deadline = _defaultTimeToLive is { } ttl && ttl > TimeSpan.Zero ? now + ttl : now + RecommendedTimeToLive;
             RevitTaskContext.Current = new RevitTaskContext(taskId, this, deadline);
+            McpFeatureLogging.LogTaskCreate(taskId);
 
             return Task.FromResult(info);
         }
@@ -123,19 +129,23 @@ namespace RvtMcp.Server
         {
             if (ct.IsCancellationRequested || !_tasks.TryGetValue(taskId, out var record))
                 return false;
+            var isReadOnly = ToolReadPolicy.IsReadOnly(StripRevitPrefix(command));
             lock (record.Sync)
             {
                 if (IsTerminal(record.Info.Status) || record.CancelRequestedAfterDispatch || ct.IsCancellationRequested)
                     return false;
                 record.DispatchedToHost = true;
-                record.Command = command;
+                record.IsReadOnlyCommand = isReadOnly;
                 record.Info = record.Info with
                 {
-                    LastUpdatedAt = DateTimeOffset.UtcNow,
-                    StatusMessage = $"Running in Revit (operationId={taskId}). If disconnected, check revit_get_operation_status(operationId=\"{taskId}\")."
+                    LastUpdatedAt = _utcNow(),
+                    StatusMessage = isReadOnly
+                        ? $"Running in Revit (operationId={taskId}). Read-only commands have no durable ledger record unless an incident occurs."
+                        : $"Running in Revit (operationId={taskId}). If disconnected, check revit_get_operation_status(operationId=\"{taskId}\")."
                 };
-                return true;
             }
+            McpFeatureLogging.LogTaskDispatch(taskId, command, isReadOnly);
+            return true;
         }
 
         public Task<McpTaskInfo> GetTaskAsync(string taskId, CancellationToken cancellationToken = default)
@@ -144,19 +154,27 @@ namespace RvtMcp.Server
             if (string.IsNullOrWhiteSpace(taskId))
                 return Task.FromResult<McpTaskInfo>(null);
 
-            var now = DateTimeOffset.UtcNow;
+            var now = _utcNow();
             if (_tasks.TryGetValue(taskId, out var record))
             {
+                McpTaskInfo snapshot = null;
                 lock (record.Sync)
                 {
                     if (IsExpired(record.Info, now))
                     {
                         _tasks.TryRemove(taskId, out _);
+                        McpFeatureLogging.LogTaskGet(taskId, "expired", "memory");
                         return Task.FromResult<McpTaskInfo>(null);
                     }
 
                     if (record.Info.Status != McpTaskStatus.Working)
-                        return Task.FromResult(record.Info);
+                        snapshot = record.Info;
+                }
+
+                if (snapshot != null)
+                {
+                    McpFeatureLogging.LogTaskGet(taskId, FormatStatus(snapshot.Status), "memory");
+                    return Task.FromResult(snapshot);
                 }
 
                 // Read session tracker and SQLite ledger outside record.Sync so disk contention never blocks task state transitions.
@@ -167,6 +185,7 @@ namespace RvtMcp.Server
                     if (IsExpired(record.Info, now))
                     {
                         _tasks.TryRemove(taskId, out _);
+                        McpFeatureLogging.LogTaskGet(taskId, "expired", "memory");
                         return Task.FromResult<McpTaskInfo>(null);
                     }
 
@@ -177,8 +196,11 @@ namespace RvtMcp.Server
                             record.Info = record.Info with { StatusMessage = liveMessage, LastUpdatedAt = now };
                     }
 
-                    return Task.FromResult(record.Info);
+                    snapshot = record.Info;
                 }
+
+                McpFeatureLogging.LogTaskGet(taskId, FormatStatus(snapshot.Status), "memory");
+                return Task.FromResult(snapshot);
             }
 
             // TASK-RECOVER: when this server instance has no in-memory entry (e.g., after stdio reconnect),
@@ -187,9 +209,13 @@ namespace RvtMcp.Server
             {
                 var recovered = RecoverFromLedger(taskId, now);
                 if (recovered != null)
+                {
+                    McpFeatureLogging.LogTaskGet(taskId, FormatStatus(recovered.Status), "ledger");
                     return Task.FromResult(recovered);
+                }
             }
 
+            McpFeatureLogging.LogTaskGet(taskId, "missing", "missing");
             return Task.FromResult<McpTaskInfo>(null);
         }
 
@@ -198,22 +224,36 @@ namespace RvtMcp.Server
             if (!_tasks.TryGetValue(taskId, out var record))
                 throw new InvalidOperationException($"Task '{taskId}' not found.");
 
+            var isError = IsToolErrorResult(result);
+            bool afterCancel;
             lock (record.Sync)
             {
                 if (IsTerminal(record.Info.Status))
                     return Task.CompletedTask;
 
-                var message = record.CancelRequestedAfterDispatch
-                    ? $"Completed after cancellation was requested (operationId={taskId}). Revit could not stop the in-progress command; inspect this result and revit_get_operation_status(operationId=\"{taskId}\") before retrying."
-                    : $"Completed (operationId={taskId}).";
+                afterCancel = record.CancelRequestedAfterDispatch;
+                string message;
+                if (afterCancel)
+                {
+                    message = isError
+                        ? $"Completed with error after cancellation was requested (operationId={taskId}). Revit could not stop the in-progress command; inspect this result and revit_get_operation_status(operationId=\"{taskId}\") before retrying."
+                        : $"Completed after cancellation was requested (operationId={taskId}). Revit could not stop the in-progress command; inspect this result and revit_get_operation_status(operationId=\"{taskId}\") before retrying.";
+                }
+                else
+                {
+                    message = isError
+                        ? $"Completed with error (operationId={taskId}); inspect this result and revit_get_operation_status(operationId=\"{taskId}\") before retrying."
+                        : $"Completed (operationId={taskId}).";
+                }
 
                 record.Info = record.Info with
                 {
                     Status = McpTaskStatus.Completed,
                     Result = result,
                     StatusMessage = message,
-                    LastUpdatedAt = DateTimeOffset.UtcNow,
+                    LastUpdatedAt = _utcNow(),
                 };
+                McpFeatureLogging.LogTaskComplete(taskId, isError, afterCancel);
             }
 
             return Task.CompletedTask;
@@ -224,12 +264,14 @@ namespace RvtMcp.Server
             if (!_tasks.TryGetValue(taskId, out var record))
                 throw new InvalidOperationException($"Task '{taskId}' not found.");
 
+            bool afterCancel;
             lock (record.Sync)
             {
                 if (IsTerminal(record.Info.Status))
                     return Task.CompletedTask;
 
-                var message = record.CancelRequestedAfterDispatch
+                afterCancel = record.CancelRequestedAfterDispatch;
+                var message = afterCancel
                     ? $"Failed after cancellation was requested (operationId={taskId}); inspect revit_get_operation_status(operationId=\"{taskId}\") before retrying."
                     : record.Info.StatusMessage;
 
@@ -238,8 +280,9 @@ namespace RvtMcp.Server
                     Status = McpTaskStatus.Failed,
                     Error = error,
                     StatusMessage = message,
-                    LastUpdatedAt = DateTimeOffset.UtcNow,
+                    LastUpdatedAt = _utcNow(),
                 };
+                McpFeatureLogging.LogTaskFail(taskId, afterCancel);
             }
 
             return Task.CompletedTask;
@@ -247,36 +290,76 @@ namespace RvtMcp.Server
 
         public Task<bool> SetCancelledAsync(string taskId, CancellationToken cancellationToken = default)
         {
-            if (!_tasks.TryGetValue(taskId, out var record))
+            if (string.IsNullOrWhiteSpace(taskId))
                 return Task.FromResult(false);
 
+            if (!_tasks.TryGetValue(taskId, out var record))
+            {
+                // TASK-CANCEL-HONEST (FC-BUSY-04): if the client asks to cancel a running operation recovered
+                // from the durable ledger after reconnect, remember the request so tasks/get surfaces the warning.
+                var stage = "missing";
+                if (FailureCapture.IsKey(taskId))
+                {
+                    var ledgerOp = TryReadLedgerOperation(taskId);
+                    var execution = ledgerOp?.Execution;
+                    if (IsActiveExecution(execution))
+                    {
+                        _cancelledRecoveredTasks[taskId] = _utcNow();
+                        stage = "recovered";
+                    }
+                }
+                McpFeatureLogging.LogTaskCancel(taskId, stage);
+                return Task.FromResult(false);
+            }
+
+            string cancelStage;
+            bool cancelled;
             lock (record.Sync)
             {
                 if (IsTerminal(record.Info.Status))
-                    return Task.FromResult(false);
-
-                // TASK-CANCEL-HONEST (FC-BUSY-04): once sent to Revit, the add-in cannot abort an active
-                // ExternalEvent. Keep the task Working with an explicit warning rather than claiming Cancelled.
-                if (record.DispatchedToHost)
                 {
+                    cancelStage = "terminal";
+                    cancelled = false;
+                }
+                else if (record.DispatchedToHost)
+                {
+                    // TASK-CANCEL-HONEST (FC-BUSY-04): once sent to Revit, the add-in cannot abort an active
+                    // ExternalEvent. Keep the task Working with an explicit warning rather than claiming Cancelled.
                     record.CancelRequestedAfterDispatch = true;
                     record.Info = record.Info with
                     {
                         StatusMessage = HonestPostDispatchCancelMessage(taskId, execution: null),
-                        LastUpdatedAt = DateTimeOffset.UtcNow,
+                        LastUpdatedAt = _utcNow(),
                     };
-                    return Task.FromResult(false);
+                    cancelStage = "post_dispatch";
+                    cancelled = false;
                 }
-
-                record.Info = record.Info with
+                else
                 {
-                    Status = McpTaskStatus.Cancelled,
-                    StatusMessage = $"Cancelled before dispatch to Revit (operationId={taskId}); nothing started.",
-                    LastUpdatedAt = DateTimeOffset.UtcNow,
-                };
-                return Task.FromResult(true);
+                    record.Info = record.Info with
+                    {
+                        Status = McpTaskStatus.Cancelled,
+                        StatusMessage = $"Cancelled before dispatch to Revit (operationId={taskId}); nothing started.",
+                        LastUpdatedAt = _utcNow(),
+                    };
+                    cancelStage = "pre_dispatch";
+                    cancelled = true;
+                }
             }
+
+            McpFeatureLogging.LogTaskCancel(taskId, cancelStage);
+            return Task.FromResult(cancelled);
         }
+
+        private static string FormatStatus(McpTaskStatus status) => status switch
+        {
+            McpTaskStatus.Working => "working",
+            McpTaskStatus.Completed => "completed",
+            McpTaskStatus.Failed => "failed",
+            McpTaskStatus.Cancelled => "cancelled",
+            McpTaskStatus.InputRequired => "input_required",
+            _ => "unknown"
+        };
 
         public Task ResolveInputRequestsAsync(
             string taskId,
@@ -310,7 +393,7 @@ namespace RvtMcp.Server
                     {
                         InputRequests = remaining,
                         Status = remaining.Count == 0 ? McpTaskStatus.Working : McpTaskStatus.InputRequired,
-                        LastUpdatedAt = DateTimeOffset.UtcNow,
+                        LastUpdatedAt = _utcNow(),
                     };
                 }
             }
@@ -345,7 +428,7 @@ namespace RvtMcp.Server
                 {
                     InputRequests = merged,
                     Status = McpTaskStatus.InputRequired,
-                    LastUpdatedAt = DateTimeOffset.UtcNow,
+                    LastUpdatedAt = _utcNow(),
                 };
             }
 
@@ -355,18 +438,38 @@ namespace RvtMcp.Server
         private (JObject Session, FailureOperation Ledger) ReadLiveOperationState(string taskId)
         {
             JObject session = null;
-            try { session = _sessionStatusLookup(taskId); } catch { }
+            try { session = _sessionStatusLookup(taskId); }
+            catch (Exception ex) { DiagnosticLog.Write("Tasks", $"Session operation lookup failed for {taskId}: {ex.GetType().Name}: {ex.Message}"); }
 
-            FailureOperation ledgerOp = null;
-            try { ledgerOp = _ledgerFactory()?.GetOperation(taskId); } catch { }
-
+            var ledgerOp = TryReadLedgerOperation(taskId);
             return (session, ledgerOp);
+        }
+
+        private FailureOperation TryReadLedgerOperation(string taskId)
+        {
+            try { return _ledgerFactory()?.GetOperation(taskId); }
+            catch (Exception ex)
+            {
+                DiagnosticLog.Write("Tasks", $"Ledger operation lookup failed for {taskId}: {ex.GetType().Name}: {ex.Message}");
+                return null;
+            }
+        }
+
+        internal static string ResolveLiveExecution(string ledgerExecution, string sessionExecution)
+        {
+            if (ledgerExecution is "completed" or "interrupted_unknown")
+                return ledgerExecution;
+            if (sessionExecution == "waiting_for_user" || ledgerExecution == "waiting_for_user")
+                return "waiting_for_user";
+            if (sessionExecution == "timed_out_running" || ledgerExecution == "timed_out_running")
+                return "timed_out_running";
+            return ledgerExecution ?? sessionExecution;
         }
 
         private static string BuildLiveStatusMessage(TaskRecord record, JObject session, FailureOperation ledgerOp)
         {
             var taskId = record.Info.TaskId;
-            var execution = ledgerOp?.Execution ?? session?.Value<string>("execution");
+            var execution = ResolveLiveExecution(ledgerOp?.Execution, session?.Value<string>("execution"));
             if (record.CancelRequestedAfterDispatch)
                 return HonestPostDispatchCancelMessage(taskId, execution);
 
@@ -385,27 +488,30 @@ namespace RvtMcp.Server
                 return $"Revit is still running after gateway wait timeout (operationId={taskId}). Check revit_get_operation_status(operationId=\"{taskId}\"); do not retry.";
 
             if (execution == "running" || execution == "queued")
-                return $"Running in Revit (operationId={taskId}, execution={execution}). Check revit_get_operation_status(operationId=\"{taskId}\") if interrupted.";
+            {
+                return record.IsReadOnlyCommand
+                    ? $"Running in Revit (operationId={taskId}, execution={execution}). Read-only commands have no durable ledger record unless an incident occurs."
+                    : $"Running in Revit (operationId={taskId}, execution={execution}). Check revit_get_operation_status(operationId=\"{taskId}\") if interrupted.";
+            }
 
             return record.Info.StatusMessage;
         }
 
         private McpTaskInfo RecoverFromLedger(string taskId, DateTimeOffset now)
         {
-            FailureOperation op;
-            try { op = _ledgerFactory()?.GetOperation(taskId); }
-            catch { return null; }
-
+            var op = TryReadLedgerOperation(taskId);
             if (op == null) return null;
-            if (_defaultTimeToLive is { } ttl && ttl > TimeSpan.Zero && now - op.StartedUtc >= ttl)
-                return null;
 
             var execution = op.Execution ?? "running";
-            if (execution == "waiting_for_user" || execution == "timed_out_running" || execution == "running" || execution == "queued")
+            var cancelRequested = _cancelledRecoveredTasks.ContainsKey(taskId);
+
+            if (IsActiveExecution(execution))
             {
-                var msg = execution == "waiting_for_user"
-                    ? $"Waiting for user in Revit (operationId={taskId}, recovered from ledger). Check revit_get_operation_status(operationId=\"{taskId}\"); do not retry."
-                    : $"Operation still {execution} in Revit (operationId={taskId}, recovered from ledger). Check revit_get_operation_status(operationId=\"{taskId}\"); do not retry.";
+                var msg = cancelRequested
+                    ? HonestPostDispatchCancelMessage(taskId, execution)
+                    : execution == "waiting_for_user"
+                        ? $"Waiting for user in Revit (operationId={taskId}, recovered from ledger). Check revit_get_operation_status(operationId=\"{taskId}\"); do not retry."
+                        : $"Operation still {execution} in Revit (operationId={taskId}, recovered from ledger). Check revit_get_operation_status(operationId=\"{taskId}\"); do not retry.";
                 return new McpTaskInfo(
                     taskId,
                     McpTaskStatus.Working,
@@ -418,6 +524,10 @@ namespace RvtMcp.Server
 
             if (execution == "completed" || execution == "interrupted_unknown")
             {
+                // TASK-TIMING: keep completed task results for at least TTL measured from completion/update time.
+                if (_defaultTimeToLive is { } ttl && ttl > TimeSpan.Zero && now - op.UpdatedUtc >= ttl)
+                    return null;
+
                 var isInterrupted = execution == "interrupted_unknown";
                 var payload = new JObject
                 {
@@ -436,11 +546,16 @@ namespace RvtMcp.Server
                 if (op.FinalResult != null)
                     payload["finalResult"] = op.FinalResult.DeepClone();
 
-                var failedOutcome = op.Outcome is "not_started" or "rolled_back" or "partial" or "cancelled" or "unknown";
+                // Read-only commands persisted due to an incident record Outcome="not_started" on success (FailureCompletion.Apply).
+                var isReadOnly = ToolReadPolicy.IsReadOnly(StripRevitPrefix(op.Tool));
+                var readOnlySucceeded = isReadOnly
+                    && string.Equals(op.Outcome, "not_started", StringComparison.Ordinal)
+                    && op.FinalResult?["success"]?.Value<bool?>() == true
+                    && !op.RequiresReview;
                 var succeeded = !isInterrupted
-                    && !failedOutcome
                     && op.FinalResult?["success"]?.Value<bool?>() != false
-                    && string.Equals(op.Outcome, "committed", StringComparison.Ordinal);
+                    && (string.Equals(op.Outcome, "committed", StringComparison.Ordinal) || readOnlySucceeded);
+
                 var callResult = new CallToolResult
                 {
                     IsError = !succeeded,
@@ -450,9 +565,14 @@ namespace RvtMcp.Server
                     }
                 };
                 var resultJson = JsonSerializer.SerializeToElement(callResult, McpJsonUtilities.ProtocolOptions.GetTypeInfo<CallToolResult>());
-                var statusMessage = isInterrupted
-                    ? $"Recovered interrupted operation from ledger (operationId={taskId}, execution=interrupted_unknown); inspect revit_get_operation_status before retrying."
-                    : $"Recovered completed operation from ledger (operationId={taskId}, outcome={op.Outcome ?? "unknown"}).";
+                string statusMessage;
+                if (isInterrupted)
+                    statusMessage = $"Recovered interrupted operation from ledger (operationId={taskId}, execution=interrupted_unknown); inspect revit_get_operation_status before retrying.";
+                else if (cancelRequested)
+                    statusMessage = $"Recovered completed operation from ledger after cancellation was requested (operationId={taskId}, outcome={op.Outcome ?? "unknown"}); inspect revit_get_operation_status before retrying.";
+                else
+                    statusMessage = $"Recovered completed operation from ledger (operationId={taskId}, outcome={op.Outcome ?? "unknown"}).";
+
                 return new McpTaskInfo(
                     taskId,
                     McpTaskStatus.Completed,
@@ -475,13 +595,30 @@ namespace RvtMcp.Server
                  + $"Keep polling tasks/get or check revit_get_operation_status(operationId=\"{taskId}\") before retrying.";
         }
 
+        private static bool IsActiveExecution(string execution)
+            => execution is "waiting_for_user" or "timed_out_running" or "running" or "queued";
+
         private static bool IsTerminal(McpTaskStatus status)
             => status is McpTaskStatus.Completed or McpTaskStatus.Failed or McpTaskStatus.Cancelled;
 
+        // TASK-TIMING: never evict an active Working task; expire terminal entries TTL after completion (LastUpdatedAt).
         private static bool IsExpired(McpTaskInfo info, DateTimeOffset now)
-            => info.TimeToLive is { } ttl && ttl > TimeSpan.Zero && now - info.CreatedAt >= ttl;
+            => IsTerminal(info.Status)
+               && info.TimeToLive is { } ttl
+               && ttl > TimeSpan.Zero
+               && now - info.LastUpdatedAt >= ttl;
 
-        private void SweepExpired(DateTimeOffset now)
+        private static bool IsToolErrorResult(JsonElement result)
+            => result.ValueKind == JsonValueKind.Object
+               && result.TryGetProperty("isError", out var prop)
+               && prop.ValueKind == JsonValueKind.True;
+
+        private static string StripRevitPrefix(string toolOrCommand)
+            => toolOrCommand != null && toolOrCommand.StartsWith("revit_", StringComparison.Ordinal)
+                ? toolOrCommand.Substring(6)
+                : toolOrCommand;
+
+        internal void SweepExpired(DateTimeOffset now)
         {
             long last = Interlocked.Read(ref _lastSweepTicks);
             if (now.UtcTicks - last < SweepIntervalTicks)
@@ -492,8 +629,20 @@ namespace RvtMcp.Server
 
             foreach (var kvp in _tasks)
             {
-                if (IsExpired(kvp.Value.Info, now))
+                bool expired;
+                lock (kvp.Value.Sync)
+                    expired = IsExpired(kvp.Value.Info, now);
+                if (expired)
                     _tasks.TryRemove(kvp.Key, out _);
+            }
+
+            if (_defaultTimeToLive is { } ttl && ttl > TimeSpan.Zero)
+            {
+                foreach (var kvp in _cancelledRecoveredTasks)
+                {
+                    if (now - kvp.Value >= ttl)
+                        _cancelledRecoveredTasks.TryRemove(kvp.Key, out _);
+                }
             }
         }
     }

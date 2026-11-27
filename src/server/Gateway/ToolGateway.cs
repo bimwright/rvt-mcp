@@ -132,7 +132,11 @@ namespace RvtMcp.Server
                     var remaining = taskCtx.DeadlineUtc - DateTimeOffset.UtcNow;
                     if (remaining > TimeSpan.FromHours(1)) remaining = TimeSpan.FromHours(1);
                     if (remaining > TimeSpan.Zero)
-                        await Task.WhenAny(pending.Execution.Task, Task.Delay(remaining));
+                    {
+                        using var delayCts = new CancellationTokenSource();
+                        await Task.WhenAny(pending.Execution.Task, Task.Delay(remaining, delayCts.Token));
+                        delayCts.Cancel();
+                    }
                     if (pending.Execution.Task.Status == TaskStatus.RanToCompletion)
                     {
                         responseLine = await pending.Execution.Task;
@@ -188,8 +192,7 @@ namespace RvtMcp.Server
                 var result = await SendToRevit(command, parameters, timeoutSeconds);
                 return JsonConvert.SerializeObject(result, Formatting.Indented);
             }
-            catch (OperationCanceledException) when (RevitTaskContext.Current?.DispatchedToHost != true
-                && (RevitTaskContext.Current != null || TargetCallContext.Current?.Cancellation.IsCancellationRequested == true))
+            catch (OperationCanceledException) when (ShouldPropagatePreDispatchCancel())
             {
                 throw;
             }
@@ -208,13 +211,16 @@ namespace RvtMcp.Server
                 var result = await SendToRevit(command, parameters, timeoutSeconds);
                 return JsonConvert.SerializeObject(result, Formatting.Indented);
             }
-            catch (OperationCanceledException) when (RevitTaskContext.Current?.DispatchedToHost != true
-                && (RevitTaskContext.Current != null || TargetCallContext.Current?.Cancellation.IsCancellationRequested == true))
+            catch (OperationCanceledException) when (ShouldPropagatePreDispatchCancel())
             {
                 throw;
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
+
+        private static bool ShouldPropagatePreDispatchCancel()
+            => RevitTaskContext.Current?.DispatchedToHost != true
+                && (RevitTaskContext.Current != null || TargetCallContext.Current?.Cancellation.IsCancellationRequested == true);
 
         internal static JObject CaptureHistory(JObject response, ChangeHistoryRequest request, bool recordContext = true)
         {

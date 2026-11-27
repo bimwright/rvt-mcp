@@ -60,7 +60,7 @@ namespace RvtMcp.Server.Prompts
             string[] requiredTools = null)
         {
             if (body == null)
-                return "This prompt's body was not found in the installed server build.";
+                return "This workflow's body was not found in the installed server build.";
 
             if (TryGetUnavailableNotice(requiredToolsets, requiresSendCode, requiredTools, enabled, config, out var notice))
                 return notice;
@@ -98,9 +98,9 @@ namespace RvtMcp.Server.Prompts
                 var missingTools = requiredTools.Where(name => !exposed.Contains(name)).ToArray();
                 if (missingTools.Length > 0)
                 {
-                    notice = "This prompt needs tools that are not exposed: " + string.Join(", ", missingTools)
-                        + ". --read-only hides tools that can change documents or files, even when this prompt only requests dry-run. "
-                        + "Keep the protection and use the available read-only audit tools directly, or change the session mode before invoking this prompt.";
+                    notice = "This workflow needs tools that are not exposed: " + string.Join(", ", missingTools)
+                        + ". --read-only hides tools that can change documents or files, even when this workflow only requests dry-run. "
+                        + "Keep the protection and use the available read-only audit tools directly, or change the session mode before invoking this workflow.";
                     return true;
                 }
             }
@@ -122,7 +122,7 @@ namespace RvtMcp.Server.Prompts
                 .Where(t => enabled.Contains(t) || missing.Contains(t, StringComparer.OrdinalIgnoreCase))
                 .ToArray();
             return
-                "This prompt needs toolsets that are not enabled on this server.\n" +
+                "This workflow needs toolsets that are not enabled on this server.\n" +
                 "Missing: " + string.Join(", ", missing.OrderBy(t => t, StringComparer.Ordinal)) + ".\n" +
                 "Add them to the server command line, e.g.:  --toolsets " + string.Join(",", merged) + "\n" +
                 "(or --toolsets all), then restart the MCP connection so the client picks up the new tool list." +
@@ -135,7 +135,7 @@ namespace RvtMcp.Server.Prompts
         private static string SendCodeOffNotice()
         {
             return
-                "This prompt works through revit_send_code_to_revit, which is not exposed right now.\n" +
+                "This workflow works through revit_send_code_to_revit, which is not exposed right now.\n" +
                 "send_code is removed when the server runs with --read-only or --disable-send-code,\n" +
                 "or when neither the 'meta' nor 'toolbaker' toolset is enabled.\n" +
                 "Remove those flags or enable the toolset, then restart the MCP connection.";

@@ -53,7 +53,7 @@ namespace RvtMcp.Server
             var mcp = builder.Services
                 .AddMcpServer(ConfigureMcpServerOptions)
                 .WithHttpTransport(ConfigureHttpTransport);
-            mcp = RegisterMcpSurface(mcp, enabled, config);
+            mcp = RegisterMcpSurfaceWithTransport(mcp, enabled, config, "http");
 
             builder.WebHost.UseUrls(listenUrl);
 

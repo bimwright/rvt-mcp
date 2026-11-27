@@ -72,7 +72,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the conceptual model. Quick reference
 
 | Path | What lives here |
 |------|-----------------|
-| `src/server/` | MCP server, tool registration, stdio/HttpSse entry points |
+| `src/server/` | MCP server, tool registration, stdio / Streamable HTTP entry points |
 | `src/shared/Handlers/` | Command handlers grouped by domain (Schedules, Mep, Views, Sheets, Parameters, etc.); one file per handler; 64 tools on bare CLI, 258 with all toolsets, 261 with all + adaptive bake |
 | `src/shared/Handlers/Runtime/` | Batch execution, including `BatchExecutor` |
 | `src/shared/Infrastructure/` | Shared helpers, with `Execution/`, `Responses/` and `ChangeTracking/` subfolders |

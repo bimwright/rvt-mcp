@@ -1,11 +1,21 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.IO.Pipes;
 using System.Linq;
 using System.Reflection;
-using RvtMcp.Plugin;
-using RvtMcp.Tests.Helpers;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using RvtMcp.Plugin;
+using RvtMcp.Server;
+using RvtMcp.Tests.Helpers;
 using Xunit;
 
 namespace RvtMcp.Tests
@@ -183,6 +193,60 @@ namespace RvtMcp.Tests
             var captured = CaptureToolsList(AllToolsetsConfig(enableAdaptiveBake: false));
 
             Assert.DoesNotContain("\"name\": \"revit_bake_tool\"", captured);
+        }
+
+        // SDK-TOOLS-SNAPSHOT (BW-MCP-UPGRADE-001): wire tools/list on SDK 2.4.0 preserves registration order
+        // and exposes the exact same tool set as the golden snapshot.
+        [Fact]
+        public async Task Wire_tools_list_on_sdk_2_4_0_matches_registered_catalog_order_and_count()
+        {
+            var config = AllToolsetsConfig(enableAdaptiveBake: false);
+            var enabled = ToolsetFilter.Resolve(config);
+            var expectedOrder = Program.CreateRegisteredTools(enabled, config)
+                .Select(t => t.ProtocolTool.Name)
+                .ToArray();
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var pipe = "rvt-sdk-tools-snapshot-" + Guid.NewGuid().ToString("N");
+            using var input = new NamedPipeServerStream(pipe, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+            using var output = new NamedPipeClientStream(".", pipe, PipeDirection.InOut, PipeOptions.Asynchronous);
+            await Task.WhenAll(input.WaitForConnectionAsync(cts.Token), output.ConnectAsync(cts.Token));
+
+            var builder = Host.CreateApplicationBuilder();
+            builder.Logging.ClearProviders();
+            var mcp = builder.Services
+                .AddMcpServer(Program.ConfigureMcpServerOptions)
+                .WithStreamServerTransport(input, input);
+            Program.RegisterToolsets(mcp, enabled, config);
+            using var host = builder.Build();
+            await host.StartAsync(cts.Token);
+            try
+            {
+                await using var client = await McpClient.CreateAsync(
+                    new StreamClientTransport(output, output),
+                    new McpClientOptions
+                    {
+                        ProtocolVersion = "2026-07-28",
+                        ClientInfo = new Implementation { Name = "sdk-snapshot-test", Version = "1.0" }
+                    },
+                    cancellationToken: cts.Token);
+                Assert.Equal("2026-07-28", client.NegotiatedProtocolVersion);
+
+                var wireTools = await client.ListToolsAsync(cancellationToken: cts.Token);
+                var wireNames = wireTools.Select(t => t.Name).ToArray();
+                Assert.Equal(expectedOrder, wireNames);
+
+                var golden = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(GoldenPath));
+                var goldenNames = ((Newtonsoft.Json.Linq.JArray)golden["tools"]!)
+                    .Select(t => t.Value<string>("name")!)
+                    .OrderBy(n => n, StringComparer.Ordinal)
+                    .ToArray();
+                Assert.Equal(goldenNames, wireNames.OrderBy(n => n, StringComparer.Ordinal).ToArray());
+            }
+            finally
+            {
+                await host.StopAsync(CancellationToken.None);
+            }
         }
 
         private static string CaptureToolsList(RvtMcpConfig config)

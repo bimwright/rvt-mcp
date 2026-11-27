@@ -103,6 +103,8 @@ namespace RvtMcp.Server
         public bool InToolCall;
         public CancellationToken Cancellation;
         public long ConnectionDeadlineTicks;
+        public string? ClientName;
+        public bool ClientNameResolved;
 
         internal static TargetCallContext Begin()
         {

@@ -227,6 +227,7 @@ public sealed class McpTasksProtocolTests : IDisposable
             pollIntervalMs: 25,
             ledgerFactory: () => new FailureLedgerStore(_ledger.DatabasePath, readOnly: true));
         var created = await store.CreateTaskAsync(CancellationToken.None);
+        RevitTaskContext.Current = null;
         Assert.Equal(McpTaskStatus.Working, created.Status);
         Assert.True(await store.SetCancelledAsync(created.TaskId, CancellationToken.None));
         var directState = await store.GetTaskAsync(created.TaskId, CancellationToken.None);
@@ -399,7 +400,7 @@ public sealed class McpTasksProtocolTests : IDisposable
                 {
                     ["operationId"] = taskId,
                     ["execution"] = "completed",
-                    ["outcome"] = "succeeded",
+                    ["outcome"] = "not_started",
                     ["complete"] = true,
                     ["mutationApplied"] = false
                 }
@@ -432,6 +433,8 @@ public sealed class McpTasksProtocolTests : IDisposable
         var runningId = Guid.NewGuid().ToString("N");
         var committedWithResultId = Guid.NewGuid().ToString("N");
         var committedNoResultId = Guid.NewGuid().ToString("N");
+        var readSucceededId = Guid.NewGuid().ToString("N");
+        var readFailedId = Guid.NewGuid().ToString("N");
         var rolledBackId = Guid.NewGuid().ToString("N");
         var interruptedId = Guid.NewGuid().ToString("N");
         var now = DateTimeOffset.UtcNow;
@@ -475,6 +478,39 @@ public sealed class McpTasksProtocolTests : IDisposable
             Outcome = "committed",
             MutationApplied = true,
             Complete = true,
+            StartedUtc = now.AddMinutes(-6),
+            UpdatedUtc = now.AddMinutes(-5)
+        });
+        // Read-only commands persisted after a dialog/incident record Outcome="not_started" on clean success (FailureCompletion.Apply).
+        _ledger.SaveOperation(new FailureOperation
+        {
+            OperationId = readSucceededId,
+            HostInstanceId = model.HostInstanceId,
+            Tool = "clash_detection",
+            RevitYear = 2024,
+            ModelScopeKeys = new List<string> { resolved.ModelScopeKey },
+            Execution = "completed",
+            Outcome = "not_started",
+            MutationApplied = false,
+            Complete = true,
+            RequiresReview = false,
+            FinalResult = new JObject { ["success"] = true },
+            StartedUtc = now.AddMinutes(-6),
+            UpdatedUtc = now.AddMinutes(-5)
+        });
+        _ledger.SaveOperation(new FailureOperation
+        {
+            OperationId = readFailedId,
+            HostInstanceId = model.HostInstanceId,
+            Tool = "clash_detection",
+            RevitYear = 2024,
+            ModelScopeKeys = new List<string> { resolved.ModelScopeKey },
+            Execution = "completed",
+            Outcome = "not_started",
+            MutationApplied = false,
+            Complete = true,
+            RequiresReview = false,
+            FinalResult = new JObject { ["success"] = false, ["error"] = "Clash failed." },
             StartedUtc = now.AddMinutes(-6),
             UpdatedUtc = now.AddMinutes(-5)
         });
@@ -530,6 +566,16 @@ public sealed class McpTasksProtocolTests : IDisposable
             Assert.False(committedNoResultCall.IsError == true);
             Assert.Contains("revit_export_nwc", ((TextContentBlock)committedNoResultCall.Content[0]).Text);
 
+            var readSucceeded = Assert.IsType<CompletedTaskResult>(await client.GetTaskAsync(readSucceededId, CancellationToken.None));
+            var readSucceededCall = DeserializeCallResult(readSucceeded);
+            Assert.False(readSucceededCall.IsError == true);
+            Assert.Contains("clash_detection", ((TextContentBlock)readSucceededCall.Content[0]).Text);
+
+            var readFailed = Assert.IsType<CompletedTaskResult>(await client.GetTaskAsync(readFailedId, CancellationToken.None));
+            var readFailedCall = DeserializeCallResult(readFailed);
+            Assert.True(readFailedCall.IsError == true);
+            Assert.Contains("Clash failed.", ((TextContentBlock)readFailedCall.Content[0]).Text);
+
             var rolledBack = Assert.IsType<CompletedTaskResult>(await client.GetTaskAsync(rolledBackId, CancellationToken.None));
             var rolledBackCall = DeserializeCallResult(rolledBack);
             Assert.True(rolledBackCall.IsError == true);
@@ -546,6 +592,268 @@ public sealed class McpTasksProtocolTests : IDisposable
         Assert.True(opStatus.Value<bool>("available"));
         Assert.Equal("completed", opStatus.Value<string>("execution"));
         Assert.Equal("committed", opStatus.Value<string>("outcome"));
+    }
+
+    [Fact]
+    // TASK-ON-OPERATION: an export's durable ledger row ("running") must not shadow more specific live
+    // session state ("timed_out_running" or early wire "waiting_for_user").
+    public async Task Live_status_prefers_session_timed_out_running_and_dialog_wait_over_ledger_running()
+    {
+        var model = new FailureModelIdentity
+        {
+            ModelKey = "shadow-model",
+            PhysicalKey = "phys-shadow",
+            Title = "Shadow.rvt",
+            LiveDocumentId = "doc-shadow",
+            HostInstanceId = "revit-2024-" + FakePid
+        };
+        var resolved = _ledger.ResolveModel(model);
+        JObject currentSession = null;
+
+        var store = new OperationBackedTaskStore(
+            pollIntervalMs: 25,
+            ledgerFactory: () => new FailureLedgerStore(_ledger.DatabasePath, readOnly: true),
+            sessionStatusLookup: _ => currentSession);
+
+        var created = await store.CreateTaskAsync(CancellationToken.None);
+        RevitTaskContext.Current = null;
+        Assert.True(store.TryMarkDispatched(created.TaskId, "export_ifc", CancellationToken.None));
+
+        var now = DateTimeOffset.UtcNow;
+        _ledger.SaveOperation(new FailureOperation
+        {
+            OperationId = created.TaskId,
+            HostInstanceId = model.HostInstanceId,
+            Tool = "export_ifc",
+            RevitYear = 2024,
+            ModelScopeKeys = new List<string> { resolved.ModelScopeKey },
+            Execution = "running",
+            Outcome = "unknown",
+            Complete = false,
+            StartedUtc = now.AddMinutes(-2),
+            UpdatedUtc = now.AddMinutes(-1)
+        });
+
+        currentSession = new JObject { ["execution"] = "timed_out_running" };
+        var timedOut = await store.GetTaskAsync(created.TaskId, CancellationToken.None);
+        Assert.Equal(McpTaskStatus.Working, timedOut!.Status);
+        Assert.Contains("gateway wait timeout", timedOut.StatusMessage, StringComparison.OrdinalIgnoreCase);
+
+        currentSession = new JObject
+        {
+            ["execution"] = "waiting_for_user",
+            ["windowDialog"] = new JObject { ["title"] = "IFC Export Warning" }
+        };
+        var dialogWait = await store.GetTaskAsync(created.TaskId, CancellationToken.None);
+        Assert.Equal(McpTaskStatus.Working, dialogWait!.Status);
+        Assert.Contains("Waiting for user", dialogWait.StatusMessage);
+        Assert.Contains("IFC Export Warning", dialogWait.StatusMessage);
+    }
+
+    [Fact]
+    // TASK-CANCEL-HONEST (post-dispatch over FakeWireHost, level F, FC-BUSY-04): once written to the wire,
+    // tasks/cancel keeps the task Working with an honest warning until the fake Revit host sends its final frame.
+    public async Task Post_dispatch_cancel_over_fake_wire_host_keeps_working_until_final_frame()
+    {
+        var config = new RvtMcpConfig { Toolsets = new List<string> { "export", "meta" }, EnableChangeHistory = false };
+        ServerState.Config = config;
+
+        var wireReceived = new TaskCompletionSource<JObject>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var host = new FakeWireHost((req, _) => wireReceived.TrySetResult(req));
+        WriteDiscoveryAndPin(host.Port);
+
+        var store = new OperationBackedTaskStore(
+            pollIntervalMs: 25,
+            ledgerFactory: () => new FailureLedgerStore(_ledger.DatabasePath, readOnly: true));
+
+        await WithPipeHostAsync(config, store, async client =>
+        {
+            var raw = await client.CallToolAsTaskAsync(
+                new CallToolRequestParams { Name = "revit_export_ifc", Arguments = SampleArgs("revit_export_ifc") },
+                CancellationToken.None);
+            Assert.True(raw.IsTask);
+            var taskId = raw.TaskCreated!.TaskId;
+
+            var req = await wireReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(taskId, req.Value<string>("operation_id"));
+
+            await client.CancelTaskAsync(taskId, CancellationToken.None);
+
+            var afterCancel = Assert.IsType<WorkingTaskResult>(await client.GetTaskAsync(taskId, CancellationToken.None));
+            Assert.Contains("cannot stop", afterCancel.StatusMessage, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("revit_get_operation_status", afterCancel.StatusMessage);
+
+            host.Send(new JObject
+            {
+                ["id"] = req.Value<string>("id"),
+                ["success"] = true,
+                ["data"] = new JObject { ["exported"] = true },
+                ["_operation"] = new JObject
+                {
+                    ["operationId"] = taskId,
+                    ["execution"] = "completed",
+                    ["outcome"] = "committed",
+                    ["complete"] = true,
+                    ["mutationApplied"] = true
+                }
+            });
+
+            var completed = await WaitForCompletionAsync(client, taskId);
+            Assert.Contains("after cancellation was requested", completed.StatusMessage, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("exported", completed.Result.GetRawText());
+        }, protocolVersion: "2026-07-28");
+    }
+
+    [Fact]
+    // TASK-CANCEL-HONEST + TASK-RECOVER: cancelling a running operation recovered from the ledger on a fresh gateway
+    // preserves the honest warning across subsequent tasks/get polls and after completion.
+    public async Task Cancel_on_ledger_recovered_running_task_records_honest_warning()
+    {
+        var model = new FailureModelIdentity
+        {
+            ModelKey = "cancel-recover-model",
+            PhysicalKey = "phys-cancel-recover",
+            Title = "CancelRecover.rvt",
+            LiveDocumentId = "doc-cancel-recover",
+            HostInstanceId = "revit-2024-" + FakePid
+        };
+        var resolved = _ledger.ResolveModel(model);
+        var taskId = Guid.NewGuid().ToString("N");
+        var now = DateTimeOffset.UtcNow;
+
+        _ledger.SaveOperation(new FailureOperation
+        {
+            OperationId = taskId,
+            HostInstanceId = model.HostInstanceId,
+            Tool = "export_ifc",
+            RevitYear = 2024,
+            ModelScopeKeys = new List<string> { resolved.ModelScopeKey },
+            Execution = "running",
+            Outcome = "unknown",
+            Complete = false,
+            StartedUtc = now.AddMinutes(-2),
+            UpdatedUtc = now.AddMinutes(-1)
+        });
+
+        var config = new RvtMcpConfig { Toolsets = new List<string> { "meta" }, EnableChangeHistory = false };
+        ServerState.Config = config;
+        var freshStore = new OperationBackedTaskStore(
+            pollIntervalMs: 25,
+            ledgerFactory: () => new FailureLedgerStore(_ledger.DatabasePath, readOnly: true),
+            sessionStatusLookup: _ => null);
+
+        await WithPipeHostAsync(config, freshStore, async client =>
+        {
+            await client.CancelTaskAsync(taskId, CancellationToken.None);
+
+            var working = Assert.IsType<WorkingTaskResult>(await client.GetTaskAsync(taskId, CancellationToken.None));
+            Assert.Contains("cannot stop", working.StatusMessage, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("revit_get_operation_status", working.StatusMessage);
+
+            _ledger.SaveOperation(new FailureOperation
+            {
+                OperationId = taskId,
+                HostInstanceId = model.HostInstanceId,
+                Tool = "export_ifc",
+                RevitYear = 2024,
+                ModelScopeKeys = new List<string> { resolved.ModelScopeKey },
+                Execution = "completed",
+                Outcome = "committed",
+                MutationApplied = true,
+                Complete = true,
+                FinalResult = new JObject { ["success"] = true },
+                StartedUtc = now.AddMinutes(-2),
+                UpdatedUtc = DateTimeOffset.UtcNow
+            });
+
+            var completed = Assert.IsType<CompletedTaskResult>(await client.GetTaskAsync(taskId, CancellationToken.None));
+            Assert.Contains("after cancellation was requested", completed.StatusMessage, StringComparison.OrdinalIgnoreCase);
+        }, protocolVersion: "2026-07-28");
+    }
+
+    [Fact]
+    // TASK-TIMING: SweepExpired never evicts an active Working task, keeps completed results for the full TTL
+    // measured from completion time (both in-memory and from ledger), and distinguishes error completions.
+    public async Task Sweep_keeps_working_tasks_and_retains_completed_results_for_full_ttl_after_completion()
+    {
+        var clock = new DateTimeOffset(2026, 11, 27, 10, 0, 0, TimeSpan.Zero);
+        var store = new OperationBackedTaskStore(
+            timeToLive: TimeSpan.FromHours(1),
+            pollIntervalMs: 25,
+            ledgerFactory: () => new FailureLedgerStore(_ledger.DatabasePath, readOnly: true),
+            sessionStatusLookup: _ => null,
+            utcNow: () => clock);
+
+        // 1. Long-running Working task survives past 70m and still completes cleanly.
+        var longRun = await store.CreateTaskAsync(CancellationToken.None);
+        RevitTaskContext.Current = null;
+        clock = clock.AddMinutes(70);
+        store.SweepExpired(clock);
+        var stillWorking = await store.GetTaskAsync(longRun.TaskId, CancellationToken.None);
+        Assert.NotNull(stillWorking);
+        Assert.Equal(McpTaskStatus.Working, stillWorking!.Status);
+
+        var errCall = System.Text.Json.JsonSerializer.SerializeToElement(
+            new CallToolResult { IsError = true, Content = new List<ContentBlock> { new TextContentBlock { Text = "Error: failed" } } },
+            ModelContextProtocol.McpJsonUtilities.DefaultOptions);
+        await store.SetCompletedAsync(longRun.TaskId, errCall, CancellationToken.None);
+        var errDone = await store.GetTaskAsync(longRun.TaskId, CancellationToken.None);
+        Assert.Equal(McpTaskStatus.Completed, errDone!.Status);
+        Assert.Contains("Completed with error", errDone.StatusMessage);
+
+        // 2. Result completed 45m after creation stays available 50m after completion (95m after creation)
+        //    and expires at >= 60m after completion.
+        var t0 = new DateTimeOffset(2026, 11, 27, 12, 0, 0, TimeSpan.Zero);
+        clock = t0;
+        var timed = await store.CreateTaskAsync(CancellationToken.None);
+        RevitTaskContext.Current = null;
+
+        clock = t0.AddMinutes(45);
+        var okCall = System.Text.Json.JsonSerializer.SerializeToElement(
+            new CallToolResult { IsError = false, Content = new List<ContentBlock> { new TextContentBlock { Text = "{\"ok\":true}" } } },
+            ModelContextProtocol.McpJsonUtilities.DefaultOptions);
+        await store.SetCompletedAsync(timed.TaskId, okCall, CancellationToken.None);
+
+        clock = t0.AddMinutes(95); // 50m after completion (< 1h TTL)
+        store.SweepExpired(clock);
+        Assert.NotNull(await store.GetTaskAsync(timed.TaskId, CancellationToken.None));
+
+        clock = t0.AddMinutes(106); // 61m after completion (>= 1h TTL)
+        store.SweepExpired(clock);
+        Assert.Null(await store.GetTaskAsync(timed.TaskId, CancellationToken.None));
+
+        // 3. Ledger recovery also measures TTL from UpdatedUtc (completion), not StartedUtc.
+        var model = new FailureModelIdentity
+        {
+            ModelKey = "ttl-model",
+            PhysicalKey = "phys-ttl",
+            Title = "Ttl.rvt",
+            LiveDocumentId = "doc-ttl",
+            HostInstanceId = "revit-2024-" + FakePid
+        };
+        var resolved = _ledger.ResolveModel(model);
+        var ledgerId = Guid.NewGuid().ToString("N");
+        _ledger.SaveOperation(new FailureOperation
+        {
+            OperationId = ledgerId,
+            HostInstanceId = model.HostInstanceId,
+            Tool = "export_ifc",
+            RevitYear = 2024,
+            ModelScopeKeys = new List<string> { resolved.ModelScopeKey },
+            Execution = "completed",
+            Outcome = "committed",
+            MutationApplied = true,
+            Complete = true,
+            FinalResult = new JObject { ["success"] = true },
+            StartedUtc = t0,
+            UpdatedUtc = t0.AddMinutes(45)
+        });
+
+        clock = t0.AddMinutes(95); // 50m after UpdatedUtc → still recoverable
+        Assert.NotNull(await store.GetTaskAsync(ledgerId, CancellationToken.None));
+
+        clock = t0.AddMinutes(106); // 61m after UpdatedUtc → expired
+        Assert.Null(await store.GetTaskAsync(ledgerId, CancellationToken.None));
     }
 
     private static CallToolResult DeserializeCallResult(CompletedTaskResult completed)

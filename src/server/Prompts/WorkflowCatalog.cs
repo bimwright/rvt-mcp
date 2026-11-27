@@ -46,6 +46,19 @@ namespace RvtMcp.Server.Prompts
         // would render a body whose first step isn't exposed.
         private static readonly string[] StairsSets = { "meta" };
 
+        internal const string ChangeDescription =
+            "Survey a requested model change, agree the smallest scope, confirm before writing, then read back and record why. Read-only sessions survey and propose only.";
+        internal const string GettingStartedDescription =
+            "Read-only orientation for the connected Revit: current target, active view, model statistics. Safe first command.";
+        internal const string ModelAuditDescription =
+            "Read-only model health audit over a scope: composite audit, family problems, warnings, dry-run purge candidates.";
+        internal const string PreIssueCheckDescription =
+            "Read-only checks for resolved sheets: layout, tags, dimensions, revisions, and model-wide warning context. Incomplete checks are NOT VERIFIED.";
+        internal const string DrawingLayoutDescription =
+            "Arrange viewports on one sheet: read real sheet-space positions, agree the alignment, confirm a dry-run plan, then move and read back. Read-only sessions report and propose only.";
+        internal const string StairsDescription =
+            "Guided stair creation via send_code: resolve the design together, confirm, then write and verify.";
+
         internal static readonly WorkflowDefinition[] All =
         {
             new WorkflowDefinition
@@ -54,7 +67,7 @@ namespace RvtMcp.Server.Prompts
                 PromptName = "revit_change",
                 SkillName = "revit-change",
                 SkillUri = "skill://revit-change/SKILL.md",
-                Description = "Survey a requested model change, agree the smallest scope, confirm before writing, then read back and record why. Read-only sessions survey and propose only.",
+                Description = ChangeDescription,
                 RequiredToolsets = ChangeSets,
                 RequiresSendCode = false,
                 ArgName = "change",
@@ -69,7 +82,7 @@ namespace RvtMcp.Server.Prompts
                 PromptName = "revit_getting_started",
                 SkillName = "revit-getting-started",
                 SkillUri = "skill://revit-getting-started/SKILL.md",
-                Description = "Read-only orientation for the connected Revit: current target, active view, model statistics. Safe first command.",
+                Description = GettingStartedDescription,
                 RequiredToolsets = GettingStartedSets,
                 RequiresSendCode = false
             },
@@ -79,7 +92,7 @@ namespace RvtMcp.Server.Prompts
                 PromptName = "revit_model_audit",
                 SkillName = "revit-model-audit",
                 SkillUri = "skill://revit-model-audit/SKILL.md",
-                Description = "Read-only model health audit over a scope: composite audit, family problems, warnings, dry-run purge candidates.",
+                Description = ModelAuditDescription,
                 RequiredToolsets = ModelAuditSets,
                 RequiresSendCode = false,
                 RequiredTools = ModelAuditTools,
@@ -93,7 +106,7 @@ namespace RvtMcp.Server.Prompts
                 PromptName = "revit_pre_issue_check",
                 SkillName = "revit-pre-issue-check",
                 SkillUri = "skill://revit-pre-issue-check/SKILL.md",
-                Description = "Read-only checks for resolved sheets: layout, tags, dimensions, revisions, and model-wide warning context. Incomplete checks are NOT VERIFIED.",
+                Description = PreIssueCheckDescription,
                 RequiredToolsets = PreIssueSets,
                 RequiresSendCode = false,
                 ArgName = "scope",
@@ -106,7 +119,7 @@ namespace RvtMcp.Server.Prompts
                 PromptName = "revit_drawing_layout",
                 SkillName = "revit-drawing-layout",
                 SkillUri = "skill://revit-drawing-layout/SKILL.md",
-                Description = "Arrange viewports on one sheet: read real sheet-space positions, agree the alignment, confirm a dry-run plan, then move and read back. Read-only sessions report and propose only.",
+                Description = DrawingLayoutDescription,
                 RequiredToolsets = DrawingLayoutSets,
                 RequiresSendCode = false,
                 ArgName = "request",
@@ -121,7 +134,7 @@ namespace RvtMcp.Server.Prompts
                 PromptName = "revit_stairs",
                 SkillName = "revit-stairs",
                 SkillUri = "skill://revit-stairs/SKILL.md",
-                Description = "Guided stair creation via send_code: resolve the design together, confirm, then write and verify.",
+                Description = StairsDescription,
                 RequiredToolsets = StairsSets,
                 RequiresSendCode = true
             }
@@ -165,7 +178,7 @@ namespace RvtMcp.Server.Prompts
         internal static string RenderForPrompt(string id, string argValue = null)
         {
             if (!TryFind(id, out var def))
-                return "This prompt's body was not found in the installed server build.";
+                return "This workflow's body was not found in the installed server build.";
 
             var args = BuildArgs(def, argValue, def.DefaultPromptArg, ServerState.Config);
             return PromptBody.Render(
@@ -178,9 +191,6 @@ namespace RvtMcp.Server.Prompts
 
         internal static string RenderBody(WorkflowDefinition def, HashSet<string> enabled, RvtMcpConfig config)
         {
-            if (def == null)
-                return "This prompt's body was not found in the installed server build.";
-
             var args = BuildArgs(def, null, def.DefaultWorkflowArg, config);
             var rendered = PromptBody.Render(
                 PromptBody.Load(def.Id),
@@ -205,11 +215,6 @@ namespace RvtMcp.Server.Prompts
             RvtMcpConfig config,
             out string unavailableNotice)
         {
-            if (def == null)
-            {
-                unavailableNotice = "Unknown workflow.";
-                return false;
-            }
             return !PromptBody.TryGetUnavailableNotice(
                 def.RequiredToolsets,
                 def.RequiresSendCode,

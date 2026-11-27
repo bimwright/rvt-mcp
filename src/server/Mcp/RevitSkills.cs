@@ -28,14 +28,31 @@ namespace RvtMcp.Server
                 .ToArray();
         }
 
-        internal static IMcpServerBuilder Register(IMcpServerBuilder mcp, HashSet<string> enabled, RvtMcpConfig config)
+        internal static IMcpServerBuilder Register(IMcpServerBuilder mcp, HashSet<string> enabled, RvtMcpConfig config,
+            McpSessionObserver sessionObserver = null)
         {
             mcp.WithSkillPackages(CreatePackages(enabled, config));
             mcp.WithSkills(options =>
             {
+                options.ListSkillsFilters.Add(next => async (request, ct) =>
+                {
+                    sessionObserver?.Observe(request.Server, request.JsonRpcRequest);
+                    var count = -1;
+                    try
+                    {
+                        var result = await next(request, ct);
+                        count = result?.Skills?.Count ?? 0;
+                        return result;
+                    }
+                    finally
+                    {
+                        PromptRequestLogging.LogSkillList(count, request.Server?.SessionId ?? "stdio", request.Server?.ClientInfo?.Name);
+                    }
+                });
                 options.GetSkillFilters.Add(next => async (request, ct) =>
                 {
-                    PromptRequestLogging.LogSkillGet(request.Params?.Uri, request.Server?.SessionId ?? "stdio");
+                    sessionObserver?.Observe(request.Server, request.JsonRpcRequest);
+                    PromptRequestLogging.LogSkillGet(request.Params?.Uri, request.Server?.SessionId ?? "stdio", request.Server?.ClientInfo?.Name);
                     return await next(request, ct);
                 });
             });
@@ -43,7 +60,8 @@ namespace RvtMcp.Server
             {
                 filters.AddReadResourceFilter(next => async (request, ct) =>
                 {
-                    PromptRequestLogging.LogSkillRead(request.Params?.Uri, request.Server?.SessionId ?? "stdio");
+                    sessionObserver?.Observe(request.Server, request.JsonRpcRequest);
+                    PromptRequestLogging.LogSkillRead(request.Params?.Uri, request.Server?.SessionId ?? "stdio", request.Server?.ClientInfo?.Name);
                     return await next(request, ct);
                 });
             });

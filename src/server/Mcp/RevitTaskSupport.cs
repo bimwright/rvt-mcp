@@ -24,9 +24,18 @@ namespace RvtMcp.Server
         };
 
         internal static McpTaskExecutionMode SelectExecutionMode(RequestContext<CallToolRequestParams> request)
-            => request?.Params?.Name is { Length: > 0 } name && TaskEnabledTools.Contains(name)
-                ? McpTaskExecutionMode.Optional
-                : McpTaskExecutionMode.Synchronous;
+        {
+            if (request?.Params?.Name is { Length: > 0 } name && TaskEnabledTools.Contains(name))
+            {
+                McpFeatureLogging.LogTaskEligible(
+                    name,
+                    McpFeatureLogging.HasTaskOptIn(request.Server, request.JsonRpcRequest),
+                    request.Server,
+                    request.JsonRpcRequest);
+                return McpTaskExecutionMode.Optional;
+            }
+            return McpTaskExecutionMode.Synchronous;
+        }
 
         internal static IMcpServerBuilder Register(IMcpServerBuilder mcp, OperationBackedTaskStore store = null)
             => mcp.WithTasks(store ?? new OperationBackedTaskStore(), opts => opts.ExecutionModeSelector = SelectExecutionMode);

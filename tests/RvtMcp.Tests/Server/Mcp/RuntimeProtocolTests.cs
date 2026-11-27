@@ -116,6 +116,12 @@ namespace RvtMcp.Tests
                 var response = await client.CallToolAsync("revit_get_current_view_info", cancellationToken: deadline.Token);
                 Assert.False(response.IsError == true);
                 Assert.Equal("claude-code", ToolGateway.ClientName);
+
+                // SDK-CLIENT-NAME: prove clientInfo arrives on every tools/call, not only the first.
+                ToolGateway.ClientName = null;
+                var second = await client.CallToolAsync("revit_get_current_view_info", cancellationToken: deadline.Token);
+                Assert.False(second.IsError == true);
+                Assert.Equal("claude-code", ToolGateway.ClientName);
                 await client.DisposeAsync(); await host.StopAsync(deadline.Token);
             }
             finally

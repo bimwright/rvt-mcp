@@ -85,6 +85,7 @@ public sealed class McpSkillsAndWorkflowProtocolTests : IDisposable
                 Assert.Equal(fetched.Uri, skillFile.Uri);
                 Assert.StartsWith("sha256:", skillFile.Digest, StringComparison.Ordinal);
                 Assert.True(skillFile.Size <= 100 * 1024);
+                Assert.True(files.Sum(f => f.Size) <= 400 * 1024);
 
                 var read = await client.ReadSkillResourceAsync(fetched, fetched.Uri, cancellationToken: ct);
                 var text = Assert.IsType<TextResourceContents>(Assert.Single(read.Contents)).Text;
@@ -115,10 +116,13 @@ public sealed class McpSkillsAndWorkflowProtocolTests : IDisposable
         });
     }
 
-    // SKILL-WORKFLOW-TOOL, SKILL-FROM-PROMPTS, SKILL-FALLBACK
+    // SKILL-WORKFLOW-TOOL, SKILL-FROM-PROMPTS, SKILL-FALLBACK, SKILL-ROLES, FC-ERR-01
     [Fact]
     public void Workflow_tool_lists_catalog_supports_aliases_and_rejects_unknown_names()
     {
+        Directory.CreateDirectory(_root);
+        DiagnosticLog.Flush();
+        DiagnosticLog.LocalAppDataOverride = _root;
         ServerState.Config = new RvtMcpConfig { Toolsets = new List<string> { "all" } };
 
         var listed = JObject.Parse(WorkflowGuideTools.GetWorkflow());
@@ -127,6 +131,17 @@ public sealed class McpSkillsAndWorkflowProtocolTests : IDisposable
         Assert.Equal("change", workflows[0].Value<string>("name"));
         Assert.Equal("skill://revit-change/SKILL.md", workflows[0].Value<string>("skill"));
         Assert.True(workflows.All(w => w.Value<bool>("available")));
+
+        // Prompt descriptions stay identical to WorkflowCatalog (single shared source).
+        var promptDescriptions = typeof(RevitPrompts)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Select(m => (
+                Name: m.GetCustomAttribute<ModelContextProtocol.Server.McpServerPromptAttribute>()?.Name,
+                Description: m.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()?.Description))
+            .Where(x => x.Name != null)
+            .ToDictionary(x => x.Name!, x => x.Description, StringComparer.Ordinal);
+        foreach (var def in WorkflowCatalog.All)
+            Assert.Equal(def.Description, promptDescriptions[def.PromptName]);
 
         var byId = WorkflowGuideTools.GetWorkflow("change");
         Assert.Contains("# Disciplined model change", byId);
@@ -137,7 +152,7 @@ public sealed class McpSkillsAndWorkflowProtocolTests : IDisposable
 
         var unknown = JObject.Parse(WorkflowGuideTools.GetWorkflow("not_a_workflow"));
         Assert.False(unknown.Value<bool>("ok"));
-        Assert.StartsWith("UNKNOWN_WORKFLOW:", unknown.Value<string>("error"), StringComparison.Ordinal);
+        Assert.StartsWith("INVALID_ARGUMENT:", unknown.Value<string>("error"), StringComparison.Ordinal);
         Assert.Equal(6, ((JArray)unknown["available_workflows"]!).Count);
     }
 
@@ -305,6 +320,7 @@ public sealed class McpSkillsAndWorkflowProtocolTests : IDisposable
         var config = new RvtMcpConfig { Toolsets = new List<string> { "all" } };
         await WithStdioClientAsync(config, async (client, ct) =>
         {
+            await client.ListSkillsAsync(cancellationToken: ct);
             var change = await client.GetSkillAsync("skill://revit-change/SKILL.md", cancellationToken: ct);
             await client.ReadSkillResourceAsync(change, change.Uri, cancellationToken: ct);
             await client.ReadResourceAsync("revit://session/context", cancellationToken: ct);
@@ -317,7 +333,7 @@ public sealed class McpSkillsAndWorkflowProtocolTests : IDisposable
             var unknownWire = await client.CallToolAsync("revit_get_workflow",
                 new Dictionary<string, object?> { ["name"] = "DO_NOT_LOG_SENTINEL" }, cancellationToken: ct);
             Assert.True(unknownWire.IsError);
-            Assert.Contains("UNKNOWN_WORKFLOW:", ((TextContentBlock)unknownWire.Content[0]).Text, StringComparison.Ordinal);
+            Assert.Contains("INVALID_ARGUMENT:", ((TextContentBlock)unknownWire.Content[0]).Text, StringComparison.Ordinal);
 
             Assert.True(DiagnosticLog.Flush());
             var logPath = Path.Combine(_root, "Bimwright", "rvt-mcp", "rvt-mcp.log");
@@ -326,12 +342,15 @@ public sealed class McpSkillsAndWorkflowProtocolTests : IDisposable
 
             Assert.DoesNotContain("DO_NOT_LOG_SENTINEL", log);
             Assert.DoesNotContain("revit://session/context", log);
+            Assert.Contains("[McpSession] session/capabilities transport=stdio protocol=2026-07-28 client=stdio-skills-client", log);
+            Assert.Contains("[Skills] skills/list count=6 ", log);
             Assert.Contains("[Skills] skills/get uri=skill://revit-change/SKILL.md", log);
             Assert.Contains("[Skills] skills/get uri=(unknown)", log);
             Assert.Contains("[Skills] skills/read uri=skill://revit-change/SKILL.md", log);
             Assert.Contains("[Workflows] tools/revit_get_workflow name=(list)", log);
             Assert.Contains("[Workflows] tools/revit_get_workflow name=change", log);
             Assert.Contains("[Workflows] tools/revit_get_workflow name=(unknown)", log);
+            Assert.Contains("client=stdio-skills-client", log);
         });
     }
 
