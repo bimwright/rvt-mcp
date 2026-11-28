@@ -28,18 +28,8 @@ namespace RvtMcp.Plugin.Handlers
             if (string.IsNullOrEmpty(category) || string.IsNullOrEmpty(paramName))
                 return CommandResult.Fail("category and parameterName are required.");
 
-            // Find BuiltInCategory
-            BuiltInCategory? bic = null;
-            foreach (BuiltInCategory cat in Enum.GetValues(typeof(BuiltInCategory)))
-            {
-                try
-                {
-                    var c = Category.GetCategory(doc, cat);
-                    if (c != null && c.Name.Equals(category, StringComparison.OrdinalIgnoreCase))
-                    { bic = cat; break; }
-                }
-                catch { }
-            }
+            var matchedCategory = CategoryLookup.FindByName(doc, category);
+            BuiltInCategory? bic = matchedCategory == null ? (BuiltInCategory?)null : CategoryLookup.ToBuiltIn(matchedCategory);
             if (bic == null)
                 return CommandResult.Fail($"Category '{category}' not found.");
 
