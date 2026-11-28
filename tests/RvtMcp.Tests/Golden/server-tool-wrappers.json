@@ -70,7 +70,7 @@
       "calls": [
         {
           "command": "ai_element_filter",
-          "params": "{\"category\":\"probe\",\"parameterName\":\"\",\"parameterValue\":\"\",\"operator\":\"equals\",\"limit\":100,\"select\":false}",
+          "params": "{\"category\":\"probe\",\"parameterName\":\"\",\"parameterValue\":\"\",\"operator\":\"equals\",\"limit\":100,\"select\":false,\"viewSpecific\":null}",
           "timeout": null
         }
       ],
@@ -80,7 +80,7 @@
       "calls": [
         {
           "command": "ai_element_filter",
-          "params": "{\"category\":\"probe\",\"parameterName\":\"\",\"parameterValue\":\"\",\"operator\":\"equals\",\"limit\":100,\"select\":false}",
+          "params": "{\"category\":\"probe\",\"parameterName\":\"\",\"parameterValue\":\"\",\"operator\":\"equals\",\"limit\":100,\"select\":false,\"viewSpecific\":null}",
           "timeout": null
         }
       ],

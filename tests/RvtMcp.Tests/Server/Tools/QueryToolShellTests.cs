@@ -102,6 +102,18 @@ namespace RvtMcp.Tests
             Assert.Equal("greaterthan", json.Value<string>("operator"));
             Assert.Equal(25, json.Value<int>("limit"));
             Assert.True(json.Value<bool>("select"));
+            Assert.Null(json["viewSpecific"]);
+        }
+
+        [Fact]
+        public async Task Ai_element_filter_forwards_view_specific()
+        {
+            var sent = await Capture.Send(() => QueryTools.AiElementFilter("Lines", viewSpecific: false));
+
+            Assert.Equal("ai_element_filter", sent.Command);
+            var json = sent.Json();
+            Assert.Equal("Lines", json.Value<string>("category"));
+            Assert.False(json.Value<bool>("viewSpecific"));
         }
 
         [Fact]
