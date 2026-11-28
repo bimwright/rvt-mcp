@@ -439,7 +439,7 @@ public sealed class ServerInstructionsAndAlwaysLoadTests
             ServerState.Config = config;
             var builder = WebApplication.CreateBuilder();
             builder.Logging.ClearProviders();
-            var mcp = builder.Services.AddMcpServer(Program.ConfigureMcpServerOptions).WithHttpTransport();
+            var mcp = builder.Services.AddMcpServer(Program.ConfigureMcpServerOptions).WithHttpTransport(Program.ConfigureHttpTransport);
             mcp = RuntimeToolFilter.Register(mcp, config, new SessionContext(false, root));
             Program.RegisterToolsets(mcp, ToolsetFilter.Resolve(config), config);
             builder.WebHost.UseUrls("http://127.0.0.1:0");

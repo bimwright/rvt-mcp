@@ -350,7 +350,7 @@ namespace RvtMcp.Tests
         [Fact]
         public async Task Http_transport_applies_the_same_guard_and_journal_payload()
         {
-            // RunHttpSse wires the same RuntimeToolFilter.Register; this mirrors that setup on a loopback port.
+            // RunHttp / BuildHttpApp wires the same RuntimeToolFilter.Register; this mirrors that setup on a loopback port.
             var root = Path.Combine(Path.GetTempPath(), "rvt-bw-args-http-" + Guid.NewGuid().ToString("N"));
             var original = ServerState.Config; var originalSend = ToolGateway.SendOverride;
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));

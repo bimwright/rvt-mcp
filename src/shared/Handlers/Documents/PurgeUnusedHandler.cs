@@ -45,10 +45,8 @@ namespace RvtMcp.Plugin.Handlers
             var candidates = allSymbols
                 .Where(s => !usedTypeIds.Contains(RevitCompat.GetId(s.Id)))
                 .ToList();
-            var safeToPurge = candidates
-                .Where(s => !referencedIds.Contains(RevitCompat.GetId(s.Id)))
-                .Take(limit)
-                .ToList();
+            var plan = PurgeUnusedPlanning.Select(candidates, s => RevitCompat.GetId(s.Id), referencedIds, limit);
+            var safeToPurge = plan.Items;
 
             var report = safeToPurge.Select(s => new
             {
@@ -63,9 +61,11 @@ namespace RvtMcp.Plugin.Handlers
                 return CommandResult.Ok(new
                 {
                     dry_run = true,
-                    total_candidates = candidates.Count,
-                    safe_to_purge = report.Count,
-                    skipped_due_to_references = candidates.Count - safeToPurge.Count,
+                    total_candidates = plan.TotalCandidates,
+                    safe_to_purge = plan.SafeToPurge,
+                    returned = plan.Returned,
+                    truncated = plan.Truncated,
+                    skipped_due_to_references = plan.SkippedDueToReferences,
                     items = report
                 });
             }
@@ -103,7 +103,10 @@ namespace RvtMcp.Plugin.Handlers
             return CommandResult.Ok(new
             {
                 dry_run = false,
-                total_candidates = candidates.Count,
+                total_candidates = plan.TotalCandidates,
+                safe_to_purge = plan.SafeToPurge,
+                skipped_due_to_references = plan.SkippedDueToReferences,
+                truncated = plan.Truncated,
                 attempted = safeToPurge.Count,
                 deleted,
                 failed,

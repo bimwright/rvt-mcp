@@ -33,8 +33,9 @@ namespace RvtMcp.Server
             {
                 var error = ReportLimits.Validate(task_id, outcome, summary, body);
                 if (error != null) throw new ArgumentException(error);
-                ReportCallContext.ParseCallIds(call_ids);
-                return new { task_id, outcome, summary, body, call_ids };
+                var parsedCallIds = ReportCallContext.ParseCallIds(call_ids);
+                var normalizedCallIds = parsedCallIds == null ? null : Newtonsoft.Json.JsonConvert.SerializeObject(parsedCallIds);
+                return new { task_id, outcome, summary, body, call_ids = normalizedCallIds };
             });
 
         [McpServerTool(Name = "revit_show_report", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description(

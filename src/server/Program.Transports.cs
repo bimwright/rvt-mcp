@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.AspNetCore;
 
 namespace RvtMcp.Server
 {
@@ -32,17 +33,29 @@ namespace RvtMcp.Server
             await app.RunAsync();
         }
 
-        private static async Task RunHttpSse(RvtMcpConfig config, int port)
+        // SDK-RVT-HTTP (BW-MCP-UPGRADE-001): SDK 2.x Streamable HTTP defaults to Stateless for MCP 2026-07-28 (SEP-2567).
+        // Set it explicitly here; legacy /sse, Mcp-Session-Id, and server-to-client session requests remain disabled,
+        // and external HTTP clients (Ollama, LM Studio, custom tools) need live verification separately.
+        internal static void ConfigureHttpTransport(HttpServerTransportOptions opts)
+        {
+            opts.SessionMode = HttpServerSessionMode.Stateless;
+        }
+
+        internal static string FormatHttpStartupMessage(string listenUrl)
+            => $"[RvtMcp] Streamable HTTP (stateless) MCP server listening on {listenUrl}";
+
+        internal static WebApplication BuildHttpApp(RvtMcpConfig config, string listenUrl, bool registerMaintenance = true)
         {
             var enabled = ToolsetFilter.Resolve(config);
             var builder = WebApplication.CreateBuilder();
-            RegisterRuntimeMaintenance(builder.Services, config);
+            if (registerMaintenance)
+                RegisterRuntimeMaintenance(builder.Services, config);
             var mcp = builder.Services
                 .AddMcpServer(ConfigureMcpServerOptions)
-                .WithHttpTransport();
-            mcp = RegisterMcpSurface(mcp, enabled, config);
+                .WithHttpTransport(ConfigureHttpTransport);
+            mcp = RegisterMcpSurfaceWithTransport(mcp, enabled, config, "http");
 
-            builder.WebHost.UseUrls($"http://127.0.0.1:{port}");
+            builder.WebHost.UseUrls(listenUrl);
 
             var app = builder.Build();
 
@@ -60,8 +73,16 @@ namespace RvtMcp.Server
             });
 
             app.MapMcp();
+            return app;
+        }
 
-            Console.Error.WriteLine($"[RvtMcp] SSE server listening on http://127.0.0.1:{port}");
+        private static async Task RunHttp(RvtMcpConfig config, int port)
+        {
+            var enabled = ToolsetFilter.Resolve(config);
+            var listenUrl = $"http://127.0.0.1:{port}";
+            var app = BuildHttpApp(config, listenUrl);
+
+            Console.Error.WriteLine(FormatHttpStartupMessage(listenUrl));
             Console.Error.WriteLine($"[RvtMcp] Toolsets enabled: {string.Join(",", enabled.OrderBy(n => n))}");
             await app.RunAsync();
         }

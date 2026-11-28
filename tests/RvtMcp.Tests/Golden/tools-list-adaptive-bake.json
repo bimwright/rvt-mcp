@@ -1,6 +1,6 @@
 {
   "generated_by": "ToolsListSnapshotTests",
-  "tool_count": 260,
+  "tool_count": 261,
   "tools": [
     {
       "name": "revit_accept_bake_suggestion",
@@ -905,7 +905,7 @@
     },
     {
       "name": "revit_clash_detection",
-      "description_hash": "sha256:4e489c9b1f115d05828589b3e6f048d796b3bc8c33347e18b8308b9b0d0bae9c",
+      "description_hash": "sha256:97d94f70a0b2aadee394d4b2eb34bec85f33e410837811c46ec4d51f75999d0b",
       "inputSchema": {
         "properties": {
           "categoriesA": {
@@ -917,11 +917,11 @@
             "type": "String[]"
           },
           "maxPairs": {
-            "description": "",
+            "description": "Maximum element pairs to test (1-10000, default 1000; hard max 10000). Scope by viewId if total pairs exceed 10000.",
             "type": "Int32"
           },
           "maxResults": {
-            "description": "",
+            "description": "Maximum clash results to return (1-500, default 100; hard max 500).",
             "type": "Int32"
           },
           "strategy": {
@@ -3872,7 +3872,7 @@
     },
     {
       "name": "revit_find_overlapping_elements",
-      "description_hash": "sha256:ddd551414122dbb76e4811c2dc1fd67e88b3be7e6b93e019cabd107d9eecadf2",
+      "description_hash": "sha256:4c5168fd50b4bfef3ec3341421d1928e40d33a295896e46c104203993e977d6b",
       "inputSchema": {
         "properties": {
           "category": {
@@ -3880,11 +3880,11 @@
             "type": "String"
           },
           "maxPairs": {
-            "description": "",
+            "description": "Maximum element pairs to test (1-10000, default 1000; hard max 10000). Scope by viewId on large models.",
             "type": "Int32"
           },
           "maxResults": {
-            "description": "",
+            "description": "Maximum overlapping results to return (1-500, default 100; hard max 500).",
             "type": "Int32"
           },
           "viewId": {
@@ -5141,6 +5141,26 @@
           "viewportIds": {
             "description": "",
             "type": "Int64[]"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "revit_get_workflow",
+      "description_hash": "sha256:ee03a22ed5f1030fb6a7f3281722f668afd9878c46eeb42b450ee91c5a125c9d",
+      "inputSchema": {
+        "properties": {
+          "name": {
+            "description": "Workflow name (change, getting_started, model_audit, pre_issue_check, drawing_layout, stairs), or omit to list all workflows.",
+            "type": "String"
           }
         },
         "required": [],

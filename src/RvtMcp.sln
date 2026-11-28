@@ -91,6 +91,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documents", "Documents", "{
 		shared\Handlers\Documents\ListRecentModelsHandler.cs = shared\Handlers\Documents\ListRecentModelsHandler.cs
 		shared\Handlers\Documents\OpenModelHandler.cs = shared\Handlers\Documents\OpenModelHandler.cs
 		shared\Handlers\Documents\OpenModelLocalPolicy.cs = shared\Handlers\Documents\OpenModelLocalPolicy.cs
+		shared\Handlers\Documents\PurgeUnusedPlanning.cs = shared\Handlers\Documents\PurgeUnusedPlanning.cs
 		shared\Handlers\Documents\PurgeUnusedHandler.cs = shared\Handlers\Documents\PurgeUnusedHandler.cs
 		shared\Handlers\Documents\SetProjectBasePointHandler.cs = shared\Handlers\Documents\SetProjectBasePointHandler.cs
 		shared\Handlers\Documents\SetProjectInfoHandler.cs = shared\Handlers\Documents\SetProjectInfoHandler.cs
@@ -328,6 +329,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sheets", "Sheets", "{67C0EE
 		shared\Handlers\Sheets\RenumberSheetsHandler.cs = shared\Handlers\Sheets\RenumberSheetsHandler.cs
 		shared\Handlers\Sheets\SetTitleblockParametersHandler.cs = shared\Handlers\Sheets\SetTitleblockParametersHandler.cs
 		shared\Handlers\Sheets\SheetPointInput.cs = shared\Handlers\Sheets\SheetPointInput.cs
+		shared\Handlers\Sheets\SheetLayoutDiagnostics.cs = shared\Handlers\Sheets\SheetLayoutDiagnostics.cs
 		shared\Handlers\Sheets\ViewportLayoutMath.cs = shared\Handlers\Sheets\ViewportLayoutMath.cs
 		shared\Handlers\Sheets\ViewportSheetSupport.cs = shared\Handlers\Sheets\ViewportSheetSupport.cs
 	EndProjectSection

@@ -20,14 +20,19 @@ namespace RvtMcp.Server
             => mcp.WithRequestFilters(filters => filters.AddCallToolFilter(next => async (request, ct) =>
             {
                 var clock = System.Diagnostics.Stopwatch.StartNew();
-                // The toast names the agent; one gateway process serves one client.
+                // The toast names the agent. Track per-request on TargetCallContext so concurrent or
+                // anonymous stateless HTTP requests never inherit another client's identity.
                 var clientName = request.Server?.ClientInfo?.Name;
-                if (!string.IsNullOrWhiteSpace(clientName)) ToolGateway.ClientName = clientName;
+                var normalizedClient = string.IsNullOrWhiteSpace(clientName) ? null : clientName;
+                ToolGateway.ClientName = normalizedClient;
                 // Pin the binding generation at call entry (spec §6.6/§8). When the
                 // binding layer produced a §6.10 payload the tool result is replaced
                 // with the target envelope — regardless of how the tool formatted it.
                 var targetCtx = TargetCallContext.Begin();
+                targetCtx.ClientName = normalizedClient;
+                targetCtx.ClientNameResolved = true;
                 targetCtx.Cancellation = ct;
+                PromptRequestLogging.CurrentSessionId = request.Server?.SessionId ?? "stdio";
                 try
                 {
                     using (var capture = new ChangeCaptureContext())
@@ -55,6 +60,8 @@ namespace RvtMcp.Server
                 finally
                 {
                     TargetCallContext.End(targetCtx);
+                    RevitTaskContext.Current = null;
+                    PromptRequestLogging.CurrentSessionId = null;
                 }
             }));
 

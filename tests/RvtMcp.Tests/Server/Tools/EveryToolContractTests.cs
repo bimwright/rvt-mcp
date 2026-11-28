@@ -41,6 +41,7 @@ namespace RvtMcp.Tests
             ["revit_list_code_modules"] = "CodeModuleToolsTests",
             ["revit_save_code_module"] = "CodeModuleToolsTests",
             ["revit_delete_code_module"] = "CodeModuleToolsTests",
+            ["revit_get_workflow"] = "McpSkillsAndWorkflowProtocolTests",
             ["revit_set_dialog_answers"] = "GatewayFailureIntegrationTests",
         };
 

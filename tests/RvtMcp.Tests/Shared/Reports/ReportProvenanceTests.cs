@@ -185,8 +185,17 @@ namespace RvtMcp.Tests.Shared.Reports
             Assert.Equal(id, call.CallId); Assert.Equal(A, call.Session); Assert.False(call.HistoryRequested);
             Assert.Contains("client_session", ReportJson.Serialize(report.Report));
         }
-        [Theory] [InlineData("{}")] [InlineData("[1]")] [InlineData("[\"bad\"]")]
+        [Theory] [InlineData("{}")] [InlineData("[1]")] [InlineData("[\"bad\"]")] [InlineData("\"\\\"[\\\\\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\\\\\"]\\\"\"")]
         public void Call_ids_require_server_issued_guid_format(string json) => Assert.Throws<ArgumentException>(() => ReportCallContext.ParseCallIds(json));
+
+        [Fact]
+        public void Call_ids_tolerates_single_layer_of_double_encoded_json_array()
+        {
+            var inner = $"[\"{A}\",\"{B}\"]";
+            var doubleEncoded = Newtonsoft.Json.JsonConvert.SerializeObject(inner);
+            var parsed = ReportCallContext.ParseCallIds(doubleEncoded);
+            Assert.Equal(new[] { A, B }, parsed);
+        }
         [Fact] public void Response_reference_preview_is_bounded_while_saved_report_keeps_all_references()
         {
             for (var i = 0; i < 20; i++) Push(A, i + 1);

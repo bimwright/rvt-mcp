@@ -131,6 +131,18 @@ namespace RvtMcp.Tests
         }
 
         [Fact]
+        public async Task Double_encoded_call_ids_is_normalized_to_single_json_array_on_the_wire()
+        {
+            var id1 = new string('a', 32);
+            var id2 = new string('b', 32);
+            var doubleEncoded = Newtonsoft.Json.JsonConvert.SerializeObject($"[\"{id1}\",\"{id2}\"]");
+
+            var sent = await Capture.Send(() => ReportTools.ReportTaskResult("job-norm", "completed", "Done", call_ids: doubleEncoded));
+            Assert.Equal("report_task_result", sent.Command);
+            Assert.Equal($"[\"{id1}\",\"{id2}\"]", sent.Json().Value<string>("call_ids"));
+        }
+
+        [Fact]
         public void Report_is_excluded_from_adaptive_bake_usage()
         {
             var root = Path.Combine(Path.GetTempPath(), "rvt-report-bake-" + Guid.NewGuid().ToString("N"));

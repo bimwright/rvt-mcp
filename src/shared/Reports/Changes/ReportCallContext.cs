@@ -19,9 +19,17 @@ namespace RvtMcp.Plugin
         public static IReadOnlyList<string> ParseCallIds(string json)
         {
             if (json == null) return null;
-            JArray array;
-            try { array = JArray.Parse(json); }
+            JToken token;
+            try
+            {
+                token = JToken.Parse(json);
+                // Tolerate one layer of JSON string double-encoding (e.g. "\"[\\\"id\\\"]\"") from weaker models.
+                if (token.Type == JTokenType.String)
+                    token = JToken.Parse(token.Value<string>() ?? string.Empty);
+            }
             catch { throw new ArgumentException("call_ids must be a JSON array of capture IDs."); }
+            if (!(token is JArray array))
+                throw new ArgumentException("call_ids must be a JSON array of capture IDs.");
             if (array.Count > 256 || array.Any(v => v.Type != JTokenType.String || !IsId(v.Value<string>())))
                 throw new ArgumentException("call_ids must contain at most 256 server-issued capture IDs.");
             var ids = array.Values<string>().Select(s => s.ToLowerInvariant()).ToArray();

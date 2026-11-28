@@ -287,8 +287,17 @@ namespace RvtMcp.Server
                     if (desc == null)
                     {
                         var wait = ConnectionWait(callCtx, 200);
-                        if ((callCtx?.Cancellation ?? CancellationToken.None).WaitHandle.WaitOne(wait))
-                            callCtx.Cancellation.ThrowIfCancellationRequested();
+                        var token = callCtx?.Cancellation ?? CancellationToken.None;
+                        token.ThrowIfCancellationRequested();
+                        try
+                        {
+                            if (token.WaitHandle.WaitOne(wait))
+                                token.ThrowIfCancellationRequested();
+                        }
+                        catch (ObjectDisposedException) when (token.IsCancellationRequested)
+                        {
+                            throw new OperationCanceledException(token);
+                        }
                     }
                 } while (desc == null && DateTime.UtcNow < deadline);
                 if (desc == null)
@@ -658,7 +667,7 @@ namespace RvtMcp.Server
                     runtime = config.ToRuntimeOptions(),
                     history,
                     report_context = new ReportCallContext { CallId = operationId, Session = HistorySession, HistoryRequested = history != null,
-                        ClientName = ClientName },
+                        ClientName = callCtx?.ClientNameResolved == true ? callCtx.ClientName : ClientName },
                     operation_id = operationId,
                     failure_protocol = 1,
                     // Lets the add-in tell an unconfirmed document from a gateway that predates confirmation.
@@ -729,6 +738,9 @@ namespace RvtMcp.Server
                                 pending.Route(rejected);
                                 return (conn, effectiveGeneration, pending);
                             }
+                            var taskCtx = RevitTaskContext.Current;
+                            if (taskCtx != null && !taskCtx.TryMarkDispatched(command, callCtx?.Cancellation ?? CancellationToken.None))
+                                throw new OperationCanceledException(callCtx?.Cancellation ?? CancellationToken.None);
                             pending = new GatewayPendingRequest(operationId, conn.Epoch, history, scriptReceipt,
                                 script == null ? null : final => {
                                     if (UsageLogger?.RecordScriptCall(final) == false)

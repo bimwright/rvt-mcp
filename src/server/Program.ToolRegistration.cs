@@ -34,14 +34,22 @@ namespace RvtMcp.Server
 
         private static IMcpServerBuilder RegisterMcpSurface(
             IMcpServerBuilder mcp, HashSet<string> enabled, RvtMcpConfig config)
+            => RegisterMcpSurfaceWithTransport(mcp, enabled, config, "stdio");
+
+        internal static IMcpServerBuilder RegisterMcpSurfaceWithTransport(
+            IMcpServerBuilder mcp, HashSet<string> enabled, RvtMcpConfig config, string transport)
         {
+            var sessionObserver = new McpSessionObserver(transport);
+            mcp = McpFeatureLogging.Register(mcp, sessionObserver);
             // The report reminder points at revit_report_task_result, which only the meta toolset registers.
             mcp = RuntimeToolFilter.Register(mcp, config, ToolGateway.Session, null,
                 enabled.Contains("meta") ? ToolGateway.ReportReminder : null);
-            mcp = PromptRequestLogging.Register(mcp);
+            mcp = RevitTaskSupport.Register(mcp);
+            mcp = PromptRequestLogging.Register(mcp, sessionObserver);
             mcp = RegisterToolsets(mcp, enabled, config);
             mcp.WithResources<RevitResources>();
             mcp.WithPrompts<RevitPrompts>();
+            mcp = RevitSkills.Register(mcp, enabled, config, sessionObserver);
             return mcp;
         }
 
@@ -129,6 +137,7 @@ namespace RvtMcp.Server
             if (enabled.Contains("meta"))       types.Add(typeof(HealthTools));
             if (enabled.Contains("meta"))       types.Add(typeof(ChangeHistoryTools));
             if (enabled.Contains("meta"))       types.Add(typeof(FailureTools));
+            if (enabled.Contains("meta"))       types.Add(typeof(WorkflowGuideTools));
             if (enabled.Contains("lint"))       types.Add(typeof(LintTools));
             if (enabled.Contains("structural")) types.Add(typeof(StructuralTools));
             return types.ToArray();

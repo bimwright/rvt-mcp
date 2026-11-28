@@ -35,8 +35,14 @@ namespace RvtMcp.Server
                 strategy
             });
 
-        [McpServerTool(Name = "revit_clash_detection", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Detect clashes between elements of category A and category B. Scope with viewId and keep maxPairs low. Do not retry on 60s timeout; Revit may still be running the command.")]
-        public static async Task<string> ClashDetection(string[] categoriesA, string[] categoriesB, long? viewId = null, string strategy = "bbox_then_solid", int maxPairs = 1000, int maxResults = 100)
+        [McpServerTool(Name = "revit_clash_detection", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Detect clashes between elements of category A and category B (maxPairs 1-10000, maxResults 1-500). Scope with viewId per floor/view on large models when pairs exceed 10000. Do not retry on 60s timeout; Revit may still be running the command.")]
+        public static async Task<string> ClashDetection(
+            string[] categoriesA,
+            string[] categoriesB,
+            long? viewId = null,
+            string strategy = "bbox_then_solid",
+            [System.ComponentModel.Description("Maximum element pairs to test (1-10000, default 1000; hard max 10000). Scope by viewId if total pairs exceed 10000.")] int maxPairs = 1000,
+            [System.ComponentModel.Description("Maximum clash results to return (1-500, default 100; hard max 500).")] int maxResults = 100)
             => await ToolGateway.CallAsync("clash_detection", new
             {
                 categories_a = categoriesA,
@@ -106,8 +112,12 @@ namespace RvtMcp.Server
                 detail_level = detailLevel
             });
 
-        [McpServerTool(Name = "revit_find_overlapping_elements", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Find potentially overlapping elements of the same category, using bounding box intersection analysis")]
-        public static async Task<string> FindOverlappingElements(string category, long? viewId = null, int maxPairs = 1000, int maxResults = 100)
+        [McpServerTool(Name = "revit_find_overlapping_elements", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false), System.ComponentModel.Description("Find potentially overlapping elements of the same category using bounding box intersection analysis (maxPairs 1-10000, maxResults 1-500). Scope with viewId on large models.")]
+        public static async Task<string> FindOverlappingElements(
+            string category,
+            long? viewId = null,
+            [System.ComponentModel.Description("Maximum element pairs to test (1-10000, default 1000; hard max 10000). Scope by viewId on large models.")] int maxPairs = 1000,
+            [System.ComponentModel.Description("Maximum overlapping results to return (1-500, default 100; hard max 500).")] int maxResults = 100)
             => await ToolGateway.CallAsync("find_overlapping_elements", new
             {
                 category,

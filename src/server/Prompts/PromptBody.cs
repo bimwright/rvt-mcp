@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using ModelContextProtocol.Server;
+using RvtMcp.Plugin;
 
 namespace RvtMcp.Server.Prompts
 {
@@ -47,30 +48,64 @@ namespace RvtMcp.Server.Prompts
             bool requiresSendCode,
             IReadOnlyDictionary<string, string> args = null,
             string[] requiredTools = null)
+            => Render(body, requiredToolsets, requiresSendCode, EnabledToolsets(), ServerState.Config, args, requiredTools);
+
+        public static string Render(
+            string body,
+            string[] requiredToolsets,
+            bool requiresSendCode,
+            HashSet<string> enabled,
+            RvtMcpConfig config,
+            IReadOnlyDictionary<string, string> args = null,
+            string[] requiredTools = null)
         {
             if (body == null)
-                return "This prompt's body was not found in the installed server build.";
+                return "This workflow's body was not found in the installed server build.";
 
-            var enabled = EnabledToolsets();
+            if (TryGetUnavailableNotice(requiredToolsets, requiresSendCode, requiredTools, enabled, config, out var notice))
+                return notice;
+
+            return ApplyArgs(body, args);
+        }
+
+        public static bool TryGetUnavailableNotice(
+            string[] requiredToolsets,
+            bool requiresSendCode,
+            string[] requiredTools,
+            HashSet<string> enabled,
+            RvtMcpConfig config,
+            out string notice)
+        {
+            enabled ??= ToolsetFilter.Resolve(config);
             var missing = (requiredToolsets ?? Array.Empty<string>())
                 .Where(t => !enabled.Contains(t))
                 .ToArray();
 
             if (missing.Length > 0)
-                return MissingToolsetsNotice(missing, enabled, ServerState.Config?.ReadOnlyOrDefault == true);
-            if (requiresSendCode && !Program.IncludeSendCode(enabled, ServerState.Config))
-                return SendCodeOffNotice();
+            {
+                notice = MissingToolsetsNotice(missing, enabled, config?.ReadOnlyOrDefault == true);
+                return true;
+            }
+            if (requiresSendCode && !Program.IncludeSendCode(enabled, config))
+            {
+                notice = SendCodeOffNotice();
+                return true;
+            }
             if (requiredTools != null)
             {
-                var exposed = Program.ResolveRegisteredToolMethods(enabled, ServerState.Config)
+                var exposed = Program.ResolveRegisteredToolMethods(enabled, config)
                     .Select(method => method.GetCustomAttribute<McpServerToolAttribute>().Name).ToHashSet(StringComparer.Ordinal);
                 var missingTools = requiredTools.Where(name => !exposed.Contains(name)).ToArray();
                 if (missingTools.Length > 0)
-                    return "This prompt needs tools that are not exposed: " + string.Join(", ", missingTools)
-                        + ". --read-only hides tools that can change documents or files, even when this prompt only requests dry-run. "
-                        + "Keep the protection and use the available read-only audit tools directly, or change the session mode before invoking this prompt.";
+                {
+                    notice = "This workflow needs tools that are not exposed: " + string.Join(", ", missingTools)
+                        + ". --read-only hides tools that can change documents or files, even when this workflow only requests dry-run. "
+                        + "Keep the protection and use the available read-only audit tools directly, or change the session mode before invoking this workflow.";
+                    return true;
+                }
             }
-            return ApplyArgs(body, args);
+            notice = null;
+            return false;
         }
 
         public static string ApplyArgs(string body, IReadOnlyDictionary<string, string> args)
@@ -87,7 +122,7 @@ namespace RvtMcp.Server.Prompts
                 .Where(t => enabled.Contains(t) || missing.Contains(t, StringComparer.OrdinalIgnoreCase))
                 .ToArray();
             return
-                "This prompt needs toolsets that are not enabled on this server.\n" +
+                "This workflow needs toolsets that are not enabled on this server.\n" +
                 "Missing: " + string.Join(", ", missing.OrderBy(t => t, StringComparer.Ordinal)) + ".\n" +
                 "Add them to the server command line, e.g.:  --toolsets " + string.Join(",", merged) + "\n" +
                 "(or --toolsets all), then restart the MCP connection so the client picks up the new tool list." +
@@ -100,7 +135,7 @@ namespace RvtMcp.Server.Prompts
         private static string SendCodeOffNotice()
         {
             return
-                "This prompt works through revit_send_code_to_revit, which is not exposed right now.\n" +
+                "This workflow works through revit_send_code_to_revit, which is not exposed right now.\n" +
                 "send_code is removed when the server runs with --read-only or --disable-send-code,\n" +
                 "or when neither the 'meta' nor 'toolbaker' toolset is enabled.\n" +
                 "Remove those flags or enable the toolset, then restart the MCP connection.";

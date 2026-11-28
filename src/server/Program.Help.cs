@@ -13,7 +13,7 @@ namespace RvtMcp.Server
                 "Usage: rvt-mcp [options]",
                 "",
                 "Transport:",
-                "  --http <port>           Run HTTP SSE on 127.0.0.1:<port> (1-65535). Default = stdio.",
+                "  --http <port>           Run Streamable HTTP (stateless) on 127.0.0.1:<port> (1-65535). Default = stdio.",
                 "",
                 "Routing:",
                 "  --target <selector>     Pin the initial target: auto | a 4-digit calendar",

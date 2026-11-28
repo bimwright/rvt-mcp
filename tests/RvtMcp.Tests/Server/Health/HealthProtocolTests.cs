@@ -97,6 +97,98 @@ public sealed class HealthProtocolTests
         }
     }
 
+    // SDK-UPGRADE, SDK-OLD-AND-NEW-CLIENT: MCP 2026-07-28 clients negotiate via server/discover + per-request _meta
+    // and still receive serverInfo (_meta), <= 2 KB instructions ending with Safety & permissions, alwaysLoad metadata,
+    // and offline revit_health identity matching tools/list.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Modern_2026_07_28_discover_catalog_and_no_host_health_keep_one_gateway_identity(bool readOnly)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "rvt-health-modern-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var originalDir = ServerAuthToken.DiscoveryDirOverride;
+        var originalConfig = ServerState.Config;
+        var originalSend = ToolGateway.SendOverride;
+        var name = "rvt-health-modern-" + Guid.NewGuid().ToString("N");
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        using var input = new NamedPipeServerStream(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+        using var output = new NamedPipeClientStream(".", name, PipeDirection.InOut, PipeOptions.Asynchronous);
+        await Task.WhenAll(input.WaitForConnectionAsync(timeout.Token), output.ConnectAsync(timeout.Token));
+        try
+        {
+            ServerAuthToken.DiscoveryDirOverride = root;
+            RevitTargetBinding.ResetForTests();
+            ToolGateway.ResetForTests();
+            ToolGateway.SendOverride = null;
+            var config = new RvtMcpConfig { Toolsets = new List<string> { "meta" }, ReadOnly = readOnly };
+            ServerState.Config = config;
+            var builder = Host.CreateApplicationBuilder();
+            builder.Logging.ClearProviders();
+            var mcp = builder.Services.AddMcpServer(Program.ConfigureMcpServerOptions).WithStreamServerTransport(input, input);
+            mcp = RuntimeToolFilter.Register(mcp, config, new SessionContext(false, root));
+            Program.RegisterToolsets(mcp, ToolsetFilter.Resolve(config), config);
+            using var host = builder.Build();
+            await host.StartAsync(timeout.Token);
+            using var reader = new StreamReader(output, Encoding.UTF8, false, 1024, leaveOpen: true);
+            using var writer = new StreamWriter(output, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
+            try
+            {
+                var modernMeta = new JObject
+                {
+                    ["io.modelcontextprotocol/protocolVersion"] = "2026-07-28",
+                    ["io.modelcontextprotocol/clientCapabilities"] = new JObject(),
+                    ["io.modelcontextprotocol/clientInfo"] = new JObject { ["name"] = "rvt-modern-smoke", ["version"] = "1.0.0" }
+                };
+
+                var discover = await Request(writer, reader, 1, "server/discover", new JObject { ["_meta"] = modernMeta });
+                var versions = ((JArray)discover["result"]["supportedVersions"]).Values<string>().ToArray();
+                Assert.Contains("2026-07-28", versions);
+                Assert.NotNull(discover["result"]?["capabilities"]?["tools"]);
+
+                var serverInfo = discover["result"]?["_meta"]?["io.modelcontextprotocol/serverInfo"];
+                Assert.Equal("rvt-mcp", serverInfo?.Value<string>("name"));
+                Assert.Equal(Program.ServerInformationalVersion, serverInfo?.Value<string>("version"));
+
+                var instructions = discover["result"].Value<string>("instructions");
+                Assert.False(string.IsNullOrEmpty(instructions));
+                Assert.True(Encoding.UTF8.GetByteCount(instructions) <= 2048);
+                Assert.EndsWith(Program.SafetyAndPermissions, instructions, StringComparison.Ordinal);
+
+                var catalog = await Request(writer, reader, 2, "tools/list", new JObject { ["_meta"] = modernMeta });
+                var tool = Assert.Single((JArray)catalog["result"]["tools"], t => t.Value<string>("name") == "revit_health");
+                Assert.True(tool["_meta"]?[Program.AlwaysLoadMetadataKey]?.Value<bool>() == true);
+                Assert.True(tool["_meta"]?[Program.AntigravityAlwaysLoadMetadataKey]?.Value<bool>() == true);
+
+                var called = await Request(writer, reader, 3, "tools/call", new JObject
+                {
+                    ["name"] = "revit_health",
+                    ["arguments"] = new JObject(),
+                    ["_meta"] = modernMeta
+                });
+                Assert.True(called["result"].Value<bool>("isError"));
+                var health = JObject.Parse(called["result"]["content"][0].Value<string>("text"));
+                Assert.False(health.Value<bool>("ok"));
+                Assert.False(health.Value<bool>("host_connected"));
+                Assert.StartsWith("NO_TARGET:", health.Value<string>("error"));
+                Assert.Equal(Program.ServerInformationalVersion, health["mcp"].Value<string>("server_informational_version"));
+
+                var key = health["client_verification"].Value<string>("tools_list_metadata_key");
+                Assert.True(JToken.DeepEquals(tool["_meta"][key], health["client_verification"]["expected_runtime"]));
+            }
+            finally { await host.StopAsync(timeout.Token); }
+        }
+        finally
+        {
+            ServerAuthToken.DiscoveryDirOverride = originalDir;
+            ServerState.Config = originalConfig;
+            ToolGateway.SendOverride = originalSend;
+            ToolGateway.ResetForTests();
+            RevitTargetBinding.ResetForTests();
+            try { Directory.Delete(root, true); } catch (IOException) { }
+        }
+    }
+
     private static async Task<JObject> Request(StreamWriter writer, StreamReader reader, int id, string method, object parameters)
     {
         await writer.WriteLineAsync(JsonConvert.SerializeObject(new { jsonrpc = "2.0", id, method, @params = parameters }));

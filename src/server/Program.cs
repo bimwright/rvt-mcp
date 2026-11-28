@@ -1,6 +1,6 @@
 // Usage:
-//   stdio (default):  RvtMcp.Server.exe              — spawned by Claude/GPT/Cursor
-//   HTTP SSE:          RvtMcp.Server.exe --http 8200  — for Ollama/LM Studio/custom
+//   stdio (default):          RvtMcp.Server.exe              — spawned by Claude/GPT/Cursor
+//   Streamable HTTP (stateless): RvtMcp.Server.exe --http 8200  — for Ollama/LM Studio/custom
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -54,7 +54,7 @@ namespace RvtMcp.Server
                     Environment.Exit(1);
                     return;
                 }
-                await RunHttpSse(config, port);
+                await RunHttp(config, port);
             }
             else
             {
