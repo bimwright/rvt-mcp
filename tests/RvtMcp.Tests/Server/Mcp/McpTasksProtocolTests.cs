@@ -219,6 +219,105 @@ public sealed class McpTasksProtocolTests : IDisposable
     }
 
     [Fact]
+    // TASK-TIMING: fast tasks completing within the bounded GetTaskAsync wait wake TerminalSignal early
+    // and return terminal state on the first tasks/get without waiting out getWaitTimeout or the 10s poll interval.
+    public async Task Fast_task_completes_on_first_get_without_waiting_for_poll_interval()
+    {
+        var store = new OperationBackedTaskStore(
+            pollIntervalMs: OperationBackedTaskStore.RecommendedPollIntervalMs,
+            ledgerFactory: () => new FailureLedgerStore(_ledger.DatabasePath, readOnly: true),
+            sessionStatusLookup: _ => null,
+            getWaitTimeout: TimeSpan.FromSeconds(5));
+
+        var created = await store.CreateTaskAsync(CancellationToken.None);
+        RevitTaskContext.Current = null;
+        Assert.Equal(OperationBackedTaskStore.RecommendedPollIntervalMs, created.PollIntervalMs);
+
+        var completeTask = Task.Run(async () =>
+        {
+            await Task.Delay(60);
+            var payload = System.Text.Json.JsonSerializer.SerializeToElement(
+                new CallToolResult { Content = new List<ContentBlock> { new TextContentBlock { Text = "{\"ok\":true}" } } },
+                ModelContextProtocol.McpJsonUtilities.DefaultOptions);
+            await store.SetCompletedAsync(created.TaskId, payload, CancellationToken.None);
+        });
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var state = await store.GetTaskAsync(created.TaskId, CancellationToken.None);
+        sw.Stop();
+        await completeTask;
+
+        Assert.NotNull(state);
+        Assert.Equal(McpTaskStatus.Completed, state!.Status);
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(2), $"Expected TerminalSignal early wakeup well below 5s timeout, took {sw.Elapsed}.");
+
+        // Verify SetFailedAsync and pre-dispatch SetCancelledAsync also wake TerminalSignal early.
+        var failedCreated = await store.CreateTaskAsync(CancellationToken.None);
+        RevitTaskContext.Current = null;
+        var failTask = Task.Run(async () =>
+        {
+            await Task.Delay(50);
+            var err = System.Text.Json.JsonSerializer.SerializeToElement(new { code = -32603, message = "boom" });
+            await store.SetFailedAsync(failedCreated.TaskId, err, CancellationToken.None);
+        });
+        sw.Restart();
+        var failedState = await store.GetTaskAsync(failedCreated.TaskId, CancellationToken.None);
+        sw.Stop();
+        await failTask;
+        Assert.Equal(McpTaskStatus.Failed, failedState!.Status);
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(2), $"Expected failed early wakeup, took {sw.Elapsed}.");
+
+        var cancelCreated = await store.CreateTaskAsync(CancellationToken.None);
+        RevitTaskContext.Current = null;
+        var cancelTask = Task.Run(async () =>
+        {
+            await Task.Delay(50);
+            await store.SetCancelledAsync(cancelCreated.TaskId, CancellationToken.None);
+        });
+        sw.Restart();
+        var cancelState = await store.GetTaskAsync(cancelCreated.TaskId, CancellationToken.None);
+        sw.Stop();
+        await cancelTask;
+        Assert.Equal(McpTaskStatus.Cancelled, cancelState!.Status);
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(2), $"Expected cancelled early wakeup, took {sw.Elapsed}.");
+    }
+
+    [Fact]
+    // TASK-TIMING: long-running Working task returns after the bounded getWaitTimeout, supports zero wait,
+    // validates negative timeout, and honors caller cancellation.
+    public async Task Long_running_task_returns_working_after_bounded_wait_and_honors_cancellation()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new OperationBackedTaskStore(getWaitTimeout: TimeSpan.FromMilliseconds(-1)));
+
+        var immediateStore = new OperationBackedTaskStore(
+            pollIntervalMs: OperationBackedTaskStore.RecommendedPollIntervalMs,
+            ledgerFactory: () => new FailureLedgerStore(_ledger.DatabasePath, readOnly: true),
+            sessionStatusLookup: _ => null,
+            getWaitTimeout: TimeSpan.Zero);
+        var immediateCreated = await immediateStore.CreateTaskAsync(CancellationToken.None);
+        RevitTaskContext.Current = null;
+        var immediateState = await immediateStore.GetTaskAsync(immediateCreated.TaskId, CancellationToken.None);
+        Assert.Equal(McpTaskStatus.Working, immediateState!.Status);
+
+        var store = new OperationBackedTaskStore(
+            pollIntervalMs: OperationBackedTaskStore.RecommendedPollIntervalMs,
+            ledgerFactory: () => new FailureLedgerStore(_ledger.DatabasePath, readOnly: true),
+            sessionStatusLookup: _ => null,
+            getWaitTimeout: TimeSpan.FromMilliseconds(120));
+
+        var created = await store.CreateTaskAsync(CancellationToken.None);
+        RevitTaskContext.Current = null;
+
+        var working = await store.GetTaskAsync(created.TaskId, CancellationToken.None);
+        Assert.NotNull(working);
+        Assert.Equal(McpTaskStatus.Working, working!.Status);
+        Assert.Equal(OperationBackedTaskStore.RecommendedPollIntervalMs, working.PollIntervalMs);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(30));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => store.GetTaskAsync(created.TaskId, cts.Token));
+    }
+
+    [Fact]
     // TASK-CANCEL-HONEST (pre-dispatch): cancelling via MCP tasks/cancel before the wire write transitions to Cancelled,
     // prevents dispatch to Revit, and never surfaces an ObjectDisposedException.
     public async Task Pre_dispatch_cancel_over_mcp_transitions_to_cancelled_and_never_writes_to_host()

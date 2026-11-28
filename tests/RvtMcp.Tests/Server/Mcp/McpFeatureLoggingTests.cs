@@ -342,6 +342,54 @@ public sealed class McpFeatureLoggingTests : IDisposable
         Assert.Contains("[Tasks] tasks/get task=(unknown) status=missing source=missing", log);
     }
 
+    [Fact]
+    public void Session_observer_merges_capabilities_monotonically_without_downgrade_line()
+    {
+        var observer = new McpSessionObserver("stdio");
+
+        static JsonRpcRequest MakeRequest(string method, bool withTasks, bool withSkills, bool withElicitation)
+        {
+            var extensions = new JsonObject();
+            if (withTasks) extensions[McpFeatureLogging.TasksExtensionId] = new JsonObject();
+            if (withSkills) extensions[McpFeatureLogging.SkillsExtensionId] = new JsonObject();
+            var caps = new JsonObject { ["extensions"] = extensions };
+            if (withElicitation) caps["elicitation"] = new JsonObject();
+
+            return new JsonRpcRequest
+            {
+                Method = method,
+                Context = new JsonRpcMessageContext
+                {
+                    ProtocolVersion = "2026-07-28",
+                    ClientInfo = new Implementation { Name = "claude-code", Version = "2.1.332" }
+                },
+                Params = new JsonObject
+                {
+                    ["_meta"] = new JsonObject
+                    {
+                        ["io.modelcontextprotocol/clientCapabilities"] = caps
+                    }
+                }
+            };
+        }
+
+        // 1. Initial call advertises tasks + elicitation without skills.
+        observer.Observe(null!, MakeRequest("tools/call", withTasks: true, withSkills: false, withElicitation: true));
+        // 2. Follow-up tools/list adds skills -> monotonic upgrade emits a merged union line.
+        observer.Observe(null!, MakeRequest("tools/list", withTasks: true, withSkills: true, withElicitation: true));
+        // 3. Follow-up tools/call omits skills -> suppressed, no contradictory downgrade line.
+        observer.Observe(null!, MakeRequest("tools/call", withTasks: true, withSkills: false, withElicitation: true));
+        Assert.True(DiagnosticLog.Flush());
+
+        var sessionLines = ReadLog()
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(l => l.Contains("[McpSession]", StringComparison.Ordinal))
+            .ToArray();
+        Assert.Equal(2, sessionLines.Length);
+        Assert.Contains("protocol=2026-07-28 client=claude-code tasks=1 skills=0 elicitation=1", sessionLines[0]);
+        Assert.Contains("protocol=2026-07-28 client=claude-code tasks=1 skills=1 elicitation=1", sessionLines[1]);
+    }
+
     private string ReadLog()
     {
         var path = Path.Combine(_root, "Bimwright", "rvt-mcp", "rvt-mcp.log");

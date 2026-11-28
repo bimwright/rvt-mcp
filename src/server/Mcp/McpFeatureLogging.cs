@@ -18,9 +18,9 @@ namespace RvtMcp.Server
     /// </summary>
     internal sealed class McpSessionObserver
     {
-        private const int MaxFingerprints = 256;
+        private const int MaxSessions = 256;
         private readonly string _transport;
-        private readonly ConcurrentDictionary<string, byte> _seen = new ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
+        private readonly ConcurrentDictionary<string, int> _seenFlags = new ConcurrentDictionary<string, int>(StringComparer.Ordinal);
 
         internal McpSessionObserver(string transport = "stdio")
         {
@@ -36,15 +36,39 @@ namespace RvtMcp.Server
             var hasSkills = McpFeatureLogging.HasExtension(server, jsonRpcRequest, McpFeatureLogging.SkillsExtensionId);
             var hasElicitation = McpFeatureLogging.HasElicitation(server, jsonRpcRequest);
 
-            var key = string.Concat(
-                session, "|", _transport, "|", protocol, "|", client, "|",
-                hasTasks ? "1" : "0", hasSkills ? "1" : "0", hasElicitation ? "1" : "0");
+            var sessionKey = string.Concat(session, "|", _transport, "|", protocol, "|", client);
+            var observedBits = (hasTasks ? 1 : 0) | (hasSkills ? 2 : 0) | (hasElicitation ? 4 : 0);
 
-            if (_seen.Count >= MaxFingerprints || !_seen.TryAdd(key, 0))
-                return;
+            // Merge capabilities monotonically per session so a follow-up request that omits an extension
+            // (for example tools/call omitting io.modelcontextprotocol/skills after tools/list advertised it)
+            // does not emit a contradictory downgrade line.
+            while (true)
+            {
+                if (_seenFlags.TryGetValue(sessionKey, out var existing))
+                {
+                    var merged = existing | observedBits;
+                    if (merged == existing)
+                        return;
+                    if (!_seenFlags.TryUpdate(sessionKey, merged, existing))
+                        continue;
 
-            DiagnosticLog.Write("McpSession", McpFeatureLogging.FormatSessionCapabilities(
-                _transport, protocol, client, hasTasks, hasSkills, hasElicitation, session, DateTimeOffset.UtcNow));
+                    DiagnosticLog.Write("McpSession", McpFeatureLogging.FormatSessionCapabilities(
+                        _transport, protocol, client,
+                        (merged & 1) != 0, (merged & 2) != 0, (merged & 4) != 0,
+                        session, DateTimeOffset.UtcNow));
+                    return;
+                }
+
+                if (_seenFlags.Count >= MaxSessions)
+                    return;
+
+                if (_seenFlags.TryAdd(sessionKey, observedBits))
+                {
+                    DiagnosticLog.Write("McpSession", McpFeatureLogging.FormatSessionCapabilities(
+                        _transport, protocol, client, hasTasks, hasSkills, hasElicitation, session, DateTimeOffset.UtcNow));
+                    return;
+                }
+            }
         }
     }
 

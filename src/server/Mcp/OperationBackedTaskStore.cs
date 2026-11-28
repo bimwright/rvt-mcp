@@ -59,12 +59,16 @@ namespace RvtMcp.Server
         // TASK-TIMING: Claude Code recommends keeping task results >= 1h and polling 10-30s for >1m work.
         internal static readonly TimeSpan RecommendedTimeToLive = TimeSpan.FromHours(1);
         internal const long RecommendedPollIntervalMs = 10_000;
+        // Short bounded wait on Working tasks in GetTaskAsync so fast tasks (e.g. 50-200ms clash checks)
+        // finish on the client's first tasks/get instead of incurring a 10s poll sleep.
+        internal static readonly TimeSpan DefaultGetWaitTimeout = TimeSpan.FromMilliseconds(500);
 
         private static readonly long SweepIntervalTicks = TimeSpan.FromSeconds(30).Ticks;
 
         private sealed class TaskRecord
         {
             public readonly object Sync = new object();
+            public readonly TaskCompletionSource<bool> TerminalSignal = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             public McpTaskInfo Info;
             public bool DispatchedToHost;
             public bool CancelRequestedAfterDispatch;
@@ -75,6 +79,7 @@ namespace RvtMcp.Server
         private readonly ConcurrentDictionary<string, DateTimeOffset> _cancelledRecoveredTasks = new ConcurrentDictionary<string, DateTimeOffset>(StringComparer.Ordinal);
         private readonly TimeSpan? _defaultTimeToLive;
         private readonly long _defaultPollIntervalMs;
+        private readonly TimeSpan _getWaitTimeout;
         private readonly Func<FailureLedgerStore> _ledgerFactory;
         private readonly Func<string, JObject> _sessionStatusLookup;
         private readonly Func<DateTimeOffset> _utcNow;
@@ -87,12 +92,17 @@ namespace RvtMcp.Server
             long pollIntervalMs = RecommendedPollIntervalMs,
             Func<FailureLedgerStore> ledgerFactory = null,
             Func<string, JObject> sessionStatusLookup = null,
-            Func<DateTimeOffset> utcNow = null)
+            Func<DateTimeOffset> utcNow = null,
+            TimeSpan? getWaitTimeout = null)
         {
             if (pollIntervalMs <= 0)
                 throw new ArgumentOutOfRangeException(nameof(pollIntervalMs), "Poll interval must be positive.");
+            var waitTimeout = getWaitTimeout ?? DefaultGetWaitTimeout;
+            if (waitTimeout < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(getWaitTimeout), "Get wait timeout must be non-negative.");
             _defaultTimeToLive = timeToLive ?? RecommendedTimeToLive;
             _defaultPollIntervalMs = pollIntervalMs;
+            _getWaitTimeout = waitTimeout;
             _ledgerFactory = ledgerFactory ?? (() => FailureTools.StoreFactory());
             _sessionStatusLookup = sessionStatusLookup ?? (id => ToolGateway.PreviousOperations.Status(id));
             _utcNow = utcNow ?? (() => DateTimeOffset.UtcNow);
@@ -148,11 +158,11 @@ namespace RvtMcp.Server
             return true;
         }
 
-        public Task<McpTaskInfo> GetTaskAsync(string taskId, CancellationToken cancellationToken = default)
+        public async Task<McpTaskInfo> GetTaskAsync(string taskId, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(taskId))
-                return Task.FromResult<McpTaskInfo>(null);
+                return null;
 
             var now = _utcNow();
             if (_tasks.TryGetValue(taskId, out var record))
@@ -164,7 +174,7 @@ namespace RvtMcp.Server
                     {
                         _tasks.TryRemove(taskId, out _);
                         McpFeatureLogging.LogTaskGet(taskId, "expired", "memory");
-                        return Task.FromResult<McpTaskInfo>(null);
+                        return null;
                     }
 
                     if (record.Info.Status != McpTaskStatus.Working)
@@ -174,7 +184,39 @@ namespace RvtMcp.Server
                 if (snapshot != null)
                 {
                     McpFeatureLogging.LogTaskGet(taskId, FormatStatus(snapshot.Status), "memory");
-                    return Task.FromResult(snapshot);
+                    return snapshot;
+                }
+
+                if (_getWaitTimeout > TimeSpan.Zero && !record.TerminalSignal.Task.IsCompleted)
+                {
+                    using (var delayCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+                    {
+                        var delayTask = Task.Delay(_getWaitTimeout, delayCts.Token);
+                        var winner = await Task.WhenAny(record.TerminalSignal.Task, delayTask).ConfigureAwait(false);
+                        delayCts.Cancel();
+                        if (winner == delayTask && cancellationToken.IsCancellationRequested)
+                            cancellationToken.ThrowIfCancellationRequested();
+                    }
+
+                    now = _utcNow();
+                    lock (record.Sync)
+                    {
+                        if (IsExpired(record.Info, now))
+                        {
+                            _tasks.TryRemove(taskId, out _);
+                            McpFeatureLogging.LogTaskGet(taskId, "expired", "memory");
+                            return null;
+                        }
+
+                        if (record.Info.Status != McpTaskStatus.Working)
+                            snapshot = record.Info;
+                    }
+
+                    if (snapshot != null)
+                    {
+                        McpFeatureLogging.LogTaskGet(taskId, FormatStatus(snapshot.Status), "memory");
+                        return snapshot;
+                    }
                 }
 
                 // Read session tracker and SQLite ledger outside record.Sync so disk contention never blocks task state transitions.
@@ -186,7 +228,7 @@ namespace RvtMcp.Server
                     {
                         _tasks.TryRemove(taskId, out _);
                         McpFeatureLogging.LogTaskGet(taskId, "expired", "memory");
-                        return Task.FromResult<McpTaskInfo>(null);
+                        return null;
                     }
 
                     if (record.Info.Status == McpTaskStatus.Working)
@@ -200,7 +242,7 @@ namespace RvtMcp.Server
                 }
 
                 McpFeatureLogging.LogTaskGet(taskId, FormatStatus(snapshot.Status), "memory");
-                return Task.FromResult(snapshot);
+                return snapshot;
             }
 
             // TASK-RECOVER: when this server instance has no in-memory entry (e.g., after stdio reconnect),
@@ -211,12 +253,12 @@ namespace RvtMcp.Server
                 if (recovered != null)
                 {
                     McpFeatureLogging.LogTaskGet(taskId, FormatStatus(recovered.Status), "ledger");
-                    return Task.FromResult(recovered);
+                    return recovered;
                 }
             }
 
             McpFeatureLogging.LogTaskGet(taskId, "missing", "missing");
-            return Task.FromResult<McpTaskInfo>(null);
+            return null;
         }
 
         public Task SetCompletedAsync(string taskId, JsonElement result, CancellationToken cancellationToken = default)
@@ -256,6 +298,7 @@ namespace RvtMcp.Server
                 McpFeatureLogging.LogTaskComplete(taskId, isError, afterCancel);
             }
 
+            record.TerminalSignal.TrySetResult(true);
             return Task.CompletedTask;
         }
 
@@ -285,6 +328,7 @@ namespace RvtMcp.Server
                 McpFeatureLogging.LogTaskFail(taskId, afterCancel);
             }
 
+            record.TerminalSignal.TrySetResult(true);
             return Task.CompletedTask;
         }
 
@@ -346,6 +390,9 @@ namespace RvtMcp.Server
                     cancelled = true;
                 }
             }
+
+            if (cancelled)
+                record.TerminalSignal.TrySetResult(true);
 
             McpFeatureLogging.LogTaskCancel(taskId, cancelStage);
             return Task.FromResult(cancelled);
