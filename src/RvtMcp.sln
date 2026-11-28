@@ -392,6 +392,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Infrastructure", "Infrastru
 	ProjectSection(SolutionItems) = preProject
 		shared\Infrastructure\CaptureOutputPath.cs = shared\Infrastructure\CaptureOutputPath.cs
 		shared\Infrastructure\CaptureOutputResolver.cs = shared\Infrastructure\CaptureOutputResolver.cs
+		shared\Infrastructure\CategoryLookup.cs = shared\Infrastructure\CategoryLookup.cs
 		shared\Infrastructure\ExportTransaction.cs = shared\Infrastructure\ExportTransaction.cs
 		shared\Infrastructure\IdlingUpdater.cs = shared\Infrastructure\IdlingUpdater.cs
 		shared\Infrastructure\LegacyDataMigration.cs = shared\Infrastructure\LegacyDataMigration.cs

@@ -10,8 +10,8 @@ namespace RvtMcp.Plugin.Handlers
     public class AiElementFilterHandler : IRevitCommand
     {
         public string Name => "ai_element_filter";
-        public string Description => "Filter elements by category, parameter name, value, and comparison operator. Numeric values are in millimeters (auto-converted from Revit internal units).";
-        public string ParametersSchema => @"{""type"":""object"",""properties"":{""category"":{""type"":""string""},""parameterName"":{""type"":""string""},""parameterValue"":{""type"":""string""},""operator"":{""type"":""string"",""enum"":[""equals"",""contains"",""startswith"",""greaterthan"",""lessthan""]},""limit"":{""type"":""integer"",""default"":100,""minimum"":1,""maximum"":1000},""select"":{""type"":""boolean"",""default"":false}},""required"":[""category""]}";
+        public string Description => "Filter elements by category, parameter name, value, and comparison operator. Numeric values are in millimeters (auto-converted from Revit internal units). An empty parameterValue with operator equals matches elements whose parameter is empty or unset. viewSpecific=true keeps view-owned elements (detail lines), false keeps model elements.";
+        public string ParametersSchema => @"{""type"":""object"",""properties"":{""category"":{""type"":""string""},""parameterName"":{""type"":""string""},""parameterValue"":{""type"":""string""},""operator"":{""type"":""string"",""enum"":[""equals"",""contains"",""startswith"",""greaterthan"",""lessthan""]},""limit"":{""type"":""integer"",""default"":100,""minimum"":1,""maximum"":1000},""select"":{""type"":""boolean"",""default"":false},""viewSpecific"":{""type"":""boolean""}},""required"":[""category""]}";
 
         public CommandResult Execute(UIApplication app, string paramsJson)
         {
@@ -28,25 +28,21 @@ namespace RvtMcp.Plugin.Handlers
             if (limit < 1 || limit > 1000)
                 return CommandResult.Fail("limit must be between 1 and the hard maximum of 1000.");
             var selectResult = request.Value<bool?>("select") ?? false;
+            var viewSpecific = request.Value<bool?>("viewSpecific");
 
             if (string.IsNullOrEmpty(categoryName))
                 return CommandResult.Fail("category is required.");
 
-            // Find matching BuiltInCategory
-            BuiltInCategory? bic = null;
-            foreach (BuiltInCategory cat in Enum.GetValues(typeof(BuiltInCategory)))
-            {
-                try
-                {
-                    var c = Category.GetCategory(doc, cat);
-                    if (c != null && c.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        bic = cat;
-                        break;
-                    }
-                }
-                catch { }
-            }
+            var hasParamFilter = !string.IsNullOrEmpty(paramName);
+            if (!hasParamFilter && !string.IsNullOrEmpty(paramValue))
+                return CommandResult.Fail("parameterName is required when parameterValue is set.");
+            // An empty value with a parameter name asks for elements where that parameter is empty or unset (#77).
+            var matchEmpty = hasParamFilter && string.IsNullOrEmpty(paramValue);
+            if (matchEmpty && !op.Equals("equals", StringComparison.OrdinalIgnoreCase))
+                return CommandResult.Fail($"parameterValue is required for operator '{op}'. To find elements where the parameter is empty or unset, use operator 'equals' with an empty parameterValue.");
+
+            var matchedCategory = CategoryLookup.FindByName(doc, categoryName);
+            BuiltInCategory? bic = matchedCategory == null ? (BuiltInCategory?)null : CategoryLookup.ToBuiltIn(matchedCategory);
 
             if (bic == null)
                 return CommandResult.Fail($"Category '{categoryName}' not found.");
@@ -55,12 +51,12 @@ namespace RvtMcp.Plugin.Handlers
                 .OfCategory(bic.Value)
                 .WhereElementIsNotElementType();
 
-            // Without a parameter filter Revit counts the category natively and only `limit`
-            // elements are read. With a filter every element is still tested so totalFound stays
-            // exact, but only the first `limit` matches are kept.
+            // Without a filter Revit counts the category natively and only `limit` elements are
+            // read. With a parameter or viewSpecific filter every element is still tested so
+            // totalFound stays exact, but only the first `limit` matches are kept.
             int totalFound;
             List<Element> filtered;
-            if (string.IsNullOrEmpty(paramName) || string.IsNullOrEmpty(paramValue))
+            if (!hasParamFilter && viewSpecific == null)
             {
                 totalFound = collector.GetElementCount();
                 filtered = new FilteredElementCollector(doc)
@@ -71,10 +67,20 @@ namespace RvtMcp.Plugin.Handlers
             }
             else
             {
+                var scanned = 0;
+                var parameterSeen = false;
                 Func<Element, bool> matches = el =>
                 {
+                    scanned++;
+                    if (!hasParamFilter)
+                        return el.ViewSpecific == viewSpecific.Value;
+
                     var param = el.LookupParameter(paramName);
                     if (param == null) return false;
+                    parameterSeen = true;
+                    if (viewSpecific != null && el.ViewSpecific != viewSpecific.Value) return false;
+
+                    if (matchEmpty) return IsEmpty(param);
 
                     // For numeric comparisons, get value in display units (mm for length)
                     if (param.StorageType == StorageType.Double &&
@@ -117,6 +123,10 @@ namespace RvtMcp.Plugin.Handlers
                     totalFound++;
                     if (filtered.Count < limit) filtered.Add(el);
                 }
+
+                // A name no element carries is a typo or a type parameter, not "no matches".
+                if (hasParamFilter && scanned > 0 && !parameterSeen)
+                    return CommandResult.Fail($"No element in category '{matchedCategory.Name}' has an instance parameter named '{paramName}'. Check the name with revit_get_element_parameters; type parameters are not searched.");
             }
 
             // Auto-select if requested
@@ -133,8 +143,11 @@ namespace RvtMcp.Plugin.Handlers
                     ["elementId"] = RevitCompat.GetId(el.Id),
                     ["name"] = el.Name,
                     ["category"] = el.Category?.Name,
-                    ["typeName"] = doc.GetElement(el.GetTypeId())?.Name
+                    ["typeName"] = doc.GetElement(el.GetTypeId())?.Name,
+                    ["viewSpecific"] = el.ViewSpecific
                 };
+                if (el.ViewSpecific)
+                    resultObj["ownerViewId"] = RevitCompat.GetId(el.OwnerViewId);
 
                 // Include requested parameter value in output
                 if (!string.IsNullOrEmpty(paramName))
@@ -155,6 +168,17 @@ namespace RvtMcp.Plugin.Handlers
                 limit,
                 elements = result
             });
+        }
+
+        private static bool IsEmpty(Parameter param)
+        {
+            if (!param.HasValue) return true;
+            switch (param.StorageType)
+            {
+                case StorageType.String: return string.IsNullOrEmpty(param.AsString());
+                case StorageType.ElementId: return RevitCompat.GetId(param.AsElementId()) == -1;
+                default: return false;
+            }
         }
 
         private static double ConvertToDisplayUnits(Document doc, Parameter param, double internalValue)

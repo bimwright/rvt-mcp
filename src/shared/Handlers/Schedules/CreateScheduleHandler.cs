@@ -57,22 +57,7 @@ namespace RvtMcp.Plugin.Handlers
             if (fieldsToken == null || fieldsToken.Count == 0)
                 return CommandResult.Fail("fields is required and must be a non-empty array.");
 
-            // Resolve category via BuiltInCategory enum (case-insensitive name match).
-            ElementId categoryId = null;
-            foreach (BuiltInCategory bic in Enum.GetValues(typeof(BuiltInCategory)))
-            {
-                try
-                {
-                    var c = Category.GetCategory(doc, bic);
-                    if (c != null && c.Name != null &&
-                        c.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        categoryId = c.Id;
-                        break;
-                    }
-                }
-                catch { }
-            }
+            ElementId categoryId = CategoryLookup.FindByName(doc, categoryName)?.Id;
 
             if (categoryId == null)
                 return CommandResult.Fail($"Category '{categoryName}' not found.");
